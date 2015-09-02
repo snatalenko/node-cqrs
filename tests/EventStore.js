@@ -58,7 +58,7 @@ describe('#EventStore', function () {
 			.catch(function (err) {
 				expect(err).exists;
 				expect(err).to.be.an.instanceof(TypeError);
-				expect(err.message).to.equal('context.browser argument must be a non-empty String');
+				expect(err.message).to.equal('context.browser must be a non-empty String');
 				done();
 			})
 			.catch(done);
@@ -71,7 +71,7 @@ describe('#EventStore', function () {
 			.catch(function (err) {
 				expect(err).exist;
 				expect(err).to.be.an.instanceof(TypeError);
-				expect(err.message).to.equal('event.aggregateId argument must be a non-empty String');
+				expect(err.message).to.equal('event.aggregateId must be a non-empty String');
 				done();
 			})
 			.catch(done);
