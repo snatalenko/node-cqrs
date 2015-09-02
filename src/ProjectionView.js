@@ -32,7 +32,7 @@ class ProjectionView {
 	}
 
 	create(key, update) {
-		validate.string(key, 'key');
+		validate.identifier(key, 'key');
 		validate.argument(update, 'update');
 		if (key in this.state) throw new Error('Key \'' + key + '\' already exists');
 
@@ -48,7 +48,7 @@ class ProjectionView {
 	}
 
 	update(key, update) {
-		validate.string(key, 'key');
+		validate.identifier(key, 'key');
 		validate.func(update, 'update');
 		if (!(key in this.state)) throw new Error('Key \'' + key + '\' does not exist');
 
@@ -56,7 +56,7 @@ class ProjectionView {
 	}
 
 	updateEnforcingNew(key, update) {
-		validate.string(key, 'key');
+		validate.identifier(key, 'key');
 		validate.argument(update, 'update');
 
 		if (!(key in this.state)) {
@@ -77,7 +77,7 @@ class ProjectionView {
 	}
 
 	delete(key) {
-		validate.string(key, 'key');
+		validate.identifier(key, 'key');
 		delete this.state[key];
 	}
 }

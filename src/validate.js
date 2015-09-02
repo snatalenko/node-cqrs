@@ -1,47 +1,38 @@
 'use strict';
 
-// class DomainError extends Error {
-// 	constructor(message) {
-// 		super(message);
-// 	}
-// }
-// function domainError(message) {
-// 	throw new DomainError(message);
-// }
-
 exports.argument = function (value, argumentName) {
 	if (!argumentName) throw new TypeError('argumentName argument required');
-	if (!value) throw new TypeError(argumentName + ' argument required');
+	if (!value) throw new TypeError(argumentName + ' required');
 };
 
 exports.string = function (value, argumentName) {
 	if (!argumentName) throw new TypeError('argumentName argument required');
-	if (typeof value !== 'string' || !value.length) throw new TypeError(argumentName + ' argument must be a non-empty String');
+	if (typeof value !== 'string' || !value.length) throw new TypeError(argumentName + ' must be a non-empty String');
 };
 
 exports.url = function (value, argumentName) {
 	exports.string(value, argumentName);
-	if (!/^(http|https):\/\//i.test(value)) throw new TypeError(argumentName + ' argument must be a url');
+	if (!/^(http|https):\/\//i.test(value)) throw new TypeError(argumentName + ' must be a url');
 };
 
 exports.func = function (value, argumentName) {
 	if (!argumentName) throw new TypeError('argumentName argument required');
-	if (typeof value !== 'function') throw new TypeError(argumentName + ' argument must be a Function');
+	if (typeof value !== 'function') throw new TypeError(argumentName + ' must be a Function');
 };
 
 exports.number = function (value, argumentName) {
 	if (!argumentName) throw new TypeError('argumentName argument required');
-	if (typeof value !== 'number' || isNaN(value)) throw new TypeError(argumentName + ' argument must be a Number');
+	if (typeof value !== 'number' || isNaN(value)) throw new TypeError(argumentName + ' must be a Number');
 };
 
 exports.array = function (value, argumentName) {
 	if (!argumentName) throw new TypeError('argumentName argument required');
-	if (!Array.isArray(value) || !value.length) throw new TypeError(argumentName + ' argument must be a non-empty Array');
+	if (!Array.isArray(value) || !value.length) throw new TypeError(argumentName + ' must be a non-empty Array');
 };
 
 exports.object = function (value, argumentName, requiredProperties) {
 	if (!argumentName) throw new TypeError('argumentName argument required');
-	if (!value || typeof value !== 'object' || Array.isArray(value) || value instanceof Date) throw new TypeError(argumentName + ' argument must be an Object');
+	if (!value || typeof value !== 'object' || Array.isArray(value) || value instanceof Date) throw new TypeError(argumentName + ' must be an Object');
 	if (requiredProperties) {
 		if (!Array.isArray(requiredProperties)) requiredProperties = Array.prototype.slice.call(arguments, 2);
 		for (const propertyName of requiredProperties) {
@@ -52,6 +43,7 @@ exports.object = function (value, argumentName, requiredProperties) {
 
 exports.identifier = function (value, argumentName) {
 	if (typeof value === 'object' && value) value = value.toString();
+	if (value === '[object Object]') throw new TypeError(argumentName + ' must be a non-empty String');
 	exports.string(value, argumentName);
 };
 
