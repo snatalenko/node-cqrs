@@ -1,4 +1,3 @@
-const should = require('chai').should();
 const expect = require('chai').expect;
 const EventStore = require('../index').EventStore;
 
@@ -36,6 +35,7 @@ const badEvent = {
 
 const goodEvent = {
 	aggregateId: '1',
+	version: 0,
 	type: 'test'
 };
 
@@ -45,12 +45,6 @@ describe('#EventStore', function () {
 
 	const es = new EventStore();
 	es.use(gateway);
-
-	it('exists', function () {
-		expect(null).not.exist;
-		expect(es).exist;
-	});
-
 
 	it('validates context', function (done) {
 
@@ -106,7 +100,5 @@ describe('#EventStore', function () {
 		es.commit(goodContext, [goodEvent]);
 	});
 
-	it('emits persisted events with \'restore:\' prefix, when assigned to a gateway (TODO)', function () {
-
-	});
+	it('emits persisted events with \'restore:\' prefix, when assigned to a gateway');
 });

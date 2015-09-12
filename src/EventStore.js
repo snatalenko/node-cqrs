@@ -23,10 +23,23 @@ class EventStore extends EventEmitter {
 		return this[KEY_GATEWAYS];
 	}
 
-	constructor() {
+	constructor(gateway, publishGateways) {
 		super();
 		this[KEY_GATEWAYS] = [];
 		this.debug = debug;
+
+		if (gateway) {
+			this.use(gateway);
+		}
+
+		if (publishGateways) {
+			if (!Array.isArray(publishGateways)) {
+				publishGateways = Array.prototype.slice.call(arguments, 1);
+			}
+			for (const writeOnlyGateway of publishGateways) {
+				this.publishTo(writeOnlyGateway);
+			}
+		}
 
 		this._validate = this._validate.bind(this);
 		this._commit = this._commit.bind(this);
@@ -62,7 +75,7 @@ class EventStore extends EventEmitter {
 	getAllEvents(eventTypes) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
-		return this.gateway.getEvents(eventTypes)
+		return Promise.resolve(this.gateway.getEvents(eventTypes) || [])
 			.then(this._onEventsRetrieved);
 	}
 
@@ -70,7 +83,7 @@ class EventStore extends EventEmitter {
 		this.debug('retrieving event stream for %s...', aggregateId);
 		validate.identifier(aggregateId, 'aggregateId');
 
-		return this.gateway.getAggregateEvents(aggregateId)
+		return Promise.resolve(this.gateway.getAggregateEvents(aggregateId) || [])
 			.then(this._onEventsRetrieved);
 	}
 
@@ -126,17 +139,18 @@ class EventStore extends EventEmitter {
 			insertAsync = insertAsync.then(this._commitToGateway.bind(this, gateway));
 		}
 
+		const self = this;
 		return insertAsync.then(function (result) {
-			this.debug('%s committed: %j', debugEventNum(events), result);
+			self.debug('%s committed: %j', debugEventNum(events), result);
 			return events;
-		}.bind(this));
+		});
 	}
 
 	_commitToGateway(gateway, events) {
 		validate.object(gateway, 'gateway');
 		validate.array(events, 'events');
 
-		return gateway.commitEvents(events);
+		return Promise.resolve(gateway.commitEvents(events));
 	}
 
 	_emit(events) {

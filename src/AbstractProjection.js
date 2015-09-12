@@ -5,6 +5,7 @@ const ProjectionView = require('./ProjectionView');
 const KEY_VIEW = Symbol();
 const KEY_EVENT_TYPES = Symbol();
 const utils = require('./utils');
+const validate = require('./validate');
 
 class AbstractProjection extends Observer {
 
@@ -19,6 +20,10 @@ class AbstractProjection extends Observer {
 		this.debug = function () {};
 		this[KEY_VIEW] = projectionView || new ProjectionView();
 		this[KEY_EVENT_TYPES] = eventTypes;
+
+		this._restore = this._restore.bind(this);
+		this._onRestoreComplete = this._onRestoreComplete.bind(this);
+		this._onRestoreFailed = this._onRestoreFailed.bind(this);
 	}
 
 	subscribe(eventStore) {
@@ -36,31 +41,30 @@ class AbstractProjection extends Observer {
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
 		const eventTypes = this[KEY_EVENT_TYPES];
-		const self = this;
 
 		return eventStore.getAllEvents(eventTypes)
-			.then(this._restoreViewFromEvents.bind(this))
-			.then(function () {
-				self.debug('projection view restored: %d keys, %d bytes', Object.keys(self.view.state).length, utils.sizeOf(self.view.state));
-			})
-			.catch(function (err) {
-				self.debug(err);
-				throw err;
-			});
+			.then(this._restore)
+			.catch(this._onRestoreFailed);
 	}
 
-	_restoreViewFromEvents(events) {
-		if (!events) throw new TypeError('events argument required');
+	_restore(events) {
+		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
+		if (!events.length) {
+			this.debug('no related events found');
+			return Promise.resolve();
+		}
 
 		this.debug('restoring view from %d event(s)...', events.length);
+		return this.projectAll(events).then(this._onRestoreComplete);
+	}
 
-		const self = this;
+	_onRestoreComplete() {
+		this.debug('projection view restored: %d keys, %d bytes', Object.keys(this.view.state).length, utils.sizeOf(this.view.state));
+	}
 
-		return events.reduce(function (cur, event) {
-			return cur.then(function () {
-				return self.project(event);
-			});
-		}, Promise.resolve());
+	_onRestoreFailed(err) {
+		this.debug(err);
+		throw err;
 	}
 
 	/**
@@ -73,6 +77,19 @@ class AbstractProjection extends Observer {
 		this.debug('project ' + (evt && evt.type) + ' to ' + (evt && evt.aggregateId));
 
 		return utils.passToHandler(this, evt.type, evt.aggregateId, evt.payload, evt.context);
+	}
+
+	projectAll(events) {
+		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
+		if (!events.length) return Promise.resolve();
+
+		const self = this;
+
+		return events.reduce(function (cur, event) {
+			return cur.then(function () {
+				return self.project(event);
+			});
+		}, Promise.resolve());
 	}
 
 	createView(key, update) {

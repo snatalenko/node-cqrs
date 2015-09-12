@@ -24,11 +24,13 @@ class ProjectionView {
 	}
 
 	get(key) {
-		if (!key) throw new TypeError('key argument required');
-		// if (typeof required !== 'undefined' && typeof required !== 'boolean') throw new TypeError('required argument, when provided, must be a Boolean');
-		// if (required && !(key in this.snapshot))
-		// 	return Promise.reject(new Error('Record could not be found'));
-		return Promise.resolve(this.snapshot[key]);
+		validate.identifier(key, 'key');
+
+		const subview = this.state[key];
+		if (typeof subview === 'object')
+			return Promise.resolve(JSON.parse(JSON.stringify(subview)));
+		else
+			return Promise.resolve(subview);
 	}
 
 	create(key, update) {

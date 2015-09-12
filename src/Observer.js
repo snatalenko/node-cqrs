@@ -2,6 +2,7 @@
 
 const validate = require('./validate');
 const debug = function () {};
+const logError = function () {};
 
 class Observer {
 
@@ -21,6 +22,15 @@ class Observer {
 			this._masterHandler = masterHandler;
 		}
 		this.debug = debug;
+	}
+
+	error( /* errorMessage */ ) {
+		if (this.debug === debug) {
+			console.log.apply(console, arguments);
+		}
+		else {
+			this.debug.apply(this, arguments);
+		}
 	}
 
 	/**
@@ -83,13 +93,7 @@ class Observer {
 	}
 
 	_onExecutionFailed(messageType, err) {
-		if (this.debug === debug) {
-			console.error(messageType + ' execution failed:', err);
-		}
-		else {
-			this.debug(messageType + ' execution failed:');
-			this.debug(err);
-		}
+		this.error(messageType + ' execution failed:', err);
 		throw err;
 	}
 }

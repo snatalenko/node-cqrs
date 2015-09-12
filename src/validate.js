@@ -66,6 +66,7 @@ exports.userContext = function (context, argumentName) {
 exports.event = function (event) {
 	exports.object(event, 'event');
 	exports.identifier(event.aggregateId, 'event.aggregateId');
+	exports.number(event.version, 'event.version');
 	exports.string(event.type, 'event.type');
 	exports.userContext(event.context, 'event.context');
 };
