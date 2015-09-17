@@ -49,12 +49,12 @@ class AbstractCommandHandler extends Observer {
 
 		if (aggregateId) {
 			return this.eventStore.getEvents(aggregateId)
-				.then(this.getAggregate.bind(this, aggregateId))
+				.then(events => this.getAggregate(aggregateId, events))
 				.then(this._onAggregateRestored.bind(this));
 		}
 		else {
 			return Promise.resolve(this.eventStore.getNewId())
-				.then(this.getAggregate.bind(this))
+				.then(id => this.getAggregate(id, []))
 				.then(this._onAggregateCreated.bind(this));
 		}
 	}
