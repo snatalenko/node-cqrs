@@ -34,8 +34,10 @@ class AbstractAggregate {
 
 	constructor(id, initialState, events) {
 		if (!id) throw new TypeError('id argument required');
-		if (!initialState) throw new TypeError('initialState argument required');
-		if (events && !Array.isArray(events)) throw new TypeError('events argument, when provided, must be an Array');
+		if (initialState || events) {
+			if (!initialState) throw new TypeError('initialState argument required');
+			if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
+		}
 
 		this[KEY_ID] = id;
 		this[KEY_VERSION] = 0;
@@ -66,7 +68,9 @@ class AbstractAggregate {
 			localTime: new Date()
 		};
 
-		this.state.mutate(evt);
+		if (this.state) {
+			this.state.mutate(evt);
+		}
 
 		this[KEY_CHANGES].push(evt);
 		this[KEY_VERSION]++;

@@ -13,6 +13,8 @@ class Aggregate extends AbstractAggregate {
 	}
 }
 
+class StatelessAggregate extends AbstractAggregate {}
+
 describe('#AbstractAggregate', function () {
 
 	const agg = new Aggregate(1, []);
@@ -42,6 +44,11 @@ describe('#AbstractAggregate', function () {
 	describe('state', function () {
 		it('is an inner aggregate state', function () {
 			expect(agg.state).to.exist;
+		});
+
+		it('is optional', function() {
+			const statelessAggregate = new StatelessAggregate(2);
+			expect(statelessAggregate).to.have.empty.property('state');
 		});
 	});
 
