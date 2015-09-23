@@ -4,19 +4,24 @@ const Observer = require('./Observer');
 const utils = require('./utils');
 const validate = require('./validate');
 
+function debug() {}
+
 class AbstractCommandHandler extends Observer {
 
 	constructor(eventStore, commandTypes) {
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		if (!commandTypes) throw new TypeError('commandTypes argument required');
-		if (!Array.isArray(commandTypes)) throw new TypeError('commandTypes argument must be an Array');
+		if (!Array.isArray(commandTypes) && typeof commandTypes !== 'string') throw new TypeError('commandTypes argument must be either a String or an Array');
 
 		super();
 
-		this.debug = function () {};
-		this.eventStore = eventStore;
-		this._commandTypes = commandTypes.slice(0);
+		this.debug = debug;
+
+		this._eventStore = eventStore;
+		this._commandTypes = typeof commandTypes === 'string' ? Array.prototype.slice.call(arguments, 1) : commandTypes.slice(0);
 		this._loadAggregate = this._loadAggregate.bind(this);
+		this._onAggregateCreated = this._onAggregateCreated.bind(this);
+		this._onAggregateRestored = this._onAggregateRestored.bind(this);
 	}
 
 	subscribe(commandBus) {
@@ -36,26 +41,22 @@ class AbstractCommandHandler extends Observer {
 
 		return Promise.resolve(cmd.aggregateId)
 			.then(this._loadAggregate)
-			.then(this._invokeCommandHandler.bind(this, cmd))
-			.then(function (aggregate) {
-				return aggregate.changes;
-			})
+			.then(this._invokeAggregateCommandHandler.bind(this, cmd))
+			.then(aggregate => aggregate.changes)
 			.then(this._commitAggregateEvents.bind(this, cmd.context))
 			.then(this._onExecutionComplete.bind(this, cmd.type));
 	}
 
 	_loadAggregate(aggregateId) {
-		this.debug('_loadAggregate %s', aggregateId);
-
 		if (aggregateId) {
-			return this.eventStore.getEvents(aggregateId)
+			return this._eventStore.getEvents(aggregateId)
 				.then(events => this.getAggregate(aggregateId, events))
-				.then(this._onAggregateRestored.bind(this));
+				.then(this._onAggregateRestored);
 		}
 		else {
-			return Promise.resolve(this.eventStore.getNewId())
+			return Promise.resolve(this._eventStore.getNewId())
 				.then(id => this.getAggregate(id, []))
-				.then(this._onAggregateCreated.bind(this));
+				.then(this._onAggregateCreated);
 		}
 	}
 
@@ -64,7 +65,7 @@ class AbstractCommandHandler extends Observer {
 	}
 
 	_onAggregateCreated(aggregate) {
-		this.debug('new aggregate %s created', aggregate && aggregate.id);
+		this.debug('aggregate %s created', aggregate && aggregate.id);
 		return aggregate;
 	}
 
@@ -73,45 +74,41 @@ class AbstractCommandHandler extends Observer {
 		return aggregate;
 	}
 
-	_invokeCommandHandler(cmd, aggregate) {
-		this.debug('_invokeCommandHandler %s', cmd && cmd.type);
-
+	_invokeAggregateCommandHandler(cmd, aggregate) {
 		if (!cmd) throw new TypeError('cmd argument required');
 		if (!aggregate) throw new TypeError('aggregate argument required');
 
-		const handleAsync = utils.canHandle(this, cmd.type) ?
-			Promise.resolve(utils.passToHandler(this, cmd.type, aggregate, cmd.payload, cmd.context)) :
-			Promise.resolve(utils.passToHandler(aggregate, cmd.type, cmd.payload, cmd.context));
+		const warn = this.warn;
 
-		return handleAsync.then(function (result) {
-			if (result) {
-				this.debug('%s execution returned result (%s) which will be ignored. Aggregate methods should not return any data.', cmd.type, result);
-			}
-			return aggregate;
-		}.bind(this));
+		return new Promise(function (resolve, reject) {
+
+			const result = utils.passToHandler(aggregate, cmd.type, cmd.payload, cmd.context);
+			if (result) warn('%s handler returned result which will be ignored. Aggregate command handlers should not return any data.', cmd.type);
+
+			resolve(aggregate);
+		});
 	}
 
 	_commitAggregateEvents(context, changes) {
-		this.debug('_commitAggregateEvents');
-
 		if (!context) throw new TypeError('context argument required');
 		if (!Array.isArray(changes)) throw new TypeError('changes argument must be an Array of aggregate events');
+		if (!changes.length) return [];
 
-		if (changes.length) {
-			return this.eventStore.commit(context, changes)
-				.then(function () {
-					return changes;
-				});
-		}
-		else {
-			this.debug('aggregate was not changed');
-			return Promise.resolve(changes);
-		}
+		return this._eventStore.commit(context, changes).then(() => changes);
 	}
 
 	_onExecutionComplete(commandType, changes) {
 		this.debug('%s execution complete, %d event(s) produced', commandType, changes && changes.length);
 		return changes;
+	}
+
+	warn( /* message args */ ) {
+		if (this.debug === debug) {
+			console.warn.apply(console, arguments);
+		}
+		else {
+			this.debug.apply(this.debug, arguments);
+		}
 	}
 }
 
