@@ -107,6 +107,10 @@ class AbstractProjection extends Observer {
 	deleteView(key) {
 		return this.view.delete(key);
 	}
+
+	deleteAll(filter) {
+		return this.view.deleteAll(filter);
+	}
 }
 
 module.exports = AbstractProjection;

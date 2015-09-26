@@ -82,6 +82,15 @@ class ProjectionView {
 		validate.identifier(key, 'key');
 		delete this.state[key];
 	}
+
+	deleteAll(filter) {
+		for (const key of Object.keys(this.state)) {
+			const view = this.state[key];
+			if (filter(view)) {
+				delete this.state[key];
+			}
+		}
+	}
 }
 
 module.exports = ProjectionView;
