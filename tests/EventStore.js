@@ -20,13 +20,15 @@ const gateway = {
 const badContext = {
 	uid: '',
 	ip: '',
-	browser: ''
+	browser: '',
+	serverTime: Date.now()
 };
 
 const goodContext = {
 	uid: '1',
 	ip: '127.0.0.1',
-	browser: 'test'
+	browser: 'test',
+	serverTime: Date.now()
 };
 
 const badEvent = {

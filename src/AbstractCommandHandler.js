@@ -42,7 +42,6 @@ class AbstractCommandHandler extends Observer {
 		return Promise.resolve(cmd.aggregateId)
 			.then(this._loadAggregate)
 			.then(this._invokeAggregateCommandHandler.bind(this, cmd))
-			.then(aggregate => aggregate.changes)
 			.then(this._commitAggregateEvents.bind(this, cmd.context))
 			.then(this._onExecutionComplete.bind(this, cmd.type));
 	}
@@ -78,15 +77,9 @@ class AbstractCommandHandler extends Observer {
 		if (!cmd) throw new TypeError('cmd argument required');
 		if (!aggregate) throw new TypeError('aggregate argument required');
 
-		const warn = this.warn;
-
-		return new Promise(function (resolve, reject) {
-
-			const result = utils.passToHandler(aggregate, cmd.type, cmd.payload, cmd.context);
-			if (result) warn('%s handler returned result which will be ignored. Aggregate command handlers should not return any data.', cmd.type);
-
-			resolve(aggregate);
-		});
+		return utils.passToHandlerAsync(aggregate, cmd.type, cmd.payload, cmd.context)
+			.then(r => r && this.warn('%s handler returned result which will be ignored. Aggregate command handlers should not return any data.', cmd.type))
+			.then(() => aggregate.changes);
 	}
 
 	_commitAggregateEvents(context, changes) {

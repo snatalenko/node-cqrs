@@ -39,7 +39,8 @@ class FakeEventStore {
 
 exports.blankContext = {
 	ip: '127.0.0.1',
-	browser: 'test'
+	browser: 'test',
+	serverTime: Date.now()
 };
 
 

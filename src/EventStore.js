@@ -124,10 +124,10 @@ class EventStore extends EventEmitter {
 		this.debug('validate %s', debugEventNum(events));
 		validate.array(events, 'events');
 
-		return Promise.all(events.map(function (event) {
+		return Promise.all(events.map(event => new Promise(function (resolve, reject) {
 			validate.event(event, 'event');
-			return event;
-		}));
+			resolve(event);
+		})));
 	}
 
 	_commit(events) {
@@ -154,10 +154,10 @@ class EventStore extends EventEmitter {
 	}
 
 	_emit(events) {
-		for (const e of events) {
-			this.emit(e.type, e);
-			this.emit('event', e);
-			this.debug('\'%s\' handlers executed', e.type);
+		for (const event of events) {
+			this.emit(event.type, event);
+			this.emit('event', event);
+			this.debug('\'%s\' handlers executed', event.type);
 		}
 		return events;
 	}

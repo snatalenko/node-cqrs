@@ -76,20 +76,16 @@ class AbstractProjection extends Observer {
 
 		this.debug('project ' + (evt && evt.type) + ' to ' + (evt && evt.aggregateId));
 
-		return utils.passToHandler(this, evt.type, evt.aggregateId, evt.payload, evt.context);
+		return utils.passToHandlerAsync(this, evt.type, evt.aggregateId, evt.payload, evt.context);
 	}
 
 	projectAll(events) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 		if (!events.length) return Promise.resolve();
 
-		const self = this;
-
-		return events.reduce(function (cur, event) {
-			return cur.then(function () {
-				return self.project(event);
-			});
-		}, Promise.resolve());
+		return events.reduce((cur, event) =>
+			cur.then(() =>
+				this.project(event)), Promise.resolve());
 	}
 
 	createView(key, update) {

@@ -31,7 +31,7 @@ class CommandBus {
 			context.uid = context.uid.toString();
 		}
 
-		return utils.passToHandler(this.handlers, commandType, {
+		return utils.passToHandlerAsync(this.handlers, commandType, {
 			type: commandType,
 			aggregateId: aggregateId,
 			context: context,

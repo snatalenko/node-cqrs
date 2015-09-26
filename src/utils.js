@@ -39,6 +39,16 @@ exports.passToHandler = function (context, messageType) {
 	return handler.apply(context, args);
 };
 
+exports.passToHandlerAsync = function (context, messageType) {
+	const args = Array.prototype.slice.call(arguments, 2);
+	return new Promise(function (resolve, reject) {
+		const handler = exports.getHandler(context, messageType);
+		if (!handler) throw new Error(messageType + ' handler is not defined');
+
+		resolve(handler.apply(context, args));
+	});
+};
+
 /**
  * Calculates an approximate object size in bytes
  * @param  {Object} object
