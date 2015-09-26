@@ -74,7 +74,10 @@ class ProjectionView {
 		validate.func(update, 'update');
 
 		for (const key of Object.keys(this.state)) {
-			update(this.state[key]);
+			const view = this.state[key];
+			if (filter(view)) {
+				update(view);
+			}
 		}
 	}
 
