@@ -52,6 +52,7 @@ exports.context = function (context, argumentName) {
 	exports.object(context, argumentName);
 	exports.string(context.browser, argumentName + '.browser');
 	exports.string(context.ip, argumentName + '.ip');
+	exports.number(context.serverTime, argumentName + '.serverTime');
 	if ('uid' in context) {
 		exports.identifier(context.uid, argumentName + '.uid');
 	}
@@ -68,5 +69,5 @@ exports.event = function (event) {
 	exports.identifier(event.aggregateId, 'event.aggregateId');
 	exports.number(event.version, 'event.version');
 	exports.string(event.type, 'event.type');
-	exports.userContext(event.context, 'event.context');
+	exports.context(event.context, 'event.context');
 };
