@@ -5,7 +5,6 @@ const ProjectionView = require('./ProjectionView');
 const KEY_VIEW = Symbol();
 const KEY_EVENT_TYPES = Symbol();
 const utils = require('./utils');
-const validate = require('./validate');
 
 class AbstractProjection extends Observer {
 

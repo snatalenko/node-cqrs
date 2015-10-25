@@ -2,7 +2,6 @@
 
 const validate = require('./validate');
 const debug = function () {};
-const logError = function () {};
 
 class Observer {
 
