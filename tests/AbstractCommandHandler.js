@@ -3,20 +3,20 @@
 const expect = require('chai').expect;
 const mocks = require('./mocks');
 const AbstractCommandHandler = require('../src/AbstractCommandHandler');
+const EventStore = require('../src/EventStore');
 
 const Aggregate = mocks.Aggregate;
-const FakeEventStore = mocks.FakeEventStore;
 
 let eventStore;
 let commandHandler;
-let lastExecutedHandler;
 let aggregateId;
 
 class CommandHandler extends AbstractCommandHandler {
 
 	constructor(eventStore) {
 		super(eventStore, [
-			'doSomething'
+			'doSomething',
+			'doSomethingWrong'
 		]);
 	}
 
@@ -28,35 +28,37 @@ class CommandHandler extends AbstractCommandHandler {
 describe('AbstractCommandHandler', function () {
 
 	beforeEach(function () {
-		eventStore = new FakeEventStore();
+		eventStore = new EventStore(new mocks.InMemoryEventStoreGateway());
 		commandHandler = new CommandHandler(eventStore);
-	})
+	});
 
-	describe('#execute(command:object)', function () {
+	describe('#execute(command:Object)', function () {
 
-		it('validates a command', function () {
-			expect(function () {
-				commandHandler.execute({
-					type: 'doSomething',
-					// context: mocks.blankContext
-				});
-			}).to.throw(TypeError);
+		it('validates command', function () {
 
-			expect(function () {
-				commandHandler.execute({
-					// type: 'doSomething',
-					context: mocks.blankContext
-				});
-			}).to.throw(TypeError);
+			const badCommand1 = {
+				type: 'doSomething',
+				context: undefined
+			};
+
+			const badCommand2 = {
+				type: '',
+				context: mocks.blankContext
+			};
+
+			expect(() => commandHandler.execute(badCommand1)).to.throw(TypeError);
+			expect(() => commandHandler.execute(badCommand2)).to.throw(TypeError);
 		});
 
 		it('when aggregate does not exist, creates it and invokes aggregate command handler', function () {
 
-			return commandHandler.execute({
+			const command = {
 				type: 'doSomething',
 				payload: 'doSomethingPayload',
 				context: mocks.blankContext
-			}).then(function (events) {
+			};
+
+			return commandHandler.execute(command).then(events => {
 				expect(events).to.have.length(1);
 				expect(events).to.have.deep.property('[0].aggregateId', 1);
 				expect(events).to.have.deep.property('[0].version', 0);
@@ -64,30 +66,38 @@ describe('AbstractCommandHandler', function () {
 			});
 		});
 
-		it('when aggregate exists, restores it from event store and invokes aggregate command handler', function () {
+		it('when aggregate exists, restores it from event store and invokes aggregate command handler', () => {
 
 			aggregateId = 1;
 
-			eventStore.commit(mocks.blankContext, [{
-				aggregateId: aggregateId,
-				version: 0,
-				type: 'somethingDone'
-			}, {
-				aggregateId: aggregateId,
-				version: 1,
-				type: 'somethingDone'
-			}]);
-
-			return commandHandler.execute({
+			const command = {
 				aggregateId: aggregateId,
 				type: 'doSomething',
 				payload: 'doSomethingPayload',
 				context: mocks.blankContext
-			}).then(function (events) {
-				expect(events).to.have.length(1);
-				expect(events).to.have.deep.property('[0].aggregateId', aggregateId);
-				expect(events).to.have.deep.property('[0].version', 2);
-				expect(events).to.have.deep.property('[0].type', 'somethingDone');
+			};
+
+			const event1 = {
+				aggregateId: aggregateId,
+				version: 0,
+				type: 'somethingDone'
+			};
+
+			const event2 = {
+				aggregateId: aggregateId,
+				version: 1,
+				type: 'somethingDone'
+			};
+
+			return eventStore.commit(mocks.blankContext, [event1, event2]).then(() => {
+
+				return commandHandler.execute(command).then(events => {
+
+					expect(events).to.have.length(1);
+					expect(events).to.have.deep.property('[0].aggregateId', aggregateId);
+					expect(events).to.have.deep.property('[0].version', 2);
+					expect(events).to.have.deep.property('[0].type', 'somethingDone');
+				});
 			});
 		});
 
@@ -95,19 +105,39 @@ describe('AbstractCommandHandler', function () {
 
 			aggregateId = 1;
 
-			return commandHandler.execute({
+			const command = {
 				aggregateId: aggregateId,
 				type: 'doSomething',
 				payload: 'doSomethingPayload',
 				context: mocks.blankContext
-			}).then(function (events) {
-				expect(eventStore).to.have.deep.property('events[0].aggregateId', aggregateId);
-				expect(eventStore).to.have.deep.property('events[0].version', 0);
-				expect(eventStore).to.have.deep.property('events[0].payload', 'doSomethingPayload');
+			};
+
+			return commandHandler.execute(command).then(() => {
+
+				return commandHandler._eventStore.getAggregateEvents(aggregateId).then(events => {
+
+					expect(events).to.have.deep.property('[0].aggregateId', aggregateId);
+					expect(events).to.have.deep.property('[0].version', 0);
+					expect(events).to.have.deep.property('[0].payload', 'doSomethingPayload');
+				});
 			});
 		});
 
-		it('invokes aggregate command handler');
+		it('invokes aggregate command handler', () => {
+
+			const command = {
+				type: 'doSomethingWrong', // Aggregate should throw an exception
+				payload: {},
+				context: mocks.blankContext
+			};
+
+			return commandHandler.execute(command).then(() => {
+				throw new Error('must fail');
+			}).catch(err => {
+				expect(err).to.be.an('Error');
+				expect(err).to.have.property('message', 'something went wrong');
+			});
+		});
 
 	});
 });

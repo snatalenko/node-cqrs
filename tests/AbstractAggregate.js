@@ -31,12 +31,10 @@ describe('AbstractAggregate', function () {
 
 		it('contains a read-only list of changes happened in aggregate', function () {
 
-			expect(agg.changes).to.be.instanceof(Array);
+			expect(agg.changes).to.be.an('Array');
 			expect(agg.changes).to.be.empty;
 			expect(agg.changes).to.not.equal(agg.changes);
-			expect(function () {
-				agg.changes = [];
-			}).to.throw(TypeError);
+			expect(() => agg.changes = []).to.throw(TypeError);
 
 			agg.doSomething({}, mocks.blankContext);
 
@@ -59,7 +57,7 @@ describe('AbstractAggregate', function () {
 			agg.emit('eventType', {});
 			agg.emit('eventType', {});
 			expect(agg).to.have.property('version', 2);
-		})
+		});
 	});
 
 	describe('#version', function () {
@@ -67,9 +65,7 @@ describe('AbstractAggregate', function () {
 		it('is a read-only auto-incrementing aggregate version, starting from 0', function () {
 
 			expect(agg.version).to.equal(0);
-			expect(function () {
-				agg.version = 1;
-			}).to.throw(TypeError);
+			expect(() => agg.version = 1).to.throw(TypeError);
 		});
 
 		it('restores, when aggregate is restored from event stream', function () {

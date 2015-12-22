@@ -1,34 +1,37 @@
 'use strict';
 
-const validate = require('./validate');
-const debug = function () {};
+function executeSafely(handler, context, errorHandler) {
+	return function ( /* ...args */ ) {
+		const args = Array.from(arguments);
+		try {
+			const result = handler.apply(context, args);
+			if (result instanceof Promise)
+				return result.catch(errorHandler);
+			else
+				return result;
+		}
+		catch (err) {
+			return errorHandler(err);
+		}
+	};
+}
 
 class Observer {
 
 	/**
-	 * Observer constructor
+	 * Observer constructor, optionally allows to define define observable message types and(or) master handler
 	 * @param  {Array}	messageTypes	a list of messages this observer listens to (OPTIONAL)
 	 * @param  {String}	masterHandler	master handler method or method name to execute for all events. if not specified, message-specific handlers will be executed (OPTIONAL)
 	 */
 	constructor(messageTypes, masterHandler) {
 		if (messageTypes) {
-			validate.array(messageTypes, 'messageTypes');
+			if (!Array.isArray(messageTypes)) throw new TypeError('messageTypes argument, when provided, must be an Array');
 			this._messageTypes = messageTypes;
 		}
 		if (masterHandler) {
 			if (typeof masterHandler === 'string') masterHandler = this[masterHandler];
 			if (typeof masterHandler !== 'function') throw new TypeError('masterHandler argument, when provided, must be either a function or an observer method name');
 			this._masterHandler = masterHandler;
-		}
-		this.debug = debug;
-	}
-
-	error( /* errorMessage */ ) {
-		if (this.debug === debug) {
-			console.log.apply(console, arguments);
-		}
-		else {
-			this.debug.apply(this, arguments);
 		}
 	}
 
@@ -40,8 +43,10 @@ class Observer {
 	 * @return {undefined}
 	 */
 	subscribe(observable, messageTypes, masterHandler) {
-		validate.object(observable, 'observable');
-		validate.array(messageTypes || (messageTypes = this._messageTypes), 'messageTypes');
+		if (typeof observable !== 'object' || !observable) throw new TypeError('observable argument must be an Object');
+		if (typeof observable.on !== 'function') throw new TypeError('observable.on must be a Function');
+		if (!messageTypes) messageTypes = this._messageTypes;
+		if (!Array.isArray(messageTypes)) throw new TypeError('messageTypes argument must be an Array');
 
 		if (masterHandler || (masterHandler = this._masterHandler)) {
 			if (typeof masterHandler === 'string') masterHandler = this[masterHandler];
@@ -52,48 +57,26 @@ class Observer {
 			const handler = masterHandler || this['_' + messageType];
 			if (typeof handler !== 'function') throw new Error(messageType + ' handler is not defined or not a function');
 
-			this.listenTo(messageType, observable, handler);
+			this.listenTo(observable, messageType, handler);
 		}
 	}
 
-	listenTo(messageType, observable, handler) {
-		validate.string(messageType, 'messageType');
-		validate.object(observable, 'observable');
-		validate.func(observable.on, 'observable.on');
-		validate.func(handler, 'handler');
+	listenTo(observable, messageType, handler) {
+		if (typeof observable !== 'object' || !observable) throw new TypeError('observable argument must be an Object');
+		if (typeof observable.on !== 'function') throw new TypeError('observable.on must be a Function');
+		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty string');
+		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
 
-		observable.on(messageType, this._proxy(messageType, handler));
+		observable.on(messageType, executeSafely(handler, this, err => {
+			this.debug('command \'' + messageType + '\' execution has failed:\n' + err.stack);
+			throw err;
+		}));
 
 		this.debug('listens to \'%s\'', messageType);
 	}
 
-	/**
-	 * This wrapper catches and logs errors, if any arise during the message handler execution
-	 * @param  {String} messageType
-	 * @param  {Function} messageHandler
-	 */
-	_proxy(messageType, messageHandler) {
-		validate.string(messageType, 'messageType');
-		validate.func(messageHandler, 'messageHandler');
-
-		return function () {
-			try {
-				const handlerResult = messageHandler.apply(this, arguments);
-				if (handlerResult instanceof Promise) {
-					// wait for result and catch error
-					return handlerResult.catch(this._onExecutionFailed.bind(this, messageType));
-				}
-				return handlerResult;
-			}
-			catch (err) {
-				this._onExecutionFailed(messageType, err);
-			}
-		}.bind(this);
-	}
-
-	_onExecutionFailed(messageType, err) {
-		this.error(messageType + ' execution failed:', err);
-		throw err;
+	debug( /* ...arguments */ ) {
+		// console.log(...arguments);
 	}
 }
 

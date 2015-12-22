@@ -34,10 +34,7 @@ class AbstractAggregate {
 
 	constructor(id, initialState, events) {
 		if (!id) throw new TypeError('id argument required');
-		if (initialState || events) {
-			if (!initialState) throw new TypeError('initialState argument required');
-			if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
-		}
+		if (events && !Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
 		this[KEY_ID] = id;
 		this[KEY_VERSION] = 0;
@@ -45,11 +42,21 @@ class AbstractAggregate {
 		this[KEY_STATE] = initialState;
 
 		if (events) {
-			for (var e of events) {
-				this.state.mutate(e);
-				this[KEY_VERSION]++;
-			}
+			this.mutate(events);
 		}
+	}
+
+	/** Mutates aggregate state and incremets aggregate version */
+	mutate(events) {
+		if (!Array.isArray(events)) {
+			events = Array.from(arguments);
+		}
+		events.forEach(event => {
+			if (this.state) {
+				this.state.mutate(event);
+			}
+			this[KEY_VERSION]++;
+		});
 	}
 
 	/**
@@ -58,22 +65,19 @@ class AbstractAggregate {
 	 * @param  {Object} eventPayload 	Event data
 	 */
 	emit(eventType, eventPayload) {
-		if (!eventType) throw new TypeError('eventType argument required');
+		if (typeof eventType !== 'string' || !eventType.length) throw new TypeError('eventType argument must be a non-empty string');
 
-		const evt = {
+		const event = {
 			aggregateId: this.id,
 			version: this.version,
-			type: typeof eventType === 'string' ? eventType : eventType.type,
-			payload: typeof eventType === 'string' ? eventPayload : eventType.payload,
+			type: eventType,
+			payload: eventPayload,
 			localTime: new Date()
 		};
 
-		if (this.state) {
-			this.state.mutate(evt);
-		}
+		this.mutate(event);
 
-		this[KEY_CHANGES].push(evt);
-		this[KEY_VERSION]++;
+		this[KEY_CHANGES].push(event);
 	}
 }
 

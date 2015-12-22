@@ -42,7 +42,7 @@ exports.object = function (value, argumentName, requiredProperties) {
 };
 
 exports.identifier = function (value, argumentName) {
-	if (typeof value === 'object' && value) value = value.toString();
+	if (typeof value !== 'string' && value !== null && value !== undefined) value = value.toString();
 	if (value === '[object Object]') throw new TypeError(argumentName + ' must be a non-empty String');
 	exports.string(value, argumentName);
 };
@@ -62,12 +62,4 @@ exports.userContext = function (context, argumentName) {
 	if (!argumentName) argumentName = 'context';
 	exports.context(context, argumentName);
 	exports.argument(context.uid, argumentName + '.uid');
-};
-
-exports.event = function (event) {
-	exports.object(event, 'event');
-	exports.identifier(event.aggregateId, 'event.aggregateId');
-	exports.number(event.version, 'event.version');
-	exports.string(event.type, 'event.type');
-	exports.context(event.context, 'event.context');
 };

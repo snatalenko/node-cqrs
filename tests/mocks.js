@@ -6,7 +6,13 @@ class AggregateState {
 	mutate() {}
 }
 
-class Aggregate extends AbstractAggregate {
+exports.blankContext = {
+	ip: '127.0.0.1',
+	browser: 'test',
+	serverTime: Date.now()
+};
+
+exports.Aggregate = class Aggregate extends AbstractAggregate {
 	constructor(id, history) {
 		super(id, new AggregateState(), history);
 	}
@@ -14,36 +20,32 @@ class Aggregate extends AbstractAggregate {
 	doSomething(payload, context) {
 		this.emit('somethingDone', payload);
 	}
-}
 
-class StatelessAggregate extends AbstractAggregate {
-
-}
-
-class FakeEventStore {
-	constructor() {
-		this.cnt = 1;
-		this.events = [];
+	doSomethingWrong(payload, context) {
+		throw new Error('something went wrong');
 	}
-	getNewId() {
-		return this.cnt++;
-	}
-	getEvents(aggregateId) {
-		return Promise.resolve(this.events);
-	}
-	commit(context, events) {
-		this.events.push.apply(this.events, events);
-		return Promise.resolve(events);
-	}
-}
-
-exports.blankContext = {
-	ip: '127.0.0.1',
-	browser: 'test',
-	serverTime: Date.now()
 };
 
+exports.StatelessAggregate = class StatelessAggregate extends AbstractAggregate {
 
-exports.Aggregate = Aggregate;
-exports.StatelessAggregate = StatelessAggregate;
-exports.FakeEventStore = FakeEventStore;
+};
+
+exports.InMemoryEventStoreGateway = class InMemoryEventStoreGateway {
+	constructor() {
+		this.events = [];
+		this.nextId = 1;
+	}
+	commitEvents(events) {
+		this.events.push.apply(this.events, events);
+	}
+	getAggregateEvents(aggregateId) {
+		return this.events.filter(e => e.aggregateId === aggregateId);
+	}
+	getEvents(eventTypes) {
+		return this.events.filter(e => eventTypes.indexOf(e.type) !== -1);
+	}
+	getNewId() {
+		return this.nextId++;
+	}
+};
+
