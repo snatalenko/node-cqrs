@@ -13,15 +13,16 @@ let aggregateId;
 
 class CommandHandler extends AbstractCommandHandler {
 
-	constructor(eventStore) {
+	constructor(eventStore, additionalService) {
 		super(eventStore, [
 			'doSomething',
 			'doSomethingWrong'
 		]);
+		this._additionalService = additionalService;
 	}
 
 	getAggregate(id, events) {
-		return new Aggregate(id, events);
+		return new Aggregate(id, events, this._additionalService);
 	}
 }
 

@@ -64,8 +64,8 @@ class AbstractCommandHandler extends Observer {
 		validate.context(cmd.context);
 
 		return Promise.resolve(cmd.aggregateId)
-			.then(restoreAggregate(this._eventStore, this.getAggregate))
-			// .then(this._log(aggregate => 'restored version ' + aggregate.version + ' of aggregate ' + aggregate.id))
+			.then(restoreAggregate(this._eventStore, this.getAggregate.bind(this)))
+			.then(this._log(aggregate => 'aggregate ' + aggregate.id + ' v.' + aggregate.version + ' is restored'))
 			.then(passCommandToAggregate(cmd))
 			.then(commitAggregateEvents(this._eventStore, cmd.context))
 			.then(this._log(changes => 'command \'' + cmd.type + '\' executed, ' + changes.length + ' event(s) produced'));
