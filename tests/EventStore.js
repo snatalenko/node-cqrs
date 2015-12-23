@@ -2,8 +2,8 @@
 
 const expect = require('chai').expect;
 const EventStore = require('../index').EventStore;
+const InMemoryEventStoreGateway = require('../index').InMemoryEventStoreGateway;
 const EventEmitter = require('events').EventEmitter;
-const InMemoryEventStoreGateway = require('./mocks').InMemoryEventStoreGateway;
 
 const badContext = {
 	uid: '',
@@ -72,17 +72,17 @@ describe('EventStore', function () {
 				.catch(done);
 		});
 
-		it('signs and commits events to gateway', function (done) {
+		it('signs and commits events to gateway', () => {
 
-			es.commit(goodContext, [goodEvent])
-				.then(function (events) {
-					expect(es.gateway.events).to.be.instanceof(Array);
-					expect(es.gateway.events[0]).to.have.property('type', 'somethingHappened');
-					expect(es.gateway.events[0]).to.have.property('context');
-					expect(es.gateway.events[0].context).to.have.property('ip', goodContext.ip);
-					done();
-				})
-				.catch(done);
+			return es.commit(goodContext, [goodEvent]).then(result => {
+
+				return es.getAllEvents().then(events => {
+					expect(events).to.be.instanceof(Array);
+					expect(events[0]).to.have.property('type', 'somethingHappened');
+					expect(events[0]).to.have.property('context');
+					expect(events[0].context).to.have.property('ip', goodContext.ip);
+				});
+			});
 		});
 
 		it('returns a promise that resolves to events committed', () => {

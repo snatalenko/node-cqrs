@@ -1,12 +1,9 @@
 'use strict';
 
-const validate = require('./validate');
+const validate = require('../validate');
 const KEY_STATE = Symbol();
 
-/**
- * Simple in-memory stored projection view
- */
-class ProjectionView {
+module.exports = class InMemoryProjectionView {
 
 	get state() {
 		return this[KEY_STATE];
@@ -94,6 +91,4 @@ class ProjectionView {
 			}
 		}
 	}
-}
-
-module.exports = ProjectionView;
+};

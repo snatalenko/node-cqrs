@@ -3,7 +3,8 @@
 const expect = require('chai').expect;
 const mocks = require('./mocks');
 const AbstractCommandHandler = require('../src/AbstractCommandHandler');
-const EventStore = require('../src/EventStore');
+const EventStore = require('../index').EventStore;
+const InMemoryEventStoreGateway = require('../index').InMemoryEventStoreGateway;
 
 const Aggregate = mocks.Aggregate;
 
@@ -29,7 +30,7 @@ class CommandHandler extends AbstractCommandHandler {
 describe('AbstractCommandHandler', function () {
 
 	beforeEach(function () {
-		eventStore = new EventStore(new mocks.InMemoryEventStoreGateway());
+		eventStore = new EventStore(new InMemoryEventStoreGateway());
 		commandHandler = new CommandHandler(eventStore);
 	});
 

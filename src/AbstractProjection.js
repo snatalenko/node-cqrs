@@ -1,7 +1,7 @@
 'use strict';
 
 const Observer = require('./Observer');
-const ProjectionView = require('./ProjectionView');
+const InMemoryProjectionView = require('./infrastructure/InMemoryProjectionView');
 const KEY_VIEW = Symbol();
 const KEY_EVENT_TYPES = Symbol();
 const utils = require('./utils');
@@ -17,7 +17,7 @@ class AbstractProjection extends Observer {
 		super();
 
 		this.debug = function () {};
-		this[KEY_VIEW] = projectionView || new ProjectionView();
+		this[KEY_VIEW] = projectionView || new InMemoryProjectionView();
 		this[KEY_EVENT_TYPES] = eventTypes;
 
 		this._restore = this._restore.bind(this);

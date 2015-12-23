@@ -29,23 +29,3 @@ exports.Aggregate = class Aggregate extends AbstractAggregate {
 exports.StatelessAggregate = class StatelessAggregate extends AbstractAggregate {
 
 };
-
-exports.InMemoryEventStoreGateway = class InMemoryEventStoreGateway {
-	constructor() {
-		this.events = [];
-		this.nextId = 1;
-	}
-	commitEvents(events) {
-		this.events.push.apply(this.events, events);
-	}
-	getAggregateEvents(aggregateId) {
-		return this.events.filter(e => e.aggregateId === aggregateId);
-	}
-	getEvents(eventTypes) {
-		return this.events.filter(e => eventTypes.indexOf(e.type) !== -1);
-	}
-	getNewId() {
-		return this.nextId++;
-	}
-};
-
