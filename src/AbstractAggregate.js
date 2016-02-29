@@ -75,7 +75,7 @@ module.exports = class AbstractAggregate {
 
 		const event = {
 			aggregateId: this.id,
-			version: this.version,
+			aggregateVersion: this.version,
 			type: eventType,
 			payload: eventPayload
 		};

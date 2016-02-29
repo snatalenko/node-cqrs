@@ -104,7 +104,7 @@ describe('AbstractSaga', function () {
 			s.apply({ type: 'somethingHappened' });
 
 			expect(s).to.have.deep.property('uncommittedMessages[0].sagaId', s.id);
-			expect(s).to.have.deep.property('uncommittedMessages[0].version', s.version - 1);
+			expect(s).to.have.deep.property('uncommittedMessages[0].sagaVersion', s.version - 1);
 			expect(s).to.have.deep.property('uncommittedMessages[0].type', 'doSomething');
 			expect(s).to.have.deep.property('uncommittedMessages[0].payload.foo', 'bar');
 		});

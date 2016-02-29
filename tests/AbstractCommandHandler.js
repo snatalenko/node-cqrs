@@ -69,7 +69,7 @@ describe('AbstractCommandHandler', function () {
 			return commandHandler.execute(command).then(events => {
 				expect(events).to.have.length(1);
 				expect(events).to.have.deep.property('[0].aggregateId', 1);
-				expect(events).to.have.deep.property('[0].version', 0);
+				expect(events).to.have.deep.property('[0].aggregateVersion', 0);
 				expect(events).to.have.deep.property('[0].type', 'somethingDone');
 			});
 		});
@@ -87,13 +87,13 @@ describe('AbstractCommandHandler', function () {
 
 			const event1 = {
 				aggregateId: aggregateId,
-				version: 0,
+				aggregateVersion: 0,
 				type: 'somethingDone'
 			};
 
 			const event2 = {
 				aggregateId: aggregateId,
-				version: 1,
+				aggregateVersion: 1,
 				type: 'somethingDone'
 			};
 
@@ -103,7 +103,7 @@ describe('AbstractCommandHandler', function () {
 
 					expect(events).to.have.length(1);
 					expect(events).to.have.deep.property('[0].aggregateId', aggregateId);
-					expect(events).to.have.deep.property('[0].version', 2);
+					expect(events).to.have.deep.property('[0].aggregateVersion', 2);
 					expect(events).to.have.deep.property('[0].type', 'somethingDone');
 				});
 			});
@@ -125,7 +125,7 @@ describe('AbstractCommandHandler', function () {
 				return commandHandler._eventStore.getAggregateEvents(aggregateId).then(events => {
 
 					expect(events).to.have.deep.property('[0].aggregateId', aggregateId);
-					expect(events).to.have.deep.property('[0].version', 0);
+					expect(events).to.have.deep.property('[0].aggregateVersion', 0);
 					expect(events).to.have.deep.property('[0].payload', 'doSomethingPayload');
 				});
 			});

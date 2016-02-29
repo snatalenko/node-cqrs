@@ -21,14 +21,14 @@ const goodContext = {
 
 const goodEvent = {
 	aggregateId: '1',
-	version: 0,
+	aggregateVersion: 0,
 	type: 'somethingHappened',
 	context: goodContext
 };
 
 const goodEvent2 = {
 	aggregateId: '2',
-	version: 0,
+	aggregateVersion: 0,
 	type: 'somethingHappened',
 	context: goodContext
 };

@@ -59,7 +59,7 @@ describe('AbstractAggregate', function () {
 
 			expect(agg).to.have.deep.property('changes[0].type', 'somethingDone');
 			expect(agg).to.have.deep.property('changes[0].aggregateId', 1);
-			expect(agg).to.have.deep.property('changes[0].version', 0);
+			expect(agg).to.have.deep.property('changes[0].aggregateVersion', 0);
 		});
 	});
 

@@ -1,6 +1,8 @@
 'use strict';
 
 const Observer = require('./Observer');
+const ConcurrencyError = require('./errors/ConcurrencyError');
+const COMMIT_RETRIES_LIMIT = 5;
 
 function restoreAggregateState(aggregateId, eventStore, AggregateType) {
 	if (!eventStore) throw new TypeError('eventStore argument required');
@@ -25,6 +27,11 @@ function commitAggregateEvents(eventStore) {
 		eventStore.commit(events) :
 		Promise.resolve([]);
 }
+
+function isConcurrencyError(err) {
+	return err.type === ConcurrencyError.type;
+}
+
 
 module.exports = class AggregateCommandHandler extends Observer {
 
@@ -52,7 +59,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 	 * @param  {Object} cmd command to execute
 	 * @return {Promise} resolving to
 	 */
-	execute(cmd) {
+	execute(cmd, options) {
 		if (!cmd) throw new TypeError('cmd argument required');
 		if (!cmd.type) throw new TypeError('cmd.type argument required');
 		if (!cmd.context) throw new TypeError('cmd.context argument required');
@@ -75,6 +82,13 @@ module.exports = class AggregateCommandHandler extends Observer {
 			.then(events => {
 				this.debug(`command '${cmd.type}' processed, ${events.length === 1? '1 event' : events.length + ' events'} produced`);
 				return events;
+			}, err => {
+				const currentIteration = options && options.iteration || 0;
+				if (isConcurrencyError(err) && currentIteration < COMMIT_RETRIES_LIMIT) {
+					return this.execute(cmd, { iteration: currentIteration + 1 });
+				} else {
+					throw err;
+				}
 			});
 	}
 };

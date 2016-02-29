@@ -54,7 +54,7 @@ module.exports = class AbstractSaga {
 
 		const command = {
 			sagaId: this.id,
-			version: this.version,
+			sagaVersion: this.version,
 			type: commandType,
 			payload: commandPayload
 		};
