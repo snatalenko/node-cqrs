@@ -1,6 +1,6 @@
 {
   "name": "cqrs-framework",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Basic ES6 CQRS framework",
   "main": "index.js",
   "scripts": {
