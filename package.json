@@ -4,7 +4,7 @@
   "description": "Basic ES6 CQRS framework",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha -R spec --watch ./tests/"
+    "test": "mocha -R spec --watch ./tests/index.js"
   },
   "repository": {
     "type": "git",
@@ -22,5 +22,7 @@
     "chai": "^3.2.0",
     "mocha": "^2.3.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "debug": "^2.2.0"
+  }
 }

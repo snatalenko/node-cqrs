@@ -1,9 +1,8 @@
 'use strict';
 
-const validate = require('../validate');
 const KEY_STATE = Symbol();
 
-module.exports = class InMemoryProjectionView {
+module.exports = class InMemoryViewStorage {
 
 	get state() {
 		return this[KEY_STATE];
@@ -21,7 +20,7 @@ module.exports = class InMemoryProjectionView {
 	}
 
 	get(key) {
-		validate.identifier(key, 'key');
+		if (!key) throw new TypeError('key argument required');
 
 		const subview = this.state[key];
 		if (typeof subview === 'object')
@@ -31,44 +30,41 @@ module.exports = class InMemoryProjectionView {
 	}
 
 	create(key, update) {
-		validate.identifier(key, 'key');
-		validate.argument(update, 'update');
+		if (!key) throw new TypeError('key argument required');
+		if (!update) throw new TypeError('update argument required');
 		if (key in this.state) throw new Error('Key \'' + key + '\' already exists');
 
 		if (typeof update === 'function') {
 			update(this.state[key] = {});
-		}
-		else if (typeof update === 'object') {
+		} else if (typeof update === 'object') {
 			this.state[key] = update;
-		}
-		else {
+		} else {
 			throw new TypeError('update argument must be either a function or an object');
 		}
 	}
 
 	update(key, update) {
-		validate.identifier(key, 'key');
-		validate.func(update, 'update');
+		if (!key) throw new TypeError('key argument required');
+		if (!update) throw new TypeError('update argument required');
 		if (!(key in this.state)) throw new Error('Key \'' + key + '\' does not exist');
 
 		update(this.state[key]);
 	}
 
 	updateEnforcingNew(key, update) {
-		validate.identifier(key, 'key');
-		validate.argument(update, 'update');
+		if (!key) throw new TypeError('key argument required');
+		if (!update) throw new TypeError('update argument required');
 
 		if (!(key in this.state)) {
 			this.create(key, update);
-		}
-		else {
+		} else {
 			this.update(key, update);
 		}
 	}
 
 	updateAll(filter, update) {
-		validate.func(filter, 'filter');
-		validate.func(update, 'update');
+		if (typeof filter !== 'function') throw new TypeError('filter argument must be a Function');
+		if (typeof update !== 'function') throw new TypeError('update argument must be a Function');
 
 		for (const key of Object.keys(this.state)) {
 			const view = this.state[key];
@@ -79,7 +75,7 @@ module.exports = class InMemoryProjectionView {
 	}
 
 	delete(key) {
-		validate.identifier(key, 'key');
+		if (!key) throw new TypeError('key argument required');
 		delete this.state[key];
 	}
 

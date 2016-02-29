@@ -2,7 +2,7 @@
 
 const expect = require('chai').expect;
 const EventStore = require('../index').EventStore;
-const InMemoryEventStoreGateway = require('../index').InMemoryEventStoreGateway;
+const InMemoryEventStorage = require('../index').InMemoryEventStorage;
 const EventEmitter = require('events').EventEmitter;
 
 const badContext = {
@@ -22,13 +22,15 @@ const goodContext = {
 const goodEvent = {
 	aggregateId: '1',
 	version: 0,
-	type: 'somethingHappened'
+	type: 'somethingHappened',
+	context: goodContext
 };
 
 const goodEvent2 = {
 	aggregateId: '2',
 	version: 0,
-	type: 'somethingHappened'
+	type: 'somethingHappened',
+	context: goodContext
 };
 
 let es;
@@ -36,45 +38,53 @@ let es;
 describe('EventStore', function () {
 
 	beforeEach(() => {
-		es = new EventStore(new InMemoryEventStoreGateway());
+		es = new EventStore({
+			storage: new InMemoryEventStorage()
+		});
 	});
 
-	describe('#commit', () => {
+	describe('validator', () => {
 
-		it('validates context', function (done) {
+		it('allows to validate events before they are committed', () => {
 
-			es.commit(badContext, [goodEvent])
-				.catch(function (err) {
-					expect(err).exists;
-					expect(err).to.be.an.instanceof(TypeError);
-					expect(err.message).to.equal('context.browser must be a non-empty String');
-					done();
-				})
-				.catch(done);
+			const event = { type: 'somethingHappened', aggregateId: 1 };
+
+			return es.commit([event]).then(() => {
+
+				es.validator = event => {
+					if (!event.context) throw new Error('event.context required');
+				};
+
+				return es.commit([event]).then(ok => {
+					throw new Error('must fail');
+				}, err => {
+					expect(err).to.have.property('message', 'event.context required');
+				});
+			});
 		});
+	});
 
-		it('validates event format', function (done) {
+	describe('commit', () => {
+
+		it('validates event format', () => {
 
 			const badEvent = {
-				type: 'somethingHappened'
+				type: 'somethingHappened',
+				context: goodContext
 			};
 
-			es.commit(goodContext, [badEvent])
-				.then(() => {
-					throw new Error('should fail');
-				})
-				.catch(function (err) {
-					expect(err).exist;
-					expect(err).to.be.an.instanceof(TypeError);
-					expect(err.message).to.equal('event.aggregateId must be a non-empty String');
-					done();
-				})
-				.catch(done);
+			return es.commit([badEvent]).then(() => {
+				throw new Error('must fail');
+			}, err => {
+				expect(err).exist;
+				expect(err).to.be.an.instanceof(TypeError);
+				expect(err.message).to.equal('either event.aggregateId or event.sagaId is required');
+			});
 		});
 
-		it('signs and commits events to gateway', () => {
+		it('сommits events to storage', () => {
 
-			return es.commit(goodContext, [goodEvent]).then(result => {
+			return es.commit([goodEvent]).then(result => {
 
 				return es.getAllEvents().then(events => {
 					expect(events).to.be.instanceof(Array);
@@ -87,7 +97,7 @@ describe('EventStore', function () {
 
 		it('returns a promise that resolves to events committed', () => {
 
-			return es.commit(goodContext, [goodEvent, goodEvent2]).then(events => {
+			return es.commit([goodEvent, goodEvent2]).then(events => {
 
 				expect(events).to.be.an('Array');
 				expect(events).to.have.length(2);
@@ -97,29 +107,29 @@ describe('EventStore', function () {
 
 		it('returns a promise that rejects, when commit doesn\'t succeed', () => {
 
-			// tweak associated gateway to throw error on every commit
-			es.gateway.commitEvents = () => {
-				throw new Error('gateway commit failure');
+			// tweak associated storage to throw error on every commit
+			es.storage.commitEvents = () => {
+				throw new Error('storage commit failure');
 			};
 
-			return es.commit(goodContext, [goodEvent, goodEvent2]).then(result => {
+			return es.commit([goodEvent, goodEvent2]).then(result => {
 				throw new Error('should fail');
-			}).catch(err => {
+			}, err => {
 				expect(err).to.be.an('Error');
-				expect(err).to.have.property('message', 'gateway commit failure');
+				expect(err).to.have.property('message', 'storage commit failure');
 			});
 		});
 
 		it('emits events asynchronously after processing is done', function (done) {
 
-			let committed = false;
-			let emitted = false;
+			let committed = 0;
+			let emitted = 0;
 
 			es.on('somethingHappened', function (event) {
 
-				expect(committed).to.equal(true);
-				expect(emitted).to.equal(false);
-				emitted = true;
+				expect(committed).to.not.equal(0);
+				expect(emitted).to.equal(0);
+				emitted++;
 
 				expect(event).to.have.property('type', 'somethingHappened');
 				expect(event).to.have.property('context');
@@ -128,32 +138,25 @@ describe('EventStore', function () {
 				done();
 			});
 
-			// es.commit(goodContext, [goodEvent, goodEvent2]);
-			es.commit(goodContext, [goodEvent, goodEvent2]).then(() => committed = true);
+			es.commit([goodEvent]).then(() => committed++);
 		});
 	});
 
-	describe('#getNewId', () => {
+	describe('getNewId', () => {
 
-		it('is a function', () => {
-			expect(es).to.respondTo('getNewId');
-		});
+		it('retrieves a unique ID for new aggregate from storage', () => {
 
-		it('retrieves a unique ID for new aggregate from gateway', () => {
-			expect(es.getNewId()).to.equal(1);
+			return es.getNewId().then(id => {
+				expect(id).to.equal(1);
+			});
 		});
 	});
 
-	describe('#getAggregateEvents(aggregateId)', () => {
-
-		it('is a function that returns a Promise', () => {
-			expect(es).to.respondTo('getAggregateEvents');
-			expect(es.getAggregateEvents('0')).to.be.a('Promise');
-		});
+	describe('getAggregateEvents(aggregateId)', () => {
 
 		it('returns all events committed for a specific aggregate', () => {
 
-			return es.commit(goodContext, [goodEvent, goodEvent2]).then(() => {
+			return es.commit([goodEvent, goodEvent2]).then(() => {
 				return es.getAggregateEvents(goodEvent.aggregateId).then(events => {
 					expect(events).to.be.an('Array');
 					expect(events).to.have.length(1);
@@ -163,17 +166,57 @@ describe('EventStore', function () {
 		});
 	});
 
-	describe('#getAllEvents(eventType)', () => {
+	describe('getSagaEvents(sagaId, options)', () => {
 
-		it('is a function that returns a Promise', () => {
-			expect(es).to.respondTo('getAllEvents');
-			expect(es.getAllEvents()).to.be.a('Promise');
+		it('returns events committed by saga', () => {
+
+			const events = [
+				{ sagaId: 1, type: 'somethingHappened' },
+				{ sagaId: 1, type: 'anotherHappened' },
+				{ sagaId: 2, type: 'somethingHappened' }
+			];
+
+			return es.commit(events).then(() => {
+
+				return es.getSagaEvents(1).then(events => {
+
+					expect(events).to.be.an('Array');
+					expect(events).to.have.length(2);
+					expect(events).to.have.deep.property('[0].type', 'somethingHappened');
+					expect(events).to.have.deep.property('[1].type', 'anotherHappened');
+				});
+			});
 		});
 
-		it('returns all events of specific types', () => {
+		it('allows to exclude event that triggered saga execution', () => {
 
-			return es.commit(goodContext, [goodEvent, goodEvent2]).then(() => {
+			const events = [
+				{ sagaId: 1, type: 'somethingHappened', id: 1 },
+				{ sagaId: 1, type: 'anotherHappened', id: 2 },
+				{ sagaId: 2, type: 'somethingHappened', id: 3 }
+			];
+
+			return es.commit(events).then(() => {
+
+				return es.getSagaEvents(1, { except: 2 }).then(events => {
+
+					expect(events).to.be.an('Array');
+					expect(events).to.have.length(1);
+					expect(events).to.have.deep.property('[0].type', 'somethingHappened');
+				});
+			});
+
+		});
+	});
+
+	describe('getAllEvents(eventTypes)', () => {
+
+		it('returns a promise that resolves to all committed events of specific types', () => {
+
+			return es.commit([goodEvent, goodEvent2]).then(() => {
+
 				return es.getAllEvents(['somethingHappened']).then(events => {
+
 					expect(events).to.be.an('Array');
 					expect(events).to.have.length(2);
 					expect(events).to.have.deep.property('[0].aggregateId', '1');
@@ -183,38 +226,16 @@ describe('EventStore', function () {
 		});
 	});
 
-	describe('#on(\'event\', handler)', () => {
+	describe('on(eventType, handler)', () => {
 
-		it('is a function inherited from EventEmitter', () => {
+		it('exists', () => {
 
 			expect(es).to.respondTo('on');
-			expect(es).to.be.instanceof(EventEmitter);
-			expect(es.on).to.equal(EventEmitter.prototype.on);
 		});
 	});
 
 
-	describe('#once(\'event\', handler, filter)', () => {
-
-		it('overrides standard EventEmitter.once', () => {
-			expect(es).to.respondTo('once');
-			expect(es.once).to.not.equal(EventEmitter.prototype.once);
-		});
-
-		it('executes handler only once, when filter is not provided', done => {
-
-			let counter = 0;
-			es.once('somethingHappened', event => ++counter);
-
-			es.commit(goodContext, [goodEvent, goodEvent, goodEvent2]);
-			es.commit(goodContext, [goodEvent2]);
-
-			setTimeout(() => {
-				expect(counter).to.equal(1);
-				done();
-			}, 10);
-		});
-
+	describe('once(eventType, handler, filter)', () => {
 
 		it('executes handler only once, when event matches filter', done => {
 			let firstAggregateCounter = 0;
@@ -228,14 +249,14 @@ describe('EventStore', function () {
 				event => ++secondAggregateCounter,
 				event => event.aggregateId === '2');
 
-			es.commit(goodContext, [goodEvent, goodEvent, goodEvent, goodEvent2]);
-			es.commit(goodContext, [goodEvent2, goodEvent2]);
+			es.commit([goodEvent, goodEvent, goodEvent, goodEvent2]);
+			es.commit([goodEvent2, goodEvent2]);
 
 			setTimeout(() => {
 				expect(firstAggregateCounter).to.equal(1);
 				expect(secondAggregateCounter).to.equal(1);
 				done();
-			}, 10);
+			}, 100);
 		});
 	});
 });

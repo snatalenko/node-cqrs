@@ -1,43 +1,42 @@
 'use strict';
 
-const utils = require('./utils');
-const validate = require('./validate');
+const InMemoryBus = require('./infrastructure/InMemoryBus');
+const debug = require('debug')('cqrs-framework:CommandBus');
 
-const KEY_HANDLERS = Symbol();
+module.exports = class CommandBus {
 
-class CommandBus {
-
-	get handlers() {
-		return this[KEY_HANDLERS];
-	}
-
-	constructor() {
-		this[KEY_HANDLERS] = {};
+	constructor(options) {
+		this._bus = options && options.bus || new InMemoryBus();
 	}
 
 	on(commandType, handler, context) {
-		validate.string(commandType, 'commandType');
-		validate.func(handler, 'handler');
-		if (commandType in this.handlers) throw new Error('\'' + commandType + '\' handler is already set up');
-
-		this.handlers[commandType] = context ? handler.bind(context) : handler;
+		return this._bus.on(commandType, context ? handler.bind(context) : handler);
 	}
 
 	send(commandType, aggregateId, context, payload) {
-		validate.string(commandType, 'commandType');
-		validate.context(context);
+		if (typeof commandType !== 'string' || !commandType.length) throw new TypeError('commandType argument must be a non-empty String');
+		if (!context) throw new TypeError('context argument required');
+		if (!context.ip) throw new TypeError('context.ip argument required');
+		if (!context.browser) throw new TypeError('context.browser argument required');
 
 		if (typeof context.uid === 'object') {
 			context.uid = context.uid.toString();
 		}
 
-		return utils.passToHandlerAsync(this.handlers, commandType, {
+		return this.sendRaw({
 			type: commandType,
 			aggregateId: aggregateId,
 			context: context,
 			payload: payload
 		});
 	}
-}
 
-module.exports = CommandBus;
+	sendRaw(command) {
+		if (!command) throw new TypeError('command argument required');
+		if (!command.type) throw new TypeError('command.type argument required');
+
+		debug(`sending ${command.type}...`);
+
+		return this._bus.send(command);
+	}
+};

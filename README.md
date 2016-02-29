@@ -1,24 +1,64 @@
 cqrs-framework
 ==============
 
-Basic ES6 CQRS framework
+This library provides a set of backbone classes for CQRS app development.
 
-No dependencies
+## Usage
+
+```bash
+npm i cqrs-framework --save
+```
+
+### AbstractAggregate
+
+```javascript
+```
+
+### AbstractSaga
+
+```javascript
+```
+
+### AbstractProjection
+
+```javascript
+```
+
+### AggregateCommandHandler
+
+```javascript
+```
+
+### SagaEventHandler
+
+```javascript
+```
+
+### EventStore
+
+```javascript
+```
+
+### CommandBus
+
+```javascript
+```
+
+### Container
+
+```javascript
+```
 
 
-## CommandBus
+## Contribuion
 
--	on(`${commandType}`, handler, handlerContext)
--	send(`${commandType}`, aggregateId, context, payload)
+Use editorconfig, eslint, jsbeautifyrc
 
+### Conventions
 
-## EventStore
-
--	commit(context, events)
--	getNewId()
--	getEvents(aggregateId)
--	getAllEvents(eventTypes)
--	on('event', handler)
--	on(`${eventType}`, handler)
+-	Constructors should take a single `options` argument
 
 
+## Dependencies
+
+-	debug

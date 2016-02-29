@@ -1,42 +1,61 @@
 'use strict';
 
 const expect = require('chai').expect;
-const mocks = require('./mocks');
 const AbstractAggregate = require('../index').AbstractAggregate;
-const Aggregate = mocks.Aggregate;
-const StatelessAggregate = mocks.StatelessAggregate;
+const Aggregate = require('./mocks/Aggregate');
+const StatelessAggregate = require('./mocks/StatelessAggregate');;
+const blankContext = require('./mocks/blankContext');;
 
-let agg;
 
 describe('AbstractAggregate', function () {
 
-	beforeEach(function () {
-		agg = new Aggregate(1, []);
-	});
+	let agg;
+	beforeEach(() => agg = new Aggregate({ id: 1 }));
 
-	it('provides base class for aggregates description', function () {
+	it('is a base class for Aggregate description', function () {
 		expect(agg).is.instanceof(AbstractAggregate);
 	});
 
-	describe('#id', function () {
-		it('is a read-only aggregate ID', function () {
-			expect(agg.id).to.equal(1);
-			expect(function () {
-				agg.id = 2;
-			}).to.throw(TypeError);
+	describe('constructor(id, state, events)', () => {
+
+		it('throws exception if "static get handles" is not overridden', () => {
+
+			class AggregateWithoutHandles extends AbstractAggregate {}
+
+			expect(() => s = new AggregateWithoutHandles({ id: 1 })).to.throw('handles must be overridden to return a list of handled command types');
+		});
+
+		it('throws exception if event handler is not defined', () => {
+
+			class AggregateWithoutHandler extends AbstractAggregate {
+				static get handles() {
+					return ['somethingHappened'];
+				}
+			}
+
+			expect(() => s = new AggregateWithoutHandler({ id: 1 })).to.throw('\'somethingHappened\' handler is not defined or not a function');
 		});
 	});
 
-	describe('#changes', function () {
+	describe('id', () => {
 
-		it('contains a read-only list of changes happened in aggregate', function () {
+		it('returns immutable aggregate id', () => {
+
+			expect(agg.id).to.equal(1);
+			expect(() => agg.id = 2).to.throw(TypeError);
+		});
+	});
+
+	describe('changes', () => {
+
+		it('contains a read-only list of changes happened in aggregate', () => {
 
 			expect(agg.changes).to.be.an('Array');
 			expect(agg.changes).to.be.empty;
 			expect(agg.changes).to.not.equal(agg.changes);
 			expect(() => agg.changes = []).to.throw(TypeError);
 
-			agg.doSomething({}, mocks.blankContext);
+			agg.doSomething({}, blankContext);
 
 			expect(agg).to.have.deep.property('changes[0].type', 'somethingDone');
 			expect(agg).to.have.deep.property('changes[0].aggregateId', 1);
@@ -44,41 +63,23 @@ describe('AbstractAggregate', function () {
 		});
 	});
 
-	describe('#emit(eventType:string, payload:object)', function () {
+	describe('version', () => {
 
-		it('pushes new event to #changes', function () {
-
-			agg.emit('eventType', {});
-			expect(agg).to.have.deep.property('changes[0].type', 'eventType');
-		});
-
-		it('increments aggregate #version', function() {
-
-			agg.emit('eventType', {});
-			agg.emit('eventType', {});
-			expect(agg).to.have.property('version', 2);
-		});
-	});
-
-	describe('#version', function () {
-
-		it('is a read-only auto-incrementing aggregate version, starting from 0', function () {
+		it('is a read-only auto-incrementing aggregate version, starting from 0', () => {
 
 			expect(agg.version).to.equal(0);
 			expect(() => agg.version = 1).to.throw(TypeError);
 		});
 
-		it('restores, when aggregate is restored from event stream', function () {
+		it('restores, when aggregate is restored from event stream', () => {
 
-			const eventStream = [{
-				type: 'somethingDone',
-			}, {
-				type: 'somethingDone',
-			}, {
-				type: 'somethingDone',
-			}];
+			const events = [
+				{ type: 'somethingDone' },
+				{ type: 'somethingDone' },
+				{ type: 'somethingDone' }
+			];
 
-			const agg2 = new Aggregate(1, eventStream);
+			const agg2 = new Aggregate({ id: 1, events });
 
 			expect(agg2).to.have.property('version', 3);
 		});
@@ -86,23 +87,23 @@ describe('AbstractAggregate', function () {
 		it('restores, when aggregate is restored from a snapshot');
 	});
 
-	describe('#state', function () {
+	describe('state', () => {
 
-		it('is an inner aggregate state', function () {
+		it('is an inner aggregate state', () => {
 
 			expect(agg.state).to.exist;
 		});
 
-		it('is optional', function () {
+		it('is optional', () => {
 
-			const statelessAggregate = new StatelessAggregate(2);
+			const statelessAggregate = new StatelessAggregate({ id: 2 });
 			expect(statelessAggregate.state).to.not.exist;
 		});
 	});
 
-	describe('#snapshot', function () {
+	describe('snapshot', () => {
 
-		it('provides a read-only aggregate state snapshot', function () {
+		it('provides a read-only aggregate state snapshot', () => {
 
 			expect(agg.snapshot).to.exist;
 			expect(agg.snapshot).to.deep.equal(agg.state);
@@ -114,4 +115,31 @@ describe('AbstractAggregate', function () {
 		});
 	});
 
+	describe('handle(command)', () => {
+
+		it('exists', () => agg.should.respondTo('handle'));
+		it('passes command to a handler declared within aggregate');
+	});
+
+	describe('mutate(event)', () => {
+
+		it('exists', () => agg.should.respondTo('mutate'));
+		it('mutates aggregate state based on event received and increments aggregate version');
+	});
+
+	describe('emit(eventType, eventPayload)', () => {
+
+		it('pushes new event to #changes', () => {
+
+			agg.emit('eventType', {});
+			expect(agg).to.have.deep.property('changes[0].type', 'eventType');
+		});
+
+		it('increments aggregate #version', () => {
+
+			agg.emit('eventType', {});
+			agg.emit('eventType', {});
+			expect(agg).to.have.property('version', 2);
+		});
+	});
 });

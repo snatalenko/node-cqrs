@@ -1,164 +1,201 @@
 'use strict';
 
-const EventEmitter = require('events').EventEmitter;
-const validate = require('./validate');
+const InMemoryBus = require('./infrastructure/InMemoryBus');
+const debug = require('debug')('cqrs:EventStore');
 
-const KEY_GATEWAY = Symbol();
+const _storage = Symbol('storage');
+const _bus = Symbol('bus');
+const _validator = Symbol('validator');
 
-function signEventsContext(context) {
-	if (!context) throw new TypeError('context argument required');
-
-	return events => new Promise(function (resolve, reject) {
-		validate.context(context);
-		validate.array(events, 'events');
-
-		events.forEach(e => e.context = context);
-		resolve(events);
-	});
-}
-
-function validateEvents(events) {
-	if (!events) throw new TypeError('events argument required');
-	if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
-
-	return new Promise(function (resolve, reject) {
-		events.forEach(event => {
-			validate.object(event, 'event');
-			validate.identifier(event.aggregateId, 'event.aggregateId');
-			validate.number(event.version, 'event.version');
-			validate.string(event.type, 'event.type');
-			validate.context(event.context, 'event.context');
-		});
-		resolve(events);
-	});
-}
-
-/** Creates a function that commits events to a specified gateway and returns a Promise that resolves to events passed in */
-function commitEventsToGateway(gateway) {
-	if (!gateway) throw new TypeError('gateway argument required');
-
-	return events => Promise.resolve(gateway.commitEvents(events))
-		.then(() => events);
-}
-
-function emitEventsAsync(emitter, debug) {
+function debugAsync(messageFormat) {
 	return events => {
-
-		setImmediate(() => {
-			try {
-				events.forEach(event => {
-					emitter.emit('event', event);
-					emitter.emit(event.type, event);
-					debug('\'%s\' handlers executed', event.type);
-				});
-				debug('%d event(s) processed', events.length);
-			}
-			catch (err) {
-				debug('at least one of the event handlers has failed');
-				debug(err);
-			}
-		});
-
+		debug(messageFormat, !Array.isArray(events) ? events :
+			events.length === 1 ? '\'' + events[0].type + '\'' :
+			events.length + ' events');
 		return events;
 	};
 }
 
-class EventStore extends EventEmitter {
+function validateEventDafault(event) {
+	if (typeof event !== 'object' || !event) throw new TypeError('event must be an Object');
+	if (typeof event.type !== 'string' || !event.type.length) throw new TypeError('event.type must be a non-empty String');
+	if (!event.aggregateId && !event.sagaId) throw new TypeError('either event.aggregateId or event.sagaId is required');
+}
 
-	get gateway() {
-		if (!this[KEY_GATEWAY])
-			throw new Error('gateway is not configured. invoke EventStore.use(gateway) method first');
+function validateEvents(validate) {
+	if (typeof validate !== 'function') throw new TypeError('validate argument must be a Function');
 
-		return this[KEY_GATEWAY];
+	return events => new Promise(function (resolve, reject) {
+		events.forEach(validate);
+		resolve(events);
+	});
+}
+
+/** Creates a function that commits events to a specified storage and returns a Promise that resolves to events passed in */
+function commitEventsToStorage(storage) {
+	if (!storage) throw new TypeError('storage argument required');
+
+	return events => Promise.resolve(storage.commitEvents(events))
+		.then(() => events);
+}
+
+function publishEventsSync(messageBus) {
+	return events => Promise.all(events.map(event => messageBus.publish(event)))
+		.then(results => {
+			debug(`${events.length === 1 ? '\'' + events[0].type + '\'' : events.length + ' events'} processed`);
+			return events;
+		})
+		.catch(err => {
+			debug(`${events.length === 1 ? '\'' + events[0].type + '\'' : events.length + ' events'} processing has failed`);
+			debug(err);
+			throw err;
+		});
+}
+
+function publishEventsAsync(messageBus) {
+	return events => {
+		setImmediate(publishEventsSync(messageBus), events);
+		// publishEventsSync(messageBus)(events);
+		return events;
+	};
+}
+
+module.exports = class EventStore {
+
+	get storage() {
+		return this[_storage];
 	}
 
-	set gateway(gateway) {
-		if (typeof gateway !== 'object' || !gateway) throw new TypeError('gateway argument must be an Object');
-		if (typeof gateway.commitEvents !== 'function') throw new TypeError('gateway.commitEvents must be a Function');
-		if (typeof gateway.getEvents !== 'function') throw new TypeError('gateway.getEvents must be a Function');
-		if (typeof gateway.getAggregateEvents !== 'function') throw new TypeError('gateway.getAggregateEvents must be a Function');
-		if (typeof gateway.getNewId !== 'function') throw new TypeError('gateway.getNewId must be a Function');
-		this[KEY_GATEWAY] = gateway;
-	}
-
-	constructor(gateway) {
-		super();
-
-		if (gateway) {
-			this.gateway = gateway;
+	set storage(storage) {
+		if (storage) {
+			if (typeof storage.commitEvents !== 'function') throw new TypeError('storage.commitEvents must be a Function');
+			if (typeof storage.getEvents !== 'function') throw new TypeError('storage.getEvents must be a Function');
+			if (typeof storage.getAggregateEvents !== 'function') throw new TypeError('storage.getAggregateEvents must be a Function');
+			if (typeof storage.getSagaEvents !== 'function') throw new TypeError('storage.getSagaEvents must be a Function');
+			if (typeof storage.getNewId !== 'function') throw new TypeError('storage.getNewId must be a Function');
 		}
+		this[_storage] = storage || undefined;
+	}
+
+	get bus() {
+		return this[_bus];
+	}
+
+	set bus(bus) {
+		if (bus && typeof bus.publish !== 'function') throw new TypeError('bus.publish must be a Function');
+
+		this[_bus] = bus || undefined;
+	}
+
+	get validator() {
+		return this[_validator];
+	}
+
+	set validator(validator) {
+		if (validator && typeof validator !== 'function') throw new TypeError('validator must be a Function');
+
+		this[_validator] = validator || undefined;
+	}
+
+	constructor(options) {
+		if (!options) throw new TypeError('options argument required');
+		if (!options.storage) throw new TypeError('options.storage argument required');
+
+		this.storage = options.storage;
+		this.bus = options.bus || new InMemoryBus();
+		this.validator = options.validator || validateEventDafault;
 	}
 
 	getNewId() {
-		return this.gateway.getNewId();
+		return Promise.resolve(this.storage.getNewId());
 	}
 
 	getAllEvents(eventTypes) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
-		return Promise.resolve(this.gateway.getEvents(eventTypes) || [])
-			.then(this._log('retrieved %s'));
+		return Promise.resolve(this.storage.getEvents(eventTypes) || [])
+			.then(debugAsync('retrieved %s'));
 	}
 
 	getAggregateEvents(aggregateId) {
-		this.debug('retrieving event stream for %s...', aggregateId);
 		if (!aggregateId) throw new TypeError('aggregateId argument required');
 
-		return Promise.resolve(this.gateway.getAggregateEvents(aggregateId) || [])
-			.then(this._log('retrieved %s'));
+		debug(`retrieving event stream for aggregate ${aggregateId}...`);
+
+		return Promise.resolve(this.storage.getAggregateEvents(aggregateId) || [])
+			.then(debugAsync('retrieved %s'));
 	}
 
 	/**
-	 * Sign, validate, and commit events to gateway
-	 * @param  {Object} context events context
+	 * Retrieves events, by sagaId
+	 * @param  {String} sagaId  		Saga ID
+	 * @param  {Object} options 		Parameter object with request options
+	 * @param  {Array}  options.except 	Event ID(s) that triggered Saga execution and should be excluded from output
+	 * @return {Promise}        		Resolving to an array of events
+	 */
+	getSagaEvents(sagaId, options) {
+		if (!sagaId) throw new TypeError('sagaId argument required');
+
+		debug(`retrieving event stream for saga ${sagaId}...`);
+
+		// options.except is passed to storage method for faster filtering, if implemented.
+		// for case when it's not implemented, a returned events list is filtered manually
+		return Promise.resolve(this.storage.getSagaEvents(sagaId, options) || [])
+			.then(events => {
+				if (options && options.except) {
+					if (Array.isArray(options.except)) {
+						return events.filter(e => options.except.indexOf(e.id || e._id) === -1);
+					} else {
+						return events.filter(e => (e.id || e._id) !== options.except);
+					}
+				} else {
+					return events;
+				}
+			})
+			.then(debugAsync('retrieved %s'));
+	}
+
+
+	/**
+	 * Sign, validate, and commit events to storage
 	 * @param  {Array} 	events 	a set of events to commit
 	 * @return {Promise}		resolves to signed and committed events
 	 */
-	commit(context, events) {
-		if (!context) throw new TypeError('context argument required');
-		if (!events) throw new TypeError('events argument required');
+	commit(events) {
+		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
 		return Promise.resolve(events)
-			.then(this._log('signing %s...'))
-			.then(signEventsContext(context))
-			.then(this._log('validating %s...'))
-			.then(validateEvents)
-			.then(this._log('comitting %s...'))
-			.then(commitEventsToGateway(this.gateway))
-			.then(this._log('%s processed successfully, emitting asynchronously...'))
-			.then(emitEventsAsync(this, this.debug));
+			.then(debugAsync('validating %s...'))
+			.then(validateEvents(this.validator))
+			.then(debugAsync('comitting %s...'))
+			.then(commitEventsToStorage(this.storage))
+			.then(debugAsync('%s committed successfully, publishing asynchronously...'))
+			.then(publishEventsAsync(this.bus))
+			.catch(err => {
+				debug('events commit has failed:');
+				debug(err);
+				throw err;
+			});
 	}
 
-	once(eventType, listener, filter) {
-		if (!filter) {
-			return super.once(...arguments);
-		}
-		else {
-			const self = this;
+	on(messageType, handler) {
+		return this.bus.on(messageType, handler);
+	}
 
-			function handler(event) {
-				if (filter(...arguments)) {
-					self.removeListener(eventType, handler);
-					listener(...arguments);
-				}
+	once(messageType, handler, filter) {
+		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
+		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
+		if (typeof filter !== 'function') throw new TypeError('filter argument must be a Function');
+
+		const bus = this.bus;
+
+		function filteredHandler(event) {
+			if (filter(...arguments)) {
+				bus.off(messageType, filteredHandler);
+				handler(...arguments);
 			}
-
-			super.on(eventType, handler);
 		}
-	}
 
-	debug( /*...args*/ ) {
-		// console.log(...arguments);
+		return this.on(messageType, filteredHandler);
 	}
-
-	_log(messageFormat) {
-		return events => {
-			this.debug(messageFormat, !Array.isArray(events) ? events :
-				events.length === 1 ? '1 event' :
-				events.length + ' events');
-			return events;
-		};
-	}
-}
-
-module.exports = EventStore;
+};

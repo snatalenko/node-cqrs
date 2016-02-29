@@ -2,7 +2,6 @@
 
 const Observer = require('./Observer');
 const utils = require('./utils');
-const validate = require('./validate');
 
 function restoreAggregate(eventStore, factory) {
 	if (!eventStore) throw new TypeError('eventStore argument required');
@@ -21,16 +20,15 @@ function passCommandToAggregate(cmd) {
 		.then(() => aggregate);
 }
 
-function commitAggregateEvents(eventStore, context) {
+function commitAggregateEvents(eventStore) {
 	if (!eventStore) throw new TypeError('eventStore argument required');
-	if (!context) throw new TypeError('context argument required');
 
-	return aggregate => aggregate.changes.length ?
-		eventStore.commit(context, aggregate.changes) :
+	return events => events.length ?
+		eventStore.commit(events) :
 		Promise.resolve([]);
 }
 
-class AbstractCommandHandler extends Observer {
+module.exports = class AbstractCommandHandler extends Observer {
 
 	constructor(eventStore, commandTypes) {
 		if (!eventStore) throw new TypeError('eventStore argument required');
@@ -57,17 +55,24 @@ class AbstractCommandHandler extends Observer {
 	 * @return {Promise} resolving to
 	 */
 	execute(cmd) {
+		if (typeof cmd !== 'object' || !cmd) throw new TypeError('cmd argument must be an Object');
+		if (typeof cmd.type !== 'string' || !cmd.type.length) throw new TypeError('cmd.type argument must be a non-empty String');
+		if (typeof cmd.context !== 'object' || !cmd.context) throw new TypeError('cmd.context argument must be an Object');
 
 		this.debug('execute \'%s\'', cmd && cmd.type);
-		validate.object(cmd, 'cmd');
-		validate.string(cmd.type, 'cmd.type');
-		validate.context(cmd.context);
 
 		return Promise.resolve(cmd.aggregateId)
 			.then(restoreAggregate(this._eventStore, this.getAggregate.bind(this)))
 			.then(this._log(aggregate => 'aggregate ' + aggregate.id + ' v.' + aggregate.version + ' is restored'))
 			.then(passCommandToAggregate(cmd))
-			.then(commitAggregateEvents(this._eventStore, cmd.context))
+			.then(aggregate => {
+				const events = aggregate.changes;
+				events.forEach(event => {
+					event.context = cmd.context;
+				});
+				return events;
+			})
+			.then(commitAggregateEvents(this._eventStore))
 			.then(this._log(changes => 'command \'' + cmd.type + '\' executed, ' + changes.length + ' event(s) produced'));
 	}
 
@@ -77,6 +82,4 @@ class AbstractCommandHandler extends Observer {
 			return arg;
 		};
 	}
-}
-
-module.exports = AbstractCommandHandler;
+};

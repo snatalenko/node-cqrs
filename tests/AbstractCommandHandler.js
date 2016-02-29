@@ -1,12 +1,12 @@
 'use strict';
 
 const expect = require('chai').expect;
-const mocks = require('./mocks');
+const Aggregate = require('./mocks/Aggregate');
+const blankContext = require('./mocks/blankContext');
 const AbstractCommandHandler = require('../src/AbstractCommandHandler');
 const EventStore = require('../index').EventStore;
-const InMemoryEventStoreGateway = require('../index').InMemoryEventStoreGateway;
+const InMemoryEventStorage = require('../index').InMemoryEventStorage;
 
-const Aggregate = mocks.Aggregate;
 
 let eventStore;
 let commandHandler;
@@ -23,18 +23,24 @@ class CommandHandler extends AbstractCommandHandler {
 	}
 
 	getAggregate(id, events) {
-		return new Aggregate(id, events, this._additionalService);
+		return new Aggregate({
+			id,
+			events,
+			additionalService: this._additionalService
+		});
 	}
 }
 
 describe('AbstractCommandHandler', function () {
 
 	beforeEach(function () {
-		eventStore = new EventStore(new InMemoryEventStoreGateway());
+		eventStore = new EventStore({
+			storage: new InMemoryEventStorage()
+		});
 		commandHandler = new CommandHandler(eventStore);
 	});
 
-	describe('#execute(command:Object)', function () {
+	describe('execute(command)', function () {
 
 		it('validates command', function () {
 
@@ -45,7 +51,7 @@ describe('AbstractCommandHandler', function () {
 
 			const badCommand2 = {
 				type: '',
-				context: mocks.blankContext
+				context: blankContext
 			};
 
 			expect(() => commandHandler.execute(badCommand1)).to.throw(TypeError);
@@ -57,7 +63,7 @@ describe('AbstractCommandHandler', function () {
 			const command = {
 				type: 'doSomething',
 				payload: 'doSomethingPayload',
-				context: mocks.blankContext
+				context: blankContext
 			};
 
 			return commandHandler.execute(command).then(events => {
@@ -76,7 +82,7 @@ describe('AbstractCommandHandler', function () {
 				aggregateId: aggregateId,
 				type: 'doSomething',
 				payload: 'doSomethingPayload',
-				context: mocks.blankContext
+				context: blankContext
 			};
 
 			const event1 = {
@@ -91,7 +97,7 @@ describe('AbstractCommandHandler', function () {
 				type: 'somethingDone'
 			};
 
-			return eventStore.commit(mocks.blankContext, [event1, event2]).then(() => {
+			return eventStore.commit([event1, event2]).then(() => {
 
 				return commandHandler.execute(command).then(events => {
 
@@ -111,7 +117,7 @@ describe('AbstractCommandHandler', function () {
 				aggregateId: aggregateId,
 				type: 'doSomething',
 				payload: 'doSomethingPayload',
-				context: mocks.blankContext
+				context: blankContext
 			};
 
 			return commandHandler.execute(command).then(() => {
@@ -130,7 +136,7 @@ describe('AbstractCommandHandler', function () {
 			const command = {
 				type: 'doSomethingWrong', // Aggregate should throw an exception
 				payload: {},
-				context: mocks.blankContext
+				context: blankContext
 			};
 
 			return commandHandler.execute(command).then(() => {

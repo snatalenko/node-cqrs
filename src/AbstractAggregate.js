@@ -1,62 +1,68 @@
 'use strict';
 
-const KEY_ID = Symbol();
-const KEY_VERSION = Symbol();
-const KEY_CHANGES = Symbol();
-const KEY_STATE = Symbol();
+const validateHandlers = require('./utils/validateHandlers');
+const passToHandlerAsync = require('./utils/passToHandlerAsync');
+const _id = Symbol('id');
+const _version = Symbol('version');
+const _changes = Symbol('changes');
+const _state = Symbol('state');
 
-class AbstractAggregate {
+module.exports = class AbstractAggregate {
 
-	/** Get aggregate ID */
+	static get handles() {
+		throw new Error('handles must be overridden to return a list of handled command types');
+	}
+
 	get id() {
-		return this[KEY_ID];
+		return this[_id];
 	}
 
-	/** Get aggregate version */
 	get version() {
-		return this[KEY_VERSION];
+		return this[_version];
 	}
 
-	/** Get an Array of events registered in the aggregate */
 	get changes() {
-		return this[KEY_CHANGES].slice(0);
+		return this[_changes].slice(0);
 	}
 
-	/** Get current Aggregate state */
 	get state() {
-		return this[KEY_STATE];
+		return this[_state];
 	}
 
-	/** Get aggregate state JSON snapshot */
 	get snapshot() {
 		return JSON.parse(JSON.stringify(this.state));
 	}
 
-	constructor(id, initialState, events) {
-		if (!id) throw new TypeError('id argument required');
-		if (events && !Array.isArray(events)) throw new TypeError('events argument must be an Array');
+	constructor(options) {
+		if (!options) throw new TypeError('options argument required');
+		if (!options.id) throw new TypeError('options.id argument required');
+		if (options.events && !Array.isArray(options.events)) throw new TypeError('options.events argument, when provided, must be an Array');
 
-		this[KEY_ID] = id;
-		this[KEY_VERSION] = 0;
-		this[KEY_CHANGES] = [];
-		this[KEY_STATE] = initialState;
+		this[_id] = options.id;
+		this[_version] = 0;
+		this[_changes] = [];
+		this[_state] = options.state || undefined;
 
-		if (events) {
-			this.mutate(events);
+		validateHandlers(this);
+
+		if (options.events) {
+			options.events.forEach(e => this.mutate(e));
 		}
 	}
 
-	/** Mutates aggregate state and incremets aggregate version */
-	mutate(events) {
-		if (!Array.isArray(events)) {
-			events = Array.from(arguments);
+	handle(command) {
+		if (!command) throw new TypeError('command argument required');
+		if (!command.type) throw new TypeError('command.type argument required');
+
+		return passToHandlerAsync(this, command.type, command.payload, command.context);
+	}
+
+	/** Mutates aggregate state and increments aggregate version */
+	mutate(event) {
+		if (this.state) {
+			this.state.mutate(event);
 		}
-		events.forEach(event => {
-			if (this.state) {
-				this.state.mutate(event);
-			}
-			this[KEY_VERSION]++;
-		});
+		this[_version]++;
 	}
 
 	/**
@@ -71,14 +77,11 @@ class AbstractAggregate {
 			aggregateId: this.id,
 			version: this.version,
 			type: eventType,
-			payload: eventPayload,
-			localTime: new Date()
+			payload: eventPayload
 		};
 
 		this.mutate(event);
 
-		this[KEY_CHANGES].push(event);
+		this[_changes].push(event);
 	}
-}
-
-module.exports = AbstractAggregate;
+};

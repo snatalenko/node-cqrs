@@ -6,8 +6,9 @@
 				".grunt", 
 				"node_modules"
 			],
-			"file_exclude_patterns": [
-				// ".*"
+			"file_exclude_patterns":[
+				".*",
+				"*.sublime-project"
 			]
 		}
 	]
