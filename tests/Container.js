@@ -59,7 +59,43 @@ describe('Container', function () {
 		it('registers aggregate command handler for a given aggregate type', () => {
 
 			c.registerAggregate(Aggregate);
-			c.createAllInstances();
 		});
 	});
+
+	describe('createUnexposedInstances', () => {
+
+		it('exists', () => {
+			c.should.respondTo('createUnexposedInstances');
+		});
+
+		it('initializes objects that do not expose any lazy getters on container', () => {
+
+			let instancesCount = 0;
+
+			c.register(class SomeMagic {
+				constructor() {
+					instancesCount++;
+				}
+			});
+
+			c.createUnexposedInstances();
+
+			instancesCount.should.equal(1);
+
+			c.createUnexposedInstances();
+			c.createAllInstances();
+
+			// second instance should not be created
+			instancesCount.should.equal(1);
+		});
+	});
+
+	describe('createAllInstances', () => {
+
+		it('exists', () => {
+			c.should.respondTo('createAllInstances');
+		});
+	});
+
+
 });

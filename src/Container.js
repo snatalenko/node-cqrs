@@ -94,13 +94,23 @@ module.exports = class Container {
 
 			this.factories.push(container => container[exposeAs]);
 		} else {
+			factory.unexposed = true;
 			this.factories.push(factory);
 		}
 	}
 
+	createUnexposedInstances() {
+		for (let i = 0; i < this.factories.length; i++) {
+			if (this.factories[i].unexposed) {
+				this.factories.splice(i, 1)[0](this);
+				i--;
+			}
+		}
+	}
+
 	createAllInstances() {
-		while (this._factories.length) {
-			this._factories.splice(0, 1)[0](this);
+		while (this.factories.length) {
+			this.factories.splice(0, 1)[0](this);
 		}
 	}
 
