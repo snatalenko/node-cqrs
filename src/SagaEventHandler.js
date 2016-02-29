@@ -18,6 +18,13 @@ function restoreSagaState(sagaId, eventStore, SagaType, triggeredBy) {
 	}
 }
 
+function signCommandsContext(context) {
+	return commands => {
+		commands.forEach(command => command.context = context);
+		return commands;
+	};
+}
+
 function sendCommands(commandBus) {
 	if (!commandBus) throw new TypeError('commandBus argument required');
 
@@ -65,14 +72,9 @@ module.exports = class SagaEventHandler extends Observer {
 
 				saga.apply(event);
 
-				// sign commands
-				const commands = saga.uncommittedMessages;
-				commands.forEach(c => {
-					c.sagaId = saga.id;
-					c.context = event.context;
-				});
-				return commands;
+				return saga.uncommittedMessages;
 			})
+			.then(signCommandsContext(event.context))
 			.then(sendCommands(this._commandBus))
 			.then(results => {
 				this.debug(`event '${event.type}' handled, ${results.length === 1 ? '1 command' : results.length + ' commands'} produced`);

@@ -20,6 +20,13 @@ function restoreAggregateState(aggregateId, eventStore, AggregateType) {
 	}
 }
 
+function signEventsContext(context) {
+	return events => {
+		events.forEach(event => event.context = context);
+		return events;
+	};
+}
+
 function commitAggregateEvents(eventStore) {
 	if (!eventStore) throw new TypeError('eventStore argument required');
 
@@ -27,6 +34,8 @@ function commitAggregateEvents(eventStore) {
 		eventStore.commit(events) :
 		Promise.resolve([]);
 }
+
+
 
 function isConcurrencyError(err) {
 	return err.type === ConcurrencyError.type;
@@ -70,14 +79,9 @@ module.exports = class AggregateCommandHandler extends Observer {
 
 				aggregate.handle(cmd);
 
-				// sign events
-				const events = aggregate.changes;
-				events.forEach(e => {
-					e.aggregateId = aggregate.id;
-					e.context = cmd.context;
-				});
-				return events;
+				return aggregate.changes;
 			})
+			.then(signEventsContext(cmd.context))
 			.then(commitAggregateEvents(this._eventStore))
 			.then(events => {
 				this.debug(`command '${cmd.type}' processed, ${events.length === 1? '1 event' : events.length + ' events'} produced`);
