@@ -52,7 +52,7 @@ describe('InMemoryBus', function () {
 
 			expect(() => {
 				bus.send({ type: 'doSomething' });
-			}).to.throw('No \'doSomething\' handler defined');
+			}).to.throw('No \'doSomething\' subscribers found');
 		});
 
 		it('fails if more than one handler found', () => {
@@ -61,7 +61,7 @@ describe('InMemoryBus', function () {
 			bus.on('doSomething', () => {});
 			expect(() => {
 				bus.send({ type: 'doSomething' });
-			}).to.throw('More than one \'doSomething\' handler defined');
+			}).to.throw('More than one \'doSomething\' subscriber found');
 		});
 	});
 

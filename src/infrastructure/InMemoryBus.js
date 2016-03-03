@@ -40,7 +40,7 @@ module.exports = class InMemoryBus {
 	off(messageType, handler) {
 		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
-		if (!this._handlers[messageType]) throw new Error(`No ${messageType} handler found`);
+		if (!this._handlers[messageType]) throw new Error(`No ${messageType} subscribers found`);
 
 		const index = this._handlers[messageType].indexOf(handler);
 		if (index !== -1) {
@@ -56,8 +56,8 @@ module.exports = class InMemoryBus {
 		if (typeof commandType !== 'string' || !commandType.length) throw new TypeError('commandType argument must be a non-empty String');
 
 		const handlers = this._handlers[commandType];
-		if (!handlers || !handlers.length) throw new Error(`No '${commandType}' handler defined`);
-		if (handlers.length > 1) throw new Error(`More than one '${commandType}' handler defined`);
+		if (!handlers || !handlers.length) throw new Error(`No '${commandType}' subscribers found`);
+		if (handlers.length > 1) throw new Error(`More than one '${commandType}' subscriber found`);
 
 		return passToHandler(handlers[0], commandType, command);
 	}
