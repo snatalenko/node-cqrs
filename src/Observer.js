@@ -2,6 +2,7 @@
 
 const getHandler = require('./utils/getHandler');
 const debug = require('./utils/debug');
+const _subscribedTo = Symbol('subscribedTo');
 
 function executeSafely(handler, context, errorHandler) {
 	return function ( /* ...args */ ) {
@@ -39,7 +40,7 @@ module.exports = class Observer {
 	subscribe(observable, messageTypes, masterHandler) {
 		if (typeof observable !== 'object' || !observable) throw new TypeError('observable argument must be an Object');
 		if (typeof observable.on !== 'function') throw new TypeError('observable.on must be a Function');
-		if (!messageTypes) messageTypes = this.handles;
+		if (!messageTypes) messageTypes = this.handles || Object.getPrototypeOf(this).constructor.handles;
 		if (!Array.isArray(messageTypes)) throw new TypeError('messageTypes argument must be an Array');
 		if (masterHandler) {
 			if (typeof masterHandler === 'string') masterHandler = this[masterHandler];

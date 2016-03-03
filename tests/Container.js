@@ -5,45 +5,26 @@ const Container = cqrs.Container;
 const chai = require('chai');
 chai.should();
 
-
-class Aggregate extends cqrs.AbstractAggregate {
-
-	static get handles() {
-		return ['doSomething'];
-	}
-
-	constructor() {
-		super();
-	}
-
-}
-
 describe('Container', function () {
 
 	let c;
 
-	before(() => {
+	beforeEach(() => {
 		c = new Container();
+		c.register(cqrs.InMemoryEventStorage, 'storage');
+		c.register(cqrs.EventStore, 'eventStore');
+		c.register(cqrs.CommandBus, 'commandBus');
 	});
 
 	describe('register', () => {
 
 		it('registers type or factory in the container', () => {
 
-			c.factories.should.be.empty;
-
-			c.register(cqrs.InMemoryEventStorage, 'storage');
-			c.register(cqrs.EventStore, 'eventStore');
-			c.register(cqrs.CommandBus, 'commandBus');
-
 			c.factories.should.have.length(3);
 			c.instances.should.be.empty;
 		});
 
 		it('creates getter that initializes instance on first access, along with its dependencies', () => {
-
-			c.factories.should.have.length(3);
-			c.instances.should.be.empty;
 
 			const es = c.eventStore;
 
@@ -54,21 +35,116 @@ describe('Container', function () {
 		});
 	});
 
+	describe('registerCommandHandler(typeOrFactory) extension', () => {
+
+		class MyCommandHandler extends cqrs.Observer {
+			static get handles() {
+				return ['doSomething'];
+			}
+			_doSomething() {}
+		}
+
+		it('registers a command handler factory', () => {
+			c.factories.should.have.length(3);
+			c.registerCommandHandler(MyCommandHandler);
+			c.factories.should.have.length(4);
+		});
+
+		it('subscribes to commandBus upon instance creation', () => {
+
+			c.registerCommandHandler(MyCommandHandler);
+			c.commandBus.should.not.have.deep.property('_bus._handlers.doSomething');
+
+			c.createUnexposedInstances();
+			c.commandBus.should.have.deep.property('_bus._handlers.doSomething');
+		});
+	});
+
+	describe('registerEventReceptor(typeOrFactory) extension', () => {
+
+		class MyEventReceptor extends cqrs.Observer {
+			static get handles() {
+				return ['somethingHappened'];
+			}
+			_somethingHappened() {}
+		}
+
+		it('registers an event receptor factory', () => {
+			c.factories.should.have.length(3);
+			c.registerEventReceptor(MyEventReceptor);
+			c.factories.should.have.length(4);
+		});
+
+		it('subscribes to eventStore upon instance creation', () => {
+
+			c.registerEventReceptor(MyEventReceptor);
+			c.eventStore.should.not.have.deep.property('bus._handlers.somethingHappened');
+
+			c.createUnexposedInstances();
+			c.eventStore.should.have.deep.property('bus._handlers.somethingHappened');
+		});
+	});
+
 	describe('registerAggregate(aggregateType) extension', () => {
 
 		it('registers aggregate command handler for a given aggregate type', () => {
 
+			class Aggregate extends cqrs.AbstractAggregate {
+				static get handles() {
+					return ['doSomething'];
+				}
+			}
+
 			c.registerAggregate(Aggregate);
+		});
+
+		it('injects aggregate dependencies into aggregate constructor upon initialization', () => {
+
+			let dependencyMet;
+
+			class SomeService {}
+
+			class MyAggregate extends cqrs.AbstractAggregate {
+				static get handles() {
+					return ['doSomething'];
+				}
+				constructor(options) {
+					super(options);
+					dependencyMet = (options.aggregateDependency instanceof SomeService);
+				}
+				_doSomething(payload, context) {}
+			}
+
+			c.registerAggregate(MyAggregate);
+			c.createUnexposedInstances();
+
+			return c.commandBus.sendRaw({ type: 'doSomething' }).then(result => {
+				dependencyMet.should.equal(false);
+				c.register(SomeService, 'aggregateDependency');
+				return c.commandBus.sendRaw({ type: 'doSomething' });
+			}).then(result => {
+				dependencyMet.should.equal(true);
+			});
+		});
+	});
+
+	describe('registerSaga(sagaType) extension', () => {
+
+		it('exists', () => {
+			c.should.respondTo('registerSaga');
+		});
+	});
+
+	describe('registerProjection(typeOrFactory, exposedViewName) extension', () => {
+
+		it('exists', () => {
+			c.should.respondTo('registerProjection');
 		});
 	});
 
 	describe('createUnexposedInstances', () => {
 
-		it('exists', () => {
-			c.should.respondTo('createUnexposedInstances');
-		});
-
-		it('initializes objects that do not expose any lazy getters on container', () => {
+		it('initializes objects that do not expose a lazy getter on container', () => {
 
 			let instancesCount = 0;
 
@@ -97,5 +173,22 @@ describe('Container', function () {
 		});
 	});
 
+	describe('getClassDependencyNames', () => {
 
+		class MyClass {
+			constructor(service, options) {
+				this._someOption = options.someOption;
+			}
+		}
+
+		it('extracts class constructor parameter names', () => {
+			const dependencies = Container.getClassDependencyNames(MyClass);
+			dependencies.should.have.deep.property('[0]', 'service');
+		});
+
+		it('extracts parameter object property names', () => {
+			const dependencies = Container.getClassDependencyNames(MyClass);
+			dependencies.should.have.deep.property('[1][0]', 'someOption');
+		});
+	});
 });

@@ -4,17 +4,21 @@ const Observer = require('./Observer');
 const ConcurrencyError = require('./errors/ConcurrencyError');
 const COMMIT_RETRIES_LIMIT = 5;
 
-function restoreAggregateState(aggregateId, eventStore, AggregateType) {
+function restoreAggregateState(aggregateId, eventStore, aggregateTypeOrFactory) {
 	if (!eventStore) throw new TypeError('eventStore argument required');
-	if (!AggregateType) throw new TypeError('AggregateType argument required');
+	if (!aggregateTypeOrFactory) throw new TypeError('aggregateTypeOrFactory argument required');
+
+	const aggregateFactory = aggregateTypeOrFactory.prototype ?
+		options => new aggregateTypeOrFactory(options) :
+		aggregateTypeOrFactory;
 
 	if (aggregateId) {
-		return eventStore.getAggregateEvents(aggregateId).then(events => new AggregateType({
+		return eventStore.getAggregateEvents(aggregateId).then(events => aggregateFactory({
 			id: aggregateId,
 			events: events
 		}));
 	} else {
-		return eventStore.getNewId().then(aggregateId => new AggregateType({
+		return eventStore.getNewId().then(aggregateId => aggregateFactory({
 			id: aggregateId
 		}));
 	}
@@ -22,7 +26,8 @@ function restoreAggregateState(aggregateId, eventStore, AggregateType) {
 
 function signEventsContext(context) {
 	return events => {
-		events.forEach(event => event.context = context);
+		if (context)
+			events.forEach(event => event.context = context);
 		return events;
 	};
 }
@@ -52,15 +57,12 @@ module.exports = class AggregateCommandHandler extends Observer {
 		super();
 
 		this._eventStore = options.eventStore;
-		this._aggregateType = options.aggregateType;
-
-		if (options.commandBus) {
-			this.subscribe(options.commandBus);
-		}
+		this._aggregateTypeOrFactory = options.aggregateType;
+		this._handles = options.handles || options.aggregateType.handles;
 	}
 
 	subscribe(commandBus) {
-		return super.subscribe(commandBus, this._aggregateType.handles, this.execute);
+		return super.subscribe(commandBus, this._handles, this.execute);
 	}
 
 	/**
@@ -71,9 +73,8 @@ module.exports = class AggregateCommandHandler extends Observer {
 	execute(cmd, options) {
 		if (!cmd) throw new TypeError('cmd argument required');
 		if (!cmd.type) throw new TypeError('cmd.type argument required');
-		if (!cmd.context) throw new TypeError('cmd.context argument required');
 
-		return restoreAggregateState(cmd.aggregateId, this._eventStore, this.aggregateType)
+		return restoreAggregateState(cmd.aggregateId, this._eventStore, this._aggregateTypeOrFactory)
 			.then(aggregate => {
 				this.debug(`aggregate ${aggregate.id} (v${aggregate.version}) restored`);
 
