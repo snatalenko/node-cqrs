@@ -78,9 +78,9 @@ module.exports = class AggregateCommandHandler extends Observer {
 			.then(aggregate => {
 				this.debug(`aggregate ${aggregate.id} (v${aggregate.version}) restored`);
 
-				aggregate.handle(cmd);
-
-				return aggregate.changes;
+				return aggregate.handle(cmd)
+					.then(result =>
+						aggregate.changes);
 			})
 			.then(signEventsContext(cmd.context))
 			.then(commitAggregateEvents(this._eventStore))
