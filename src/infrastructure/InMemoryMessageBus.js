@@ -22,7 +22,7 @@ function passToHandler(handler, messageType, payload) {
  * Delivers synchronously, events - asynchronously.
  * @type {[type]}
  */
-module.exports = class InMemoryBus {
+module.exports = class InMemoryMessageBus {
 
 	constructor() {
 		this._handlers = {};

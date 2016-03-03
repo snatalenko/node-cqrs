@@ -1,12 +1,12 @@
 'use strict';
 
-const InMemoryBus = require('./infrastructure/InMemoryBus');
+const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
 const debug = require('debug')('cqrs-framework:CommandBus');
 
 module.exports = class CommandBus {
 
 	constructor(options) {
-		this._bus = options && options.bus || new InMemoryBus();
+		this._bus = options && options.messageBus || new InMemoryBus();
 	}
 
 	on(commandType, handler, context) {

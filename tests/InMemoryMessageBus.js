@@ -1,15 +1,15 @@
 'use strict';
 
 const cqrs = require('..');
-const InMemoryBus = cqrs.InMemoryBus;
+const InMemoryMessageBus = cqrs.InMemoryMessageBus;
 const chai = require('chai');
 const expect = chai.expect;
 chai.should();
 
-describe('InMemoryBus', function () {
+describe('InMemoryMessageBus', function () {
 
 	let bus;
-	beforeEach(() => bus = new InMemoryBus());
+	beforeEach(() => bus = new InMemoryMessageBus());
 
 	describe('on(messageType, handler)', function () {
 

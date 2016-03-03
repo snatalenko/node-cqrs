@@ -1,10 +1,10 @@
 'use strict';
 
-const InMemoryBus = require('./infrastructure/InMemoryBus');
+const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
 const debug = require('debug')('cqrs:EventStore');
 
 const _storage = Symbol('storage');
-const _bus = Symbol('bus');
+const _messageBus = Symbol('messageBus');
 const _validator = Symbol('validator');
 
 function debugAsync(messageFormat) {
@@ -78,13 +78,13 @@ module.exports = class EventStore {
 	}
 
 	get bus() {
-		return this[_bus];
+		return this[_messageBus];
 	}
 
 	set bus(bus) {
 		if (bus && typeof bus.publish !== 'function') throw new TypeError('bus.publish must be a Function');
 
-		this[_bus] = bus || undefined;
+		this[_messageBus] = bus || undefined;
 	}
 
 	get validator() {
@@ -102,7 +102,7 @@ module.exports = class EventStore {
 		if (!options.storage) throw new TypeError('options.storage argument required');
 
 		this.storage = options.storage;
-		this.bus = options.bus || new InMemoryBus();
+		this.bus = options.messageBus || new InMemoryBus();
 		this.validator = options.validator || validateEventDafault;
 	}
 

@@ -13,7 +13,7 @@ exports.AbstractCommandHandler = require('./src/AbstractCommandHandler');
 exports.AggregateCommandHandler = require('./src/AggregateCommandHandler');
 exports.SagaEventHandler = require('./src/SagaEventHandler');
 
-exports.InMemoryBus = require('./src/infrastructure/InMemoryBus');
+exports.InMemoryMessageBus = require('./src/infrastructure/InMemoryMessageBus');
 exports.InMemoryEventStorage = require('./src/infrastructure/InMemoryEventStorage');
 exports.InMemoryViewStorage = require('./src/infrastructure/InMemoryViewStorage');
 
