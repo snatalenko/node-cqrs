@@ -2,6 +2,7 @@
 
 const cqrs = require('..');
 const Container = cqrs.Container;
+const getClassDependencyNames = require('../src/di/getClassDependencyNames');
 const chai = require('chai');
 chai.should();
 
@@ -173,22 +174,28 @@ describe('Container', function () {
 		});
 	});
 
-	describe('getClassDependencyNames', () => {
+	describe('getClassDependencyNames private method', () => {
 
 		class MyClass {
 			constructor(service, options) {
 				this._someOption = options.someOption;
+				this._someOption2 = options.someOption; // second usage must be ignored
+				this._test = options.test;
 			}
 		}
 
+		let dependencies;
+		before(() => dependencies = getClassDependencyNames(MyClass));
+
 		it('extracts class constructor parameter names', () => {
-			const dependencies = Container.getClassDependencyNames(MyClass);
-			dependencies.should.have.deep.property('[0]', 'service');
+			dependencies.should.have.length(2);
+			dependencies[0].should.equal('service');
 		});
 
-		it('extracts parameter object property names', () => {
-			const dependencies = Container.getClassDependencyNames(MyClass);
-			dependencies.should.have.deep.property('[1][0]', 'someOption');
+		it('extracts unique parameter object property names', () => {
+			dependencies[1].should.have.length(2);
+			dependencies[1][0].should.equal('someOption');
+			dependencies[1][1].should.equal('test');
 		});
 	});
 });

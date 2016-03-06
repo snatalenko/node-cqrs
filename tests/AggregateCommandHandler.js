@@ -13,7 +13,9 @@ describe('AggregateCommandHandler', function () {
 
 	it('subscribes to commands handled by Aggregate');
 
-	it('upon new command restores aggregate from eventStore and passes the command to aggregate');
+	it('restores aggregate from event store');
 
-	it('after command processed by aggregate, commits produced events to eventStore');
+	it('passes command to aggregate');
+
+	it('commits produced events to eventStore');
 });

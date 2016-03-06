@@ -18,7 +18,12 @@ module.exports = class Aggregate extends AbstractAggregate {
 	}
 
 	doSomething(payload, context) {
-		this.emit('somethingDone', payload);
+		return new Promise((resolve, reject) => {
+			setTimeout(() => {
+				this.emit('somethingDone', payload);
+				resolve();
+			}, 100);
+		});
 	}
 
 	doSomethingWrong(payload, context) {

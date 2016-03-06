@@ -1,33 +1,18 @@
 'use strict';
 
 const getHandler = require('./utils/getHandler');
-const debug = require('./utils/debug');
-const _subscribedTo = Symbol('subscribedTo');
-
-function executeSafely(handler, context, errorHandler) {
-	return function ( /* ...args */ ) {
-		const args = Array.from(arguments);
-		try {
-			const result = handler.apply(context, args);
-			if (result instanceof Promise)
-				return result.catch(errorHandler);
-			else
-				return result;
-		} catch (err) {
-			return errorHandler(err);
-		}
-	};
-}
+const debug = require('debug');
 
 module.exports = class Observer {
 
-	// can be overridden to return a list of handler message types
+	// can be overridden to return an Array of handler message types
+	// e.g. ['somethingHappened', 'anotherHappened']
 	static get handles() {
 		return null;
 	}
 
 	constructor() {
-		this.debug = debug(this);
+		this.debug = debug('cqrs:' + Object.getPrototypeOf(this).constructor.name);
 	}
 
 	/**
@@ -47,31 +32,32 @@ module.exports = class Observer {
 			if (typeof masterHandler !== 'function') throw new TypeError('masterHandler argument, when provided, must be either a function or an observer method name');
 		}
 
-		messageTypes.forEach(messageType => {
+		return messageTypes.map(messageType => {
 			const handler = masterHandler || getHandler(this, messageType);
 			if (!handler)
 				throw new Error(`'${messageType}' handler is not defined or not a function`);
 
-			this.listenTo(observable, messageType, handler);
+			return this.listenTo(observable, messageType, handler);
 		});
 	}
 
+	/**
+	 * Subscribes to one message type emitted by observable instance
+	 * @param  {Object} observable	Observable instance
+	 * @param  {String} messageType Message type to listen to
+	 * @param  {Function} handler 	Message hanlder method, will be bound to the observer instance automatically
+	 * @return {undefined}			Whatever the observable.on method returns
+	 */
 	listenTo(observable, messageType, handler) {
 		if (typeof observable !== 'object' || !observable) throw new TypeError('observable argument must be an Object');
 		if (typeof observable.on !== 'function') throw new TypeError('observable.on must be a Function');
 		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty string');
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
 
-		observable.on(messageType, executeSafely(handler, this, err => {
-			this.debug(`'${messageType}' processing has failed`);
-			this.debug(err);
-			throw err;
-		}));
+		const r = observable.on(messageType, handler.bind(this));
 
-		this.debug('listens to \'%s\'', messageType);
+		this.debug(`listening to '${messageType}'`);
+
+		return r;
 	}
-
-	// debug( /* ...arguments */ ) {
-	// 	// console.log(...arguments);
-	// }
 };

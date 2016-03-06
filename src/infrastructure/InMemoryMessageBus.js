@@ -4,15 +4,7 @@ const debug = require('debug')('cqrs:InMemoryBus');
 
 function passToHandler(handler, messageType, payload) {
 	return new Promise(function (resolve, reject) {
-		debug(`executing '${messageType}' handler...`);
 		resolve(handler(payload));
-	}).then(result => {
-		debug(`'${messageType}' handler execution complete`);
-		return result;
-	}).catch(err => {
-		debug(`'${messageType}' handler execution failed`);
-		debug(err);
-		throw err;
 	});
 }
 

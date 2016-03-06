@@ -32,12 +32,11 @@ module.exports = class AbstractProjection extends Observer {
 
 		this.view = options && options.view || new InMemoryViewStorage();
 
-		validateHandlers(this);
+		this._handles = validateHandlers(this);
 	}
 
 	subscribe(eventStore) {
-		const messageTypes = Object.getPrototypeOf(this).constructor.handles;
-		super.subscribe(eventStore, messageTypes, this.project);
+		super.subscribe(eventStore, this._handles, this.project);
 	}
 
 	/**
@@ -49,12 +48,12 @@ module.exports = class AbstractProjection extends Observer {
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
-		return eventStore.getAllEvents(this.handles)
+		return eventStore.getAllEvents(this._handles)
 			.then(events => this.projectAll(events))
 			.then(r => {
 				this.debug('projection view restored: %d keys, %d bytes', Object.keys(this.view.state).length, sizeOf(this.view.state));
 			}, err => {
-				this.debug('projection view restore has failed');
+				this.debug('projection view restoring has failed');
 				this.debug(err);
 				throw err;
 			});
@@ -69,15 +68,15 @@ module.exports = class AbstractProjection extends Observer {
 
 		this.debug(`projecting ${event.type} (${event.aggregateId})...`);
 
-		return passToHandlerAsync(this, event.type, event.aggregateId, event.payload, event.context);
+		return passToHandlerAsync(this, event.type, event);
 	}
 
 	projectAll(events) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
 		return events.reduce((cur, event) =>
-			cur.then(() =>
-				this.project(event)), Promise.resolve());
+			cur.then(() => this.project(event)),
+			Promise.resolve());
 	}
 
 	createView(key, update) {

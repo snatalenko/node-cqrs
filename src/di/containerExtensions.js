@@ -1,7 +1,7 @@
 'use strict';
 
-const SagaEventHandler = require('./SagaEventHandler');
-const AggregateCommandHandler = require('./AggregateCommandHandler');
+const SagaEventHandler = require('../SagaEventHandler');
+const AggregateCommandHandler = require('../AggregateCommandHandler');
 
 exports.registerCommandHandler = function (typeOrFactory) {
 	return this.register(container => {

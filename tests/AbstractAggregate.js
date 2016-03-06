@@ -1,11 +1,13 @@
 'use strict';
 
-const expect = require('chai').expect;
+const chai = require('chai');
+const expect = chai.expect;
 const AbstractAggregate = require('../index').AbstractAggregate;
 const Aggregate = require('./mocks/Aggregate');
 const StatelessAggregate = require('./mocks/StatelessAggregate');;
-const blankContext = require('./mocks/blankContext');;
+const blankContext = require('./mocks/blankContext');
 
+chai.should();
 
 describe('AbstractAggregate', function () {
 
@@ -55,11 +57,12 @@ describe('AbstractAggregate', function () {
 			expect(agg.changes).to.not.equal(agg.changes);
 			expect(() => agg.changes = []).to.throw(TypeError);
 
-			agg.doSomething({}, blankContext);
+			return agg.doSomething({}, blankContext).then(() => {
 
-			expect(agg).to.have.deep.property('changes[0].type', 'somethingDone');
-			expect(agg).to.have.deep.property('changes[0].aggregateId', 1);
-			expect(agg).to.have.deep.property('changes[0].aggregateVersion', 0);
+				expect(agg).to.have.deep.property('changes[0].type', 'somethingDone');
+				expect(agg).to.have.deep.property('changes[0].aggregateId', 1);
+				expect(agg).to.have.deep.property('changes[0].aggregateVersion', 0);
+			});
 		});
 	});
 
@@ -118,7 +121,14 @@ describe('AbstractAggregate', function () {
 	describe('handle(command)', () => {
 
 		it('exists', () => agg.should.respondTo('handle'));
-		it('passes command to a handler declared within aggregate');
+
+		it('passes command to a handler declared within aggregate, returns a Promise', () => {
+
+			return agg.handle({ type: 'doSomething' }).then(() => {
+
+				agg.should.have.deep.property('changes[0].type', 'somethingDone');
+			});
+		});
 	});
 
 	describe('mutate(event)', () => {

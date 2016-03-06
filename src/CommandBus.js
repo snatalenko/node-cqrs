@@ -1,7 +1,7 @@
 'use strict';
 
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
-const debug = require('debug')('cqrs-framework:CommandBus');
+const debug = require('debug')('cqrs:CommandBus');
 
 module.exports = class CommandBus {
 
@@ -35,8 +35,15 @@ module.exports = class CommandBus {
 		if (!command) throw new TypeError('command argument required');
 		if (!command.type) throw new TypeError('command.type argument required');
 
-		debug(`sending ${command.type}...`);
+		debug(`sending '${command.type}' command...`);
 
-		return this._bus.send(command);
+		return this._bus.send(command).then(r => {
+			debug(`'${command.type}' processed`);
+			return r;
+		}, err => {
+			debug(`'${command.type}' processing has failed`);
+			debug(err);
+			throw err;
+		});
 	}
 };

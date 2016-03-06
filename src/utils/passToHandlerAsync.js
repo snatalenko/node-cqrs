@@ -2,7 +2,7 @@
 
 const getHandler = require('./getHandler');
 
-module.exports = function passToHandlerAsync(context, messageType) {
+module.exports = function passToHandlerAsync(context, messageType /*, ...args */ ) {
 	if (!context) throw new TypeError('context argument required');
 	if (!messageType) throw new TypeError('messageType argument required');
 

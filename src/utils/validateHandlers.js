@@ -8,8 +8,9 @@ module.exports = function validateHandlers(instance) {
 	const messageTypes = Object.getPrototypeOf(instance).constructor.handles;
 	if (!Array.isArray(messageTypes)) throw new TypeError('handles getter must return an Array');
 
-	messageTypes.forEach(type => {
+	return messageTypes.map(type => {
 		if (!getHandler(instance, type))
 			throw new Error(`'${type}' handler is not defined or not a function`);
+		return type;
 	});
 };

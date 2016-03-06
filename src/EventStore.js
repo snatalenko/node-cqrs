@@ -182,20 +182,46 @@ module.exports = class EventStore {
 		return this.bus.on(messageType, handler);
 	}
 
-	once(messageType, handler, filter) {
-		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
-		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
-		if (typeof filter !== 'function') throw new TypeError('filter argument must be a Function');
+	/**
+	 * Creates one-time subscription for one or multiple events that match a filter
+	 * @param  {Array} 		messageTypes 	Array of event type to subscribe to
+	 * @param  {Function} 	handler      	Optional handler to execute for a first event received
+	 * @param  {Function} 	filter       	Optional filter to apply before executing a handler
+	 * @return {Promise}              		Resolves to first event that passes filter
+	 */
+	once(messageTypes, handler, filter) {
+		if (!Array.isArray(messageTypes)) messageTypes = [messageTypes];
+		if (messageTypes.filter(t => !t || typeof t !== 'string').length)
+			throw new TypeError('messageType argument must be either a non-empty String or an Array of non-empty Strings');
+		if (handler && typeof handler !== 'function')
+			throw new TypeError('handler argument, when specified, must be a Function');
+		if (filter && typeof filter !== 'function')
+			throw new TypeError('filter argument, when specified, must be a Function');
 
-		const bus = this.bus;
+		const messageBus = this.bus;
 
-		function filteredHandler(event) {
-			if (filter(...arguments)) {
-				bus.off(messageType, filteredHandler);
-				handler(...arguments);
+		return new Promise(function (resolve, reject) {
+
+			debug(`setting up one-time ${filter ? 'filtered ' : ''}subscription to '${messageTypes.join(', ')}'...`);
+
+			function filteredHandler(event) {
+				if (!filter || filter(event)) {
+
+					debug(`'${event.type}' received, one-time subscription removed`);
+
+					for (const messageType of messageTypes) {
+						messageBus.off(messageType, filteredHandler);
+					}
+					if (handler) {
+						handler(event);
+					}
+					resolve(event);
+				}
 			}
-		}
 
-		return this.on(messageType, filteredHandler);
+			for (const messageType of messageTypes) {
+				messageBus.on(messageType, filteredHandler);
+			}
+		});
 	}
 };

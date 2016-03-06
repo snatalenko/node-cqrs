@@ -1,11 +1,11 @@
 'use strict';
 
-const KEY_STATE = Symbol();
+const _state = Symbol('state');
 
 module.exports = class InMemoryViewStorage {
 
 	get state() {
-		return this[KEY_STATE];
+		return this[_state];
 	}
 
 	get snapshot() {
@@ -13,7 +13,7 @@ module.exports = class InMemoryViewStorage {
 	}
 
 	constructor() {
-		this[KEY_STATE] = {};
+		this[_state] = {};
 
 		// explicitly bind functions to this object for easier usage in Promises
 		this.get = this.get.bind(this);

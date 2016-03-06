@@ -2,10 +2,10 @@
 
 const validateHandlers = require('./utils/validateHandlers');
 const passToHandlerAsync = require('./utils/passToHandlerAsync');
+const getHandler = require('./utils/getHandler');
 const _id = Symbol('id');
 const _version = Symbol('version');
 const _changes = Symbol('changes');
-const _state = Symbol('state');
 
 module.exports = class AbstractAggregate {
 
@@ -25,12 +25,8 @@ module.exports = class AbstractAggregate {
 		return this[_changes].slice(0);
 	}
 
-	get state() {
-		return this[_state];
-	}
-
 	get snapshot() {
-		return JSON.parse(JSON.stringify(this.state));
+		return this.state ? JSON.parse(JSON.stringify(this.state)) : null;
 	}
 
 	constructor(options) {
@@ -41,13 +37,13 @@ module.exports = class AbstractAggregate {
 		this[_id] = options.id;
 		this[_version] = 0;
 		this[_changes] = [];
-		this[_state] = options.state || undefined;
 
 		validateHandlers(this);
 
-		if (options.events) {
+		if (options.state)
+			this.state = options.state;
+		if (options.events)
 			options.events.forEach(e => this.mutate(e));
-		}
 	}
 
 	handle(command) {
@@ -60,7 +56,10 @@ module.exports = class AbstractAggregate {
 	/** Mutates aggregate state and increments aggregate version */
 	mutate(event) {
 		if (this.state) {
-			this.state.mutate(event);
+			const handler = this.state.mutate || getHandler(this.state, event.type);
+			if (handler) {
+				handler.call(this.state, event);
+			}
 		}
 		this[_version]++;
 	}

@@ -7,7 +7,6 @@ require('./EventStore');
 require('./Container');
 
 require('./AbstractAggregate');
-require('./AbstractCommandHandler');
 require('./AggregateCommandHandler');
 
 require('./AbstractSaga');
