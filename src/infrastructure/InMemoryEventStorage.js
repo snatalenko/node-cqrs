@@ -18,12 +18,12 @@ module.exports = class InMemoryEventStorage {
 
 	getAggregateEvents(aggregateId) {
 		return this._events.then(events =>
-			events.filter(e => e.aggregateId === aggregateId));
+			events.filter(e => e.aggregateId == aggregateId));
 	}
 
 	getSagaEvents(sagaId) {
 		return this._events.then(events =>
-			events.filter(e => e.sagaId === sagaId));
+			events.filter(e => e.sagaId == sagaId));
 	}
 
 	getEvents(eventTypes) {
