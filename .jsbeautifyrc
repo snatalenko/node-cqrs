@@ -1,0 +1,15 @@
+{
+	"js": {
+		"allowed_file_extensions": ["js", "json", "jshintrc", "jsbeautifyrc"],
+		"brace_style": "collapse-preserve-inline",
+		"indent_with_tabs": true,
+		"preserve_newlines": true,
+		"max_preserve_newlines": 4,
+		"space_in_paren": false,
+		"jslint_happy": true,
+		"e4x": true,
+		"keep_array_indentation": false,
+		"keep_function_indentation": true,
+		"space_after_anon_function": true
+	}
+}

@@ -23,3 +23,15 @@ spaces_around_operators = true
 space_after_control_statements = true
 space_after_anonymous_functions = false
 spaces_in_brackets = false
+
+[Dockerfile]
+indent_style = space
+indent_size = 4
+
+[*.yml]
+indent_style = space
+indent_size = 2
+
+[{*package.json}]
+indent_style = space
+indent_size = 2
