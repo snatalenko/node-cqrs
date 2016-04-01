@@ -1,5 +1,5 @@
-cqrs-framework
-==============
+NodeJS CQRS Backbone
+====================
 
 This library provides a set of backbone classes for CQRS app development.
 
