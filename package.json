@@ -1,14 +1,18 @@
 {
-  "name": "cqrs-framework",
+  "name": "node-cqrs",
   "version": "0.6.0",
-  "description": "Basic ES6 CQRS framework",
+  "description": "Basic ES6 backbone for CQRS app development",
   "main": "index.js",
+  "engines": {
+    "node": ">=5.4.0"
+  },
   "scripts": {
-    "test": "mocha -R spec --watch ./tests/index.js"
+    "test": "mocha -R list ./tests/index.js",
+    "debug": "mocha -R spec --watch ./tests/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@bitbucket.org/stanislav_natalenko/cqrs-framework.git"
+    "url": "git+ssh://git@bitbucket.org/cqrs/node-cqrs.git"
   },
   "keywords": [
     "CQRS",
@@ -17,7 +21,7 @@
   ],
   "author": "@stas_natalenko",
   "license": "MIT",
-  "homepage": "https://bitbucket.org/stanislav_natalenko/cqrs-framework#readme",
+  "homepage": "https://bitbucket.org/cqrs/node-cqrs",
   "devDependencies": {
     "chai": "^3.2.0",
     "mocha": "^2.3.0"

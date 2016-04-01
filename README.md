@@ -6,7 +6,7 @@ This library provides a set of backbone classes for CQRS app development.
 ## Usage
 
 ```bash
-npm i cqrs-framework --save
+npm i node-cqrs --save
 ```
 
 ### AbstractAggregate
