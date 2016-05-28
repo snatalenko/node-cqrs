@@ -1,58 +1,18 @@
 NodeJS CQRS Backbone
 ====================
 
-This library provides a set of backbone classes for CQRS app development.
+A set of backbone classes for CQRS app development
 
 ## Usage
 
 ```bash
-npm i node-cqrs --save
+npm install git+ssh://git@bitbucket.org/cqrs/node-cqrs.git --save
 ```
-
-### AbstractAggregate
-
-```javascript
-```
-
-### AbstractSaga
-
-```javascript
-```
-
-### AbstractProjection
-
-```javascript
-```
-
-### AggregateCommandHandler
-
-```javascript
-```
-
-### SagaEventHandler
-
-```javascript
-```
-
-### EventStore
-
-```javascript
-```
-
-### CommandBus
-
-```javascript
-```
-
-### Container
-
-```javascript
-```
-
 
 ## Contribuion
 
 Use editorconfig, eslint, jsbeautifyrc
+
 
 ### Conventions
 
