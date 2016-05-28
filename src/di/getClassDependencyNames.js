@@ -1,7 +1,7 @@
 'use strict';
 
 const PARAMETER_OBJECT_NAME = 'options';
-const RX_CONSTRUCTOR = /constructor.?\(([^\)]*)\).?\{([^}]*)\}/;
+const RX_CONSTRUCTOR = /(?:constructor|^function.+\w+).?\(([^\)]*)\).?\{((?:[^{}]*|{[^{}]*})+)\}/;
 const RX_PARAMETER_OBJECT = new RegExp(PARAMETER_OBJECT_NAME + '\\.([\\w]+)', 'g');
 
 function distinct(array) {
