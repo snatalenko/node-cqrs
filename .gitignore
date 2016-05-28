@@ -20,8 +20,10 @@ local.properties
 .c9/
 .vs/
 .idea/
+.vscode/
 data/
 mongod
+*.sublime-project
 *.sublime-workspace
 
 # OS-specific
