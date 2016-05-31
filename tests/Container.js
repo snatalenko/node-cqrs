@@ -4,6 +4,7 @@ const cqrs = require('..');
 const Container = cqrs.Container;
 const getClassDependencyNames = require('../src/di/getClassDependencyNames');
 const chai = require('chai');
+const expect = chai.expect;
 chai.should();
 
 describe('Container', function () {
@@ -42,7 +43,7 @@ describe('Container', function () {
 			static get handles() {
 				return ['doSomething'];
 			}
-			_doSomething() {}
+			_doSomething() { }
 		}
 
 		it('registers a command handler factory', () => {
@@ -67,7 +68,7 @@ describe('Container', function () {
 			static get handles() {
 				return ['somethingHappened'];
 			}
-			_somethingHappened() {}
+			_somethingHappened() { }
 		}
 
 		it('registers an event receptor factory', () => {
@@ -103,7 +104,7 @@ describe('Container', function () {
 
 			let dependencyMet;
 
-			class SomeService {}
+			class SomeService { }
 
 			class MyAggregate extends cqrs.AbstractAggregate {
 				static get handles() {
@@ -113,7 +114,7 @@ describe('Container', function () {
 					super(options);
 					dependencyMet = (options.aggregateDependency instanceof SomeService);
 				}
-				_doSomething(payload, context) {}
+				_doSomething(payload, context) { }
 			}
 
 			c.registerAggregate(MyAggregate);
@@ -184,18 +185,57 @@ describe('Container', function () {
 			}
 		}
 
-		let dependencies;
-		before(() => dependencies = getClassDependencyNames(MyClass));
-
-		it('extracts class constructor parameter names', () => {
+		it('extracts ES6 class constructor parameter names', () => {
+			const dependencies = getClassDependencyNames(MyClass);
 			dependencies.should.have.length(2);
 			dependencies[0].should.equal('service');
 		});
 
-		it('extracts unique parameter object property names', () => {
+		it('extracts ES6 unique parameter object property names', () => {
+			const dependencies = getClassDependencyNames(MyClass);
 			dependencies[1].should.have.length(2);
 			dependencies[1][0].should.equal('someOption');
 			dependencies[1][1].should.equal('test');
+		});
+
+
+		it('extracts ES5 class constructor parameter names', () => {
+
+			// declared as const Name = function (...)
+
+			const AnotherClass = function (service, options) {
+				this._someOption = options.someOption;
+				this._someOption2 = options.someOption; // second usage must be ignored
+				this._test = options.test;
+			};
+			const deps1 = getClassDependencyNames(AnotherClass);
+			expect(deps1).to.exist;
+			deps1.should.have.length(2);
+			deps1[0].should.equal('service');
+
+			// declared as const Name = function Name (...)
+
+			const ThirdClass = function ThirdClass(service, options) {
+				this._someOption = options.someOption;
+				this._someOption2 = options.someOption; // second usage must be ignored
+				this._test = options.test;
+			};
+			const deps2 = getClassDependencyNames(ThirdClass);
+			expect(deps2).to.exist;
+			deps2.should.have.length(2);
+			deps2[0].should.equal('service');
+
+			// declared as function Name(...)
+
+			function FourthClass(service, options) {
+				this._someOption = options.someOption;
+				this._someOption2 = options.someOption; // second usage must be ignored
+				this._test = options.test;
+			}
+			const deps3 = getClassDependencyNames(FourthClass);
+			expect(deps3).to.exist;
+			deps3.should.have.length(2);
+			deps3[0].should.equal('service');
 		});
 	});
 });
