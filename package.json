@@ -8,7 +8,9 @@
   },
   "scripts": {
     "test": "mocha -R list ./tests/index.js",
-    "debug": "mocha -R spec --watch ./tests/index.js"
+    "test-debug": "mocha -R spec --watch ./tests/index.js",
+    "release-patch": "npm version patch && git push --all && git push --tags",
+    "release-minor": "npm version minor && git push --all && git push --tags"
   },
   "repository": {
     "type": "git",
