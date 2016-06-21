@@ -36,9 +36,11 @@ module.exports = class InMemoryViewStorage {
 
 		if (typeof update === 'function') {
 			update(this.state[key] = {});
-		} else if (typeof update === 'object') {
+		}
+		else if (typeof update === 'object') {
 			this.state[key] = update;
-		} else {
+		}
+		else {
 			throw new TypeError('update argument must be either a function or an object');
 		}
 	}
@@ -57,7 +59,8 @@ module.exports = class InMemoryViewStorage {
 
 		if (!(key in this.state)) {
 			this.create(key, update);
-		} else {
+		}
+		else {
 			this.update(key, update);
 		}
 	}

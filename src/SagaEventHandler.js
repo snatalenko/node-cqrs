@@ -15,7 +15,8 @@ function restoreSagaState(sagaId, eventStore, sagaTypeOrFactory, triggeredBy) {
 			id: sagaId,
 			events: events
 		}));
-	} else {
+	}
+	else {
 		return eventStore.getNewId().then(sagaId => sagaFactory({
 			id: sagaId
 		}));

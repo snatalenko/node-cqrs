@@ -17,7 +17,8 @@ function restoreAggregateState(aggregateId, eventStore, aggregateTypeOrFactory) 
 			id: aggregateId,
 			events: events
 		}));
-	} else {
+	}
+	else {
 		return eventStore.getNewId().then(aggregateId => aggregateFactory({
 			id: aggregateId
 		}));
@@ -85,13 +86,14 @@ module.exports = class AggregateCommandHandler extends Observer {
 			.then(signEventsContext(cmd.context))
 			.then(commitAggregateEvents(this._eventStore))
 			.then(events => {
-				this.debug(`command '${cmd.type}' processed, ${events.length === 1? '1 event' : events.length + ' events'} produced`);
+				this.debug(`command '${cmd.type}' processed, ${events.length === 1 ? '1 event' : events.length + ' events'} produced`);
 				return events;
 			}, err => {
 				const currentIteration = options && options.iteration || 0;
 				if (isConcurrencyError(err) && currentIteration < COMMIT_RETRIES_LIMIT) {
 					return this.execute(cmd, { iteration: currentIteration + 1 });
-				} else {
+				}
+				else {
 					throw err;
 				}
 			});

@@ -42,7 +42,8 @@ module.exports = function getClassDependencyNames(type) {
 		const parentType = type.__proto__;
 		if (parentType && parentType.prototype) {
 			return getClassDependencyNames(parentType);
-		} else {
+		}
+		else {
 			return null;
 		}
 	}
@@ -51,7 +52,8 @@ module.exports = function getClassDependencyNames(type) {
 	return parameters.map(parameterName => {
 		if (parameterName === PARAMETER_OBJECT_NAME) {
 			return distinct(Array.from(getParameterObjectPropertyNames(match[2])));
-		} else {
+		}
+		else {
 			return parameterName;
 		}
 	});

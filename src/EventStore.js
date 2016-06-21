@@ -11,7 +11,7 @@ function debugAsync(messageFormat) {
 	return events => {
 		debug(messageFormat, !Array.isArray(events) ? events :
 			events.length === 1 ? '\'' + events[0].type + '\'' :
-			events.length + ' events');
+				events.length + ' events');
 		return events;
 	};
 }
@@ -145,10 +145,12 @@ module.exports = class EventStore {
 				if (options && options.except) {
 					if (Array.isArray(options.except)) {
 						return events.filter(e => options.except.indexOf(e.id || e._id) === -1);
-					} else {
+					}
+					else {
 						return events.filter(e => (e.id || e._id) !== options.except);
 					}
-				} else {
+				}
+				else {
 					return events;
 				}
 			})
