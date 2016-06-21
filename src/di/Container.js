@@ -2,6 +2,7 @@
 
 const debug = require('debug')('cqrs:Container');
 const getClassDependencyNames = require('./getClassDependencyNames');
+const isClass = require('./isClass');
 const _factories = Symbol('factories');
 const _instances = Symbol('instances');
 
@@ -15,31 +16,35 @@ function createInstance(typeOrFactory, container, additionalOptions) {
 	if (additionalOptions && !isObject(additionalOptions))
 		throw new TypeError('additionalOptions argument, when specified, must be an Object');
 
-	if (typeOrFactory.prototype) {
+	if (isClass(typeOrFactory)) {
 
 		const dependencies = getClassDependencyNames(typeOrFactory);
 
 		if (!dependencies) {
 			debug(`${typeOrFactory.name || 'instance'} has no constructor`);
-		} else if (!dependencies.length) {
+		}
+		else if (!dependencies.length) {
 			debug(`${typeOrFactory.name || 'instance'} has no dependencies`);
-		} else {
+		}
+		else {
 			debug(`${typeOrFactory.name || 'instance'} dependencies: ${dependencies}`);
 		}
 
 		const parameters = dependencies && dependencies.map(dependency => {
 			if (typeof dependency === 'string') {
 				return container[dependency];
-			} else if (Array.isArray(dependency)) {
+			}
+			else if (Array.isArray(dependency)) {
 				const options = Object.assign({}, additionalOptions);
 				dependency.forEach(key => options[key] || (options[key] = container[key]));
 				return options;
 			}
 		});
 
-		return new(Function.prototype.bind.apply(typeOrFactory, [null].concat(parameters)));
+		return new (Function.prototype.bind.apply(typeOrFactory, [null].concat(parameters)));
 
-	} else {
+	}
+	else {
 		return typeOrFactory(container);
 	}
 }
@@ -78,7 +83,8 @@ module.exports = class Container {
 			});
 
 			this.factories.push(container => container[exposeAs]);
-		} else {
+		}
+		else {
 			factory.unexposed = true;
 			this.factories.push(factory);
 		}

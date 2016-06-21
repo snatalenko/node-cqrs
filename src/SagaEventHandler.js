@@ -1,12 +1,13 @@
 'use strict';
 
 const Observer = require('./Observer');
+const isClass = require('./di/isClass');
 
 function restoreSagaState(sagaId, eventStore, sagaTypeOrFactory, triggeredBy) {
 	if (!eventStore) throw new TypeError('eventStore argument required');
 	if (!sagaTypeOrFactory) throw new TypeError('sagaTypeOrFactory argument required');
 
-	const sagaFactory = sagaTypeOrFactory.prototype ?
+	const sagaFactory = isClass(sagaTypeOrFactory) ?
 		options => new sagaTypeOrFactory(options) :
 		sagaTypeOrFactory;
 

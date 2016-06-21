@@ -2,6 +2,7 @@
 
 const SagaEventHandler = require('../SagaEventHandler');
 const AggregateCommandHandler = require('../AggregateCommandHandler');
+const isClass = require('./isClass');
 
 exports.registerCommandHandler = function (typeOrFactory) {
 	return this.register(container => {
@@ -29,7 +30,7 @@ exports.registerProjection = function (typeOrFactory, exposedViewName) {
 };
 
 exports.registerAggregate = function (aggregateType) {
-	if (typeof aggregateType !== 'function' || !aggregateType.prototype)
+	if (!isClass(aggregateType))
 		throw new TypeError('aggregateType argument must be a constructor function');
 
 	return this.registerCommandHandler(container => new AggregateCommandHandler({
@@ -40,7 +41,7 @@ exports.registerAggregate = function (aggregateType) {
 };
 
 exports.registerSaga = function (sagaType) {
-	if (typeof sagaType !== 'function' || !sagaType.prototype)
+	if (!isClass(sagaType))
 		throw new TypeError('sagaType argument must be a constructor function');
 
 	return this.registerEventReceptor(container => new SagaEventHandler({
