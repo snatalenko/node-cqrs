@@ -25,16 +25,18 @@ function* getParameterObjectPropertyNames(ctorBody) {
 /**
  * Retrieves constructor parameter names from a class descriptor.
  * If parameter is a paramenter object, its property names will be returned as inner array.
+ *
  * @example
  * 	class X { constructor(options, service) { this._a = options.a; } }
- *  getClassDependencyNames(X) === [["a"], "service"]
+ *  getClassDependencyNames(X) // => [["a"], "service"]
+ *
  * @param  {Function} type Prototype function
- * @return {Array}         An array with dependency names. In case of parameter object,
+ * @return {string[]}      An array with dependency names. In case of parameter object,
  *                         dependency will be an array too (e.g. [["someService", "anotherService"]])
  */
 module.exports = function getClassDependencyNames(type) {
 	if (!type) throw new TypeError('type argument required');
-	if (!type.prototype) throw new TypeError('type argument must be a Class: ' + type.toString());
+	if (!type.prototype) throw new TypeError('type argument must be a prototype function: ' + type.toString());
 
 	const classBody = type.toString();
 	const match = classBody.match(RX_CONSTRUCTOR);

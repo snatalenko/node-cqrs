@@ -23,7 +23,7 @@ describe('Container', function () {
 		it('registers type or factory in the container', () => {
 
 			c.factories.should.have.length(3);
-			c.instances.should.be.empty;
+			c.instances.should.have.property('container');
 		});
 
 		it('creates getter that initializes instance on first access, along with its dependencies', () => {

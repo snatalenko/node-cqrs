@@ -61,12 +61,16 @@ module.exports = class Container {
 		return this[_instances] || (this[_instances] = {});
 	}
 
+	constructor() {
+		this.registerInstance(this, 'container');
+	}
+
 	/**
 	 * Registers a type or factory in the container
 	 * @param  {Function} 	typeOrFactory	Either a constructor function or a component factor
 	 * @param  {String} 	exposeAs      	Optional component name to use for instance exposing on the container
 	 * @param  {Function} 	exposeMap     	Optional Instance -> Object-to-Expose mapping
-	 * @return {undefined}
+	 * @return {void}
 	 */
 	register(typeOrFactory, exposeAs, exposeMap) {
 		if (typeof typeOrFactory !== 'function') throw new TypeError('typeOrFactory argument must be a Function');
