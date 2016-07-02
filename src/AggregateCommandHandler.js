@@ -3,25 +3,31 @@
 const Observer = require('./Observer');
 const ConcurrencyError = require('./errors/ConcurrencyError');
 const COMMIT_RETRIES_LIMIT = 5;
+const isClass = require('./di/isClass');
 
-function restoreAggregateState(aggregateId, eventStore, aggregateTypeOrFactory) {
+/**
+ * Restores aggregate state from the event store
+ *
+ * @param {string|object} id - Aggregate ID
+ * @param {object} eventStore
+ * @param {function} aggregateTypeOrFactory
+ * @returns {PromiseLike<object>}
+ */
+function restoreAggregateState(id, eventStore, aggregateTypeOrFactory) {
 	if (!eventStore) throw new TypeError('eventStore argument required');
 	if (!aggregateTypeOrFactory) throw new TypeError('aggregateTypeOrFactory argument required');
 
-	const aggregateFactory = aggregateTypeOrFactory.prototype ?
+	const aggregateFactory = isClass(aggregateTypeOrFactory) ?
 		options => new aggregateTypeOrFactory(options) :
 		aggregateTypeOrFactory;
 
-	if (aggregateId) {
-		return eventStore.getAggregateEvents(aggregateId).then(events => aggregateFactory({
-			id: aggregateId,
-			events: events
-		}));
+	if (id) {
+		return eventStore.getAggregateEvents(id)
+			.then(events => aggregateFactory({ id, events }));
 	}
 	else {
-		return eventStore.getNewId().then(aggregateId => aggregateFactory({
-			id: aggregateId
-		}));
+		return eventStore.getNewId()
+			.then(id => aggregateFactory({ id }));
 	}
 }
 
