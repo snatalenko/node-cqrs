@@ -24,7 +24,7 @@ module.exports = class AbstractSaga {
 		return this[_messages].slice();
 	}
 
-	constructor(options, self) {
+	constructor(options) {
 		if (!options) throw new TypeError('options argument required');
 		if (!options.id) throw new TypeError('options.id argument required');
 
