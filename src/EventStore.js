@@ -55,7 +55,6 @@ function publishEventsSync(messageBus) {
 function publishEventsAsync(messageBus) {
 	return events => {
 		setImmediate(publishEventsSync(messageBus), events);
-		// publishEventsSync(messageBus)(events);
 		return events;
 	};
 }
@@ -104,6 +103,7 @@ module.exports = class EventStore {
 		this.storage = options.storage;
 		this.bus = options.messageBus || new InMemoryBus();
 		this.validator = options.validator || validateEventDafault;
+		this.publishAsync = 'publishAsync' in options ? !!options.publishAsync : true;
 	}
 
 	getNewId() {
@@ -172,7 +172,7 @@ module.exports = class EventStore {
 			.then(debugAsync('comitting %s...'))
 			.then(commitEventsToStorage(this.storage))
 			.then(debugAsync('%s committed successfully, publishing asynchronously...'))
-			.then(publishEventsAsync(this.bus))
+			.then(this.publishAsync ? publishEventsAsync(this.bus) : publishEventsSync(this.bus))
 			.catch(err => {
 				debug('events commit has failed:');
 				debug(err);
