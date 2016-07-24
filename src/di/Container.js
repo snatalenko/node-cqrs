@@ -81,6 +81,7 @@ module.exports = class Container {
 
 		if (exposeAs) {
 			Object.defineProperty(this, exposeAs, {
+				configurable: true,
 				get: function () {
 					return this.instances[exposeAs] || (this.instances[exposeAs] = exposeMap ? exposeMap(factory(this)) : factory(this));
 				}
