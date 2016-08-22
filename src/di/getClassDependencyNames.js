@@ -1,7 +1,7 @@
 'use strict';
 
 const PARAMETER_OBJECT_NAME = 'options';
-const RX_CONSTRUCTOR = /(?:constructor|^function(?:.+\w+)?).?\(([^\)]*)\).?\{((?:[^{}]*|{[^{}]*})+)\}/;
+const RX_CONSTRUCTOR = /(?:constructor|^function(?:.+\w+)?)\s?\(([^\)]*)\)\s?{/;
 const RX_PARAMETER_OBJECT = new RegExp(PARAMETER_OBJECT_NAME + '\\.([\\w]+)', 'g');
 
 function distinct(array) {
@@ -10,11 +10,26 @@ function distinct(array) {
 
 /**
  * Retrieves parameter object names mentioned in constructor body (e.g. "options.someService")
- * @param  {String} ctorBody Constructor body
- * @return {Array}           A list of object names (e.g. ["someService"])
+ * @param {String} classBody - either ES6 class or ES5 constructor function body
+ * @param {Number} offset - where class/function body starts
+ * @return {Array} - a list of object names (e.g. ["someService"])
  */
-function* getParameterObjectPropertyNames(ctorBody) {
-	if (typeof ctorBody !== 'string' || !ctorBody.length) throw new TypeError('ctorBody argument must be a non-empty String');
+function* getParameterObjectPropertyNames(classBody, offset) {
+	if (typeof classBody !== 'string' || !classBody.length) throw new TypeError('classBody argument must be a non-empty String');
+	if (typeof offset !== 'number') throw new TypeError('offset argument must be a Number');
+
+	let ctorBody;
+	for (let i = offset, openedBrackets = 1; i < classBody.length; i++) {
+		if (classBody[i] === '{') {
+			openedBrackets++;
+		}
+		else if (classBody[i] === '}' && --openedBrackets === 0) {
+			ctorBody = classBody.substr(offset, i - offset - 1);
+			break;
+		}
+	}
+	if (!ctorBody)
+		throw new Error('constructor body could not be found, please do not use commented brackets in the constructor body');
 
 	let match;
 	while (match = RX_PARAMETER_OBJECT.exec(ctorBody)) {
@@ -53,7 +68,8 @@ module.exports = function getClassDependencyNames(type) {
 	const parameters = match[1].split(',').map(n => n.trim()).filter(n => n);
 	return parameters.map(parameterName => {
 		if (parameterName === PARAMETER_OBJECT_NAME) {
-			return distinct(Array.from(getParameterObjectPropertyNames(match[2])));
+			const constructorBodyOffset = match.index + match[0].length;
+			return distinct(Array.from(getParameterObjectPropertyNames(classBody, constructorBodyOffset)));
 		}
 		else {
 			return parameterName;
