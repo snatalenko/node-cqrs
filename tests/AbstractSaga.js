@@ -4,19 +4,9 @@ const cqrs = require('..');
 const AbstractSaga = cqrs.AbstractSaga;
 const chai = require('chai');
 const expect = chai.expect;
+const Saga = require('./mocks/Saga');
 
 describe('AbstractSaga', function () {
-
-	class Saga extends AbstractSaga {
-
-		static get handles() {
-			return ['somethingHappened'];
-		}
-
-		_somethingHappened(event) {
-			this.enqueue('doSomething', { foo: 'bar' });
-		}
-	}
 
 	let s;
 

@@ -2,18 +2,30 @@
 
 const cqrs = require('..');
 const SagaEventHandler = cqrs.SagaEventHandler;
+const Saga = require('./mocks/Saga');
 const chai = require('chai');
 const expect = chai.expect;
 
-describe('SagaEventHandler', function () {
+describe.only('SagaEventHandler', function () {
 
 	it('exists', () => {
 		expect(SagaEventHandler).to.be.a('Function');
 	});
 
-	it('subscribes to events handled by Saga');
+	it('restores saga from eventStore, passes in received event and sends emitted commands', done => {
 
-	it('upon new event restores saga from eventStore and passes the event to saga');
+		const domain = new cqrs.Container();
+		domain.register(cqrs.InMemoryEventStorage, 'storage');
+		domain.register(cqrs.EventStore, 'eventStore');
+		domain.register(cqrs.CommandBus, 'commandBus');
+		domain.registerSaga(Saga);
+		domain.createAllInstances();
 
-	it('after event processed by saga, sends produced commands to commandBus');
+		domain.commandBus.on('doSomething', command => done());
+
+		domain.eventStore.commit([{
+			type: 'somethingHappened',
+			sagaId: 1
+		}]);
+	});
 });

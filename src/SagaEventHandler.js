@@ -2,42 +2,7 @@
 
 const Observer = require('./Observer');
 const isClass = require('./di/isClass');
-
-function restoreSagaState(sagaId, eventStore, sagaTypeOrFactory, triggeredBy) {
-	if (!eventStore) throw new TypeError('eventStore argument required');
-	if (!sagaTypeOrFactory) throw new TypeError('sagaTypeOrFactory argument required');
-
-	const sagaFactory = isClass(sagaTypeOrFactory) ?
-		options => new sagaTypeOrFactory(options) :
-		sagaTypeOrFactory;
-
-	if (sagaId) {
-		return eventStore.getSagaEvents(sagaId, { except: triggeredBy }).then(events => sagaFactory({
-			id: sagaId,
-			events: events
-		}));
-	}
-	else {
-		return eventStore.getNewId().then(sagaId => sagaFactory({
-			id: sagaId
-		}));
-	}
-}
-
-function signCommandsContext(context) {
-	return commands => {
-		commands.forEach(command => command.context = context);
-		return commands;
-	};
-}
-
-function sendCommands(commandBus) {
-	if (!commandBus) throw new TypeError('commandBus argument required');
-
-	return commands => Promise.all(
-		commands.map(command =>
-			commandBus.sendRaw(command)));
-}
+const co = require('co');
 
 /**
  * Listens to Saga events,
@@ -55,10 +20,25 @@ module.exports = class SagaEventHandler extends Observer {
 
 		super();
 
-		this._sagaTypeOrFactory = options.sagaType;
-		this._eventStore = options.eventStore;
-		this._commandBus = options.commandBus;
-		this._handles = options.handles || options.sagaType.handles;
+		Object.defineProperties(this, {
+			_eventStore: {
+				value: options.eventStore
+			},
+			_commandBus: {
+				value: options.commandBus
+			},
+			_handles: {
+				value: options.handles || options.sagaType.handles
+			},
+			_createSaga: {
+				value: isClass(options.sagaType) ?
+					options => new options.sagaType(options) :
+					options.sagaType
+			},
+			_handle: {
+				value: co.wrap(this._handle.bind(this))
+			}
+		});
 	}
 
 	subscribe(eventStore) {
@@ -68,22 +48,38 @@ module.exports = class SagaEventHandler extends Observer {
 	handle(event) {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');
-		// event._id is not required since saga can be started by non-persistent event
-		// if (!event.id) throw new TypeError('event.id argument required');
 
-		return restoreSagaState(event.sagaId, this._eventStore, this._sagaTypeOrFactory, event.id)
-			.then(saga => {
-				this.debug(`saga ${saga.id} (v${saga.version}) restored`);
+		return this._handle(event);
+	}
 
-				saga.apply(event);
+	*_handle(event) {
+		if (!event) throw new TypeError('event argument required');
+		if (!event.type) throw new TypeError('event.type argument required');
 
-				return saga.uncommittedMessages;
-			})
-			.then(signCommandsContext(event.context))
-			.then(sendCommands(this._commandBus))
-			.then(results => {
-				this.debug(`event '${event.type}' handled, ${results.length === 1 ? '1 command' : results.length + ' commands'} produced`);
-				return results;
-			});
+		let saga;
+		if (event.sagaId) {
+			const events = yield this._eventStore.getSagaEvents(event.sagaId, { except: event.id });
+
+			saga = this._createSaga({ id: event.sagaId, events });
+
+			this.debug(`saga ${saga.id} restored from ${events.length === 1 ? '1 event' : events.length + ' events'}`);
+		}
+		else {
+			const id = yield this._eventStore.getNewId();
+
+			saga = this._createSaga({ id });
+
+			this.debug(`saga ${saga.id} instance created`);
+		}
+
+		saga.apply(event);
+
+		const commands = saga.uncommittedMessages;
+		this.debug(`saga ${saga.id} '${event.type}' event processed, ${commands.length === 1 ? '1 command' : commands.length + ' commands'} produced`);
+
+		return yield commands.map(command => {
+			command.context = event.context;
+			return this._commandBus.sendRaw(command);
+		});
 	}
 };
