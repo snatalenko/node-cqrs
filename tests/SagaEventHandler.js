@@ -6,7 +6,7 @@ const Saga = require('./mocks/Saga');
 const chai = require('chai');
 const expect = chai.expect;
 
-describe.only('SagaEventHandler', function () {
+describe('SagaEventHandler', function () {
 
 	it('exists', () => {
 		expect(SagaEventHandler).to.be.a('Function');
@@ -25,7 +25,8 @@ describe.only('SagaEventHandler', function () {
 
 		domain.eventStore.commit([{
 			type: 'somethingHappened',
-			sagaId: 1
+			sagaId: 1,
+			sagaVersion: 0
 		}]);
 	});
 });

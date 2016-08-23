@@ -3,14 +3,6 @@
 const expect = require('chai').expect;
 const EventStore = require('../index').EventStore;
 const InMemoryEventStorage = require('../index').InMemoryEventStorage;
-const EventEmitter = require('events').EventEmitter;
-
-const badContext = {
-	uid: '',
-	ip: '',
-	browser: '',
-	serverTime: Date.now()
-};
 
 const goodContext = {
 	uid: '1',
@@ -138,7 +130,7 @@ describe('EventStore', function () {
 				done();
 			});
 
-			es.commit([goodEvent]).then(() => committed++);
+			es.commit([goodEvent]).then(() => committed++).catch(done);
 		});
 	});
 
@@ -171,9 +163,9 @@ describe('EventStore', function () {
 		it('returns events committed by saga', () => {
 
 			const events = [
-				{ sagaId: 1, type: 'somethingHappened' },
-				{ sagaId: 1, type: 'anotherHappened' },
-				{ sagaId: 2, type: 'somethingHappened' }
+				{ sagaId: 1, sagaVersion: 1, type: 'somethingHappened' },
+				{ sagaId: 1, sagaVersion: 2, type: 'anotherHappened' },
+				{ sagaId: 2, sagaVersion: 1, type: 'somethingHappened' }
 			];
 
 			return es.commit(events).then(() => {
@@ -191,9 +183,9 @@ describe('EventStore', function () {
 		it('allows to exclude event that triggered saga execution', () => {
 
 			const events = [
-				{ sagaId: 1, type: 'somethingHappened', id: 1 },
-				{ sagaId: 1, type: 'anotherHappened', id: 2 },
-				{ sagaId: 2, type: 'somethingHappened', id: 3 }
+				{ sagaId: 1, sagaVersion: 0, type: 'somethingHappened', id: 1 },
+				{ sagaId: 1, sagaVersion: 0, type: 'anotherHappened', id: 2 },
+				{ sagaId: 2, sagaVersion: 1, type: 'somethingHappened', id: 3 }
 			];
 
 			return es.commit(events).then(() => {
