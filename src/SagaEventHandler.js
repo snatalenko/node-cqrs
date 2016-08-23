@@ -2,7 +2,7 @@
 
 const Observer = require('./Observer');
 const isClass = require('./di/isClass');
-const co = require('co');
+const coWrap = require('./utils/coWrap');
 
 /**
  * Listens to Saga events,
@@ -34,31 +34,28 @@ module.exports = class SagaEventHandler extends Observer {
 				value: isClass(options.sagaType) ?
 					options => new options.sagaType(options) :
 					options.sagaType
-			},
-			_handle: {
-				value: co.wrap(this._handle.bind(this))
 			}
 		});
+
+		coWrap(this, 'handle');
 	}
 
 	subscribe(eventStore) {
 		return super.subscribe(eventStore, this._handles, this.handle);
 	}
 
-	handle(event) {
-		if (!event) throw new TypeError('event argument required');
-		if (!event.type) throw new TypeError('event.type argument required');
-
-		return this._handle(event);
-	}
-
-	*_handle(event) {
+	*handle(event) {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');
 
 		let saga;
 		if (event.sagaId) {
-			const events = yield this._eventStore.getSagaEvents(event.sagaId, { except: event.id });
+			if (typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion argument required, when event.sagaId provided');
+
+			const events = yield this._eventStore.getSagaEvents(event.sagaId, {
+				before: event.sagaVersion,
+				except: event.id
+			});
 
 			saga = this._createSaga({ id: event.sagaId, events });
 

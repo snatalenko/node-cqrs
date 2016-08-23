@@ -2,62 +2,26 @@
 
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
 const debug = require('debug')('cqrs:EventStore');
+const coWrap = require('./utils/coWrap');
 
 const _storage = Symbol('storage');
 const _messageBus = Symbol('messageBus');
 const _validator = Symbol('validator');
 
-function debugAsync(messageFormat) {
-	return events => {
-		debug(messageFormat, !Array.isArray(events) ? events :
-			events.length === 1 ? '\'' + events[0].type + '\'' :
-				events.length + ' events');
-		return events;
-	};
+function eventsToString(events) {
+	if (!events) events = this;
+	return !Array.isArray(events) ? events :
+		events.length === 1 ? '\'' + events[0].type + '\'' :
+			events.length + ' events';
 }
 
-function validateEventDafault(event) {
+function validateEvent(event) {
 	if (typeof event !== 'object' || !event) throw new TypeError('event must be an Object');
 	if (typeof event.type !== 'string' || !event.type.length) throw new TypeError('event.type must be a non-empty String');
 	if (!event.aggregateId && !event.sagaId) throw new TypeError('either event.aggregateId or event.sagaId is required');
+	if (event.sagaId && typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion is required, when event.sagaId is defined');
 }
 
-function validateEvents(validate) {
-	if (typeof validate !== 'function') throw new TypeError('validate argument must be a Function');
-
-	return events => new Promise(function (resolve, reject) {
-		events.forEach(validate);
-		resolve(events);
-	});
-}
-
-/** Creates a function that commits events to a specified storage and returns a Promise that resolves to events passed in */
-function commitEventsToStorage(storage) {
-	if (!storage) throw new TypeError('storage argument required');
-
-	return events => Promise.resolve(storage.commitEvents(events))
-		.then(() => events);
-}
-
-function publishEventsSync(messageBus) {
-	return events => Promise.all(events.map(event => messageBus.publish(event)))
-		.then(results => {
-			debug(`${events.length === 1 ? '\'' + events[0].type + '\'' : events.length + ' events'} processed`);
-			return events;
-		})
-		.catch(err => {
-			debug(`${events.length === 1 ? '\'' + events[0].type + '\'' : events.length + ' events'} processing has failed`);
-			debug(err);
-			throw err;
-		});
-}
-
-function publishEventsAsync(messageBus) {
-	return events => {
-		setImmediate(publishEventsSync(messageBus), events);
-		return events;
-	};
-}
 
 module.exports = class EventStore {
 
@@ -102,82 +66,100 @@ module.exports = class EventStore {
 
 		this.storage = options.storage;
 		this.bus = options.messageBus || new InMemoryBus();
-		this.validator = options.validator || validateEventDafault;
+		this.validator = options.validator || validateEvent;
 		this.publishAsync = 'publishAsync' in options ? !!options.publishAsync : true;
+
+		coWrap(this, [
+			'getAllEvents',
+			'getAggregateEvents',
+			'getSagaEvents',
+			'commit'
+		]);
 	}
 
 	getNewId() {
 		return Promise.resolve(this.storage.getNewId());
 	}
 
-	getAllEvents(eventTypes) {
+	*getAllEvents(eventTypes) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
-		return Promise.resolve(this.storage.getEvents(eventTypes) || [])
-			.then(debugAsync('retrieved %s'));
+		const events = this.storage.getEvents(eventTypes) || [];
+		debug(`${eventsToString(events)} retreieved`);
+
+		return events;
 	}
 
-	getAggregateEvents(aggregateId) {
+	*getAggregateEvents(aggregateId) {
 		if (!aggregateId) throw new TypeError('aggregateId argument required');
 
 		debug(`retrieving event stream for aggregate ${aggregateId}...`);
 
-		return Promise.resolve(this.storage.getAggregateEvents(aggregateId) || [])
-			.then(debugAsync('retrieved %s'));
+		const events = yield this.storage.getAggregateEvents(aggregateId) || [];
+		debug(`${eventsToString(events)} retreieved`);
+
+		return events;
 	}
 
 	/**
 	 * Retrieves events, by sagaId
-	 * @param  {String} sagaId  		Saga ID
-	 * @param  {Object} options 		Parameter object with request options
-	 * @param  {Array}  options.except 	Event ID(s) that triggered Saga execution and should be excluded from output
-	 * @return {Promise}        		Resolving to an array of events
+	 *
+	 * @param {string} sagaId
+	 * @param {{before:number}} options
+	 * @returns {PromiseLike<object[]>}
 	 */
-	getSagaEvents(sagaId, options) {
+	*getSagaEvents(sagaId, options) {
 		if (!sagaId) throw new TypeError('sagaId argument required');
 
 		debug(`retrieving event stream for saga ${sagaId}...`);
 
-		// options.except is passed to storage method for faster filtering, if implemented.
-		// for case when it's not implemented, a returned events list is filtered manually
-		return Promise.resolve(this.storage.getSagaEvents(sagaId, options) || [])
-			.then(events => {
-				if (options && options.except) {
-					if (Array.isArray(options.except)) {
-						return events.filter(e => options.except.indexOf(e.id || e._id) === -1);
-					}
-					else {
-						return events.filter(e => (e.id || e._id) !== options.except);
-					}
-				}
-				else {
-					return events;
-				}
-			})
-			.then(debugAsync('retrieved %s'));
-	}
+		const events = yield this.storage.getSagaEvents(sagaId, options) || [];
+		debug(`${eventsToString(events)} retreieved`);
 
+		if (options && Object.keys(options).length) {
+			const {after, before, except} = options;
+			const filteredEvents = events.filter(e =>
+				(typeof before === 'undefined' || e.sagaVersion < before) &&
+				(typeof after === 'undefined' || e.sagaVersion > after) &&
+				(typeof except === 'undefined' || e.id != except));
+			debug(`${eventsToString(filteredEvents)} left after filtering by %o`, options);
+
+			return filteredEvents;
+		}
+		else {
+			return events;
+		}
+	}
 
 	/**
 	 * Sign, validate, and commit events to storage
-	 * @param  {Array} 	events 	a set of events to commit
-	 * @return {Promise}		resolves to signed and committed events
+	 *
+	 * @param {object[]} events - a set of events to commit
+	 * @returns {PromiseLike<object[]>} - resolves to signed and committed events
 	 */
-	commit(events) {
+	*commit(events) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
-		return Promise.resolve(events)
-			.then(debugAsync('validating %s...'))
-			.then(validateEvents(this.validator))
-			.then(debugAsync('comitting %s...'))
-			.then(commitEventsToStorage(this.storage))
-			.then(debugAsync('%s committed successfully, publishing asynchronously...'))
-			.then(this.publishAsync ? publishEventsAsync(this.bus) : publishEventsSync(this.bus))
-			.catch(err => {
-				debug('events commit has failed:');
-				debug(err);
-				throw err;
-			});
+		debug(`validating ${eventsToString(events)}...`);
+		yield events.map(this.validator);
+
+		debug(`committing ${eventsToString(events)}...`);
+		yield this.storage.commitEvents(events);
+
+		if (this.publishAsync) {
+			debug(`publishing ${eventsToString(events)} asynchronously...`);
+			setImmediate(() => Promise.all(events.map(event => this.bus.publish(event))).then(result => {
+				debug(`${eventsToString(events)} published`);
+			}, err => {
+				debug(`${eventsToString(events)} publishing failed: ${err.stack || err}`);
+			}));
+		}
+		else {
+			debug(`publishing ${eventsToString(events)} synchronously...`);
+			yield events.map(event => this.bus.publish(event));
+		}
+
+		return events;
 	}
 
 	on(messageType, handler) {
