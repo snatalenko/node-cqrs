@@ -9,11 +9,35 @@ module.exports = class ConcurrencyError extends Error {
 	constructor(options) {
 		super('event is not unique');
 
-		this.type = ConcurrencyError.type;
+		Object.defineProperties(this, {
+			type: {
+				value: ConcurrencyError.type,
+				enumerable: true
+			},
+			name: {
+				value: ConcurrencyError.type,
+				enumerable: true
+			},
+			aggregateId: {
+				value: options && options.aggregateId || undefined,
+				enumerable: true
+			},
+			aggregateVersion: {
+				value: options && options.aggregateVersion || undefined,
+				enumerable: true
+			},
+			sagaId: {
+				value: options && options.sagaId || undefined,
+				enumerable: true
+			},
+			sagaVersion: {
+				value: options && options.sagaVersion || undefined,
+				enumerable: true
+			}
+		});
 
-		this.aggregateId = options && options.aggregateId || undefined;
-		this.aggregateVersion = options && options.aggregateVersion || undefined;
-		this.sagaId = options && options.sagaId || undefined;
-		this.sagaVersion = options && options.sagaVersion || undefined;
+		if (Error.captureStackTrace) {
+			Error.captureStackTrace(this, this.constructor);
+		}
 	}
 };
