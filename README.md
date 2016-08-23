@@ -1,17 +1,17 @@
-NodeJS CQRS Backbone
-====================
+NodeJS CQRS
+===========
 
 A set of backbone classes for CQRS app development
 
 ## Usage
 
 ```bash
-npm install git+ssh://git@bitbucket.org/cqrs/node-cqrs.git --save
+npm install bitbucket:cqrs/node-cqrs --save
 ```
 
 ## Contribuion
 
-Use editorconfig, eslint, jsbeautifyrc
+Use editorconfig, eslint, `npm test -- --watch`
 
 
 ### Conventions
@@ -21,4 +21,5 @@ Use editorconfig, eslint, jsbeautifyrc
 
 ## Dependencies
 
--	debug
+-	[visionmedia/debug](https://github.com/visionmedia/debug) (MIT License)
+-	[tj/co](https://github.com/tj/co) (MIT License)
