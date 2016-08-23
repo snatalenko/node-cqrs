@@ -12,7 +12,7 @@ module.exports = class InMemoryEventStorage {
 	}
 
 	commitEvents(events) {
-		this._events = this._events.then(data =>
+		return this._events = this._events.then(data =>
 			data.concat(events));
 	}
 
