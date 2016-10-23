@@ -18,7 +18,7 @@ describe('AbstractSaga', function () {
 
 		it('throws exception if "static get handles" is not overridden', () => {
 
-			class SagaWithoutHandles extends AbstractSaga {}
+			class SagaWithoutHandles extends AbstractSaga { }
 
 			expect(() => s = new SagaWithoutHandles({ id: 1 })).to.throw('handles must be overridden to return a list of handled event types');
 		});
@@ -32,6 +32,12 @@ describe('AbstractSaga', function () {
 			}
 
 			expect(() => s = new SagaWithoutHandler({ id: 1 })).to.throw('\'somethingHappened\' handler is not defined or not a function');
+		});
+
+		it('sets \'restored\' flag, after saga restored from eventStore', () => {
+
+			const s2 = new Saga({ id: 1, events: [{ type: 'somethingHappened', payload: 'test' }] });
+			expect(s2).to.have.property('restored', true);
 		});
 	});
 

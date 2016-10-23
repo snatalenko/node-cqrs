@@ -38,6 +38,8 @@ module.exports = class AbstractSaga {
 			options.events.forEach(e => this.apply(e));
 			this.resetUncommittedMessages();
 		}
+
+		Object.defineProperty(this, 'restored', { value: true });
 	}
 
 	apply(event) {
