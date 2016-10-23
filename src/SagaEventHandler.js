@@ -72,7 +72,8 @@ module.exports = class SagaEventHandler extends Observer {
 		saga.apply(event);
 
 		const commands = saga.uncommittedMessages;
-		this.debug(`saga ${saga.id} '${event.type}' event processed, ${commands.length === 1 ? '1 command' : commands.length + ' commands'} produced`);
+		const commandsLog = commands.length === 1 ? '\'' + commands[0].type + '\' command' : commands.length + ' commands';
+		this.debug(`saga ${saga.id} '${event.type}' event processed, ${commandsLog} produced`);
 
 		return yield commands.map(command => {
 			command.context = event.context;
