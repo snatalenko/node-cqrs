@@ -83,7 +83,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 
 		return restoreAggregateState(cmd.aggregateId, this._eventStore, this._aggregateTypeOrFactory)
 			.then(aggregate => {
-				this.debug(`aggregate ${aggregate.id} (v${aggregate.version}) restored`);
+				this.info(`aggregate ${aggregate.id} (v${aggregate.version}) restored`);
 
 				return aggregate.handle(cmd)
 					.then(result =>
@@ -92,7 +92,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 			.then(signEventsContext(cmd.context))
 			.then(commitAggregateEvents(this._eventStore))
 			.then(events => {
-				this.debug(`command '${cmd.type}' processed, ${events.length === 1 ? '1 event' : events.length + ' events'} produced`);
+				this.info(`command '${cmd.type}' processed, ${events.length === 1 ? '1 event' : events.length + ' events'} produced`);
 				return events;
 			}, err => {
 				const currentIteration = options && options.iteration || 0;

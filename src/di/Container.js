@@ -1,6 +1,6 @@
 'use strict';
 
-const debug = require('debug')('cqrs:Container');
+const debug = require('debug')('cqrs:debug:Container');
 const getClassDependencyNames = require('./getClassDependencyNames');
 const isClass = require('./isClass');
 const _factories = Symbol('factories');

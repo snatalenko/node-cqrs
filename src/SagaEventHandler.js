@@ -4,6 +4,11 @@ const Observer = require('./Observer');
 const isClass = require('./di/isClass');
 const coWrap = require('./utils/coWrap');
 
+const _eventStore = Symbol('eventStore');
+const _commandBus = Symbol('commandBus');
+const _handles = Symbol('handles');
+const _createSaga = Symbol('createSaga');
+
 /**
  * Listens to Saga events,
  * creates new saga or restores it from event store,
@@ -21,16 +26,16 @@ module.exports = class SagaEventHandler extends Observer {
 		super();
 
 		Object.defineProperties(this, {
-			_eventStore: {
+			[_eventStore]: {
 				value: options.eventStore
 			},
-			_commandBus: {
+			[_commandBus]: {
 				value: options.commandBus
 			},
-			_handles: {
+			[_handles]: {
 				value: options.handles || options.sagaType.handles
 			},
-			_createSaga: {
+			[_createSaga]: {
 				value: isClass(options.sagaType) ?
 					options => new options.sagaType(options) :
 					options.sagaType
@@ -41,7 +46,7 @@ module.exports = class SagaEventHandler extends Observer {
 	}
 
 	subscribe(eventStore) {
-		return super.subscribe(eventStore, this._handles, this.handle);
+		return super.subscribe(eventStore, this[_handles], this.handle);
 	}
 
 	*handle(event) {
@@ -52,32 +57,33 @@ module.exports = class SagaEventHandler extends Observer {
 		if (event.sagaId) {
 			if (typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion argument required, when event.sagaId provided');
 
-			const events = yield this._eventStore.getSagaEvents(event.sagaId, {
+			const events = yield this[_eventStore].getSagaEvents(event.sagaId, {
 				before: event.sagaVersion,
 				except: event.id
 			});
 
-			saga = this._createSaga({ id: event.sagaId, events });
+			saga = this[_createSaga]({ id: event.sagaId, events });
 
-			this.debug(`saga ${saga.id} restored from ${events.length === 1 ? '1 event' : events.length + ' events'}`);
+			this.info(`saga ${saga.id} state restored from ${events.length === 1 ? '1 event' : events.length + ' events'}`);
 		}
 		else {
-			const id = yield this._eventStore.getNewId();
+			const id = yield this[_eventStore].getNewId();
 
-			saga = this._createSaga({ id });
+			saga = this[_createSaga]({ id });
 
-			this.debug(`saga ${saga.id} instance created`);
+			this.info(`saga ${saga.id} instance created`);
 		}
 
 		saga.apply(event);
 
 		const commands = saga.uncommittedMessages;
 		const commandsLog = commands.length === 1 ? '\'' + commands[0].type + '\' command' : commands.length + ' commands';
-		this.debug(`saga ${saga.id} '${event.type}' event processed, ${commandsLog} produced`);
+
+		this.info(`saga ${saga.id} '${event.type}' event produced ${commandsLog}`);
 
 		return yield commands.map(command => {
 			command.context = event.context;
-			return this._commandBus.sendRaw(command);
+			return this[_commandBus].sendRaw(command);
 		});
 	}
 };

@@ -12,7 +12,16 @@ module.exports = class Observer {
 	}
 
 	constructor() {
-		this.debug = debug('cqrs:' + Object.getPrototypeOf(this).constructor.name);
+		Object.defineProperties(this, {
+			debug: {
+				value: debug('cqrs:debug:' + Object.getPrototypeOf(this).constructor.name),
+				configurable: true
+			},
+			info: {
+				value: debug('cqrs:info:' + Object.getPrototypeOf(this).constructor.name),
+				configurable: true
+			}
+		});
 	}
 
 	/**

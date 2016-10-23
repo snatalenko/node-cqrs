@@ -14,19 +14,24 @@ describe('SagaEventHandler', function () {
 
 	it('restores saga from eventStore, passes in received event and sends emitted commands', done => {
 
-		const domain = new cqrs.Container();
-		domain.register(cqrs.InMemoryEventStorage, 'storage');
-		domain.register(cqrs.EventStore, 'eventStore');
-		domain.register(cqrs.CommandBus, 'commandBus');
-		domain.registerSaga(Saga);
-		domain.createAllInstances();
+		try {
+			const domain = new cqrs.Container();
+			domain.register(cqrs.InMemoryEventStorage, 'storage');
+			domain.register(cqrs.EventStore, 'eventStore');
+			domain.register(cqrs.CommandBus, 'commandBus');
+			domain.registerSaga(Saga);
+			domain.createAllInstances();
 
-		domain.commandBus.on('doSomething', command => done());
+			domain.commandBus.on('doSomething', command => done());
 
-		domain.eventStore.commit([{
-			type: 'somethingHappened',
-			sagaId: 1,
-			sagaVersion: 0
-		}]);
+			domain.eventStore.commit([{
+				type: 'somethingHappened',
+				sagaId: 1,
+				sagaVersion: 0
+			}]).catch(done);
+		}
+		catch (err) {
+			done(err);
+		}
 	});
 });

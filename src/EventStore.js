@@ -1,7 +1,8 @@
 'use strict';
 
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
-const debug = require('debug')('cqrs:EventStore');
+const debug = require('debug')('cqrs:debug:EventStore');
+const info = require('debug')('cqrs:info:EventStore');
 const coWrap = require('./utils/coWrap');
 
 const _storage = Symbol('storage');
@@ -84,7 +85,9 @@ module.exports = class EventStore {
 	*getAllEvents(eventTypes) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
-		const events = this.storage.getEvents(eventTypes) || [];
+		debug(`retrieving ${eventTypes ? eventTypes.join(', ') : 'all'} events...`);
+
+		const events = yield this.storage.getEvents(eventTypes) || [];
 		debug(`${eventsToString(events)} retreieved`);
 
 		return events;
@@ -122,7 +125,10 @@ module.exports = class EventStore {
 				(typeof before === 'undefined' || e.sagaVersion < before) &&
 				(typeof after === 'undefined' || e.sagaVersion > after) &&
 				(typeof except === 'undefined' || e.id != except));
-			debug(`${eventsToString(filteredEvents)} left after filtering by %o`, options);
+
+			if(filteredEvents.length !== events.length){
+				debug(`${events.length - filteredEvents.length} events excluded by filter: %o`, options);
+			}
 
 			return filteredEvents;
 		}
@@ -149,14 +155,20 @@ module.exports = class EventStore {
 		if (this.publishAsync) {
 			debug(`publishing ${eventsToString(events)} asynchronously...`);
 			setImmediate(() => Promise.all(events.map(event => this.bus.publish(event))).then(result => {
-				debug(`${eventsToString(events)} published`);
+				info(`${eventsToString(events)} published`);
 			}, err => {
-				debug(`${eventsToString(events)} publishing failed: ${err.stack || err}`);
+				info(`${eventsToString(events)} publishing failed: ${err.stack || err}`);
 			}));
 		}
 		else {
 			debug(`publishing ${eventsToString(events)} synchronously...`);
-			yield events.map(event => this.bus.publish(event));
+			try{
+				yield events.map(event => this.bus.publish(event));
+			}
+			catch(err) {
+				info(`${eventsToString(events)} publishing failed: ${err.stack || err}`);
+				throw err;
+			}
 		}
 
 		return events;
@@ -191,7 +203,7 @@ module.exports = class EventStore {
 			function filteredHandler(event) {
 				if (!filter || filter(event)) {
 
-					debug(`'${event.type}' received, one-time subscription removed`);
+					info(`'${event.type}' received, one-time subscription removed`);
 
 					for (const messageType of messageTypes) {
 						messageBus.off(messageType, filteredHandler);

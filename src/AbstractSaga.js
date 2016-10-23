@@ -2,6 +2,7 @@
 
 const validateHandlers = require('./utils/validateHandlers');
 const passToHandler = require('./utils/passToHandler');
+
 const _id = Symbol('id');
 const _version = Symbol('version');
 const _messages = Symbol('messages');

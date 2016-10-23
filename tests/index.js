@@ -1,6 +1,6 @@
 'use strict';
 
-// require('debug').enable('cqrs*');
+// require('debug').enable('cqrs:info:*');
 
 require('./InMemoryMessageBus');
 require('./EventStore');

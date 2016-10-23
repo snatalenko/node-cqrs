@@ -1,7 +1,8 @@
 'use strict';
 
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
-const debug = require('debug')('cqrs:CommandBus');
+const debug = require('debug')('cqrs:debug:CommandBus');
+const info = require('debug')('cqrs:info:CommandBus');
 
 module.exports = class CommandBus {
 
@@ -25,9 +26,9 @@ module.exports = class CommandBus {
 
 		return this.sendRaw({
 			type: commandType,
-			aggregateId: aggregateId,
-			context: context,
-			payload: payload
+			aggregateId,
+			context,
+			payload
 		});
 	}
 
@@ -41,8 +42,7 @@ module.exports = class CommandBus {
 			debug(`'${command.type}' processed`);
 			return r;
 		}, err => {
-			debug(`'${command.type}' processing has failed`);
-			debug(err);
+			info(`'${command.type}' processing has failed: ${err}`);
 			throw err;
 		});
 	}
