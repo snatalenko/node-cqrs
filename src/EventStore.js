@@ -126,16 +126,10 @@ module.exports = class EventStore {
 		debug(`${eventsToString(events)} retreieved`);
 
 		if (options && Object.keys(options).length) {
-			const {after, before, except} = options;
-			const filteredEvents = events.filter(e =>
-				(typeof before === 'undefined' || e.sagaVersion < before) &&
-				(typeof after === 'undefined' || e.sagaVersion > after) &&
-				(typeof except === 'undefined' || e.id != except));
-
+			const filteredEvents = events.filter(e => typeof eventId === 'undefined' || e.id != eventId);
 			if (filteredEvents.length !== events.length) {
 				debug(`${events.length - filteredEvents.length} events excluded by filter: %o`, options);
 			}
-
 			return filteredEvents;
 		}
 		else {
