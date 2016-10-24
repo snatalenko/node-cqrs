@@ -108,15 +108,21 @@ module.exports = class EventStore {
 	 * Retrieves events, by sagaId
 	 *
 	 * @param {string} sagaId
-	 * @param {{before:number}} options
+	 * @param {{eventId: string, sagaVersion: number}} options
 	 * @returns {PromiseLike<object[]>}
 	 */
 	*getSagaEvents(sagaId, options) {
 		if (!sagaId) throw new TypeError('sagaId argument required');
 
-		debug(`retrieving event stream for saga ${sagaId}...`);
+		// 'except' and 'before' are deprecated, left here for backward compatibility.
+		// options argument should contain sagaVersion and eventId, so the logic of
+		// event stream retrieval will be handled by the EventStore
+		const sagaVersion = options && (options.sagaVersion || options.before);
+		const eventId = options && (options.eventId || options.except);
 
-		const events = yield this.storage.getSagaEvents(sagaId, options) || [];
+		debug(`retrieving event stream for saga ${sagaId}, v${sagaVersion}, except ${eventId}...`);
+
+		const events = yield this.storage.getSagaEvents(sagaId, { except: eventId }) || [];
 		debug(`${eventsToString(events)} retreieved`);
 
 		if (options && Object.keys(options).length) {
@@ -126,7 +132,7 @@ module.exports = class EventStore {
 				(typeof after === 'undefined' || e.sagaVersion > after) &&
 				(typeof except === 'undefined' || e.id != except));
 
-			if(filteredEvents.length !== events.length){
+			if (filteredEvents.length !== events.length) {
 				debug(`${events.length - filteredEvents.length} events excluded by filter: %o`, options);
 			}
 
@@ -162,10 +168,10 @@ module.exports = class EventStore {
 		}
 		else {
 			debug(`publishing ${eventsToString(events)} synchronously...`);
-			try{
+			try {
 				yield events.map(event => this.bus.publish(event));
 			}
-			catch(err) {
+			catch (err) {
 				info(`${eventsToString(events)} publishing failed: ${err.stack || err}`);
 				throw err;
 			}
