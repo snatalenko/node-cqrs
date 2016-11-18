@@ -5,17 +5,56 @@ const debug = require('debug')('cqrs:debug:EventStore');
 const info = require('debug')('cqrs:info:EventStore');
 const coWrap = require('./utils/coWrap');
 
-const _storage = Symbol('storage');
-const _messageBus = Symbol('messageBus');
-const _validator = Symbol('validator');
+const STORAGE_METHODS = [
+	'commitEvents',
+	'getEvents',
+	'getAggregateEvents',
+	'getSagaEvents',
+	'getNewId'
+];
 
+const EMITTER_METHODS = [
+	'on'
+];
+
+const _storage = Symbol('storage');
+const _bus = Symbol('bus');
+const _emitter = Symbol('emitter');
+const _validator = Symbol('validator');
+const _publishAsync = Symbol('publishAsync');
+
+/**
+ * CQRS Event
+ * @typedef {object} IEvent
+ * @property {string} type - Event type
+ * @property {string|number} aggregateId - Aggregate root ID
+ * @property {number} aggregateVersion - Aggregate root version
+ * @property {string|number} sagaId - Saga ID
+ * @property {number} sagaVersion - Saga version
+ */
+
+/**
+ * Format event stream summary for debug output
+ *
+ * @param {IEvent[]} events
+ * @returns {string}
+ */
 function eventsToString(events) {
 	if (!events) events = this;
-	return !Array.isArray(events) ? events :
-		events.length === 1 ? '\'' + events[0].type + '\'' :
-			events.length + ' events';
+	if (!Array.isArray(events)) {
+		return events;
+	}
+	else if (events.length === 1) {
+		return `'${events[0].type}'`;
+	}
+	return `${events.length} events`;
 }
 
+/**
+ * Validate event structure
+ *
+ * @param {IEvent} event
+ */
 function validateEvent(event) {
 	if (typeof event !== 'object' || !event) throw new TypeError('event must be an Object');
 	if (typeof event.type !== 'string' || !event.type.length) throw new TypeError('event.type must be a non-empty String');
@@ -23,95 +62,125 @@ function validateEvent(event) {
 	if (event.sagaId && typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion is required, when event.sagaId is defined');
 }
 
+/**
+ * Check whether instance has all listed methods
+ *
+ * @param {object} instance
+ * @param {...string} methodNames
+ * @returns {boolean}
+ */
+function respondsTo(instance, ...methodNames) {
+	return methodNames.findIndex(methodName => typeof instance[methodName] !== 'function') === -1;
+}
+
 
 module.exports = class EventStore {
 
-	get storage() {
-		return this[_storage];
-	}
-
-	set storage(storage) {
-		if (storage) {
-			if (typeof storage.commitEvents !== 'function') throw new TypeError('storage.commitEvents must be a Function');
-			if (typeof storage.getEvents !== 'function') throw new TypeError('storage.getEvents must be a Function');
-			if (typeof storage.getAggregateEvents !== 'function') throw new TypeError('storage.getAggregateEvents must be a Function');
-			if (typeof storage.getSagaEvents !== 'function') throw new TypeError('storage.getSagaEvents must be a Function');
-			if (typeof storage.getNewId !== 'function') throw new TypeError('storage.getNewId must be a Function');
-		}
-		this[_storage] = storage || undefined;
-	}
-
-	get bus() {
-		return this[_messageBus];
-	}
-
-	set bus(bus) {
-		if (bus && typeof bus.publish !== 'function') throw new TypeError('bus.publish must be a Function');
-
-		this[_messageBus] = bus || undefined;
-	}
-
-	get validator() {
-		return this[_validator];
-	}
-
-	set validator(validator) {
-		if (validator && typeof validator !== 'function') throw new TypeError('validator must be a Function');
-
-		this[_validator] = validator || undefined;
-	}
-
+	/**
+	 * Creates an instance of EventStore.
+	 *
+	 * @param {{storage, messageBus, validator:function(*):void, publishAsync: boolean}} options
+	 */
 	constructor(options) {
 		if (!options) throw new TypeError('options argument required');
 		if (!options.storage) throw new TypeError('options.storage argument required');
+		if (!respondsTo(options.storage, ...STORAGE_METHODS))
+			throw new TypeError(`options.storage does not support all the methods: ${STORAGE_METHODS}`);
+		if (options.messageBus && !respondsTo(options.messageBus, ...EMITTER_METHODS))
+			throw new TypeError(`options.messageBus does not support all the methods: ${EMITTER_METHODS}`);
+		if (options.validator && typeof options.validator !== 'function')
+			throw new TypeError('options.validator, when provided, must be a function');
+		if (options.messageBus !== undefined && !options.messageBus && !respondsTo(options.storage, ...EMITTER_METHODS))
+			throw new TypeError(`either options.messageBus or options.storage must implement emitter methods: ${EMITTER_METHODS}`);
 
-		this.storage = options.storage;
-		this.bus = options.messageBus || new InMemoryBus();
-		this.validator = options.validator || validateEvent;
-		this.publishAsync = 'publishAsync' in options ? !!options.publishAsync : true;
+		coWrap(this);
 
-		coWrap(this, [
-			'getAllEvents',
-			'getAggregateEvents',
-			'getSagaEvents',
-			'commit'
-		]);
+		Object.defineProperties(this, {
+			[_storage]: {
+				value: options.storage
+			},
+			[_validator]: {
+				value: options.validator || validateEvent
+			},
+			[_publishAsync]: {
+				value: 'publishAsync' in options ? !!options.publishAsync : true
+			}
+		});
+
+		if (options.messageBus) {
+			Object.defineProperties(this, {
+				[_bus]: { value: options.messageBus },
+				[_emitter]: { value: options.messageBus }
+			});
+		}
+		else if (respondsTo(options.storage, ...EMITTER_METHODS)) {
+			Object.defineProperties(this, {
+				[_bus]: { value: null },
+				[_emitter]: { value: options.storage }
+			});
+		}
+		else {
+			const bus = new InMemoryBus();
+			Object.defineProperties(this, {
+				[_bus]: { value: bus },
+				[_emitter]: { value: bus }
+			});
+		}
 	}
 
+	/**
+	 * Retrieve new ID from the storage
+	 *
+	 * @returns {Promise<string>}
+	 */
 	getNewId() {
-		return Promise.resolve(this.storage.getNewId());
+		return new Promise(resolve => {
+			resolve(this[_storage].getNewId());
+		});
 	}
 
-	*getAllEvents(eventTypes) {
+	/**
+	 * Retrieve all events of specific types
+	 *
+	 * @param {string[]} eventTypes
+	 * @returns {Promise<IEvent[]>}
+	 */
+	* getAllEvents(eventTypes) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
 		debug(`retrieving ${eventTypes ? eventTypes.join(', ') : 'all'} events...`);
 
-		const events = yield this.storage.getEvents(eventTypes) || [];
-		debug(`${eventsToString(events)} retreieved`);
-
-		return events;
-	}
-
-	*getAggregateEvents(aggregateId) {
-		if (!aggregateId) throw new TypeError('aggregateId argument required');
-
-		debug(`retrieving event stream for aggregate ${aggregateId}...`);
-
-		const events = yield this.storage.getAggregateEvents(aggregateId) || [];
+		const events = yield this[_storage].getEvents(eventTypes) || [];
 		debug(`${eventsToString(events)} retreieved`);
 
 		return events;
 	}
 
 	/**
-	 * Retrieves events, by sagaId
+	 * Retrieve all events of specific Aggregate
+	 *
+	 * @param {string|number} aggregateId
+	 * @returns {Promise<IEvent[]>}
+	 */
+	* getAggregateEvents(aggregateId) {
+		if (!aggregateId) throw new TypeError('aggregateId argument required');
+
+		debug(`retrieving event stream for aggregate ${aggregateId}...`);
+
+		const events = yield this[_storage].getAggregateEvents(aggregateId) || [];
+		debug(`${eventsToString(events)} retreieved`);
+
+		return events;
+	}
+
+	/**
+	 * Retrieve events of specific Saga
 	 *
 	 * @param {string} sagaId
 	 * @param {{eventId: string, sagaVersion: number}} options
-	 * @returns {PromiseLike<object[]>}
+	 * @returns {Promise<IEvent[]>}
 	 */
-	*getSagaEvents(sagaId, options) {
+	* getSagaEvents(sagaId, options) {
 		if (!sagaId) throw new TypeError('sagaId argument required');
 
 		// 'except' and 'before' are deprecated, left here for backward compatibility.
@@ -122,68 +191,77 @@ module.exports = class EventStore {
 
 		debug(`retrieving event stream for saga ${sagaId}, v${sagaVersion}, except ${eventId}...`);
 
-		const events = yield this.storage.getSagaEvents(sagaId, { except: eventId }) || [];
+		const events = yield this[_storage].getSagaEvents(sagaId, { except: eventId }) || [];
 		debug(`${eventsToString(events)} retreieved`);
 
 		if (options && Object.keys(options).length) {
-			const filteredEvents = events.filter(e => typeof eventId === 'undefined' || e.id != eventId);
+			const filteredEvents = events.filter(e => typeof eventId === 'undefined' || e.id != eventId); // eslint-disable-line eqeqeq
 			if (filteredEvents.length !== events.length) {
 				debug(`${events.length - filteredEvents.length} events excluded by filter: %o`, options);
 			}
 			return filteredEvents;
 		}
-		else {
-			return events;
-		}
+
+		return events;
 	}
 
 	/**
-	 * Sign, validate, and commit events to storage
+	 * Validate events, commit to storage and publish to messageBus, if needed
 	 *
-	 * @param {object[]} events - a set of events to commit
-	 * @returns {PromiseLike<object[]>} - resolves to signed and committed events
+	 * @param {IEvent[]} events - a set of events to commit
+	 * @returns {Promise<IEvent[]>} - resolves to signed and committed events
 	 */
-	*commit(events) {
+	* commit(events) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
 		debug(`validating ${eventsToString(events)}...`);
-		yield events.map(this.validator);
+		yield events.map(this[_validator]);
 
 		debug(`committing ${eventsToString(events)}...`);
-		yield this.storage.commitEvents(events);
+		yield this[_storage].commitEvents(events);
 
-		if (this.publishAsync) {
-			debug(`publishing ${eventsToString(events)} asynchronously...`);
-			setImmediate(() => Promise.all(events.map(event => this.bus.publish(event))).then(result => {
-				info(`${eventsToString(events)} published`);
-			}, err => {
-				info(`${eventsToString(events)} publishing failed: ${err.stack || err}`);
-			}));
-		}
-		else {
-			debug(`publishing ${eventsToString(events)} synchronously...`);
-			try {
-				yield events.map(event => this.bus.publish(event));
+		if (this[_bus]) {
+			if (this[_publishAsync]) {
+				debug(`publishing ${eventsToString(events)} asynchronously...`);
+				setImmediate(() => Promise.all(events.map(event => this[_bus].publish(event))).then(() => {
+					info(`${eventsToString(events)} published`);
+				}, err => {
+					info(`${eventsToString(events)} publishing failed: ${err.message || err}`);
+				}));
 			}
-			catch (err) {
-				info(`${eventsToString(events)} publishing failed: ${err.stack || err}`);
-				throw err;
+			else {
+				debug(`publishing ${eventsToString(events)} synchronously...`);
+				try {
+					yield events.map(event => this[_bus].publish(event));
+				}
+				catch (err) {
+					info(`${eventsToString(events)} publishing failed: ${err.message || err}`);
+					throw err;
+				}
 			}
 		}
 
 		return events;
 	}
 
+	/**
+	 * Setup a listener for a specific event type
+	 *
+	 * @param {string} messageType
+	 * @param {function(IEvent):any} handler
+	 * @returns {any}
+	 */
 	on(messageType, handler) {
-		return this.bus.on(messageType, handler);
+		return this[_emitter].on(messageType, handler);
 	}
 
 	/**
 	 * Creates one-time subscription for one or multiple events that match a filter
-	 * @param  {Array} 		messageTypes 	Array of event type to subscribe to
-	 * @param  {Function} 	handler      	Optional handler to execute for a first event received
-	 * @param  {Function} 	filter       	Optional filter to apply before executing a handler
-	 * @return {Promise}              		Resolves to first event that passes filter
+	 *
+	 * @param {string[]} messageTypes - Array of event type to subscribe to
+	 * @param {function(IEvent):any} [handler] - Optional handler to execute for a first event received
+	 * @param {function(IEvent):boolean} [filter] - Optional filter to apply before executing a handler
+	 * @return {Promise<IEvent>} Resolves to first event that passes filter
 	 */
 	once(messageTypes, handler, filter) {
 		if (!Array.isArray(messageTypes)) messageTypes = [messageTypes];
@@ -194,19 +272,21 @@ module.exports = class EventStore {
 		if (filter && typeof filter !== 'function')
 			throw new TypeError('filter argument, when specified, must be a Function');
 
-		const messageBus = this.bus;
+		const emitter = this[_emitter];
+		const unsubscribeMethodName = respondsTo(emitter, 'removeListener') ?
+			'removeListener' :
+			'off';
 
-		return new Promise(function (resolve, reject) {
+		return new Promise(resolve => {
 
-			debug(`setting up one-time ${filter ? 'filtered ' : ''}subscription to '${messageTypes.join(', ')}'...`);
+			debug(`setting up one-time ${filter ? 'filtered subscription' : 'subscription'} to '${messageTypes.join(', ')}'...`);
 
 			function filteredHandler(event) {
 				if (!filter || filter(event)) {
-
 					info(`'${event.type}' received, one-time subscription removed`);
 
 					for (const messageType of messageTypes) {
-						messageBus.off(messageType, filteredHandler);
+						emitter[unsubscribeMethodName](messageType, filteredHandler);
 					}
 					if (handler) {
 						handler(event);
@@ -216,7 +296,7 @@ module.exports = class EventStore {
 			}
 
 			for (const messageType of messageTypes) {
-				messageBus.on(messageType, filteredHandler);
+				emitter.on(messageType, filteredHandler);
 			}
 		});
 	}

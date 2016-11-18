@@ -43,11 +43,14 @@ describe('EventStore', function () {
 
 			return es.commit([event]).then(() => {
 
-				es.validator = event => {
-					if (!event.context) throw new Error('event.context required');
-				};
+				es = new EventStore({
+					storage: new InMemoryEventStorage(),
+					validator: event => {
+						if (!event.context) throw new Error('event.context required');
+					}
+				});
 
-				return es.commit([event]).then(ok => {
+				return es.commit([event]).then(() => {
 					throw new Error('must fail');
 				}, err => {
 					expect(err).to.have.property('message', 'event.context required');
@@ -99,12 +102,17 @@ describe('EventStore', function () {
 
 		it('returns a promise that rejects, when commit doesn\'t succeed', () => {
 
-			// tweak associated storage to throw error on every commit
-			es.storage.commitEvents = () => {
-				throw new Error('storage commit failure');
-			};
+			const storage = Object.create(InMemoryEventStorage.prototype, {
+				commitEvents: {
+					value: () => {
+						throw new Error('storage commit failure');
+					}
+				}
+			});
 
-			return es.commit([goodEvent, goodEvent2]).then(result => {
+			es = new EventStore({ storage });
+
+			return es.commit([goodEvent, goodEvent2]).then(() => {
 				throw new Error('should fail');
 			}, err => {
 				expect(err).to.be.an('Error');
