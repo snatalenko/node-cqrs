@@ -17,17 +17,23 @@ module.exports = function sizeOf(object) {
 
 		if (typeof obj === 'boolean') {
 			size += 4;
-		} else if (typeof obj === 'number') {
+		}
+		else if (typeof obj === 'number') {
 			size += 8;
-		} else if (typeof obj === 'string') {
+		}
+		else if (typeof obj === 'string') {
 			size += Buffer.byteLength(obj, 'utf-8');
-		} else if (typeof obj === 'symbol') {
+		}
+		else if (typeof obj === 'symbol') {
 			size += 32;
-		} else if (obj instanceof Date) {
-			size += 40; //Buffer.byteLength(obj.toString(), 'utf-8');
-		} else if (obj instanceof Buffer) {
+		}
+		else if (obj instanceof Date) {
+			size += 40; // Buffer.byteLength(obj.toString(), 'utf-8');
+		}
+		else if (obj instanceof Buffer) {
 			size += obj.length;
-		} else if (obj) {
+		}
+		else if (obj) {
 			if (!Array.isArray(obj)) {
 				for (const key of Object.keys(obj)) {
 					size += Buffer.byteLength(key, 'utf-8');

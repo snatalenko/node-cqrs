@@ -1,3 +1,4 @@
+/* eslint-disable */
 'use strict';
 
 const PARAMETER_OBJECT_NAME = 'options';
@@ -21,7 +22,7 @@ function* getParameterObjectPropertyNames(classBody, offset) {
 	let ctorBody;
 	for (let i = offset, openedBrackets = 1; i < classBody.length; i++) {
 		if (classBody[i] === '{') {
-			openedBrackets++;
+			openedBrackets += 1;
 		}
 		else if (classBody[i] === '}' && --openedBrackets === 0) {
 			ctorBody = classBody.substr(offset, i - offset - 1);

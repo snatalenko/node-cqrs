@@ -1,3 +1,4 @@
+/* eslint new-cap: "off" */
 'use strict';
 
 const Observer = require('./Observer');
@@ -37,7 +38,7 @@ module.exports = class SagaEventHandler extends Observer {
 			},
 			[_createSaga]: {
 				value: isClass(options.sagaType) ?
-					options => new options.sagaType(options) :
+					params => new options.sagaType(params) :
 					options.sagaType
 			}
 		});
@@ -49,7 +50,7 @@ module.exports = class SagaEventHandler extends Observer {
 		return super.subscribe(eventStore, this[_handles], this.handle);
 	}
 
-	*handle(event) {
+	* handle(event) {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');
 
@@ -64,7 +65,7 @@ module.exports = class SagaEventHandler extends Observer {
 
 			saga = this[_createSaga]({ id: event.sagaId, events });
 
-			this.info(`saga ${saga.id} state restored from ${events.length === 1 ? '1 event' : events.length + ' events'}`);
+			this.info(`saga ${saga.id} state restored from ${events.length === 1 ? '1 event' : `${events.length} events`}`);
 		}
 		else {
 			const id = yield this[_eventStore].getNewId();
@@ -77,7 +78,7 @@ module.exports = class SagaEventHandler extends Observer {
 		saga.apply(event);
 
 		const commands = saga.uncommittedMessages;
-		const commandsLog = commands.length === 1 ? '\'' + commands[0].type + '\' command' : commands.length + ' commands';
+		const commandsLog = commands.length === 1 ? `'${commands[0].type}' command` : `${commands.length} commands`;
 
 		this.info(`saga ${saga.id} '${event.type}' event produced ${commandsLog}`);
 

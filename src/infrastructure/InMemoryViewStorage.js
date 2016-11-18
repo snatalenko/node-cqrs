@@ -23,16 +23,14 @@ module.exports = class InMemoryViewStorage {
 		if (!key) throw new TypeError('key argument required');
 
 		const subview = this.state[key];
-		if (typeof subview === 'object')
-			return Promise.resolve(JSON.parse(JSON.stringify(subview)));
-		else
-			return Promise.resolve(subview);
+
+		return Promise.resolve(typeof subview === 'object' ? JSON.parse(JSON.stringify(subview)) : subview);
 	}
 
 	create(key, update) {
 		if (!key) throw new TypeError('key argument required');
 		if (!update) throw new TypeError('update argument required');
-		if (key in this.state) throw new Error('Key \'' + key + '\' already exists');
+		if (key in this.state) throw new Error(`Key '${key}' already exists`);
 
 		if (typeof update === 'function') {
 			update(this.state[key] = {});
@@ -48,7 +46,7 @@ module.exports = class InMemoryViewStorage {
 	update(key, update) {
 		if (!key) throw new TypeError('key argument required');
 		if (!update) throw new TypeError('update argument required');
-		if (!(key in this.state)) throw new Error('Key \'' + key + '\' does not exist');
+		if (!(key in this.state)) throw new Error(`Key '${key}' does not exist`);
 
 		update(this.state[key]);
 	}

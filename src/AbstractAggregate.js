@@ -61,7 +61,7 @@ module.exports = class AbstractAggregate {
 				handler.call(this.state, event);
 			}
 		}
-		this[_version]++;
+		this[_version] += 1;
 	}
 
 	/**

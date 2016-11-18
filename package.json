@@ -7,8 +7,8 @@
     "node": ">=5.4.0"
   },
   "scripts": {
-    "eslint": "eslint src/",
-    "pretest": "npm run eslint",
+    "lint": "eslint src/",
+    "pretest": "npm i && npm run lint",
     "test": "mocha ./tests/index.js",
     "release:patch": "npm version patch && git push --all && git push --tags",
     "release:minor": "npm version minor && git push --all && git push --tags"

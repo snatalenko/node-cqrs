@@ -14,22 +14,24 @@ module.exports = class Observer {
 	constructor() {
 		Object.defineProperties(this, {
 			debug: {
-				value: debug('cqrs:debug:' + Object.getPrototypeOf(this).constructor.name),
-				configurable: true
+				value: debug(`cqrs:debug:${Object.getPrototypeOf(this).constructor.name}`),
+				configurable: true,
+				writable: true
 			},
 			info: {
-				value: debug('cqrs:info:' + Object.getPrototypeOf(this).constructor.name),
-				configurable: true
+				value: debug(`cqrs:info:${Object.getPrototypeOf(this).constructor.name}`),
+				configurable: true,
+				writable: true
 			}
 		});
 	}
 
 	/**
 	 * Subscribes to events or commands emitted by observable instance
-	 * @param  {Object}	observable
-	 * @param  {Array}	messageTypes 	a list of messages this observer listens to (OPTIONAL, if provided during instantination)
-	 * @param  {String} masterHandler 	a master handler method or method name to execute for all messages (OPTIONAL, if provided during instantination)
-	 * @return {undefined}
+	 * @param  {Object} observable
+	 * @param  {Array} [messageTypes] a list of messages this observer listens to
+	 * @param  {String} [masterHandler] a master handler method or method name to execute for all messages
+	 * @returns {Promise<any[]>}
 	 */
 	subscribe(observable, messageTypes, masterHandler) {
 		if (typeof observable !== 'object' || !observable) throw new TypeError('observable argument must be an Object');

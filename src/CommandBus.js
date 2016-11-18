@@ -7,7 +7,7 @@ const info = require('debug')('cqrs:info:CommandBus');
 module.exports = class CommandBus {
 
 	constructor(options) {
-		this._bus = options && options.messageBus || new InMemoryBus();
+		this._bus = (options && options.messageBus) || new InMemoryBus();
 	}
 
 	on(commandType, handler, context) {

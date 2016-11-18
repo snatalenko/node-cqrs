@@ -1,3 +1,4 @@
+/* eslint new-cap: "off" */
 'use strict';
 
 const Observer = require('./Observer');
@@ -25,16 +26,15 @@ function restoreAggregateState(id, eventStore, aggregateTypeOrFactory) {
 		return eventStore.getAggregateEvents(id)
 			.then(events => aggregateFactory({ id, events }));
 	}
-	else {
-		return eventStore.getNewId()
-			.then(id => aggregateFactory({ id }));
-	}
+
+	return eventStore.getNewId()
+		.then(newId => aggregateFactory({ id: newId }));
 }
 
 function signEventsContext(context) {
 	return events => {
 		if (context)
-			events.forEach(event => event.context = context);
+			events.forEach(event => { event.context = context; });
 		return events;
 	};
 }
@@ -42,12 +42,10 @@ function signEventsContext(context) {
 function commitAggregateEvents(eventStore) {
 	if (!eventStore) throw new TypeError('eventStore argument required');
 
-	return events => events.length ?
+	return events => (events.length ?
 		eventStore.commit(events) :
-		Promise.resolve([]);
+		Promise.resolve([]));
 }
-
-
 
 function isConcurrencyError(err) {
 	return err.type === ConcurrencyError.type;
@@ -86,22 +84,19 @@ module.exports = class AggregateCommandHandler extends Observer {
 				this.info(`aggregate ${aggregate.id} (v${aggregate.version}) restored`);
 
 				return aggregate.handle(cmd)
-					.then(result =>
-						aggregate.changes);
+					.then(() => aggregate.changes);
 			})
 			.then(signEventsContext(cmd.context))
 			.then(commitAggregateEvents(this._eventStore))
 			.then(events => {
-				this.info(`command '${cmd.type}' processed, ${events.length === 1 ? '1 event' : events.length + ' events'} produced`);
+				this.info(`command '${cmd.type}' processed, ${events.length === 1 ? '1 event' : `${events.lengts} events`} produced`);
 				return events;
 			}, err => {
-				const currentIteration = options && options.iteration || 0;
+				const currentIteration = (options && options.iteration) || 0;
 				if (isConcurrencyError(err) && currentIteration < COMMIT_RETRIES_LIMIT) {
 					return this.execute(cmd, { iteration: currentIteration + 1 });
 				}
-				else {
-					throw err;
-				}
+				throw err;
 			});
 	}
 };

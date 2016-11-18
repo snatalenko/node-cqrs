@@ -64,11 +64,16 @@ describe('Container', function () {
 
 	describe('registerEventReceptor(typeOrFactory) extension', () => {
 
+		let somethingHappenedCnt;
+		beforeEach(() => { somethingHappenedCnt = 0; });
+
 		class MyEventReceptor extends cqrs.Observer {
 			static get handles() {
 				return ['somethingHappened'];
 			}
-			_somethingHappened() { }
+			_somethingHappened() {
+				somethingHappenedCnt += 1;
+			}
 		}
 
 		it('registers an event receptor factory', () => {
@@ -79,11 +84,20 @@ describe('Container', function () {
 
 		it('subscribes to eventStore upon instance creation', () => {
 
-			c.registerEventReceptor(MyEventReceptor);
-			c.eventStore.should.not.have.deep.property('bus._handlers.somethingHappened');
+			const testEvent = { aggregateId: 1, type: 'somethingHappened' };
 
-			c.createUnexposedInstances();
-			c.eventStore.should.have.deep.property('bus._handlers.somethingHappened');
+			c.registerEventReceptor(MyEventReceptor);
+			expect(somethingHappenedCnt).to.eq(0);
+
+			return c.eventStore.commit([testEvent]).then(() => {
+				expect(somethingHappenedCnt).to.eq(0);
+
+				c.createUnexposedInstances();
+
+				return c.eventStore.commit([testEvent]).then(() => {
+					expect(somethingHappenedCnt).to.eq(1);
+				});
+			});
 		});
 	});
 
@@ -120,13 +134,15 @@ describe('Container', function () {
 			c.registerAggregate(MyAggregate);
 			c.createUnexposedInstances();
 
-			return c.commandBus.sendRaw({ type: 'doSomething' }).then(result => {
-				dependencyMet.should.equal(false);
-				c.register(SomeService, 'aggregateDependency');
-				return c.commandBus.sendRaw({ type: 'doSomething' });
-			}).then(result => {
-				dependencyMet.should.equal(true);
-			});
+			return c.commandBus.sendRaw({ type: 'doSomething' })
+				.then(() => {
+					dependencyMet.should.equal(false);
+					c.register(SomeService, 'aggregateDependency');
+					return c.commandBus.sendRaw({ type: 'doSomething' });
+				})
+				.then(() => {
+					dependencyMet.should.equal(true);
+				});
 		});
 	});
 

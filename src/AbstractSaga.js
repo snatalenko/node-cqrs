@@ -49,7 +49,7 @@ module.exports = class AbstractSaga {
 
 		passToHandler(this, event.type, event);
 
-		this[_version]++;
+		this[_version] += 1;
 	}
 
 	enqueue(commandType, commandPayload) {

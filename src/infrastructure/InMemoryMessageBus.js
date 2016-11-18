@@ -3,9 +3,7 @@
 const debug = require('debug')('cqrs:InMemoryBus');
 
 function passToHandler(handler, messageType, payload) {
-	return new Promise(function (resolve, reject) {
-		resolve(handler(payload));
-	});
+	return new Promise(resolve => resolve(handler(payload)));
 }
 
 /**

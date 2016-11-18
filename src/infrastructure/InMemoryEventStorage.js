@@ -1,3 +1,4 @@
+/* eslint no-return-assign: "off", eqeqeq: "off" */
 'use strict';
 
 /**
@@ -29,12 +30,13 @@ module.exports = class InMemoryEventStorage {
 	getEvents(eventTypes) {
 		if (!eventTypes)
 			return this._events;
-		else
-			return this._events.then(events =>
-				events.filter(e => eventTypes.indexOf(e.type) !== -1));
+
+		return this._events.then(events =>
+			events.filter(e => eventTypes.indexOf(e.type) !== -1));
 	}
 
 	getNewId() {
-		return ++this.nextId;
+		this.nextId += 1;
+		return this.nextId;
 	}
 };

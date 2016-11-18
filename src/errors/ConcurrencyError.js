@@ -19,19 +19,19 @@ module.exports = class ConcurrencyError extends Error {
 				enumerable: true
 			},
 			aggregateId: {
-				value: options && options.aggregateId || undefined,
+				value: (options && options.aggregateId) || undefined,
 				enumerable: true
 			},
 			aggregateVersion: {
-				value: options && options.aggregateVersion || undefined,
+				value: (options && options.aggregateVersion) || undefined,
 				enumerable: true
 			},
 			sagaId: {
-				value: options && options.sagaId || undefined,
+				value: (options && options.sagaId) || undefined,
 				enumerable: true
 			},
 			sagaVersion: {
-				value: options && options.sagaVersion || undefined,
+				value: (options && options.sagaVersion) || undefined,
 				enumerable: true
 			}
 		});

@@ -13,7 +13,7 @@ module.exports = function getHandler(context, messageType) {
 	if (messageType in context && typeof context[messageType] === 'function')
 		return context[messageType];
 
-	const privateHandlerName = '_' + messageType;
+	const privateHandlerName = `_${messageType}`;
 	if (privateHandlerName in context && typeof context[privateHandlerName] === 'function')
 		return context[privateHandlerName];
 

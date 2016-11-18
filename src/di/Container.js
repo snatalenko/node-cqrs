@@ -1,3 +1,4 @@
+/* eslint new-parens: "off" */
 'use strict';
 
 const debug = require('debug')('cqrs:debug:Container');
@@ -39,16 +40,15 @@ function createInstance(typeOrFactory, container, additionalOptions) {
 				dependency.forEach(key => options[key] || (options[key] = container[key]));
 				return options;
 			}
+			return undefined;
 		});
 
 		return new (Function.prototype.bind.apply(typeOrFactory, [null].concat(parameters)));
 
 	}
-	else {
-		return typeOrFactory(container);
-	}
-}
 
+	return typeOrFactory(container);
+}
 
 
 module.exports = class Container {
@@ -83,7 +83,8 @@ module.exports = class Container {
 			Object.defineProperty(this, exposeAs, {
 				configurable: true,
 				get() {
-					return this.instances[exposeAs] || (this.instances[exposeAs] = exposeMap ? exposeMap(factory(this)) : factory(this));
+					return this.instances[exposeAs]
+						|| (this.instances[exposeAs] = exposeMap ? exposeMap(factory(this)) : factory(this));
 				}
 			});
 
@@ -124,7 +125,7 @@ module.exports = class Container {
 		for (let i = 0; i < this.factories.length; i++) {
 			if (this.factories[i].unexposed) {
 				this.factories.splice(i, 1)[0](this);
-				i--;
+				i -= 1;
 			}
 		}
 	}
