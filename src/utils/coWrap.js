@@ -41,7 +41,7 @@ function getInstanceGeneratorNames(instance) {
 * https://github.com/tj/co#var-fn--cowrapfn
 *
 * @param {object} instance
-* @param {string[]} [methodNames]
+* @param {...string} [methodNames]
 */
 module.exports = function coWrap(instance, ...methodNames) {
 	if (!methodNames || !methodNames.length) {
