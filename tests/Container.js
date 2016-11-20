@@ -193,27 +193,39 @@ describe('Container', function () {
 
 	describe('getClassDependencyNames private method', () => {
 
-		class MyClass {
-			constructor(service, options) {
-				this._someOption = options.someOption;
-				this._someOption2 = options.someOption; // second usage must be ignored
-				this._test = options.test;
-			}
-		}
 
-		it('extracts ES6 class constructor parameter names', () => {
+		it('extracts ES6 class constructor parameter names and parameter object property names', () => {
+
+			class MyClass {
+				constructor(service, options) {
+					this._someOption = options.someOption;
+					this._someOption2 = options.someOption; // second usage must be ignored
+					this._test = options.test;
+				}
+			}
+
 			const dependencies = getClassDependencyNames(MyClass);
 			dependencies.should.have.length(2);
 			dependencies[0].should.equal('service');
-		});
 
-		it('extracts ES6 unique parameter object property names', () => {
-			const dependencies = getClassDependencyNames(MyClass);
 			dependencies[1].should.have.length(2);
 			dependencies[1][0].should.equal('someOption');
 			dependencies[1][1].should.equal('test');
 		});
 
+		it('extracts destructed parameters from ctor parameter object', () => {
+			class MyClass {
+				constructor({someService, anotherService}) {
+					this._someService = someService;
+					this._anotherService = anotherService;
+				}
+			}
+
+			const dependencies = getClassDependencyNames(MyClass);
+			dependencies.should.have.length(2);
+			dependencies[0].should.eq('someService');
+			dependencies[1].should.eq('anotherService');
+		})
 
 		it('extracts ES5 class constructor parameter names', () => {
 
