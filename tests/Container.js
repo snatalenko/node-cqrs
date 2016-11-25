@@ -222,9 +222,10 @@ describe('Container', function () {
 			}
 
 			const dependencies = getClassDependencyNames(MyClass);
-			dependencies.should.have.length(2);
-			dependencies[0].should.eq('someService');
-			dependencies[1].should.eq('anotherService');
+			dependencies.should.have.length(1);
+			dependencies[0].should.be.an('Array').that.has.length(2);
+			dependencies[0][0].should.eq('someService');
+			dependencies[0][1].should.eq('anotherService');
 		})
 
 		it('extracts ES5 class constructor parameter names', () => {

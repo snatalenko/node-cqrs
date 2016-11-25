@@ -2,7 +2,7 @@
 'use strict';
 
 const PARAMETER_OBJECT_NAME = 'options';
-const RX_CONSTRUCTOR = /(?:constructor|^function(?:.+\w+)?)\s?\({?([^\)}]*)}?\)\s?{/;
+const RX_CONSTRUCTOR = /(?:constructor|^function(?:.+\w+)?)\s?\(({?[^\{})]*}?)\)\s?{/;
 const RX_PARAMETER_OBJECT = new RegExp(PARAMETER_OBJECT_NAME + '\\.([\\w]+)', 'g');
 
 function distinct(array) {
@@ -66,14 +66,21 @@ module.exports = function getClassDependencyNames(type) {
 		}
 	}
 
-	const parameters = match[1].split(',').map(n => n.trim()).filter(n => n);
-	return parameters.map(parameterName => {
-		if (parameterName === PARAMETER_OBJECT_NAME) {
-			const constructorBodyOffset = match.index + match[0].length;
-			return distinct(Array.from(getParameterObjectPropertyNames(classBody, constructorBodyOffset)));
-		}
-		else {
-			return parameterName;
-		}
-	});
+	const args = match[1];
+	if (args.startsWith('{') && args.endsWith('}')) {
+		// destructed parameter object
+		return [args.replace(/^{|}$/g, '').split(',').map(n => n.trim())];
+	}
+	else {
+		const parameters = match[1].split(',').map(n => n.trim()).filter(n => n);
+		return parameters.map(parameterName => {
+			if (parameterName === PARAMETER_OBJECT_NAME) {
+				const constructorBodyOffset = match.index + match[0].length;
+				return distinct(Array.from(getParameterObjectPropertyNames(classBody, constructorBodyOffset)));
+			}
+			else {
+				return parameterName;
+			}
+		});
+	}
 };
