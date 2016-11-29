@@ -1,21 +1,131 @@
 'use strict';
 
-const cqrs = require('..');
-const AggregateCommandHandler = cqrs.AggregateCommandHandler;
-const chai = require('chai');
-const expect = chai.expect;
+const { expect } = require('chai');
+const { AggregateCommandHandler, AbstractAggregate } = require('..');
+
+class MyAggregate extends AbstractAggregate {
+	static get handles() {
+		return ['createAggregate', 'doSomething'];
+	}
+	createAggregate() {
+		this.emit('created');
+	}
+	doSomething() {
+		this.emit('somethingDone');
+	}
+}
+
+class EventStore {
+	getNewId() {
+		return Promise.resolve('test-aggregate-id');
+	}
+	getAggregateEvents(aggregateId) {
+		return [{ type: 'aggregateCreated', aggregateId }];
+	}
+	commit(events) {
+		if (!this.committed) this.committed = [];
+		this.committed.push(...events);
+	}
+}
+
+class CommandBus {
+	on(messageType, listener) {
+		if (!this.handlers) this.handlers = {};
+		this.handlers[messageType] = listener;
+	}
+}
+
+function logRequests(obj) {
+	return new Proxy(obj, {
+		get(target, propName) {
+			if (typeof target[propName] !== 'function' || propName.startsWith('_') || propName === 'constructor')
+				return target[propName];
+			return function (...args) {
+				if (!target.requests) target.requests = [];
+				target.requests.push({ name: propName, args });
+				return target[propName](...args);
+			};
+		}
+	})
+}
+
 
 describe('AggregateCommandHandler', function () {
 
-	it('exists', () => {
-		expect(AggregateCommandHandler).to.be.a('Function');
+	let eventStore;
+	let commandBus;
+
+	beforeEach(() => {
+		eventStore = logRequests(new EventStore());
+		commandBus = logRequests(new CommandBus());
 	});
 
-	it('subscribes to commands handled by Aggregate');
+	it('exports a class', () => {
+		expect(AggregateCommandHandler).to.be.a('Function');
+		expect(AggregateCommandHandler.toString().substr(0, 5)).to.eq('class');
+	});
 
-	it('restores aggregate from event store');
+	it('subscribes to commands handled by Aggregate', () => {
 
-	it('passes command to aggregate');
+		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
 
-	it('commits produced events to eventStore');
+		handler.subscribe(commandBus);
+
+		expect(commandBus).to.have.deep.property('requests[0].name', 'on');
+		expect(commandBus).to.have.deep.property('requests[0].args[0]', 'createAggregate');
+		expect(commandBus).to.have.deep.property('requests[0].args[1]').that.is.a('Function');
+
+		expect(commandBus).to.have.deep.property('requests[1].name', 'on');
+		expect(commandBus).to.have.deep.property('requests[1].args[0]', 'doSomething');
+		expect(commandBus).to.have.deep.property('requests[1].args[1]').that.is.a('Function');
+	});
+
+	it('requests aggregate ID from event store, when aggregate does not exist', () => {
+
+		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
+
+		return handler.execute({ type: 'createAggregate' })
+			.then(r => {
+				expect(eventStore).to.have.deep.property('requests[0].name', 'getNewId');
+				expect(eventStore).to.have.deep.property('requests[0].args').that.have.length(0);
+			});
+	});
+
+	it('restores aggregate from event store events', () => {
+
+		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
+
+		return handler.execute({ type: 'doSomething', aggregateId: 1 })
+			.then(r => {
+				expect(eventStore).to.have.deep.property('requests[0].name', 'getAggregateEvents');
+				expect(eventStore).to.have.deep.property('requests[0].args[0]', 1);
+			});
+	});
+
+	it('passes commands to aggregate.handle(cmd)', () => {
+
+		const aggregate = logRequests(new MyAggregate({ id: 1 }));
+		const handler = new AggregateCommandHandler({
+			eventStore,
+			aggregateType: () => aggregate
+		});
+
+		return handler.execute({ type: 'doSomething', payload: 'test' })
+			.then(r => {
+				expect(aggregate).to.have.deep.property('requests[0].name', 'handle');
+				expect(aggregate).to.have.deep.property('requests[0].args[0].type', 'doSomething');
+				expect(aggregate).to.have.deep.property('requests[0].args[0].payload', 'test');
+			});
+	});
+
+	it('commits produced events to eventStore', () => {
+
+		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
+
+		return handler.execute({ type: 'doSomething', aggregateId: 1 })
+			.then(r => {
+				expect(eventStore).to.have.deep.property('requests[1].name', 'commit');
+				expect(eventStore).to.have.deep.property('requests[1].args[0]').that.is.an('Array');
+			});
+	});
 });

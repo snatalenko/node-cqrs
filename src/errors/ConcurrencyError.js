@@ -10,11 +10,11 @@ module.exports = class ConcurrencyError extends Error {
 		super('event is not unique');
 
 		Object.defineProperties(this, {
-			type: {
-				value: ConcurrencyError.type,
+			name: {
+				value: this.constructor.name,
 				enumerable: true
 			},
-			name: {
+			type: {
 				value: ConcurrencyError.type,
 				enumerable: true
 			},
