@@ -4,7 +4,14 @@ const Observer = require('./Observer');
 const ConcurrencyError = require('./errors/ConcurrencyError');
 const isClass = require('./di/isClass');
 const coWrap = require('./utils/coWrap');
+
 const COMMIT_RETRIES_LIMIT = 5;
+const COMMAND_TO_EVENT_CONTEXT_FIELDS = [
+	'sagaId',
+	'sagaVersion',
+	'context',
+	'auth'
+];
 
 const _eventStore = Symbol('eventStore');
 const _aggregateFactory = Symbol('aggregateTypeOrFactory');
@@ -98,11 +105,14 @@ module.exports = class AggregateCommandHandler extends Observer {
 		if (!events || !events.length)
 			return [];
 
-		if (cmd.context) {
-			events.forEach(event => {
-				event.context = context;
+		const fieldsToCopy = COMMAND_TO_EVENT_CONTEXT_FIELDS.filter(fieldName => fieldName in cmd);
+		events.forEach(event => {
+			fieldsToCopy.forEach(fieldName => {
+				if (!(fieldName in event)) {
+					event[fieldName] = cmd[fieldName];
+				}
 			});
-		}
+		});
 
 		try {
 			this[_eventStore].commit(events);
