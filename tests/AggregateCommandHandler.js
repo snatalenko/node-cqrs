@@ -25,6 +25,7 @@ class EventStore {
 	commit(events) {
 		if (!this.committed) this.committed = [];
 		this.committed.push(...events);
+		return Promise.resolve();
 	}
 }
 

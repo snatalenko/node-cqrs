@@ -115,7 +115,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 		});
 
 		try {
-			this[_eventStore].commit(events);
+			yield this[_eventStore].commit(events);
 		}
 		catch (err) {
 			if (err.name === ConcurrencyError.name) {
