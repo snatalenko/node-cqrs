@@ -99,7 +99,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 			this._restoreAggregate(cmd.aggregateId) :
 			this._createAggregate();
 
-		aggregate.handle(cmd);
+		yield Promise.resolve(aggregate.handle(cmd));
 
 		const events = aggregate.changes;
 		if (!events || !events.length)
