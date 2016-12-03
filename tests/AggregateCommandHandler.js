@@ -3,15 +3,23 @@
 const { expect } = require('chai');
 const { AggregateCommandHandler, AbstractAggregate } = require('..');
 
+function delay(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 class MyAggregate extends AbstractAggregate {
 	static get handles() {
 		return ['createAggregate', 'doSomething'];
 	}
 	createAggregate() {
-		this.emit('created');
+		return delay(100).then(() => {
+			this.emit('created');
+		});
 	}
 	doSomething() {
-		this.emit('somethingDone');
+		return delay(100).then(() => {
+			this.emit('somethingDone');
+		});
 	}
 }
 
@@ -52,6 +60,9 @@ function logRequests(obj) {
 
 
 describe('AggregateCommandHandler', function () {
+
+	this.timeout(500);
+	this.slow(300);
 
 	let eventStore;
 	let commandBus;
@@ -116,6 +127,16 @@ describe('AggregateCommandHandler', function () {
 				expect(aggregate).to.have.deep.property('requests[0].name', 'handle');
 				expect(aggregate).to.have.deep.property('requests[0].args[0].type', 'doSomething');
 				expect(aggregate).to.have.deep.property('requests[0].args[0].payload', 'test');
+			});
+	});
+
+	it('resolves to produced events', () => {
+		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
+
+		return handler.execute({ type: 'doSomething', aggregateId: 1 })
+			.then(events => {
+				expect(events).to.have.length(1);
+				expect(events[0]).to.have.property('type', 'somethingDone');
 			});
 	});
 
