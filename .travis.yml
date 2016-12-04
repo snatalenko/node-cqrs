@@ -1,0 +1,13 @@
+language: node_js
+
+node_js:
+  - "node"
+
+before_script:
+  - npm install -g eslint
+
+sudo: false
+
+branches:
+  except:
+    - gh-pages
