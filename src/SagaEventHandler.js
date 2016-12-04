@@ -2,8 +2,7 @@
 'use strict';
 
 const Observer = require('./Observer');
-const isClass = require('./di/isClass');
-const coWrap = require('./utils/coWrap');
+const { isClass, coWrap } = require('./utils');
 
 const _eventStore = Symbol('eventStore');
 const _commandBus = Symbol('commandBus');

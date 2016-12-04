@@ -1,15 +1,22 @@
-/* eslint new-parens: "off" */
 'use strict';
 
 const debug = require('debug')('cqrs:debug:Container');
 const getClassDependencyNames = require('./getClassDependencyNames');
-const isClass = require('./isClass');
 const _factories = Symbol('factories');
 const _instances = Symbol('instances');
 
-function isObject(instance) {
-	return typeof instance === 'object' && instance != null && !Array.isArray(instance) && !(instance instanceof Date);
+function isClass(func) {
+	return typeof func === 'function'
+		&& Function.prototype.toString.call(func).startsWith('class');
 }
+
+function isObject(instance) {
+	return typeof instance === 'object'
+		&& instance != null
+		&& !Array.isArray(instance)
+		&& !(instance instanceof Date);
+}
+
 
 function createInstance(typeOrFactory, container, additionalOptions) {
 	if (typeof typeOrFactory !== 'function') throw new TypeError('typeOrFactory argument must be a Function');
@@ -18,33 +25,30 @@ function createInstance(typeOrFactory, container, additionalOptions) {
 		throw new TypeError('additionalOptions argument, when specified, must be an Object');
 
 	if (isClass(typeOrFactory)) {
+		const Type = typeOrFactory;
 
-		const dependencies = getClassDependencyNames(typeOrFactory);
+		const dependencies = getClassDependencyNames(Type);
+		if (!dependencies)
+			debug(`${Type.name || 'class'} has no constructor`);
+		else if (!dependencies.length)
+			debug(`${Type.name || 'class'} has no dependencies`);
+		else
+			debug(`${Type.name || 'class'} dependencies: ${dependencies}`);
 
-		if (!dependencies) {
-			debug(`${typeOrFactory.name || 'instance'} has no constructor`);
-		}
-		else if (!dependencies.length) {
-			debug(`${typeOrFactory.name || 'instance'} has no dependencies`);
-		}
-		else {
-			debug(`${typeOrFactory.name || 'instance'} dependencies: ${dependencies}`);
-		}
+		const parameters = dependencies ?
+			dependencies.map(dependency => {
+				if (typeof dependency === 'string') {
+					return container[dependency];
+				}
+				else if (Array.isArray(dependency)) {
+					const options = Object.assign({}, additionalOptions);
+					dependency.forEach(key => options[key] || (options[key] = container[key]));
+					return options;
+				}
+				return undefined;
+			}) : [];
 
-		const parameters = dependencies && dependencies.map(dependency => {
-			if (typeof dependency === 'string') {
-				return container[dependency];
-			}
-			else if (Array.isArray(dependency)) {
-				const options = Object.assign({}, additionalOptions);
-				dependency.forEach(key => options[key] || (options[key] = container[key]));
-				return options;
-			}
-			return undefined;
-		});
-
-		return new (Function.prototype.bind.apply(typeOrFactory, [null].concat(parameters)));
-
+		return new Type(...parameters);
 	}
 
 	return typeOrFactory(container);

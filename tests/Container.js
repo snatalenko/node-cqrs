@@ -12,7 +12,6 @@ describe('Container', function () {
 	beforeEach(() => {
 		c = new Container();
 		c.register(InMemoryEventStorage, 'storage');
-		c.register(EventStore, 'eventStore');
 		c.register(c => logRequests(new InMemoryMessageBus()), 'messageBus');
 		c.register(c => logRequests(new CommandBus({ messageBus: c.messageBus })), 'commandBus');
 	});
@@ -21,7 +20,7 @@ describe('Container', function () {
 
 		it('registers type or factory in the container', () => {
 
-			c.factories.should.have.length(4);
+			c.factories.should.not.be.empty;
 			c.instances.should.have.property('container');
 		});
 
@@ -46,9 +45,9 @@ describe('Container', function () {
 		}
 
 		it('registers a command handler factory', () => {
-			c.factories.should.have.length(4);
+			const factoriesCnt = c.factories.length;
 			c.registerCommandHandler(MyCommandHandler);
-			c.factories.should.have.length(5);
+			c.factories.should.have.length(factoriesCnt + 1);
 		});
 
 		it('subscribes to commandBus upon instance creation', () => {
@@ -77,9 +76,9 @@ describe('Container', function () {
 		}
 
 		it('registers an event receptor factory', () => {
-			c.factories.should.have.length(4);
+			const factoriesCnt = c.factories.length;
 			c.registerEventReceptor(MyEventReceptor);
-			c.factories.should.have.length(5);
+			c.factories.should.have.length(factoriesCnt + 1);
 		});
 
 		it('subscribes to eventStore upon instance creation', () => {

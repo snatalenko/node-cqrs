@@ -2,8 +2,7 @@
 
 const Observer = require('./Observer');
 const ConcurrencyError = require('./errors/ConcurrencyError');
-const isClass = require('./di/isClass');
-const coWrap = require('./utils/coWrap');
+const { isClass, coWrap } = require('./utils');
 
 const COMMIT_RETRIES_LIMIT = 5;
 const COMMAND_TO_EVENT_CONTEXT_FIELDS = [

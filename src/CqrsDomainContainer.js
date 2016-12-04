@@ -1,11 +1,23 @@
 'use strict';
 
-const Container = require('./Container');
-const SagaEventHandler = require('../SagaEventHandler');
-const AggregateCommandHandler = require('../AggregateCommandHandler');
-const isClass = require('./isClass');
+const Container = require('./di/Container');
+const SagaEventHandler = require('./SagaEventHandler');
+const AggregateCommandHandler = require('./AggregateCommandHandler');
+const CommandBus = require('./CommandBus');
+const EventStore = require('./EventStore');
+
+function isClass(func) {
+	return typeof func === 'function'
+		&& Function.prototype.toString.call(func).startsWith('class');
+}
 
 module.exports = class CqrsDomainContainer extends Container {
+
+	constructor() {
+		super();
+		this.register(EventStore, 'eventStore');
+		this.register(CommandBus, 'commandBus');
+	}
 
 	/**
 	 * Register command handler, which will be subscribed to commandBus upon instance creation

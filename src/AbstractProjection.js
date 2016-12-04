@@ -2,9 +2,7 @@
 
 const Observer = require('./Observer');
 const InMemoryViewStorage = require('./infrastructure/InMemoryViewStorage');
-const validateHandlers = require('./utils/validateHandlers');
-const passToHandlerAsync = require('./utils/passToHandlerAsync');
-const sizeOf = require('./utils/sizeOf');
+const { validateHandlers, passToHandlerAsync, sizeOf } = require('./utils');
 const _view = Symbol('view');
 
 module.exports = class AbstractProjection extends Observer {
