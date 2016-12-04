@@ -2,32 +2,40 @@
   "name": "node-cqrs",
   "version": "0.7.7",
   "description": "Basic ES6 backbone for CQRS app development",
+  "repository": "snatalenko/node-cqrs",
+  "keywords": [
+    "cqrs",
+    "ddd",
+    "domain",
+    "command",
+    "event",
+    "eventstore",
+    "eventsourcing"
+  ],
   "main": "index.js",
   "engines": {
     "node": ">=5.4.0"
   },
   "scripts": {
     "lint": "eslint src/",
-    "pretest": "npm i && npm run lint",
+    "pretest": "npm run lint",
     "test": "mocha ./tests/index.js",
+    "test:coverage": "istanbul cover node_modules/.bin/_mocha tests/index.js --report lcovonly -- -R spec",
+    "pretest:coveralls": "npm run test:coverage",
+    "test:coveralls": "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
+    "posttest:coveralls": "rm -rf ./coverage",
     "release:patch": "npm version patch && git push --all && git push --tags",
     "release:minor": "npm version minor && git push --all && git push --tags"
   },
-  "repository": "bitbucket:cqrs/node-cqrs",
-  "keywords": [
-    "CQRS",
-    "ES6",
-    "framework"
-  ],
   "author": "@stas_natalenko",
   "license": "MIT",
-  "homepage": "https://bitbucket.org/cqrs/node-cqrs",
-  "devDependencies": {
-    "chai": "^3.2.0",
-    "mocha": "^2.3.0"
-  },
+  "homepage": "https://github.com/snatalenko/node-cqrs#readme",
   "dependencies": {
     "co": "^4.6.0",
     "debug": "^2.2.0"
+  },
+  "devDependencies": {
+    "chai": "^3.2.0",
+    "mocha": "^3.2.0"
   }
 }
