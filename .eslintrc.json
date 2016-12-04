@@ -627,10 +627,7 @@
         "no-whitespace-before-property": "error",
         "object-curly-spacing": [
             "warn",
-            "always",
-            {
-                "objectsInObjects": false
-            }
+            "always"
         ],
         "object-curly-newline": [
             "off",
