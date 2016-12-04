@@ -1,11 +1,6 @@
 'use strict';
 
-const cqrs = require('..');
-const AbstractProjection = cqrs.AbstractProjection;
-const chai = require('chai');
-const expect = chai.expect;
-chai.should();
-
+const { AbstractProjection, InMemoryViewStorage, InMemoryEventStorage, EventStore } = require('..');
 
 class MyProjection extends AbstractProjection {
 	static get handles() {
@@ -49,7 +44,7 @@ describe('AbstractProjection', function () {
 
 		it('returns a view storage associated with projection', () => {
 
-			const view = new cqrs.InMemoryViewStorage();
+			const view = new InMemoryViewStorage();
 			const proj = new MyProjection({ view });
 
 			expect(proj.view).to.equal(view);
@@ -57,7 +52,7 @@ describe('AbstractProjection', function () {
 
 		it('validates that view wrapper has all necessary methods', () => {
 
-			const view = new cqrs.InMemoryViewStorage();
+			const view = new InMemoryViewStorage();
 			delete view.update;
 			expect(() => projection.view = view).to.throw;
 		});
@@ -67,8 +62,8 @@ describe('AbstractProjection', function () {
 
 		it('subscribes projection to all events returned by "handles"', done => {
 
-			const storage = new cqrs.InMemoryEventStorage();
-			const es = new cqrs.EventStore({ storage });
+			const storage = new InMemoryEventStorage();
+			const es = new EventStore({ storage });
 
 			es.on = (eventType, handler) => {
 				expect(eventType).to.equal('somethingHappened');

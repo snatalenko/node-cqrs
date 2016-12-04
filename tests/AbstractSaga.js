@@ -1,10 +1,15 @@
 'use strict';
 
-const cqrs = require('..');
-const AbstractSaga = cqrs.AbstractSaga;
-const chai = require('chai');
-const expect = chai.expect;
-const Saga = require('./mocks/Saga');
+const { AbstractSaga } = require('..');
+
+class Saga extends AbstractSaga {
+	static get handles() {
+		return ['somethingHappened'];
+	}
+	_somethingHappened(event) {
+		super.enqueue('doSomething', { foo: 'bar' });
+	}
+}
 
 describe('AbstractSaga', function () {
 

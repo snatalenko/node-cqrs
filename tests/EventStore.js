@@ -1,6 +1,5 @@
 'use strict';
 
-const expect = require('chai').expect;
 const EventStore = require('../index').EventStore;
 const InMemoryEventStorage = require('../index').InMemoryEventStorage;
 
@@ -257,6 +256,18 @@ describe('EventStore', function () {
 				expect(secondAggregateCounter).to.equal(1);
 				done();
 			}, 100);
+		});
+
+		it('returns a promise', () => {
+
+			setImmediate(() => {
+				es.commit([goodEvent]);
+			});
+
+			return es.once('somethingHappened').then(e => {
+				expect(e).to.exist;
+				expect(e).to.have.property('type', goodEvent.type);
+			});
 		});
 	});
 });

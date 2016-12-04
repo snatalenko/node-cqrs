@@ -1,10 +1,15 @@
 'use strict';
 
-const cqrs = require('..');
-const SagaEventHandler = cqrs.SagaEventHandler;
-const Saga = require('./mocks/Saga');
-const chai = require('chai');
-const expect = chai.expect;
+const { SagaEventHandler, Container, InMemoryEventStorage, EventStore, CommandBus, AbstractSaga } = require('..');
+
+class Saga extends AbstractSaga {
+	static get handles() {
+		return ['somethingHappened'];
+	}
+	_somethingHappened(event) {
+		super.enqueue('doSomething', { foo: 'bar' });
+	}
+}
 
 describe('SagaEventHandler', function () {
 
@@ -15,10 +20,10 @@ describe('SagaEventHandler', function () {
 	it('restores saga from eventStore, passes in received event and sends emitted commands', done => {
 
 		try {
-			const domain = new cqrs.Container();
-			domain.register(cqrs.InMemoryEventStorage, 'storage');
-			domain.register(cqrs.EventStore, 'eventStore');
-			domain.register(cqrs.CommandBus, 'commandBus');
+			const domain = new Container();
+			domain.register(InMemoryEventStorage, 'storage');
+			domain.register(EventStore, 'eventStore');
+			domain.register(CommandBus, 'commandBus');
 			domain.registerSaga(Saga);
 			domain.createAllInstances();
 

@@ -1,13 +1,11 @@
 'use strict';
 
-const chai = require('chai');
-const expect = chai.expect;
-const AbstractAggregate = require('../index').AbstractAggregate;
+const { AbstractAggregate } = require('..');
 const Aggregate = require('./mocks/Aggregate');
 const StatelessAggregate = require('./mocks/StatelessAggregate');;
 const blankContext = require('./mocks/blankContext');
 
-chai.should();
+require('chai').should();
 
 describe('AbstractAggregate', function () {
 

@@ -1,6 +1,5 @@
 'use strict';
 
-const { expect } = require('chai');
 const { AggregateCommandHandler, AbstractAggregate } = require('..');
 
 function delay(ms) {
@@ -43,21 +42,6 @@ class CommandBus {
 		this.handlers[messageType] = listener;
 	}
 }
-
-function logRequests(obj) {
-	return new Proxy(obj, {
-		get(target, propName) {
-			if (typeof target[propName] !== 'function' || propName.startsWith('_') || propName === 'constructor')
-				return target[propName];
-			return function (...args) {
-				if (!target.requests) target.requests = [];
-				target.requests.push({ name: propName, args });
-				return target[propName](...args);
-			};
-		}
-	})
-}
-
 
 describe('AggregateCommandHandler', function () {
 

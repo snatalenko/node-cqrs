@@ -1,10 +1,7 @@
 'use strict';
 
-const cqrs = require('..');
-const InMemoryMessageBus = cqrs.InMemoryMessageBus;
-const chai = require('chai');
-const expect = chai.expect;
-chai.should();
+const { InMemoryMessageBus } = require('..');
+require('chai').should();
 
 describe('InMemoryMessageBus', function () {
 
