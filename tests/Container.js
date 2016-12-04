@@ -1,11 +1,9 @@
 'use strict';
 
-const cqrs = require('..');
-const Container = cqrs.Container;
+const { InMemoryEventStorage, EventStore, CommandBus, InMemoryMessageBus, Container, Observer, AbstractAggregate } = require('..');
 const getClassDependencyNames = require('../src/di/getClassDependencyNames');
-const chai = require('chai');
-const expect = chai.expect;
-chai.should();
+
+require('chai').should();
 
 describe('Container', function () {
 
@@ -13,16 +11,17 @@ describe('Container', function () {
 
 	beforeEach(() => {
 		c = new Container();
-		c.register(cqrs.InMemoryEventStorage, 'storage');
-		c.register(cqrs.EventStore, 'eventStore');
-		c.register(cqrs.CommandBus, 'commandBus');
+		c.register(InMemoryEventStorage, 'storage');
+		c.register(EventStore, 'eventStore');
+		c.register(c => logRequests(new InMemoryMessageBus()), 'messageBus');
+		c.register(c => logRequests(new CommandBus({ messageBus: c.messageBus })), 'commandBus');
 	});
 
 	describe('register', () => {
 
 		it('registers type or factory in the container', () => {
 
-			c.factories.should.have.length(3);
+			c.factories.should.have.length(4);
 			c.instances.should.have.property('container');
 		});
 
@@ -39,7 +38,7 @@ describe('Container', function () {
 
 	describe('registerCommandHandler(typeOrFactory) extension', () => {
 
-		class MyCommandHandler extends cqrs.Observer {
+		class MyCommandHandler extends Observer {
 			static get handles() {
 				return ['doSomething'];
 			}
@@ -47,18 +46,19 @@ describe('Container', function () {
 		}
 
 		it('registers a command handler factory', () => {
-			c.factories.should.have.length(3);
-			c.registerCommandHandler(MyCommandHandler);
 			c.factories.should.have.length(4);
+			c.registerCommandHandler(MyCommandHandler);
+			c.factories.should.have.length(5);
 		});
 
 		it('subscribes to commandBus upon instance creation', () => {
 
 			c.registerCommandHandler(MyCommandHandler);
-			c.commandBus.should.not.have.deep.property('_bus._handlers.doSomething');
+			expect(c.messageBus).to.have.property('requests').that.is.empty;
 
 			c.createUnexposedInstances();
-			c.commandBus.should.have.deep.property('_bus._handlers.doSomething');
+			expect(c.messageBus).to.have.deep.property('requests[0].name', 'on');
+			expect(c.messageBus).to.have.deep.property('requests[0].args[0]', 'doSomething');
 		});
 	});
 
@@ -67,7 +67,7 @@ describe('Container', function () {
 		let somethingHappenedCnt;
 		beforeEach(() => { somethingHappenedCnt = 0; });
 
-		class MyEventReceptor extends cqrs.Observer {
+		class MyEventReceptor extends Observer {
 			static get handles() {
 				return ['somethingHappened'];
 			}
@@ -77,9 +77,9 @@ describe('Container', function () {
 		}
 
 		it('registers an event receptor factory', () => {
-			c.factories.should.have.length(3);
-			c.registerEventReceptor(MyEventReceptor);
 			c.factories.should.have.length(4);
+			c.registerEventReceptor(MyEventReceptor);
+			c.factories.should.have.length(5);
 		});
 
 		it('subscribes to eventStore upon instance creation', () => {
@@ -105,7 +105,7 @@ describe('Container', function () {
 
 		it('registers aggregate command handler for a given aggregate type', () => {
 
-			class Aggregate extends cqrs.AbstractAggregate {
+			class Aggregate extends AbstractAggregate {
 				static get handles() {
 					return ['doSomething'];
 				}
@@ -120,7 +120,7 @@ describe('Container', function () {
 
 			class SomeService { }
 
-			class MyAggregate extends cqrs.AbstractAggregate {
+			class MyAggregate extends AbstractAggregate {
 				static get handles() {
 					return ['doSomething'];
 				}

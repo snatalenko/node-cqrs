@@ -2,6 +2,24 @@
 
 // require('debug').enable('cqrs:info:*');
 
+global.logRequests = function logRequests(obj) {
+	const requests = [];
+	const proxy = new Proxy(obj, {
+		get(target, propName) {
+			if (typeof target[propName] !== 'function' || propName.startsWith('__') || propName === 'constructor' || propName === 'valueOf')
+				return target[propName];
+			return function (...args) {
+				requests.push({ name: propName, args });
+				return target[propName](...args);
+			};
+		}
+	});
+	proxy.requests = requests;
+	return proxy;
+};
+
+global.expect = require('chai').expect;
+
 require('./InMemoryMessageBus');
 require('./EventStore');
 require('./Container');
