@@ -58,9 +58,9 @@ module.exports = class CommandBus {
 		if (otherArgs.length > 1) throw new TypeError('more than expected arguments supplied');
 
 		// obsolete. left for backward compatibility
-		if (otherArgs.length) {
+		if (otherArgs.length || (!('context' in options) && !('payload' in options))) {
 			const context = options;
-			const payload = otherArgs[0];
+			const payload = otherArgs.length ? otherArgs[0] : undefined;
 			return this.sendRaw({ type, aggregateId, context, payload });
 		}
 
