@@ -3,12 +3,30 @@
 const validateHandlers = require('./utils/validateHandlers');
 const passToHandlerAsync = require('./utils/passToHandlerAsync');
 const getHandler = require('./utils/getHandler');
+
 const _id = Symbol('id');
 const _version = Symbol('version');
 const _changes = Symbol('changes');
 
+/**
+ * CQRS Command
+ * @typedef {{type: string, aggregateId: string, payload: object, context: object}} ICommand
+ */
+
+/**
+ * CQRS Event
+ * @typedef {{type: string, aggregateId: string, aggregateVersion, payload: object, context: object }} IEvent
+ */
+
 module.exports = class AbstractAggregate {
 
+	/**
+	 * List of commands handled by Aggregate
+	 *
+	 * @type {string[]}
+	 * @readonly
+	 * @static
+	 */
 	static get handles() {
 		throw new Error('handles must be overridden to return a list of handled command types');
 	}
@@ -21,10 +39,22 @@ module.exports = class AbstractAggregate {
 		return this[_version];
 	}
 
+	/**
+	 * Events emitted by Aggregate command handlers
+	 *
+	 * @type {IEvent[]}
+	 * @readonly
+	 */
 	get changes() {
 		return this[_changes].slice(0);
 	}
 
+	/**
+	 * Copy of Aggregate state
+	 *
+	 * @type {object}
+	 * @readonly
+	 */
 	get snapshot() {
 		return this.state ? JSON.parse(JSON.stringify(this.state)) : null;
 	}
@@ -46,6 +76,12 @@ module.exports = class AbstractAggregate {
 			options.events.forEach(e => this.mutate(e));
 	}
 
+	/**
+	 * Pass command to command handler
+	 *
+	 * @param {ICommand} command
+	 * @returns
+	 */
 	handle(command) {
 		if (!command) throw new TypeError('command argument required');
 		if (!command.type) throw new TypeError('command.type argument required');
@@ -53,7 +89,11 @@ module.exports = class AbstractAggregate {
 		return passToHandlerAsync(this, command.type, command.payload, command.context);
 	}
 
-	/** Mutates aggregate state and increments aggregate version */
+	/**
+	 * Mutate aggregate state and increment aggregate version
+	 *
+	 * @param {IEvent} event
+	 */
 	mutate(event) {
 		if (this.state) {
 			const handler = this.state.mutate || getHandler(this.state, event.type);
@@ -65,19 +105,32 @@ module.exports = class AbstractAggregate {
 	}
 
 	/**
-	 * Registers new aggregate event and mutates aggregate state
-	 * @param  {String} eventType 		Event name
-	 * @param  {Object} eventPayload 	Event data
+	 * Format and register aggregate event and mutate aggregate state
+	 *
+	 * @param {string} type - event type
+	 * @param {object} payload - event data
 	 */
-	emit(eventType, eventPayload) {
-		if (typeof eventType !== 'string' || !eventType.length) throw new TypeError('eventType argument must be a non-empty string');
+	emit(type, payload) {
+		if (typeof type !== 'string' || !type.length) throw new TypeError('type argument must be a non-empty string');
 
-		const event = {
+		return this.emitRaw({
 			aggregateId: this.id,
 			aggregateVersion: this.version,
-			type: eventType,
-			payload: eventPayload
-		};
+			type,
+			payload
+		});
+	}
+
+	/**
+	 * Register aggregate event and mutate aggregate state
+	 *
+	 * @param {IEvent} event
+	 */
+	emitRaw(event) {
+		if (!event) throw new TypeError('event argument required');
+		if (!event.aggregateId) throw new TypeError('event.aggregateId argument required');
+		if (typeof event.aggregateVersion !== 'number') throw new TypeError('event.aggregateVersion argument must be a Number');
+		if (typeof event.type !== 'string' || !event.type.length) throw new TypeError('event.type argument must be a non-empty String');
 
 		this.mutate(event);
 
