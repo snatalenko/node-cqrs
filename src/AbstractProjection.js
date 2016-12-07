@@ -75,28 +75,4 @@ module.exports = class AbstractProjection extends Observer {
 			cur.then(() => this.project(event)),
 			Promise.resolve());
 	}
-
-	createView(key, update) {
-		return this.view.create(key, update);
-	}
-
-	updateView(key, update) {
-		return this.view.update(key, update);
-	}
-
-	updateViewEnforcingNew(key, update) {
-		return this.view.updateEnforcingNew(key, update);
-	}
-
-	updateAll(filter, update) {
-		return this.view.updateAll(filter, update);
-	}
-
-	deleteView(key) {
-		return this.view.delete(key);
-	}
-
-	deleteAll(filter) {
-		return this.view.deleteAll(filter);
-	}
 };

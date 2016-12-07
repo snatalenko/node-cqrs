@@ -19,6 +19,10 @@ module.exports = class InMemoryViewStorage {
 		this.get = this.get.bind(this);
 	}
 
+	has(key) {
+		return key in this.state;
+	}
+
 	get(key) {
 		if (!key) throw new TypeError('key argument required');
 
@@ -30,7 +34,7 @@ module.exports = class InMemoryViewStorage {
 	create(key, update) {
 		if (!key) throw new TypeError('key argument required');
 		if (!update) throw new TypeError('update argument required');
-		if (key in this.state) throw new Error(`Key '${key}' already exists`);
+		if (this.has(key)) throw new Error(`Key '${key}' already exists`);
 
 		if (typeof update === 'function') {
 			update(this.state[key] = {});
@@ -46,7 +50,7 @@ module.exports = class InMemoryViewStorage {
 	update(key, update) {
 		if (!key) throw new TypeError('key argument required');
 		if (!update) throw new TypeError('update argument required');
-		if (!(key in this.state)) throw new Error(`Key '${key}' does not exist`);
+		if (!this.has(key)) throw new Error(`Key '${key}' does not exist`);
 
 		update(this.state[key]);
 	}
@@ -55,7 +59,7 @@ module.exports = class InMemoryViewStorage {
 		if (!key) throw new TypeError('key argument required');
 		if (!update) throw new TypeError('update argument required');
 
-		if (!(key in this.state)) {
+		if (!this.has(key)) {
 			this.create(key, update);
 		}
 		else {
