@@ -9,14 +9,16 @@ A set of backbone classes for CQRS app development
 
 ## Usage
 
+You'll need the node-cqrs itself and some storage implementation (e.g. [node-cqrs-mongo](https://www.npmjs.com/package/node-cqrs-mongo)), but for test purposes you can use built-in InMemoryEventStorage
+
 ```bash
-npm install snatalenko/node-cqrs --save
+npm install node-cqrs --save
 ```
 
-```js
+### Aggregate
 
-const { Container, AbstractAggregate } = require('node-cqrs');
-const MongoEventStorage = require('node-cqrs-mongo');
+```js
+const { AbstractAggregate } = require('node-cqrs');
 
 /**
  * Aggregate state example
@@ -81,17 +83,20 @@ class UserAggregate extends AbstractAggregate {
 		this.emit('userSignedUp', { profile, passwordHash });
 	}
 }
+```
 
-/**
- * Example service 
- */
-class SomeService { /* ... */ }
+### DI Container
 
+All the instances can be linked together manually, but it's much easier to register them in a DI **Container** and let it handle all the wiring:
+
+```js
+
+const { Container, InMemoryEventStorage } = require('node-cqrs');
 
 // Register dependencies in the DI container
 const container = new Container();
-container.register(c => new MongoEventStorage({ connectionString }, 'storage'));
-container.register(SomeService, 'someService');
+container.register(InMemoryEventStorage, 'storage');
+container.register(SomeService, 'someService'); // as an example of Aggregate dependency
 container.registerAggregate(UserAggregate);
 
 // Setup command and event handler listeners
@@ -114,7 +119,7 @@ After command processing is done, produced events will be committed to the event
 subscribed projections and/or event receptors.
 
 
-## Contribuion
+## Contribution
 
 Use [editorconfig](http://editorconfig.org), [eslint](http://eslint.org), `npm test -- --watch`
 
