@@ -1,6 +1,6 @@
 {
   "name": "node-cqrs",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Basic ES6 backbone for CQRS app development",
   "repository": "snatalenko/node-cqrs",
   "keywords": [
