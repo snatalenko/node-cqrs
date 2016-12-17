@@ -52,9 +52,12 @@ module.exports = class CqrsDomainContainer extends Container {
 	 * @param {function} typeOrFactory
 	 * @param {string} exposedViewName
 	 */
-	registerProjection(typeOrFactory, exposedViewName) {
+	registerProjection(ProjectionType, exposedViewName) {
+		if (!isClass(ProjectionType))
+			throw new TypeError('ProjectionType argument must be a constructor function');
+
 		super.register(container => {
-			const projection = container.createInstance(typeOrFactory);
+			const projection = container.createInstance(ProjectionType);
 			projection.subscribe(container.eventStore);
 			projection.restore(container.eventStore);
 			return projection;
@@ -66,14 +69,14 @@ module.exports = class CqrsDomainContainer extends Container {
 	 *
 	 * @param {function} aggregateType
 	 */
-	registerAggregate(aggregateType) {
-		if (!isClass(aggregateType))
-			throw new TypeError('aggregateType argument must be a constructor function');
+	registerAggregate(AggregateType) {
+		if (!isClass(AggregateType))
+			throw new TypeError('AggregateType argument must be a constructor function');
 
 		this.registerCommandHandler(container => new AggregateCommandHandler({
 			eventStore: container.eventStore,
-			aggregateType: options => container.createInstance(aggregateType, options),
-			handles: aggregateType.handles
+			aggregateType: options => container.createInstance(AggregateType, options),
+			handles: AggregateType.handles
 		}));
 	}
 
@@ -82,15 +85,15 @@ module.exports = class CqrsDomainContainer extends Container {
 	 *
 	 * @param {function} sagaType
 	 */
-	registerSaga(sagaType) {
-		if (!isClass(sagaType))
-			throw new TypeError('sagaType argument must be a constructor function');
+	registerSaga(SagaType) {
+		if (!isClass(SagaType))
+			throw new TypeError('SagaType argument must be a constructor function');
 
 		this.registerEventReceptor(container => new SagaEventHandler({
 			eventStore: container.eventStore,
 			commandBus: container.commandBus,
-			sagaType: options => container.createInstance(sagaType, options),
-			handles: sagaType.handles
+			sagaType: options => container.createInstance(SagaType, options),
+			handles: SagaType.handles
 		}));
 	}
 };
