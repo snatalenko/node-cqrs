@@ -21,6 +21,7 @@ describe('SagaEventHandler', function () {
 
 		try {
 			const domain = new Container();
+			domain.registerInstance({ hostname: 'test' }, 'eventStoreConfig');
 			domain.register(InMemoryEventStorage, 'storage');
 			domain.register(EventStore, 'eventStore');
 			domain.register(CommandBus, 'commandBus');

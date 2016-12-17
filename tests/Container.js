@@ -72,9 +72,6 @@ describe('Container', function () {
 			static get handles() {
 				return ['somethingHappened'];
 			}
-			static get queueName() {
-				return MyEventReceptor.name;
-			}
 			_somethingHappened() {
 				somethingHappenedCnt += 1;
 			}

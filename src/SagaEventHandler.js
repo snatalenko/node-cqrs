@@ -6,8 +6,9 @@ const { isClass, coWrap } = require('./utils');
 
 const _eventStore = Symbol('eventStore');
 const _commandBus = Symbol('commandBus');
-const _handles = Symbol('handles');
 const _createSaga = Symbol('createSaga');
+const _handles = Symbol('handles');
+const _queueName = Symbol('queueName');
 
 /**
  * Listens to Saga events,
@@ -32,23 +33,39 @@ module.exports = class SagaEventHandler extends Observer {
 			[_commandBus]: {
 				value: options.commandBus
 			},
-			[_handles]: {
-				value: options.handles || options.sagaType.handles
-			},
 			[_createSaga]: {
 				value: isClass(options.sagaType) ?
 					params => new options.sagaType(params) :
 					options.sagaType
+			},
+			[_handles]: {
+				value: options.handles || options.sagaType.handles
+			},
+			[_queueName]: {
+				value: options.queueName
 			}
 		});
 
 		coWrap(this, 'handle');
 	}
 
+	/**
+	 * Overrides observer subscribe method
+	 */
 	subscribe(eventStore) {
-		return super.subscribe(eventStore, this[_handles], this.handle);
+		Observer.subscribe(eventStore, this, {
+			messageTypes: this[_handles],
+			masterHandler: this.handle,
+			queueName: this[_queueName]
+		});
 	}
 
+	/**
+	 * Handle saga event
+	 *
+	 * @param {object} event
+	 * @returns {Promise<object[]>}
+	 */
 	* handle(event) {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');

@@ -13,6 +13,9 @@ function isClass(func) {
 
 module.exports = class CqrsDomainContainer extends Container {
 
+	/**
+	 * Creates an instance of CqrsDomainContainer
+	 */
 	constructor() {
 		super();
 		this.register(EventStore, 'eventStore');
@@ -83,7 +86,7 @@ module.exports = class CqrsDomainContainer extends Container {
 	/**
 	 * Register saga type in the container
 	 *
-	 * @param {function} sagaType
+	 * @param {function} SagaType
 	 */
 	registerSaga(SagaType) {
 		if (!isClass(SagaType))
@@ -93,7 +96,8 @@ module.exports = class CqrsDomainContainer extends Container {
 			eventStore: container.eventStore,
 			commandBus: container.commandBus,
 			sagaType: options => container.createInstance(SagaType, options),
-			handles: SagaType.handles
+			handles: SagaType.handles,
+			queueName: SagaType.name
 		}));
 	}
 };
