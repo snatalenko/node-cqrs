@@ -32,7 +32,7 @@ class EventStore {
 	commit(events) {
 		if (!this.committed) this.committed = [];
 		this.committed.push(...events);
-		return Promise.resolve();
+		return Promise.resolve(events);
 	}
 }
 
@@ -132,24 +132,6 @@ describe('AggregateCommandHandler', function () {
 			.then(r => {
 				expect(eventStore).to.have.deep.property('requests[1].name', 'commit');
 				expect(eventStore).to.have.deep.property('requests[1].args[0]').that.is.an('Array');
-			});
-	});
-
-	it('copies command context fields to event', () => {
-
-		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
-
-		const command = { type: 'doSomething', sagaId: 1, payload: 'test', context: 'c1', auth: undefined };
-
-		return handler.execute(command)
-			.then(() => {
-				expect(eventStore).to.have.property('committed').that.has.length(1);
-
-				const event = eventStore.committed[0];
-				expect(event).to.have.property('sagaId', command.sagaId);
-				expect(event).to.not.have.property('sagaVersion');
-				expect(event).to.have.property('context', command.context);
-				expect(event).to.have.property('auth', command.auth);
 			});
 	});
 });

@@ -1,16 +1,7 @@
 'use strict';
 
 const Observer = require('./Observer');
-const ConcurrencyError = require('./errors/ConcurrencyError');
 const { isClass, coWrap } = require('./utils');
-
-const COMMIT_RETRIES_LIMIT = 5;
-const COMMAND_TO_EVENT_CONTEXT_FIELDS = [
-	'sagaId',
-	'sagaVersion',
-	'context',
-	'auth'
-];
 
 const _eventStore = Symbol('eventStore');
 const _aggregateFactory = Symbol('aggregateTypeOrFactory');
@@ -90,7 +81,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 	 * @param {{type: string}} cmd - command to execute
 	 * @return {Promise<object[]>} events
 	 */
-	* execute(cmd, options) {
+	* execute(cmd) {
 		if (!cmd) throw new TypeError('cmd argument required');
 		if (!cmd.type) throw new TypeError('cmd.type argument required');
 
@@ -101,33 +92,10 @@ module.exports = class AggregateCommandHandler extends Observer {
 		yield Promise.resolve(aggregate.handle(cmd));
 
 		const events = aggregate.changes;
+		this.info(`command '${cmd.type}' processed, ${events.length === 1 ? '1 event' : `${events.lengts} events`} produced`);
 		if (!events || !events.length)
 			return [];
 
-		const fieldsToCopy = COMMAND_TO_EVENT_CONTEXT_FIELDS.filter(fieldName => fieldName in cmd);
-		events.forEach(event => {
-			fieldsToCopy.forEach(fieldName => {
-				if (!(fieldName in event)) {
-					event[fieldName] = cmd[fieldName];
-				}
-			});
-		});
-
-		try {
-			yield this[_eventStore].commit(events);
-		}
-		catch (err) {
-			if (err.name === ConcurrencyError.name) {
-				const currentIteration = (options && options.iteration) || 0;
-				if (currentIteration < COMMIT_RETRIES_LIMIT) {
-					return this.execute(cmd, { iteration: currentIteration + 1 });
-				}
-			}
-			throw err;
-		}
-
-		this.info(`command '${cmd.type}' processed, ${events.length === 1 ? '1 event' : `${events.lengts} events`} produced`);
-
-		return events;
+		return this[_eventStore].commit(events, { sourceCommand: cmd });
 	}
 };

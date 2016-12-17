@@ -2,6 +2,7 @@
 
 const { InMemoryEventStorage, EventStore, CommandBus, InMemoryMessageBus, Container, Observer, AbstractAggregate } = require('..');
 const getClassDependencyNames = require('../src/di/getClassDependencyNames');
+const delay = ms => new Promise(done => setTimeout(done, ms));
 
 require('chai').should();
 
@@ -11,6 +12,7 @@ describe('Container', function () {
 
 	beforeEach(() => {
 		c = new Container();
+		c.registerInstance({ hostname: 'test' }, 'eventStoreConfig');
 		c.register(InMemoryEventStorage, 'storage');
 		c.register(c => logRequests(new InMemoryMessageBus()), 'messageBus');
 		c.register(c => logRequests(new CommandBus({ messageBus: c.messageBus })), 'commandBus');
@@ -70,6 +72,9 @@ describe('Container', function () {
 			static get handles() {
 				return ['somethingHappened'];
 			}
+			static get queueName() {
+				return MyEventReceptor.name;
+			}
 			_somethingHappened() {
 				somethingHappenedCnt += 1;
 			}
@@ -88,15 +93,19 @@ describe('Container', function () {
 			c.registerEventReceptor(MyEventReceptor);
 			expect(somethingHappenedCnt).to.eq(0);
 
-			return c.eventStore.commit([testEvent]).then(() => {
-				expect(somethingHappenedCnt).to.eq(0);
+			return c.eventStore.commit([testEvent])
+				.then(() => delay(50))
+				.then(() => {
+					expect(somethingHappenedCnt).to.eq(0);
 
-				c.createUnexposedInstances();
+					c.createUnexposedInstances();
 
-				return c.eventStore.commit([testEvent]).then(() => {
-					expect(somethingHappenedCnt).to.eq(1);
+					return c.eventStore.commit([testEvent])
+						.then(() => delay(50))
+						.then(() => {
+							expect(somethingHappenedCnt).to.eq(1);
+						});
 				});
-			});
 		});
 	});
 

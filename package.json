@@ -20,7 +20,7 @@
     "lint": "eslint src/",
     "pretest": "npm run lint",
     "test": "mocha ./tests/index.js",
-    "test:coverage": "istanbul cover node_modules/.bin/_mocha tests/index.js --report lcovonly -- -R spec",
+    "test:coverage": "istanbul cover node_modules/.bin/_mocha tests/index.js -- -R spec",
     "pretest:coveralls": "npm run test:coverage",
     "test:coveralls": "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
     "posttest:coveralls": "rm -rf ./coverage",
@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "chai": "^3.2.0",
-    "mocha": "^3.2.0"
+    "mocha": "^3.2.0",
+    "sinon": "^1.17.6"
   }
 }

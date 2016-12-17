@@ -5,12 +5,31 @@ const debug = require('debug');
 
 module.exports = class Observer {
 
-	// can be overridden to return an Array of handler message types
-	// e.g. ['somethingHappened', 'anotherHappened']
+	/**
+	 * Returns an array of handled message types. Should be overridden
+	 *
+	 * @returns {string[]} - handled message types (e.g. ['somethingHappened', 'anotherHappened'])
+	 * @static
+	 * @readonly
+	 */
 	static get handles() {
 		return null;
 	}
 
+	/**
+	 * Optional queue name (for named subscriptions)
+	 *
+	 * @returns {string}
+	 * @readonly
+	 * @static
+	 */
+	static get queueName() {
+		return undefined;
+	}
+
+	/**
+	 * Creates an instance of Observer
+	 */
 	constructor() {
 		Object.defineProperties(this, {
 			debug: {
@@ -65,7 +84,11 @@ module.exports = class Observer {
 		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty string');
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
 
-		const r = observable.on(messageType, handler.bind(this));
+		const boundedHandler = handler.bind(this);
+
+		const r = this.queueName ?
+			observable.on(messageType, boundedHandler, { queueName: this.queueName }) :
+			observable.on(messageType, boundedHandler);
 
 		this.debug(`listening to '${messageType}'`);
 

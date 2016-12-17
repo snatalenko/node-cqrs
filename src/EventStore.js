@@ -1,10 +1,12 @@
 'use strict';
 
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
+const ConcurrencyError = require('./errors/ConcurrencyError');
 const debug = require('debug')('cqrs:debug:EventStore');
 const info = require('debug')('cqrs:info:EventStore');
 const coWrap = require('./utils/coWrap');
 
+const COMMIT_RETRIES_LIMIT = 5;
 const STORAGE_METHODS = [
 	'commitEvents',
 	'getEvents',
@@ -12,7 +14,6 @@ const STORAGE_METHODS = [
 	'getSagaEvents',
 	'getNewId'
 ];
-
 const EMITTER_METHODS = [
 	'on'
 ];
@@ -21,17 +22,13 @@ const _storage = Symbol('storage');
 const _bus = Symbol('bus');
 const _emitter = Symbol('emitter');
 const _validator = Symbol('validator');
-const _publishAsync = Symbol('publishAsync');
+const _config = Symbol('config');
+const _defaults = {
+	hostname: undefined,
+	publishAsync: true
+};
 
-/**
- * CQRS Event
- * @typedef {object} IEvent
- * @property {string} type - Event type
- * @property {string|number} aggregateId - Aggregate root ID
- * @property {number} aggregateVersion - Aggregate root version
- * @property {string|number} sagaId - Saga ID
- * @property {number} sagaVersion - Saga version
- */
+const _namedQueues = Symbol('queueHandlers');
 
 /**
  * Format event stream summary for debug output
@@ -73,50 +70,102 @@ function respondsTo(instance, ...methodNames) {
 	return methodNames.findIndex(methodName => typeof instance[methodName] !== 'function') === -1;
 }
 
+/**
+ * Check if emitter support named queues
+ *
+ * @param {object} emitter
+ * @returns {boolean}
+ */
+function emitterSupportsQueues(emitter) {
+	const emitterPrototype = Object.getPrototypeOf(emitter);
+	const EmitterType = emitterPrototype.constructor;
+	return EmitterType && !!EmitterType.supportsQueues;
+}
+
+/**
+ * Attaches command and node fields to each event in a given array
+ *
+ * @param {IEvent[]} events
+ * @param {{ context, sagaId, sagaVersion }} sourceCommand
+ * @param {{ hostname }} eventStoreConfig
+ * @returns {IEvent[]}
+ */
+function augmentEvents(events, sourceCommand = {}, eventStoreConfig) {
+	if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
+
+	const { sagaId, sagaVersion, context } = sourceCommand;
+	const { hostname } = eventStoreConfig;
+
+	const extension = {
+		sagaId,
+		sagaVersion,
+		context: Object.assign({ hostname }, context)
+	};
+
+	return events.map(event => Object.assign({}, extension, event));
+}
+
+/**
+ * CQRS Event
+ * @typedef {{ type: string, aggregateId: string, aggregateVersion: number, sagaId:string, sagaVersion:number }} IEvent
+ */
 
 module.exports = class EventStore {
 
 	/**
+	 * Default configuration
+	 *
+	 * @type {{ hostname: string, publishAsync: boolean }}
+	 * @static
+	 */
+	static get defaults() {
+		return _defaults;
+	}
+
+	/**
+	 * Configuration
+	 *
+	 * @type {{ hostname: string, publishAsync: boolean }}
+	 * @readonly
+	 */
+	get config() {
+		return this[_config];
+	}
+
+	/**
 	 * Creates an instance of EventStore.
 	 *
-	 * @param {{storage, messageBus, validator:function(*):void, publishAsync: boolean}} options
+	 * @param {{ storage, messageBus, eventValidator, eventStoreConfig }} options
 	 */
-	constructor(options) {
-		if (!options) throw new TypeError('options argument required');
-		if (!options.storage) throw new TypeError('options.storage argument required');
-		if (!respondsTo(options.storage, ...STORAGE_METHODS))
-			throw new TypeError(`options.storage does not support all the methods: ${STORAGE_METHODS}`);
-		if (options.messageBus && !respondsTo(options.messageBus, ...EMITTER_METHODS))
-			throw new TypeError(`options.messageBus does not support all the methods: ${EMITTER_METHODS}`);
-		if (options.validator && typeof options.validator !== 'function')
-			throw new TypeError('options.validator, when provided, must be a function');
-		if (options.messageBus !== undefined && !options.messageBus && !respondsTo(options.storage, ...EMITTER_METHODS))
-			throw new TypeError(`either options.messageBus or options.storage must implement emitter methods: ${EMITTER_METHODS}`);
+	constructor({ storage, messageBus, eventValidator, eventStoreConfig }) {
+		if (!storage)
+			throw new TypeError('storage argument required');
+		if (!respondsTo(storage, ...STORAGE_METHODS))
+			throw new TypeError(`storage does not support methods: ${STORAGE_METHODS.filter(methodName => !respondsTo(storage, methodName))}`);
+		if (messageBus !== undefined && !respondsTo(messageBus, ...EMITTER_METHODS))
+			throw new TypeError(`messageBus does not support methods: ${EMITTER_METHODS.filter(methodName => !respondsTo(messageBus, methodName))}`);
+		if (eventValidator !== undefined && typeof eventValidator !== 'function')
+			throw new TypeError('eventValidator, when provided, must be a function');
 
 		coWrap(this);
 
 		Object.defineProperties(this, {
-			[_storage]: {
-				value: options.storage
-			},
-			[_validator]: {
-				value: options.validator || validateEvent
-			},
-			[_publishAsync]: {
-				value: 'publishAsync' in options ? !!options.publishAsync : true
-			}
+			[_config]: { value: Object.freeze(Object.assign({}, EventStore.defaults, eventStoreConfig)) },
+			[_storage]: { value: storage },
+			[_validator]: { value: eventValidator || validateEvent },
+			[_namedQueues]: { value: new Map() }
 		});
 
-		if (options.messageBus) {
+		if (messageBus) {
 			Object.defineProperties(this, {
-				[_bus]: { value: options.messageBus },
-				[_emitter]: { value: options.messageBus }
+				[_bus]: { value: messageBus },
+				[_emitter]: { value: messageBus }
 			});
 		}
-		else if (respondsTo(options.storage, ...EMITTER_METHODS)) {
+		else if (respondsTo(storage, ...EMITTER_METHODS)) {
 			Object.defineProperties(this, {
 				[_bus]: { value: null },
-				[_emitter]: { value: options.storage }
+				[_emitter]: { value: storage }
 			});
 		}
 		else {
@@ -211,33 +260,49 @@ module.exports = class EventStore {
 	 * @param {IEvent[]} events - a set of events to commit
 	 * @returns {Promise<IEvent[]>} - resolves to signed and committed events
 	 */
-	* commit(events) {
+	* commit(events, { sourceCommand, iteration = 0 } = {}) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
+		if (!events.length) return events;
+
+		debug(`augmenting ${eventsToString(events)} from source command...`);
+		events = augmentEvents(events, sourceCommand, { hostname: this.config.hostname });
 
 		debug(`validating ${eventsToString(events)}...`);
-		yield events.map(this[_validator]);
+		events.forEach(event => {
+			this[_validator](event);
+		});
 
-		debug(`committing ${eventsToString(events)}...`);
-		yield this[_storage].commitEvents(events);
+		try {
+			debug(`committing ${eventsToString(events)}...`);
+			yield this[_storage].commitEvents(events);
+		}
+		catch (err) {
+			if (err.name === ConcurrencyError.name && iteration < COMMIT_RETRIES_LIMIT) {
+				return this.commit(events, {
+					sourceCommand,
+					iteration: iteration + 1
+				});
+			}
+			throw err;
+		}
 
 		if (this[_bus]) {
-			if (this[_publishAsync]) {
+			const publishEvents = () =>
+				Promise.all(events.map(event => this[_bus].publish(event)))
+					.then(() => {
+						info(`${eventsToString(events)} published`);
+					}, err => {
+						info(`${eventsToString(events)} publishing failed: ${err}`);
+						throw err;
+					});
+
+			if (this.config.publishAsync) {
 				debug(`publishing ${eventsToString(events)} asynchronously...`);
-				setImmediate(() => Promise.all(events.map(event => this[_bus].publish(event))).then(() => {
-					info(`${eventsToString(events)} published`);
-				}, err => {
-					info(`${eventsToString(events)} publishing failed: ${err.message || err}`);
-				}));
+				setImmediate(publishEvents);
 			}
 			else {
 				debug(`publishing ${eventsToString(events)} synchronously...`);
-				try {
-					yield events.map(event => this[_bus].publish(event));
-				}
-				catch (err) {
-					info(`${eventsToString(events)} publishing failed: ${err.message || err}`);
-					throw err;
-				}
+				yield publishEvents();
 			}
 		}
 
@@ -248,11 +313,35 @@ module.exports = class EventStore {
 	 * Setup a listener for a specific event type
 	 *
 	 * @param {string} messageType
-	 * @param {function(IEvent):any} handler
-	 * @returns {any}
+	 * @param {function(IEvent): any} handler
 	 */
-	on(messageType, handler) {
-		return this[_emitter].on(messageType, handler);
+	on(messageType, handler, { queueName } = {}) {
+		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
+		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
+
+		// named queue subscriptions
+		if (queueName && !emitterSupportsQueues(this[_emitter])) {
+			if (!this.config.hostname)
+				throw new Error(`'${messageType}' handler could not be set up, unique config.hostname is required for named queue subscriptions`);
+
+			const handlerKey = `${queueName}:${messageType}`;
+			if (this[_namedQueues].has(handlerKey))
+				throw new Error(`'${handlerKey}' handler already set up on this node`);
+
+			this[_namedQueues].set(`${queueName}:${messageType}`, handler);
+
+			return this[_emitter].on(messageType, event => {
+
+				if (event.context.hostname !== this.config.hostname) {
+					info(`'${event.type}' committed on node '${event.context.hostname}', '${this.config.hostname}' handler will be skipped`);
+					return;
+				}
+
+				handler(event);
+			});
+		}
+
+		return this[_emitter].on(messageType, handler, { queueName });
 	}
 
 	/**

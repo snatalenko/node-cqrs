@@ -19,9 +19,11 @@ global.logRequests = function logRequests(obj) {
 };
 
 global.expect = require('chai').expect;
+global.sinon = require('sinon');
 
 require('./InMemoryMessageBus');
 require('./EventStore');
+require('./CommandBus');
 require('./Container');
 
 require('./AbstractAggregate');
