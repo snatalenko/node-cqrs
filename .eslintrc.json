@@ -4,7 +4,7 @@
         "node": true
     },
     "parserOptions": {
-        "sourceType": "module"
+        "sourceType": "script"
     },
     "rules": {
         "accessor-pairs": "off",
@@ -15,10 +15,7 @@
             11
         ],
         "class-methods-use-this": [
-            "warn",
-            {
-                "exceptMethods": []
-            }
+            "warn"
         ],
         "consistent-return": "warn",
         "curly": [
@@ -291,7 +288,7 @@
                 ]
             }
         ],
-        "symbol-description": "error",
+        "symbol-description": "warn",
         "template-curly-spacing": "error",
         "yield-star-spacing": [
             "error",
@@ -544,7 +541,7 @@
         "no-inline-comments": "off",
         "no-lonely-if": "error",
         "no-mixed-operators": [
-            "error",
+            "warn",
             {
                 "groups": [
                     [
@@ -588,7 +585,7 @@
         ],
         "no-mixed-spaces-and-tabs": "error",
         "no-multiple-empty-lines": [
-            "error",
+            "warn",
             {
                 "max": 2,
                 "maxEOF": 1
@@ -681,7 +678,17 @@
                 "avoidEscape": true
             }
         ],
-        "require-jsdoc": "off",
+        "require-jsdoc": [
+            "warn",
+            {
+                "require": {
+                    "FunctionDeclaration": false,
+                    "MethodDefinition": true,
+                    "ClassDeclaration": false,
+                    "ArrowFunctionExpression": false
+                }
+            }
+        ],
         "semi": [
             "error",
             "always"
@@ -773,6 +780,10 @@
                 "args": "after-used"
             }
         ],
-        "no-use-before-define": "error"
+        "no-use-before-define": "error",
+        "strict": [
+            "error",
+            "global"
+        ]
     }
 }
