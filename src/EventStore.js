@@ -99,7 +99,9 @@ function augmentEvents(events, sourceCommand = {}, eventStoreConfig) {
 	const extension = {
 		sagaId,
 		sagaVersion,
-		context: Object.assign({ hostname }, context)
+		context: hostname ?
+			Object.assign({ hostname }, context) :
+			context
 	};
 
 	return events.map(event => Object.assign({}, extension, event));
