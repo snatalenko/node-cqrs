@@ -57,7 +57,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 
 		const events = yield this[_eventStore].getAggregateEvents(id);
 		const aggregate = this[_aggregateFactory]({ id, events });
-		this.info(`aggregate ${aggregate.id} created`);
+		this.info(`aggregate ${aggregate.id} (v${aggregate.version}) restored from event store`);
 
 		return aggregate;
 	}
@@ -70,7 +70,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 	* _createAggregate() {
 		const id = yield this[_eventStore].getNewId();
 		const aggregate = this[_aggregateFactory]({ id });
-		this.info(`aggregate ${aggregate.id} (v${aggregate.version}) restored from event store`);
+		this.info(`aggregate ${aggregate.id} created`);
 
 		return aggregate;
 	}
