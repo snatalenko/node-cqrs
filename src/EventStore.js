@@ -30,23 +30,6 @@ const _defaults = {
 const _namedQueues = Symbol('queueHandlers');
 
 /**
- * Format event stream summary for debug output
- *
- * @param {IEvent[]} events
- * @returns {string}
- */
-function eventsToString(events) {
-	if (!events) events = this;
-	if (!Array.isArray(events)) {
-		return events;
-	}
-	else if (events.length === 1) {
-		return `'${events[0].type}'`;
-	}
-	return `${events.length} events`;
-}
-
-/**
  * Validate event structure
  *
  * @param {IEvent} event
@@ -108,7 +91,19 @@ function augmentEvents(events, sourceCommand = {}, eventStoreConfig) {
 
 /**
  * CQRS Event
- * @typedef {{ type: string, aggregateId: string, aggregateVersion: number, sagaId:string, sagaVersion:number }} IEvent
+ * @typedef {{ type:string, aggregateId?:string, aggregateVersion?:number, sagaId?:string, sagaVersion?:number }} IEvent
+ * @property {string} type
+ * @property {string|number} [aggregateId]
+ * @property {number} [aggregateVersion]
+ * @property {string|number} [sagaId]
+ * @property {number} [sagaVersion]
+ */
+
+/**
+ * Event Filter
+ * @typedef {{ afterEvent?: IEvent, beforeEvent?: IEvent }} IEventFilter
+ * @property {IEvent} [afterEvent]
+ * @property {IEvent} [beforeEvent]
  */
 
 module.exports = class EventStore {
@@ -193,66 +188,63 @@ module.exports = class EventStore {
 	 * Retrieve all events of specific types
 	 *
 	 * @param {string[]} eventTypes
-	 * @returns {Promise<IEvent[]>}
+	 * @param {IEventFilter} [filter]
+	 * @returns {Promise<EventStream>}
 	 */
 	* getAllEvents(eventTypes) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
 		debug(`retrieving ${eventTypes ? eventTypes.join(', ') : 'all'} events...`);
 
-		const events = yield this[_storage].getEvents(eventTypes) || [];
-		debug(`${eventsToString(events)} retreieved`);
+		const events = yield this[_storage].getEvents(eventTypes);
 
-		return events;
+		const eventStream = EventStream.from(events);
+		debug(`${eventStream} retrieved`);
+
+		return eventStream;
 	}
 
 	/**
 	 * Retrieve all events of specific Aggregate
 	 *
 	 * @param {string|number} aggregateId
-	 * @returns {Promise<IEvent[]>}
+	 * @param {IEventFilter} [filter]
+	 * @returns {Promise<EventStream>}
 	 */
-	* getAggregateEvents(aggregateId) {
+	* getAggregateEvents(aggregateId, filter) {
 		if (!aggregateId) throw new TypeError('aggregateId argument required');
 
 		debug(`retrieving event stream for aggregate ${aggregateId}...`);
 
-		const events = yield this[_storage].getAggregateEvents(aggregateId) || [];
-		debug(`${eventsToString(events)} retreieved`);
+		const events = yield this[_storage].getAggregateEvents(aggregateId, filter);
 
-		return events;
+		const eventStream = EventStream.from(events);
+		debug(`${eventStream} retrieved`);
+
+		return eventStream;
 	}
 
 	/**
 	 * Retrieve events of specific Saga
 	 *
-	 * @param {string} sagaId
-	 * @param {{eventId: string, sagaVersion: number}} options
-	 * @returns {Promise<IEvent[]>}
+	 * @param {string|number} sagaId
+	 * @param {IEventFilter} filter
+	 * @returns {Promise<EventStream>}
 	 */
-	* getSagaEvents(sagaId, options) {
+	* getSagaEvents(sagaId, filter) {
 		if (!sagaId) throw new TypeError('sagaId argument required');
+		if (!filter) throw new TypeError('filter argument required');
+		if (!filter.beforeEvent) throw new TypeError('filter.beforeEvent argument required');
+		if (filter.beforeEvent.sagaVersion === undefined) throw new TypeError('filter.beforeEvent.sagaVersion argument required');
 
-		// 'except' and 'before' are deprecated, left here for backward compatibility.
-		// options argument should contain sagaVersion and eventId, so the logic of
-		// event stream retrieval will be handled by the EventStore
-		const sagaVersion = options && (options.sagaVersion || options.before);
-		const eventId = options && (options.eventId || options.except);
+		debug(`retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`);
 
-		debug(`retrieving event stream for saga ${sagaId}, v${sagaVersion}, except ${eventId}...`);
+		const events = yield this[_storage].getSagaEvents(sagaId, filter);
 
-		const events = yield this[_storage].getSagaEvents(sagaId, { except: eventId }) || [];
-		debug(`${eventsToString(events)} retreieved`);
+		const eventStream = EventStream.from(events);
+		debug(`${eventStream} retrieved`);
 
-		if (options && Object.keys(options).length) {
-			const filteredEvents = events.filter(e => typeof eventId === 'undefined' || e.id != eventId); // eslint-disable-line eqeqeq
-			if (filteredEvents.length !== events.length) {
-				debug(`${events.length - filteredEvents.length} events excluded by filter: %o`, options);
-			}
-			return filteredEvents;
-		}
-
-		return events;
+		return eventStream;
 	}
 
 	/**

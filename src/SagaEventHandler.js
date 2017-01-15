@@ -18,6 +18,11 @@ const _queueName = Symbol('queueName');
  */
 module.exports = class SagaEventHandler extends Observer {
 
+	/**
+	 * Creates an instance of SagaEventHandler
+	 *
+	 * @param {object} options
+	 */
 	constructor(options) {
 		if (!options) throw new TypeError('options argument required');
 		if (!options.sagaType) throw new TypeError('options.sagaType argument required');
@@ -75,8 +80,7 @@ module.exports = class SagaEventHandler extends Observer {
 			if (typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion argument required, when event.sagaId provided');
 
 			const events = yield this[_eventStore].getSagaEvents(event.sagaId, {
-				before: event.sagaVersion,
-				except: event.id
+				beforeEvent: event
 			});
 
 			saga = this[_createSaga]({ id: event.sagaId, events });

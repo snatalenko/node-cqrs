@@ -22,9 +22,11 @@ module.exports = class InMemoryEventStorage {
 			events.filter(e => e.aggregateId == aggregateId));
 	}
 
-	getSagaEvents(sagaId) {
+	getSagaEvents(sagaId, { beforeEvent }) {
 		return this._events.then(events =>
-			events.filter(e => e.sagaId == sagaId));
+			events.filter(e =>
+				e.sagaId == sagaId
+				&& e.sagaVersion < beforeEvent.sagaVersion));
 	}
 
 	getEvents(eventTypes) {
@@ -32,7 +34,7 @@ module.exports = class InMemoryEventStorage {
 			return this._events;
 
 		return this._events.then(events =>
-			events.filter(e => eventTypes.indexOf(e.type) !== -1));
+			events.filter(e => eventTypes.includes(e.type)));
 	}
 
 	getNewId() {

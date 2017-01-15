@@ -196,7 +196,7 @@ describe('EventStore', function () {
 
 	describe('getSagaEvents(sagaId, options)', () => {
 
-		it('returns events committed by saga', () => {
+		it('returns events committed by saga prior to event that triggered saga execution', () => {
 
 			const events = [
 				{ sagaId: 1, sagaVersion: 1, type: 'somethingHappened' },
@@ -204,36 +204,17 @@ describe('EventStore', function () {
 				{ sagaId: 2, sagaVersion: 1, type: 'somethingHappened' }
 			];
 
-			return es.commit(events).then(() => {
-
-				return es.getSagaEvents(1).then(events => {
-
-					expect(events).to.be.an('Array');
-					expect(events).to.have.length(2);
-					expect(events).to.have.deep.property('[0].type', 'somethingHappened');
-					expect(events).to.have.deep.property('[1].type', 'anotherHappened');
-				});
-			});
-		});
-
-		it('allows to exclude event that triggered saga execution', () => {
-
-			const events = [
-				{ sagaId: 1, sagaVersion: 0, type: 'somethingHappened', id: 1 },
-				{ sagaId: 1, sagaVersion: 0, type: 'anotherHappened', id: 2 },
-				{ sagaId: 2, sagaVersion: 1, type: 'somethingHappened', id: 3 }
-			];
+			const triggeredBy = events[1];
 
 			return es.commit(events).then(() => {
 
-				return es.getSagaEvents(1, { except: 2 }).then(events => {
+				return es.getSagaEvents(1, { beforeEvent: triggeredBy }).then(events => {
 
 					expect(events).to.be.an('Array');
 					expect(events).to.have.length(1);
 					expect(events).to.have.deep.property('[0].type', 'somethingHappened');
 				});
 			});
-
 		});
 	});
 
