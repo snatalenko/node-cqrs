@@ -92,7 +92,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 		yield Promise.resolve(aggregate.handle(cmd));
 
 		const events = aggregate.changes;
-		this.info(`command '${cmd.type}' processed, ${events.length === 1 ? '1 event' : `${events.lengts} events`} produced`);
+		this.info(`command '${cmd.type}' processed, ${events.length === 1 ? '1 event' : `${events.length} events`} produced`);
 		if (!events || !events.length)
 			return [];
 
