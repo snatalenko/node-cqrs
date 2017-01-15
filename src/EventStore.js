@@ -1,12 +1,11 @@
 'use strict';
 
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
-const ConcurrencyError = require('./errors/ConcurrencyError');
 const debug = require('debug')('cqrs:debug:EventStore');
 const info = require('debug')('cqrs:info:EventStore');
 const coWrap = require('./utils/coWrap');
+const EventStream = require('./EventStream');
 
-const COMMIT_RETRIES_LIMIT = 5;
 const STORAGE_METHODS = [
 	'commitEvents',
 	'getEvents',
@@ -88,7 +87,7 @@ function emitterSupportsQueues(emitter) {
  * @param {IEvent[]} events
  * @param {{ context, sagaId, sagaVersion }} sourceCommand
  * @param {{ hostname }} eventStoreConfig
- * @returns {IEvent[]}
+ * @returns {EventStream}
  */
 function augmentEvents(events, sourceCommand = {}, eventStoreConfig) {
 	if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
@@ -104,7 +103,7 @@ function augmentEvents(events, sourceCommand = {}, eventStoreConfig) {
 			context
 	};
 
-	return events.map(event => Object.assign({}, extension, event));
+	return EventStream.from(events, event => Object.assign({}, extension, event));
 }
 
 /**
@@ -262,53 +261,41 @@ module.exports = class EventStore {
 	 * @param {IEvent[]} events - a set of events to commit
 	 * @returns {Promise<IEvent[]>} - resolves to signed and committed events
 	 */
-	* commit(events, { sourceCommand, iteration = 0 } = {}) {
+	* commit(events, { sourceCommand } = {}) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 		if (!events.length) return events;
 
-		debug(`augmenting ${eventsToString(events)} from source command...`);
-		events = augmentEvents(events, sourceCommand, { hostname: this.config.hostname });
+		const eventStream = augmentEvents(events, sourceCommand, { hostname: this.config.hostname });
 
-		debug(`validating ${eventsToString(events)}...`);
-		events.forEach(event => {
+		debug(`validating ${eventStream}...`);
+		eventStream.forEach(event => {
 			this[_validator](event);
 		});
 
-		try {
-			debug(`committing ${eventsToString(events)}...`);
-			yield this[_storage].commitEvents(events);
-		}
-		catch (err) {
-			if (err.name === ConcurrencyError.name && iteration < COMMIT_RETRIES_LIMIT) {
-				return this.commit(events, {
-					sourceCommand,
-					iteration: iteration + 1
-				});
-			}
-			throw err;
-		}
+		debug(`committing ${eventStream}...`);
+		yield this[_storage].commitEvents(eventStream);
 
 		if (this[_bus]) {
 			const publishEvents = () =>
-				Promise.all(events.map(event => this[_bus].publish(event)))
+				Promise.all(eventStream.map(event => this[_bus].publish(event)))
 					.then(() => {
-						info(`${eventsToString(events)} published`);
+						info(`${eventStream} published`);
 					}, err => {
-						info(`${eventsToString(events)} publishing failed: ${err}`);
+						info(`${eventStream} publishing failed: ${err}`);
 						throw err;
 					});
 
 			if (this.config.publishAsync) {
-				debug(`publishing ${eventsToString(events)} asynchronously...`);
+				debug(`publishing ${eventStream} asynchronously...`);
 				setImmediate(publishEvents);
 			}
 			else {
-				debug(`publishing ${eventsToString(events)} synchronously...`);
+				debug(`publishing ${eventStream} synchronously...`);
 				yield publishEvents();
 			}
 		}
 
-		return events;
+		return eventStream;
 	}
 
 	/**
