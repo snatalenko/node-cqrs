@@ -1,6 +1,6 @@
 'use strict';
 
-const { AbstractAggregate } = require('..');
+const { AbstractAggregate, EventStream } = require('..');
 const Aggregate = require('./mocks/Aggregate');
 const StatelessAggregate = require('./mocks/StatelessAggregate');;
 const blankContext = require('./mocks/blankContext');
@@ -48,11 +48,14 @@ describe('AbstractAggregate', function () {
 
 	describe('changes', () => {
 
-		it('contains a read-only list of changes happened in aggregate', () => {
+		it('contains an EventStream of changes happened in aggregate', () => {
 
-			expect(agg.changes).to.be.an('Array');
-			expect(agg.changes).to.be.empty;
-			expect(agg.changes).to.not.equal(agg.changes);
+			const { changes } = agg;
+
+			expect(changes).to.be.instanceof(EventStream);
+			expect(changes).to.be.an('Array');
+			expect(changes).to.be.empty;
+			expect(changes).to.not.equal(agg.changes);
 			expect(() => agg.changes = []).to.throw(TypeError);
 
 			return agg.doSomething({}, blankContext).then(() => {

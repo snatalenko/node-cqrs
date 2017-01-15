@@ -3,6 +3,7 @@
 const validateHandlers = require('./utils/validateHandlers');
 const passToHandlerAsync = require('./utils/passToHandlerAsync');
 const getHandler = require('./utils/getHandler');
+const EventStream = require('./EventStream');
 
 const _id = Symbol('id');
 const _version = Symbol('version');
@@ -31,10 +32,22 @@ module.exports = class AbstractAggregate {
 		throw new Error('handles must be overridden to return a list of handled command types');
 	}
 
+	/**
+	 * Aggregate ID
+	 *
+	 * @type {string|number}
+	 * @readonly
+	 */
 	get id() {
 		return this[_id];
 	}
 
+	/**
+	 * Aggregate Version
+	 *
+	 * @type {number}
+	 * @readonly
+	 */
 	get version() {
 		return this[_version];
 	}
@@ -46,7 +59,7 @@ module.exports = class AbstractAggregate {
 	 * @readonly
 	 */
 	get changes() {
-		return this[_changes].slice(0);
+		return EventStream.from(this[_changes]);
 	}
 
 	/**
@@ -59,6 +72,11 @@ module.exports = class AbstractAggregate {
 		return this.state ? JSON.parse(JSON.stringify(this.state)) : null;
 	}
 
+	/**
+	 * Creates an instance of AbstractAggregate.
+	 *
+	 * @param {{ id: string|number, events: IEvent[], state: object }} options
+	 */
 	constructor(options) {
 		if (!options) throw new TypeError('options argument required');
 		if (!options.id) throw new TypeError('options.id argument required');
