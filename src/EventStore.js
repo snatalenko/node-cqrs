@@ -343,31 +343,40 @@ module.exports = class EventStore {
 			throw new TypeError('filter argument, when specified, must be a Function');
 
 		const emitter = this[_emitter];
-		const unsubscribeMethodName = respondsTo(emitter, 'removeListener') ?
-			'removeListener' :
-			'off';
 
 		return new Promise(resolve => {
 
-			debug(`setting up one-time ${filter ? 'filtered subscription' : 'subscription'} to '${messageTypes.join(', ')}'...`);
+			// handler will be invoked only once,
+			// even if multiple events have been emitted before subscription was destroyed
+			// https://nodejs.org/api/events.html#events_emitter_removelistener_eventname_listener
+			let handled = false;
 
 			function filteredHandler(event) {
-				if (!filter || filter(event)) {
-					info(`'${event.type}' received, one-time subscription removed`);
+				if (filter && !filter(event)) return;
+				if (handled) return;
+				handled = true;
 
-					for (const messageType of messageTypes) {
-						emitter[unsubscribeMethodName](messageType, filteredHandler);
-					}
-					if (handler) {
-						handler(event);
-					}
-					resolve(event);
+				for (const messageType of messageTypes) {
+					if (typeof emitter.removeListener === 'function')
+						emitter.removeListener(messageType, filteredHandler);
+					else
+						emitter.off(messageType, filteredHandler);
 				}
+
+				debug(`'${event.type}' received, one-time subscription to '${messageTypes.join(',')}' removed`);
+
+				if (handler) {
+					handler(event);
+				}
+
+				resolve(event);
 			}
 
 			for (const messageType of messageTypes) {
 				emitter.on(messageType, filteredHandler);
 			}
+
+			debug(`set up one-time ${filter ? 'filtered subscription' : 'subscription'} to '${messageTypes.join(',')}'`);
 		});
 	}
 };
