@@ -49,13 +49,6 @@ describe('AbstractProjection', function () {
 
 			expect(proj.view).to.equal(view);
 		});
-
-		it('validates that view wrapper has all necessary methods', () => {
-
-			const view = new InMemoryViewStorage();
-			delete view.update;
-			expect(() => projection.view = view).to.throw;
-		});
 	});
 
 	describe('subscribe(eventStore)', () => {

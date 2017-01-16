@@ -5,48 +5,76 @@ const InMemoryViewStorage = require('./infrastructure/InMemoryViewStorage');
 const { validateHandlers, passToHandlerAsync, sizeOf } = require('./utils');
 const _view = Symbol('view');
 
+/**
+ * Projection View
+ * @typedef {{create, update, updateEnforcingNew, updateAll, delete, deleteAll, get, has}} IView
+ */
+
+/**
+ * CQRS Event
+ * @typedef {{ type: string }} IEvent
+ */
+
 module.exports = class AbstractProjection extends Observer {
 
+	/**
+	 * List of event types being handled by projection. Must be overridden in projection implementation
+	 *
+	 * @type {string[]}
+	 * @readonly
+	 * @static
+	 */
 	static get handles() {
 		throw new Error('handles must be overridden to return a list of handled event types');
 	}
 
+	/**
+	 * View associated with projection
+	 *
+	 * @type {IView}
+	 * @readonly
+	 */
 	get view() {
 		return this[_view];
 	}
 
-	set view(view) {
-		if (typeof view.create !== 'function') throw new TypeError('view.create argument must be a Function');
-		if (typeof view.update !== 'function') throw new TypeError('view.update argument must be a Function');
-		if (typeof view.updateEnforcingNew !== 'function') throw new TypeError('view.updateEnforcingNew argument must be a Function');
-		if (typeof view.updateAll !== 'function') throw new TypeError('view.updateAll argument must be a Function');
-		if (typeof view.delete !== 'function') throw new TypeError('view.delete argument must be a Function');
-		if (typeof view.deleteAll !== 'function') throw new TypeError('view.deleteAll argument must be a Function');
-		this[_view] = view;
-	}
-
+	/**
+	 * Creates an instance of AbstractProjection
+	 *
+	 * @param {{ view: IView }} options
+	 */
 	constructor(options) {
 		super();
 
-		this.view = (options && options.view) || new InMemoryViewStorage();
+		validateHandlers(this);
 
-		this._handles = validateHandlers(this);
-	}
-
-	subscribe(eventStore) {
-		super.subscribe(eventStore, this._handles, this.project);
+		Object.defineProperties(this, {
+			[_view]: { value: (options && options.view) || new InMemoryViewStorage() }
+		});
 	}
 
 	/**
-	 * Restore projection view from eventStore
-	 * @param  {Object} 	EventStore instance
-	 * @return {Promise} 	resolving to a restored projection view
+	 * Subscribe to event store
+	 *
+	 * @param {object} eventStore
+	 */
+	subscribe(eventStore) {
+		Observer.subscribe(eventStore, this);
+	}
+
+	/**
+	 * Restore projection view from event store
+	 *
+	 * @param {object} eventStore
+	 * @return {Promise<IView>}
 	 */
 	restore(eventStore) {
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
-		return eventStore.getAllEvents(this._handles)
+		const messageTypes = Object.getPrototypeOf(this).constructor.handles;
+
+		return eventStore.getAllEvents(messageTypes)
 			.then(events => this.projectAll(events))
 			.then(() => {
 				this.info('projection view restored: %d keys, %d bytes', Object.keys(this.view.state).length, sizeOf(this.view.state));
@@ -57,22 +85,16 @@ module.exports = class AbstractProjection extends Observer {
 	}
 
 	/**
-	 * Project an event to projection view
-	 * @param  {Object} event to project
+	 * Project a set of events to projection view
+	 *
+	 * @param {IEvent[]} events
+	 * @returns {Promise<*>}
 	 */
-	project(event) {
-		if (!event) throw new TypeError('event argument required');
-
-		this.debug(`projecting ${event.type} (${event.aggregateId})...`);
-
-		return passToHandlerAsync(this, event.type, event);
-	}
-
 	projectAll(events) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
 		return events.reduce((cur, event) =>
-			cur.then(() => this.project(event)),
+			cur.then(() => passToHandlerAsync(this, event.type, event)),
 			Promise.resolve());
 	}
 };
