@@ -59,7 +59,7 @@ module.exports = class InMemoryMessageBus {
 		const eventType = event.type;
 		if (typeof eventType !== 'string' || !eventType.length) throw new TypeError('eventType argument must be a non-empty String');
 
-		const handlers = this._handlers[eventType] || [];
+		const handlers = Array.from(this._handlers[eventType] || []);
 		if (!handlers || !handlers.length) {
 			debug(`no '${eventType}' handlers defined, message ignored`);
 			return Promise.resolve([]);
