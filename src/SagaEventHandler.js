@@ -6,9 +6,24 @@ const { isClass, coWrap } = require('./utils');
 
 const _eventStore = Symbol('eventStore');
 const _commandBus = Symbol('commandBus');
-const _createSaga = Symbol('createSaga');
+const _sagaFactory = Symbol('sagaFactory');
 const _handles = Symbol('handles');
 const _queueName = Symbol('queueName');
+
+/**
+ * CQRS command
+ * @typedef {{ type: string, sagaId: string, sagaVersion: number, aggregateId: string, payload: object }} ICommand
+ */
+
+/**
+ * CQRS event
+ * @typedef {{ type: string, sagaId: string, sagaVersion: number, aggregateId: string, payload: object }} IEvent
+ */
+
+/**
+ * CQRS saga
+ * @typedef {{ id: string, version: number, apply:(event:IEvent)=>ICommand[] }} ISaga
+ */
 
 /**
  * Listens to Saga events,
@@ -21,7 +36,7 @@ module.exports = class SagaEventHandler extends Observer {
 	/**
 	 * Creates an instance of SagaEventHandler
 	 *
-	 * @param {object} options
+	 * @param {{ sagaType:() => ISaga, eventStore: object, commandBus: object }} options
 	 */
 	constructor(options) {
 		if (!options) throw new TypeError('options argument required');
@@ -38,7 +53,7 @@ module.exports = class SagaEventHandler extends Observer {
 			[_commandBus]: {
 				value: options.commandBus
 			},
-			[_createSaga]: {
+			[_sagaFactory]: {
 				value: isClass(options.sagaType) ?
 					params => new options.sagaType(params) :
 					options.sagaType
@@ -75,36 +90,74 @@ module.exports = class SagaEventHandler extends Observer {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');
 
-		let saga;
-		if (event.sagaId) {
-			if (typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion argument required, when event.sagaId provided');
-
-			const events = yield this[_eventStore].getSagaEvents(event.sagaId, {
-				beforeEvent: event
-			});
-
-			saga = this[_createSaga]({ id: event.sagaId, events });
-
-			this.info(`saga ${saga.id} state restored from ${events.length === 1 ? '1 event' : `${events.length} events`}`);
-		}
-		else {
-			const id = yield this[_eventStore].getNewId();
-
-			saga = this[_createSaga]({ id });
-
-			this.info(`saga ${saga.id} instance created`);
-		}
+		const saga = yield event.sagaId ?
+			this._restoreSaga(event) :
+			this._createSaga();
 
 		saga.apply(event);
 
-		const commands = saga.uncommittedMessages;
-		const commandsLog = commands.length === 1 ? `'${commands[0].type}' command` : `${commands.length} commands`;
+		while (saga.uncommittedMessages.length) {
 
-		this.info(`saga ${saga.id} '${event.type}' event produced ${commandsLog}`);
+			const commands = saga.uncommittedMessages;
+			saga.resetUncommittedMessages();
+			this.info(`saga ${saga.id} '${event.type}' event produced ${commands.map(c => c.type).join(',') || 'no commands'}`);
 
-		return yield commands.map(command => {
-			command.context = event.context;
-			return this[_commandBus].sendRaw(command);
+			for (const command of commands) {
+
+				// attach event context to produced command
+				command.context = event.context;
+
+				try {
+					yield this[_commandBus].sendRaw(command);
+				}
+				catch (err) {
+					if (typeof saga.onError === 'function') {
+						// let saga to handle the error
+						saga.onError(err, { event, command });
+					}
+					else {
+						throw err;
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Create new saga instance
+	 *
+	 * @returns {Promise<ISaga>}
+	 * @private
+	 */
+	* _createSaga() {
+		const id = yield this[_eventStore].getNewId();
+
+		/** @type {ISaga} */
+		const saga = this[_sagaFactory]({ id });
+		this.info(`saga ${saga.id} instance created`);
+
+		return saga;
+	}
+
+	/**
+	 * Restore saga from event store
+	 *
+	 * @param {IEvent} event
+	 * @returns {Promise<ISaga>}
+	 * @private
+	 */
+	* _restoreSaga(event) {
+		if (!event.sagaId) throw new TypeError('event.sagaId argument required');
+		if (typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion argument required, when event.sagaId provided');
+
+		const events = yield this[_eventStore].getSagaEvents(event.sagaId, {
+			beforeEvent: event
 		});
+
+		/** @type {ISaga} */
+		const saga = this[_sagaFactory]({ id: event.sagaId, events });
+		this.info(`saga ${saga.id} (v${saga.version}) restored from ${events}`);
+
+		return saga;
 	}
 };
