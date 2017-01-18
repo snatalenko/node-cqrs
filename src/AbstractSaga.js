@@ -1,7 +1,6 @@
 'use strict';
 
-const validateHandlers = require('./utils/validateHandlers');
-const passToHandler = require('./utils/passToHandler');
+const { validateHandlers, getHandler } = require('./utils');
 
 const _id = Symbol('id');
 const _version = Symbol('version');
@@ -43,11 +42,20 @@ module.exports = class AbstractSaga {
 		Object.defineProperty(this, 'restored', { value: true });
 	}
 
+	/**
+	 * Modify saga state by applying an event
+	 *
+	 * @param {IEvent} event
+	 */
 	apply(event) {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');
 
-		passToHandler(this, event.type, event);
+		const handler = getHandler(this, event.type);
+		if (!handler)
+			throw new Error(`'${event.type}' handler is not defined or not a function`);
+
+		handler.call(this, event);
 
 		this[_version] += 1;
 	}

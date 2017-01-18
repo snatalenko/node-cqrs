@@ -89,7 +89,9 @@ module.exports = class AggregateCommandHandler extends Observer {
 			this._restoreAggregate(cmd.aggregateId) :
 			this._createAggregate();
 
-		yield Promise.resolve(aggregate.handle(cmd));
+		const handleResult = aggregate.handle(cmd);
+		if (handleResult instanceof Promise)
+			yield handleResult;
 
 		const events = aggregate.changes;
 		this.info(`command '${cmd.type}' processed, ${events} produced`);

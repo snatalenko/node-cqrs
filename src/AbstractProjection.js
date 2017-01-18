@@ -2,7 +2,7 @@
 
 const Observer = require('./Observer');
 const InMemoryViewStorage = require('./infrastructure/InMemoryViewStorage');
-const { validateHandlers, passToHandlerAsync, sizeOf } = require('./utils');
+const { validateHandlers, sizeOf, getHandler } = require('./utils');
 const _view = Symbol('view');
 
 /**
@@ -94,7 +94,13 @@ module.exports = class AbstractProjection extends Observer {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
 		return events.reduce((cur, event) =>
-			cur.then(() => passToHandlerAsync(this, event.type, event)),
+			cur.then(() => {
+				const handler = getHandler(this, event.type);
+				if (!handler)
+					throw new Error(`'${event.type}' handler is not defined or not a function`);
+
+				return handler.call(this, event);
+			}),
 			Promise.resolve());
 	}
 };

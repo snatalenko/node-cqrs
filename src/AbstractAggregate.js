@@ -1,8 +1,6 @@
 'use strict';
 
-const validateHandlers = require('./utils/validateHandlers');
-const passToHandlerAsync = require('./utils/passToHandlerAsync');
-const getHandler = require('./utils/getHandler');
+const { validateHandlers, getHandler } = require('./utils');
 const EventStream = require('./EventStream');
 
 const _id = Symbol('id');
@@ -98,13 +96,17 @@ module.exports = class AbstractAggregate {
 	 * Pass command to command handler
 	 *
 	 * @param {ICommand} command
-	 * @returns
+	 * @returns {any}
 	 */
 	handle(command) {
 		if (!command) throw new TypeError('command argument required');
 		if (!command.type) throw new TypeError('command.type argument required');
 
-		return passToHandlerAsync(this, command.type, command.payload, command.context);
+		const handler = getHandler(this, command.type);
+		if (!handler)
+			throw new Error(`'${command.type}' handler is not defined or not a function`);
+
+		return handler.apply(this, [command.payload, command.context]);
 	}
 
 	/**
