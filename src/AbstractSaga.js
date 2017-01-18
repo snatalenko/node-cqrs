@@ -6,24 +6,65 @@ const _id = Symbol('id');
 const _version = Symbol('version');
 const _messages = Symbol('messages');
 
+/**
+ * CQRS command
+ * @typedef {{ type: string, sagaId: string, sagaVersion: number, aggregateId: string, payload: object }} ICommand
+ */
+
+/**
+ * CQRS event
+ * @typedef {{ type: string, sagaId: string, sagaVersion: number, aggregateId: string, payload: object }} IEvent
+ */
+
+
 module.exports = class AbstractSaga {
 
+	/**
+	 * List of event types being handled by Saga, must be overridden in Saga implementation
+	 *
+	 * @type {string[]}
+	 * @readonly
+	 * @static
+	 */
 	static get handles() {
 		throw new Error('handles must be overridden to return a list of handled event types');
 	}
 
+	/**
+	 * Saga ID
+	 *
+	 * @type {string|number}
+	 * @readonly
+	 */
 	get id() {
 		return this[_id];
 	}
 
+	/**
+	 * Saga version
+	 *
+	 * @type {number}
+	 * @readonly
+	 */
 	get version() {
 		return this[_version];
 	}
 
+	/**
+	 * Command execution queue
+	 *
+	 * @type {ICommand[]}
+	 * @readonly
+	 */
 	get uncommittedMessages() {
-		return this[_messages].slice();
+		return Array.from(this[_messages]);
 	}
 
+	/**
+	 * Creates an instance of AbstractSaga
+	 *
+	 * @param {{ id: string, events: IEvent[] }} options
+	 */
 	constructor(options) {
 		if (!options) throw new TypeError('options argument required');
 		if (!options.id) throw new TypeError('options.id argument required');
@@ -73,6 +114,9 @@ module.exports = class AbstractSaga {
 		this[_messages].push(command);
 	}
 
+	/**
+	 * Clear the execution queue
+	 */
 	resetUncommittedMessages() {
 		this[_messages].length = 0;
 	}
