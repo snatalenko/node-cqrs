@@ -7,7 +7,7 @@ class Saga extends AbstractSaga {
 		return ['somethingHappened'];
 	}
 	_somethingHappened(event) {
-		super.enqueue('doSomething', { foo: 'bar' });
+		super.enqueue('doSomething', undefined, { foo: 'bar' });
 	}
 }
 
@@ -98,16 +98,19 @@ describe('AbstractSaga', function () {
 		});
 	});
 
-	describe('enqueue(commandType, commandPayload)', () => {
+	describe('enqueue(commandType, aggregateId, commandPayload)', () => {
 
 		it('adds command to saga.uncommittedMessages list', () => {
 
 			s.apply({ type: 'somethingHappened' });
 
-			expect(s).to.have.deep.property('uncommittedMessages[0].sagaId', s.id);
-			expect(s).to.have.deep.property('uncommittedMessages[0].sagaVersion', s.version - 1);
-			expect(s).to.have.deep.property('uncommittedMessages[0].type', 'doSomething');
-			expect(s).to.have.deep.property('uncommittedMessages[0].payload.foo', 'bar');
+			const { uncommittedMessages } = s;
+
+			expect(uncommittedMessages).to.have.length(1);
+			expect(uncommittedMessages[0]).to.have.property('sagaId', s.id);
+			expect(uncommittedMessages[0]).to.have.property('sagaVersion', s.version - 1);
+			expect(uncommittedMessages[0]).to.have.property('type', 'doSomething');
+			expect(uncommittedMessages[0]).to.have.deep.property('payload.foo', 'bar');
 		});
 	});
 

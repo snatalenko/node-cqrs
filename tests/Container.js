@@ -1,6 +1,6 @@
 'use strict';
 
-const { InMemoryEventStorage, EventStore, CommandBus, InMemoryMessageBus, Container, Observer, AbstractAggregate } = require('..');
+const { InMemoryEventStorage, EventStore, CommandBus, InMemoryMessageBus, Container, Observer, AbstractAggregate, AbstractSaga } = require('..');
 const getClassDependencyNames = require('../src/di/getClassDependencyNames');
 const delay = ms => new Promise(done => setTimeout(done, ms));
 
@@ -153,8 +153,27 @@ describe('Container', function () {
 
 	describe('registerSaga(sagaType) extension', () => {
 
-		it('exists', () => {
-			c.should.respondTo('registerSaga');
+		it('sets up saga event handler', done => {
+
+			class Saga extends AbstractSaga {
+				static get handles() {
+					return ['somethingHappened'];
+				}
+				somethingHappened(event) {
+					super.enqueue('doSomething', undefined, { foo: 'bar' });
+				}
+			}
+
+			c.registerSaga(Saga);
+			c.createUnexposedInstances();
+
+			c.commandBus.on('doSomething', cmd => done());
+
+			const events = [
+				{ type: 'somethingHappened', aggregateId: 1 }
+			];
+
+			c.eventStore.commit(events).catch(done);
 		});
 	});
 

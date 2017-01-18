@@ -1,17 +1,36 @@
 'use strict';
 
-const { SagaEventHandler, Container, InMemoryEventStorage, EventStore, CommandBus, AbstractSaga } = require('..');
+const { SagaEventHandler, InMemoryEventStorage, EventStore, CommandBus, AbstractSaga } = require('..');
+const co = require('co');
 
 class Saga extends AbstractSaga {
 	static get handles() {
 		return ['somethingHappened'];
 	}
-	_somethingHappened(event) {
-		super.enqueue('doSomething', { foo: 'bar' });
+	somethingHappened(event) {
+		super.enqueue('doSomething', undefined, { foo: 'bar' });
+	}
+	onError(error, { command, event }) {
+		super.enqueue('fixError', undefined, { error, command, event });
 	}
 }
 
+const triggeringEvent = {
+	type: 'somethingHappened',
+	aggregateId: 1
+};
+
 describe('SagaEventHandler', function () {
+
+	let commandBus;
+	let eventStore;
+	let sagaEventHandler;
+
+	beforeEach(() => {
+		commandBus = new CommandBus();
+		eventStore = new EventStore({ storage: new InMemoryEventStorage() });
+		sagaEventHandler = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus });
+	});
 
 	it('exists', () => {
 		expect(SagaEventHandler).to.be.a('Function');
@@ -19,25 +38,30 @@ describe('SagaEventHandler', function () {
 
 	it('restores saga from eventStore, passes in received event and sends emitted commands', done => {
 
-		try {
-			const domain = new Container();
-			domain.registerInstance({ hostname: 'test' }, 'eventStoreConfig');
-			domain.register(InMemoryEventStorage, 'storage');
-			domain.register(EventStore, 'eventStore');
-			domain.register(CommandBus, 'commandBus');
-			domain.registerSaga(Saga);
-			domain.createAllInstances();
+		commandBus.on('doSomething', command => done());
 
-			domain.commandBus.on('doSomething', command => done());
-
-			domain.eventStore.commit([{
-				type: 'somethingHappened',
-				sagaId: 1,
-				sagaVersion: 0
-			}]).catch(done);
-		}
-		catch (err) {
-			done(err);
-		}
+		sagaEventHandler.handle(triggeringEvent);
 	});
+
+	it('passes command execution errors to saga.onError', co.wrap(function* () {
+
+		let resolvePromise;
+		const pendingPromise = new Promise(resolve => { resolvePromise = resolve; });
+
+		commandBus.on('fixError', command => {
+			resolvePromise(command);
+		});
+		commandBus.on('doSomething', command => {
+			throw new Error('command execution failed');
+		});
+
+		sagaEventHandler.handle(triggeringEvent);
+
+		const fixConfirmationCommand = yield pendingPromise;
+
+		expect(fixConfirmationCommand).to.have.property('type', 'fixError');
+		expect(fixConfirmationCommand).to.have.deep.property('payload.event', triggeringEvent);
+		expect(fixConfirmationCommand).to.have.deep.property('payload.command.type', 'doSomething');
+		expect(fixConfirmationCommand).to.have.deep.property('payload.error.message', 'command execution failed');
+	}));
 });

@@ -101,15 +101,36 @@ module.exports = class AbstractSaga {
 		this[_version] += 1;
 	}
 
-	enqueue(commandType, commandPayload) {
-		if (!commandType) throw new TypeError('commandType argument required');
+	/**
+	 * Format a command and put it to the execution queue
+	 *
+	 * @param {string} commandType
+	 * @param {string|number} aggregateId
+	 * @param {object} payload
+	 */
+	enqueue(commandType, aggregateId, payload) {
+		if (typeof commandType !== 'string' || !commandType.length)
+			throw new TypeError('commandType argument must be a non-empty String');
+		if (!['string', 'number', 'undefined'].includes(typeof aggregateId))
+			throw new TypeError('aggregateId argument must be either string, number or undefined');
 
-		const command = {
+		this.enqueueRaw({
+			aggregateId,
 			sagaId: this.id,
 			sagaVersion: this.version,
 			type: commandType,
-			payload: commandPayload
-		};
+			payload
+		});
+	}
+
+	/**
+	 * Put a command to the execution queue
+	 *
+	 * @param {ICommand} command
+	 */
+	enqueueRaw(command) {
+		if (typeof command !== 'object' || !command) throw new TypeError('command argument must be an Object');
+		if (typeof command.type !== 'string' || !command.type.length) throw new TypeError('command.type argument must be a non-empty String');
 
 		this[_messages].push(command);
 	}
