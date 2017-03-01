@@ -1,6 +1,7 @@
 'use strict';
 
 const _state = Symbol('state');
+const READY_FLAG_NAME = 'ready';
 
 module.exports = class InMemoryViewStorage {
 
@@ -16,7 +17,10 @@ module.exports = class InMemoryViewStorage {
 		this[_state] = {};
 
 		// explicitly bind functions to this object for easier usage in Promises
-		this.get = this.get.bind(this);
+		Object.defineProperties(this, {
+			[READY_FLAG_NAME]: { value: false, configurable: true, enumerable: true },
+			get: { value: this.get.bind(this) }
+		});
 	}
 
 	has(key) {
@@ -91,5 +95,16 @@ module.exports = class InMemoryViewStorage {
 				delete this.state[key];
 			}
 		}
+	}
+
+	/**
+	 * Mark view as 'ready' when it's restored by projection
+	 */
+	markAsReady() {
+		Object.defineProperty(this, READY_FLAG_NAME, {
+			value: true,
+			configurable: false,
+			enumerable: true
+		});
 	}
 };

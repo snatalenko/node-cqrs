@@ -18,7 +18,8 @@ global.logRequests = function logRequests(obj) {
 	return proxy;
 };
 
-global.expect = require('chai').expect;
+const { assert, expect, AssertionError } = require('chai');
+Object.assign(global, { assert, expect, AssertionError });
 global.sinon = require('sinon');
 
 require('./EventStream');

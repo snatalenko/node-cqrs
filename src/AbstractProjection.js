@@ -77,7 +77,11 @@ module.exports = class AbstractProjection extends Observer {
 		return eventStore.getAllEvents(messageTypes)
 			.then(events => this.projectAll(events))
 			.then(() => {
-				this.info('projection view restored: %d keys, %d bytes', Object.keys(this.view.state).length, sizeOf(this.view.state));
+				this.info('projection view restored');
+				if (this.view instanceof InMemoryViewStorage) {
+					this.info(`${Object.keys(this.view.state).length} keys, ${sizeOf(this.view.state)} bytes`);
+					this.view.markAsReady();
+				}
 			}, err => {
 				this.info(`projection view restoring has failed: ${err}`);
 				throw err;
