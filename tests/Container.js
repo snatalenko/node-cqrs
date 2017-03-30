@@ -14,8 +14,10 @@ describe('Container', function () {
 		c = new Container();
 		c.registerInstance({ hostname: 'test' }, 'eventStoreConfig');
 		c.register(InMemoryEventStorage, 'storage');
-		c.register(c => logRequests(new InMemoryMessageBus()), 'messageBus');
-		c.register(c => logRequests(new CommandBus({ messageBus: c.messageBus })), 'commandBus');
+		c.register(c => new InMemoryMessageBus(), 'messageBus');
+		c.register(c => new CommandBus({ messageBus: c.messageBus }), 'commandBus');
+
+		sinon.spy(c.messageBus, 'on');
 	});
 
 	describe('register', () => {
@@ -55,11 +57,12 @@ describe('Container', function () {
 		it('subscribes to commandBus upon instance creation', () => {
 
 			c.registerCommandHandler(MyCommandHandler);
-			expect(c.messageBus).to.have.property('requests').that.is.empty;
+			// expect(c.messageBus).to.have.property('requests').that.is.empty;
+			expect(c.messageBus.on.callCount).to.eq(0);
 
 			c.createUnexposedInstances();
-			expect(c.messageBus).to.have.deep.property('requests[0].name', 'on');
-			expect(c.messageBus).to.have.deep.property('requests[0].args[0]', 'doSomething');
+			expect(c.messageBus.on.callCount).to.eq(1);
+			expect(c.messageBus.on.lastCall.args[0]).to.eq('doSomething');
 		});
 	});
 

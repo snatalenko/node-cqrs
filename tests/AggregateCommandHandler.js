@@ -52,8 +52,13 @@ describe('AggregateCommandHandler', function () {
 	let commandBus;
 
 	beforeEach(() => {
-		eventStore = logRequests(new EventStore());
-		commandBus = logRequests(new CommandBus());
+		eventStore = new EventStore();
+		sinon.spy(eventStore, 'getNewId');
+		sinon.spy(eventStore, 'getAggregateEvents');
+		sinon.spy(eventStore, 'commit');
+
+		commandBus = new CommandBus();
+		sinon.spy(commandBus, 'on');
 	});
 
 	it('exports a class', () => {
@@ -67,71 +72,77 @@ describe('AggregateCommandHandler', function () {
 
 		handler.subscribe(commandBus);
 
-		expect(commandBus).to.have.deep.property('requests[0].name', 'on');
-		expect(commandBus).to.have.deep.property('requests[0].args[0]', 'createAggregate');
-		expect(commandBus).to.have.deep.property('requests[0].args[1]').that.is.a('Function');
+		assert(commandBus.on.callCount === 2, 'commandBus.on was not called twice');
 
-		expect(commandBus).to.have.deep.property('requests[1].name', 'on');
-		expect(commandBus).to.have.deep.property('requests[1].args[0]', 'doSomething');
-		expect(commandBus).to.have.deep.property('requests[1].args[1]').that.is.a('Function');
+		{
+			const { args } = commandBus.on.firstCall;
+			expect(args[0]).to.eq('createAggregate');
+			expect(args[1]).to.be.an('AsyncFunction');
+		}
+
+		{
+			const { args } = commandBus.on.secondCall;
+			expect(args[0]).to.eq('doSomething');
+			expect(args[1]).to.be.an('AsyncFunction');
+		}
 	});
 
-	it('requests aggregate ID from event store, when aggregate does not exist', () => {
+	it('requests aggregate ID from event store, when aggregate does not exist', async () => {
 
 		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
 
-		return handler.execute({ type: 'createAggregate' })
-			.then(r => {
-				expect(eventStore).to.have.deep.property('requests[0].name', 'getNewId');
-				expect(eventStore).to.have.deep.property('requests[0].args').that.have.length(0);
-			});
+		await handler.execute({ type: 'createAggregate' });
+
+		assert(eventStore.getNewId.calledOnce, 'getNewId was not called once');
 	});
 
-	it('restores aggregate from event store events', () => {
+	it('restores aggregate from event store events', async () => {
 
 		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
 
-		return handler.execute({ type: 'doSomething', aggregateId: 1 })
-			.then(r => {
-				expect(eventStore).to.have.deep.property('requests[0].name', 'getAggregateEvents');
-				expect(eventStore).to.have.deep.property('requests[0].args[0]', 1);
-			});
+		await handler.execute({ type: 'doSomething', aggregateId: 1 });
+
+		assert(eventStore.getAggregateEvents.calledOnce, 'getAggregateEvents was not called');
+
+		const { args } = eventStore.getAggregateEvents.lastCall;
+		expect(args).to.have.length(1);
 	});
 
-	it('passes commands to aggregate.handle(cmd)', () => {
+	it('passes commands to aggregate.handle(cmd)', async () => {
 
-		const aggregate = logRequests(new MyAggregate({ id: 1 }));
+		const aggregate = new MyAggregate({ id: 1 });
+		sinon.spy(aggregate, 'handle');
+
 		const handler = new AggregateCommandHandler({
 			eventStore,
 			aggregateType: () => aggregate
 		});
 
-		return handler.execute({ type: 'doSomething', payload: 'test' })
-			.then(r => {
-				expect(aggregate).to.have.deep.property('requests[0].name', 'handle');
-				expect(aggregate).to.have.deep.property('requests[0].args[0].type', 'doSomething');
-				expect(aggregate).to.have.deep.property('requests[0].args[0].payload', 'test');
-			});
+		await handler.execute({ type: 'doSomething', payload: 'test' });
+
+		const { args } = aggregate.handle.lastCall;
+		expect(args[0]).to.have.property('type', 'doSomething');
+		expect(args[0]).to.have.property('payload', 'test');
 	});
 
-	it('resolves to produced events', () => {
+	it('resolves to produced events', async () => {
 		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
 
-		return handler.execute({ type: 'doSomething', aggregateId: 1 })
-			.then(events => {
-				expect(events).to.have.length(1);
-				expect(events[0]).to.have.property('type', 'somethingDone');
-			});
+		const events = await handler.execute({ type: 'doSomething', aggregateId: 1 });
+
+		expect(events).to.have.length(1);
+		expect(events[0]).to.have.property('type', 'somethingDone');
 	});
 
-	it('commits produced events to eventStore', () => {
+	it('commits produced events to eventStore', async () => {
 
 		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
 
-		return handler.execute({ type: 'doSomething', aggregateId: 1 })
-			.then(r => {
-				expect(eventStore).to.have.deep.property('requests[1].name', 'commit');
-				expect(eventStore).to.have.deep.property('requests[1].args[0]').that.is.an('Array');
-			});
+		await handler.execute({ type: 'doSomething', aggregateId: 1 });
+
+		assert(eventStore.commit.calledOnce, 'commit was not called');
+
+		const { args } = eventStore.commit.lastCall;
+		expect(args[0]).to.be.an('Array');
 	});
 });

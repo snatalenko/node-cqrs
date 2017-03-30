@@ -20,7 +20,7 @@ describe('AbstractAggregate', function () {
 
 		it('throws exception if "static get handles" is not overridden', () => {
 
-			class AggregateWithoutHandles extends AbstractAggregate {}
+			class AggregateWithoutHandles extends AbstractAggregate { }
 
 			expect(() => s = new AggregateWithoutHandles({ id: 1 })).to.throw('handles must be overridden to return a list of handled command types');
 		});
@@ -123,19 +123,32 @@ describe('AbstractAggregate', function () {
 
 		it('exists', () => agg.should.respondTo('handle'));
 
-		it('passes command to a handler declared within aggregate, returns a Promise', () => {
+		it('passes command to a handler declared within aggregate, returns a Promise', async () => {
 
-			return agg.handle({ type: 'doSomething' }).then(() => {
+			await agg.handle({ type: 'doSomething' });
 
-				agg.should.have.deep.property('changes[0].type', 'somethingDone');
-			});
+			expect(agg).to.have.deep.property('changes[0].type', 'somethingDone');
 		});
-	});
 
-	describe('mutate(event)', () => {
+		it('throws error, if command handler is not defined', async () => {
 
-		it('exists', () => agg.should.respondTo('mutate'));
-		it('mutates aggregate state based on event received and increments aggregate version');
+			try {
+				await agg.handle({ type: 'doSomethingUnexpected' });
+				throw new AssertionError('did not fail');
+			}
+			catch (err) {
+				expect(err).to.have.property('message', '\'doSomethingUnexpected\' handler is not defined or not a function');
+			}
+		});
+
+		it('invokes aggregate.emit for each event produced', async () => {
+
+			sinon.spy(agg, 'emit');
+
+			await agg.handle({ type: 'doSomething' });
+
+			assert(agg.emit.calledOnce, 'emit was not called once');
+		});
 	});
 
 	describe('emit(eventType, eventPayload)', () => {
@@ -151,6 +164,54 @@ describe('AbstractAggregate', function () {
 			agg.emit('eventType', {});
 			agg.emit('eventType', {});
 			expect(agg).to.have.property('version', 2);
+		});
+
+		it('invokes aggregate.mutate', () => {
+
+			sinon.spy(agg, 'mutate');
+
+			agg.emit('somethingHappened', {});
+
+			assert(agg.mutate.calledOnce, 'mutate was not called once');
+		});
+	});
+
+	describe('mutate(event)', () => {
+
+		const event = { type: 'somethingHappened' };
+
+		it('exists', () => agg.should.respondTo('mutate'));
+
+		it('increases aggregate version', () => {
+
+			const initialVersion = agg.version;
+
+			agg.mutate({ type: 'doSomething' });
+
+			expect(agg.version).to.eq(initialVersion + 1);
+		});
+
+		it('invokes aggregate.state.mutate', () => {
+			sinon.spy(agg.state, 'mutate');
+
+			agg.mutate(event);
+
+			assert(agg.state.mutate.calledOnce, 'state.mutate was not called once');
+		});
+
+		it('does not mutate state if state event handler is not defined', () => {
+
+			const state = new class AggregateState {
+				somethingHappened() { }
+			};
+			sinon.spy(state, 'somethingHappened');
+
+			agg = new Aggregate({ id: 2, state });
+			agg.mutate(event);
+
+			assert(state.somethingHappened.calledOnce, 'somethingHappened handler was not called once');
+
+			expect(() => agg.mutate({ type: 'somethingStatelessHappened' })).to.not.throw();
 		});
 	});
 });

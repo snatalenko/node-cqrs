@@ -4,17 +4,17 @@ const cqrs = require('../..');
 const AbstractAggregate = cqrs.AbstractAggregate;
 
 class AggregateState {
-	mutate() {}
+	mutate() { }
 }
 
 module.exports = class Aggregate extends AbstractAggregate {
 
 	static get handles() {
-		return ['doSomething', 'doSomethingWrong'];
+		return ['doSomething', 'doSomethingWrong', 'doSomethingStateless'];
 	}
 
 	constructor(options) {
-		super(Object.assign(options, { state: new AggregateState() }));
+		super(Object.assign(options, { state: options.state || new AggregateState() }));
 	}
 
 	doSomething(payload, context) {
@@ -28,5 +28,9 @@ module.exports = class Aggregate extends AbstractAggregate {
 
 	doSomethingWrong(payload, context) {
 		throw new Error('something went wrong');
+	}
+
+	doSomethingStateless(payload, context) {
+		this.emit('somethingStatelessHappened', payload);
 	}
 };
