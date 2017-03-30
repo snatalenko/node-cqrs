@@ -4,7 +4,8 @@
         "node": true
     },
     "parserOptions": {
-        "sourceType": "script"
+        "sourceType": "script",
+        "ecmaVersion": 8
     },
     "rules": {
         "accessor-pairs": "off",
@@ -19,8 +20,9 @@
         ],
         "consistent-return": "warn",
         "curly": [
-            "off",
-            "multi-or-nest"
+            "warn",
+            "multi-or-nest",
+            "consistent"
         ],
         "default-case": [
             "error",
@@ -195,10 +197,7 @@
         "no-sync": "off",
         "arrow-body-style": [
             "warn",
-            "as-needed",
-            {
-                "requireReturnForObjectLiteral": true
-            }
+            "as-needed"
         ],
         "arrow-parens": [
             "error",
@@ -356,7 +355,7 @@
             "warn",
             "stroustrup",
             {
-                "allowSingleLine": true
+                "allowSingleLine": false
             }
         ],
         "camelcase": [
@@ -462,7 +461,18 @@
             "error",
             "unix"
         ],
-        "lines-around-comment": "off",
+        "lines-around-comment": [
+            "warn",
+            {
+                "beforeBlockComment": true,
+                "afterBlockComment": false,
+                "beforeLineComment": true,
+                "afterLineComment": false,
+                "allowBlockStart": true,
+                "allowObjectStart": true,
+                "allowArrayStart": true
+            }
+        ],
         "lines-around-directive": [
             "warn",
             {
@@ -583,7 +593,7 @@
                 "allowSamePrecedence": false
             }
         ],
-        "no-mixed-spaces-and-tabs": "error",
+        "no-mixed-spaces-and-tabs": "warn",
         "no-multiple-empty-lines": [
             "warn",
             {
@@ -608,7 +618,7 @@
         ],
         "no-spaced-func": "error",
         "no-ternary": "off",
-        "no-trailing-spaces": "error",
+        "no-trailing-spaces": "warn",
         "no-underscore-dangle": [
             "off",
             {
