@@ -1,0 +1,8 @@
+.vscode/
+coverage/
+tests/
+.editorconfig
+.eslintrc.json
+.eslintignore
+.gitignore
+.travis.yml
