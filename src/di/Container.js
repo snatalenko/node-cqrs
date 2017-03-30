@@ -57,14 +57,27 @@ function createInstance(typeOrFactory, container, additionalOptions) {
 
 module.exports = class Container {
 
+	/**
+	 * Registered component factories
+	 * @type {(function)[]}
+	 * @readonly
+	 */
 	get factories() {
 		return this[_factories] || (this[_factories] = []);
 	}
 
+	/**
+	 * Component instances
+	 * @type {object}
+	 * @readonly
+	 */
 	get instances() {
 		return this[_instances] || (this[_instances] = {});
 	}
 
+	/**
+	 * Creates an instance of Container
+	 */
 	constructor() {
 		this.registerInstance(this, 'container');
 	}
@@ -140,9 +153,8 @@ module.exports = class Container {
 	 */
 	createAllInstances() {
 		debug('creating all instances...');
-		while (this.factories.length) {
+		while (this.factories.length)
 			this.factories.splice(0, 1)[0](this);
-		}
 	}
 
 	/**

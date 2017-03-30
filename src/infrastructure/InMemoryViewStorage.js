@@ -40,15 +40,12 @@ module.exports = class InMemoryViewStorage {
 		if (!update) throw new TypeError('update argument required');
 		if (this.has(key)) throw new Error(`Key '${key}' already exists`);
 
-		if (typeof update === 'function') {
+		if (typeof update === 'function')
 			update(this.state[key] = {});
-		}
-		else if (typeof update === 'object') {
+		else if (typeof update === 'object')
 			this.state[key] = update;
-		}
-		else {
+		else
 			throw new TypeError('update argument must be either a function or an object');
-		}
 	}
 
 	update(key, update) {
@@ -63,12 +60,10 @@ module.exports = class InMemoryViewStorage {
 		if (!key) throw new TypeError('key argument required');
 		if (!update) throw new TypeError('update argument required');
 
-		if (!this.has(key)) {
+		if (!this.has(key))
 			this.create(key, update);
-		}
-		else {
+		else
 			this.update(key, update);
-		}
 	}
 
 	updateAll(filter, update) {
@@ -77,9 +72,8 @@ module.exports = class InMemoryViewStorage {
 
 		for (const key of Object.keys(this.state)) {
 			const view = this.state[key];
-			if (filter(view)) {
+			if (filter(view))
 				update(view);
-			}
 		}
 	}
 
@@ -91,9 +85,8 @@ module.exports = class InMemoryViewStorage {
 	deleteAll(filter) {
 		for (const key of Object.keys(this.state)) {
 			const view = this.state[key];
-			if (filter(view)) {
+			if (filter(view))
 				delete this.state[key];
-			}
 		}
 	}
 

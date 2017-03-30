@@ -35,15 +35,13 @@ module.exports = function sizeOf(object) {
 		}
 		else if (obj) {
 			if (!Array.isArray(obj)) {
-				for (const key of Object.keys(obj)) {
+				for (const key of Object.keys(obj))
 					size += Buffer.byteLength(key, 'utf-8');
-				}
 			}
 			for (const key of Object.keys(obj)) {
 				const innerObj = obj[key];
-				if (queue.indexOf(innerObj) === -1) {
+				if (queue.indexOf(innerObj) === -1)
 					queue.push(innerObj);
-				}
 			}
 		}
 	}

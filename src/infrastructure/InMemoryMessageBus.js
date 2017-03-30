@@ -33,9 +33,8 @@ module.exports = class InMemoryMessageBus {
 		if (!this._handlers[messageType]) throw new Error(`No ${messageType} subscribers found`);
 
 		const index = this._handlers[messageType].indexOf(handler);
-		if (index !== -1) {
+		if (index !== -1)
 			this._handlers[messageType].splice(index, 1);
-		}
 	}
 
 	send(command) {

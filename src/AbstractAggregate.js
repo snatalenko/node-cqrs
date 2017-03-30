@@ -117,9 +117,8 @@ module.exports = class AbstractAggregate {
 	mutate(event) {
 		if (this.state) {
 			const handler = this.state.mutate || getHandler(this.state, event.type);
-			if (handler) {
+			if (handler)
 				handler.call(this.state, event);
-			}
 		}
 		this[_version] += 1;
 	}
