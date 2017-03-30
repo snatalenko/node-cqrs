@@ -3,7 +3,6 @@
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
 const debug = require('debug')('cqrs:debug:EventStore');
 const info = require('debug')('cqrs:info:EventStore');
-const coWrap = require('./utils/coWrap');
 const EventStream = require('./EventStream');
 
 const STORAGE_METHODS = [
@@ -143,33 +142,23 @@ module.exports = class EventStore {
 		if (eventValidator !== undefined && typeof eventValidator !== 'function')
 			throw new TypeError('eventValidator, when provided, must be a function');
 
-		coWrap(this);
-
-		Object.defineProperties(this, {
-			[_config]: { value: Object.freeze(Object.assign({}, EventStore.defaults, eventStoreConfig)) },
-			[_storage]: { value: storage },
-			[_validator]: { value: eventValidator || validateEvent },
-			[_namedQueues]: { value: new Map() }
-		});
+		this[_config] = Object.freeze(Object.assign({}, EventStore.defaults, eventStoreConfig));
+		this[_storage] = storage;
+		this[_validator] = eventValidator || validateEvent;
+		this[_namedQueues] = new Map();
 
 		if (messageBus) {
-			Object.defineProperties(this, {
-				[_bus]: { value: messageBus },
-				[_emitter]: { value: messageBus }
-			});
+			this[_bus] = messageBus;
+			this[_emitter] = messageBus;
 		}
 		else if (respondsTo(storage, ...EMITTER_METHODS)) {
-			Object.defineProperties(this, {
-				[_bus]: { value: null },
-				[_emitter]: { value: storage }
-			});
+			this[_bus] = null;
+			this[_emitter] = storage;
 		}
 		else {
 			const bus = new InMemoryBus();
-			Object.defineProperties(this, {
-				[_bus]: { value: bus },
-				[_emitter]: { value: bus }
-			});
+			this[_bus] = bus;
+			this[_emitter] = bus;
 		}
 	}
 
@@ -178,10 +167,8 @@ module.exports = class EventStore {
 	 *
 	 * @returns {Promise<string>}
 	 */
-	getNewId() {
-		return new Promise(resolve => {
-			resolve(this[_storage].getNewId());
-		});
+	async getNewId() {
+		return this[_storage].getNewId();
 	}
 
 	/**
@@ -191,12 +178,12 @@ module.exports = class EventStore {
 	 * @param {IEventFilter} [filter]
 	 * @returns {Promise<EventStream>}
 	 */
-	* getAllEvents(eventTypes) {
+	async getAllEvents(eventTypes) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
 		debug(`retrieving ${eventTypes ? eventTypes.join(', ') : 'all'} events...`);
 
-		const events = yield this[_storage].getEvents(eventTypes);
+		const events = await this[_storage].getEvents(eventTypes);
 
 		const eventStream = EventStream.from(events);
 		debug(`${eventStream} retrieved`);
@@ -211,12 +198,12 @@ module.exports = class EventStore {
 	 * @param {IEventFilter} [filter]
 	 * @returns {Promise<EventStream>}
 	 */
-	* getAggregateEvents(aggregateId, filter) {
+	async getAggregateEvents(aggregateId, filter) {
 		if (!aggregateId) throw new TypeError('aggregateId argument required');
 
 		debug(`retrieving event stream for aggregate ${aggregateId}...`);
 
-		const events = yield this[_storage].getAggregateEvents(aggregateId, filter);
+		const events = await this[_storage].getAggregateEvents(aggregateId, filter);
 
 		const eventStream = EventStream.from(events);
 		debug(`${eventStream} retrieved`);
@@ -231,7 +218,7 @@ module.exports = class EventStore {
 	 * @param {IEventFilter} filter
 	 * @returns {Promise<EventStream>}
 	 */
-	* getSagaEvents(sagaId, filter) {
+	async getSagaEvents(sagaId, filter) {
 		if (!sagaId) throw new TypeError('sagaId argument required');
 		if (!filter) throw new TypeError('filter argument required');
 		if (!filter.beforeEvent) throw new TypeError('filter.beforeEvent argument required');
@@ -239,7 +226,7 @@ module.exports = class EventStore {
 
 		debug(`retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`);
 
-		const events = yield this[_storage].getSagaEvents(sagaId, filter);
+		const events = await this[_storage].getSagaEvents(sagaId, filter);
 
 		const eventStream = EventStream.from(events);
 		debug(`${eventStream} retrieved`);
@@ -253,11 +240,12 @@ module.exports = class EventStore {
 	 * @param {IEvent[]} events - a set of events to commit
 	 * @returns {Promise<IEvent[]>} - resolves to signed and committed events
 	 */
-	* commit(events, { sourceCommand } = {}) {
+	async commit(events, { sourceCommand } = {}) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 		if (!events.length) return events;
 
-		const eventStream = augmentEvents(events, sourceCommand, { hostname: this.config.hostname });
+		const { hostname } = this.config;
+		const eventStream = augmentEvents(events, sourceCommand, { hostname });
 
 		debug(`validating ${eventStream}...`);
 		eventStream.forEach(event => {
@@ -265,7 +253,7 @@ module.exports = class EventStore {
 		});
 
 		debug(`committing ${eventStream}...`);
-		yield this[_storage].commitEvents(eventStream);
+		await this[_storage].commitEvents(eventStream);
 
 		if (this[_bus]) {
 			const publishEvents = () =>
@@ -283,7 +271,7 @@ module.exports = class EventStore {
 			}
 			else {
 				debug(`publishing ${eventStream} synchronously...`);
-				yield publishEvents();
+				await publishEvents();
 			}
 		}
 
@@ -365,16 +353,14 @@ module.exports = class EventStore {
 
 				debug(`'${event.type}' received, one-time subscription to '${messageTypes.join(',')}' removed`);
 
-				if (handler) {
+				if (handler)
 					handler(event);
-				}
 
 				resolve(event);
 			}
 
-			for (const messageType of messageTypes) {
+			for (const messageType of messageTypes)
 				emitter.on(messageType, filteredHandler);
-			}
 
 			debug(`set up one-time ${filter ? 'filtered subscription' : 'subscription'} to '${messageTypes.join(',')}'`);
 		});

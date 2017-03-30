@@ -4,7 +4,7 @@ node_js:
   - "6"
 
 before_script:
-  - npm install -g eslint istanbul
+  - npm install -g eslint istanbul@next
   - npm install
   - npm install coveralls
 

@@ -1,7 +1,7 @@
 'use strict';
 
 const Observer = require('./Observer');
-const { isClass, coWrap } = require('./utils');
+const { isClass } = require('./utils');
 
 const _eventStore = Symbol('eventStore');
 const _aggregateFactory = Symbol('aggregateTypeOrFactory');
@@ -19,21 +19,11 @@ module.exports = class AggregateCommandHandler extends Observer {
 		if (!aggregateType) throw new TypeError('aggregateType argument required');
 		super();
 
-		coWrap(this);
-
-		Object.defineProperties(this, {
-			[_eventStore]: {
-				value: eventStore
-			},
-			[_aggregateFactory]: {
-				value: isClass(aggregateType) ?
-					params => new aggregateType(params) : // eslint-disable-line new-cap
-					aggregateType
-			},
-			[_handles]: {
-				value: handles || aggregateType.handles
-			}
-		});
+		this[_eventStore] = eventStore;
+		this[_aggregateFactory] = isClass(aggregateType) ?
+			params => new aggregateType(params) : // eslint-disable-line new-cap
+			aggregateType;
+		this[_handles] = handles || aggregateType.handles;
 	}
 
 	/**
@@ -52,10 +42,10 @@ module.exports = class AggregateCommandHandler extends Observer {
 	 * @param {string} id
 	 * @returns {Aggregate}
 	 */
-	* _restoreAggregate(id) {
+	async _restoreAggregate(id) {
 		if (!id) throw new TypeError('id argument required');
 
-		const events = yield this[_eventStore].getAggregateEvents(id);
+		const events = await this[_eventStore].getAggregateEvents(id);
 		const aggregate = this[_aggregateFactory]({ id, events });
 		this.info(`aggregate ${aggregate.id} (v${aggregate.version}) restored from event store`);
 
@@ -67,8 +57,8 @@ module.exports = class AggregateCommandHandler extends Observer {
 	 *
 	 * @returns {Aggregate}
 	 */
-	* _createAggregate() {
-		const id = yield this[_eventStore].getNewId();
+	async _createAggregate() {
+		const id = await this[_eventStore].getNewId();
 		const aggregate = this[_aggregateFactory]({ id });
 		this.info(`aggregate ${aggregate.id} created`);
 
@@ -81,17 +71,17 @@ module.exports = class AggregateCommandHandler extends Observer {
 	 * @param {{type: string}} cmd - command to execute
 	 * @return {Promise<object[]>} events
 	 */
-	* execute(cmd) {
+	async execute(cmd) {
 		if (!cmd) throw new TypeError('cmd argument required');
 		if (!cmd.type) throw new TypeError('cmd.type argument required');
 
-		const aggregate = yield cmd.aggregateId ?
+		const aggregate = await (cmd.aggregateId ?
 			this._restoreAggregate(cmd.aggregateId) :
-			this._createAggregate();
+			this._createAggregate());
 
 		const handleResult = aggregate.handle(cmd);
 		if (handleResult instanceof Promise)
-			yield handleResult;
+			await handleResult;
 
 		const events = aggregate.changes;
 		this.info(`command '${cmd.type}' processed, ${events} produced`);

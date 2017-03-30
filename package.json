@@ -14,7 +14,7 @@
   ],
   "main": "index.js",
   "engines": {
-    "node": ">=6.0.0"
+    "node": ">=7.4.0"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -31,12 +31,11 @@
   "license": "MIT",
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
   "dependencies": {
-    "co": "^4.6.0",
     "debug": "^2.2.0"
   },
   "devDependencies": {
     "chai": "^3.2.0",
     "mocha": "^3.2.0",
-    "sinon": "^1.17.6"
+    "sinon": "^1.17.7"
   }
 }

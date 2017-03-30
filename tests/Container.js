@@ -119,7 +119,7 @@ describe('Container', function () {
 			c.registerAggregate(Aggregate);
 		});
 
-		it('injects aggregate dependencies into aggregate constructor upon initialization', () => {
+		it('injects aggregate dependencies into aggregate constructor upon initialization', async () => {
 
 			let dependencyMet;
 
@@ -139,15 +139,13 @@ describe('Container', function () {
 			c.registerAggregate(MyAggregate);
 			c.createUnexposedInstances();
 
-			return c.commandBus.sendRaw({ type: 'doSomething' })
-				.then(() => {
-					dependencyMet.should.equal(false);
-					c.register(SomeService, 'aggregateDependency');
-					return c.commandBus.sendRaw({ type: 'doSomething' });
-				})
-				.then(() => {
-					dependencyMet.should.equal(true);
-				});
+			await c.commandBus.sendRaw({ type: 'doSomething' });
+			dependencyMet.should.equal(false);
+
+			c.register(SomeService, 'aggregateDependency');
+
+			await c.commandBus.sendRaw({ type: 'doSomething' });
+			dependencyMet.should.equal(true);
 		});
 	});
 

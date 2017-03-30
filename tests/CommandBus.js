@@ -1,7 +1,6 @@
 'use strict';
 
 const { CommandBus, InMemoryMessageBus } = require('../src');
-const co = require('co');
 
 describe('CommandBus', function () {
 
@@ -76,7 +75,7 @@ describe('CommandBus', function () {
 			expect(() => bus.send('test', 1, {}, {}, {})).to.throw('more than expected arguments supplied');
 		});
 
-		it('formats a command and passes it to sendRaw', co.wrap(function* () {
+		it('formats a command and passes it to sendRaw', async () => {
 
 			sinon.spy(bus, 'sendRaw');
 
@@ -86,48 +85,48 @@ describe('CommandBus', function () {
 			const context = {};
 			const customParameter = '123';
 
-			yield bus.send(type, aggregateId, { context });
+			await bus.send(type, aggregateId, { context });
 
 			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].type', type);
 			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].aggregateId', aggregateId);
 			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].context', context);
 			expect(bus.sendRaw).to.not.have.deep.property('lastCall.args[0].payload');
 
-			yield bus.send(type, aggregateId, { context, payload, customParameter });
+			await bus.send(type, aggregateId, { context, payload, customParameter });
 
 			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].type', type);
 			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].aggregateId', aggregateId);
 			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].context', context);
 			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].payload', payload);
 			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].customParameter', customParameter);
-		}));
+		});
 
-		it('supports obsolete syntax', co.wrap(function* () {
+		it('supports obsolete syntax', async () => {
 
 			const aggregateId = 1;
 			const context = {};
 			const payload = {};
 
-			yield bus.send('doSomething', aggregateId, context, payload);
+			await bus.send('doSomething', aggregateId, context, payload);
 
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].type', 'doSomething');
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].aggregateId', aggregateId);
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].context', context);
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].payload', payload);
 
-			yield bus.send('doSomething', undefined, context, payload);
+			await bus.send('doSomething', undefined, context, payload);
 
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].type', 'doSomething');
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].aggregateId', undefined);
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].context', context);
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].payload', payload);
 
-			yield bus.send('doSomething', undefined, context);
+			await bus.send('doSomething', undefined, context);
 
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].type', 'doSomething');
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].aggregateId', undefined);
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].context', context);
 			expect(messageBus.send).to.have.deep.property('lastCall.args[0].payload', undefined);
-		}));
+		});
 	});
 });

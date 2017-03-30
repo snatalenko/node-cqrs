@@ -130,4 +130,3 @@ Use [editorconfig](http://editorconfig.org), [eslint](http://eslint.org), `npm t
 ## Dependencies
 
 -	[visionmedia/debug](https://github.com/visionmedia/debug) (MIT License)
--	[tj/co](https://github.com/tj/co) (MIT License)

@@ -1,7 +1,6 @@
 'use strict';
 
 const { SagaEventHandler, InMemoryEventStorage, EventStore, CommandBus, AbstractSaga } = require('..');
-const co = require('co');
 
 class Saga extends AbstractSaga {
 	static get handles() {
@@ -43,7 +42,7 @@ describe('SagaEventHandler', function () {
 		sagaEventHandler.handle(triggeringEvent);
 	});
 
-	it('passes command execution errors to saga.onError', co.wrap(function* () {
+	it('passes command execution errors to saga.onError', async () => {
 
 		let resolvePromise;
 		const pendingPromise = new Promise(resolve => { resolvePromise = resolve; });
@@ -57,11 +56,11 @@ describe('SagaEventHandler', function () {
 
 		sagaEventHandler.handle(triggeringEvent);
 
-		const fixConfirmationCommand = yield pendingPromise;
+		const fixConfirmationCommand = await pendingPromise;
 
 		expect(fixConfirmationCommand).to.have.property('type', 'fixError');
 		expect(fixConfirmationCommand).to.have.deep.property('payload.event', triggeringEvent);
 		expect(fixConfirmationCommand).to.have.deep.property('payload.command.type', 'doSomething');
 		expect(fixConfirmationCommand).to.have.deep.property('payload.error.message', 'command execution failed');
-	}));
+	});
 });
