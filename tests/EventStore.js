@@ -23,6 +23,13 @@ const goodEvent2 = {
 	context: goodContext
 };
 
+const snapshotEvent = {
+	aggregateId: '2',
+	aggregateVersion: 1,
+	type: 'snapshot',
+	payload: { foo: 'bar' }
+};
+
 let es;
 let storage;
 
@@ -77,17 +84,45 @@ describe('EventStore', function () {
 			});
 		});
 
-		it('сommits events to storage', () => {
+		it('сommits events to storage', async () => {
 
-			return es.commit([goodEvent]).then(result => {
+			await es.commit([goodEvent]);
 
-				return es.getAllEvents().then(events => {
-					expect(events).to.be.instanceof(Array);
-					expect(events[0]).to.have.property('type', 'somethingHappened');
-					expect(events[0]).to.have.property('context');
-					expect(events[0].context).to.have.property('ip', goodContext.ip);
-				});
-			});
+			const events = await es.getAllEvents();
+
+			expect(events).to.be.instanceof(Array);
+			expect(events[0]).to.have.property('type', 'somethingHappened');
+			expect(events[0]).to.have.property('context');
+			expect(events[0].context).to.have.property('ip', goodContext.ip);
+		});
+
+		it('submits aggregate snapshot to storage.saveAggregateSnapshot, when provided', async () => {
+
+			storage.getAggregateSnapshot = () => snapshotEvent;
+			storage.saveAggregateSnapshot = () => { };
+			sinon.spy(storage, 'saveAggregateSnapshot');
+			sinon.spy(storage, 'commitEvents');
+
+			expect(es).to.have.property('snapshotsSupported', true);
+
+			es.commit([goodEvent]);
+			expect(storage).to.have.deep.property('saveAggregateSnapshot.called', false);
+
+			es.commit([goodEvent2, snapshotEvent]);
+			expect(storage).to.have.deep.property('saveAggregateSnapshot.calledOnce', true);
+
+			{
+				const { args } = storage.saveAggregateSnapshot.lastCall;
+				expect(args).to.have.length(1);
+				expect(args[0]).to.eq(snapshotEvent);
+			}
+
+			{
+				const { args } = storage.commitEvents.lastCall;
+				expect(args).to.have.length(1);
+				expect(args[0]).to.have.length(1);
+				expect(args[0][0]).to.have.property('type', goodEvent2.type);
+			}
 		});
 
 		it('returns a promise that resolves to events committed', () => {
@@ -182,15 +217,37 @@ describe('EventStore', function () {
 
 	describe('getAggregateEvents(aggregateId)', () => {
 
-		it('returns all events committed for a specific aggregate', () => {
+		it('returns all events committed for a specific aggregate', async () => {
 
-			return es.commit([goodEvent, goodEvent2]).then(() => {
-				return es.getAggregateEvents(goodEvent.aggregateId).then(events => {
-					expect(events).to.be.an('Array');
-					expect(events).to.have.length(1);
-					expect(events).to.have.deep.property('[0].type', 'somethingHappened');
-				});
-			});
+			await es.commit([goodEvent, goodEvent2]);
+
+			const events = await es.getAggregateEvents(goodEvent.aggregateId);
+
+			expect(events).to.be.an('Array');
+			expect(events).to.have.length(1);
+			expect(events).to.have.deep.property('[0].type', 'somethingHappened');
+		});
+
+		it('tries to retrieve aggregate snapshot', async () => {
+
+			storage.getAggregateSnapshot = () => snapshotEvent;
+			storage.saveAggregateSnapshot = () => { };
+			sinon.spy(storage, 'getAggregateSnapshot');
+			sinon.spy(storage, 'getAggregateEvents');
+
+			expect(es).to.have.property('snapshotsSupported', true);
+
+			const events = await es.getAggregateEvents(goodEvent2.aggregateId);
+
+			expect(storage).to.have.deep.property('getAggregateSnapshot.calledOnce', true);
+			expect(storage).to.have.deep.property('getAggregateEvents.calledOnce', true);
+
+			const [,eventFilter] = storage.getAggregateEvents.lastCall.args;
+
+			expect(eventFilter).to.have.property('afterEvent');
+			expect(eventFilter).to.have.deep.property('afterEvent.type');
+			expect(eventFilter).to.have.deep.property('afterEvent.aggregateId');
+			expect(eventFilter).to.have.deep.property('afterEvent.aggregateVersion');
 		});
 	});
 

@@ -3,9 +3,11 @@
 const { validateHandlers, getHandler } = require('./utils');
 const EventStream = require('./EventStream');
 
-const _id = Symbol('id');
-const _version = Symbol('version');
-const _changes = Symbol('changes');
+const SNAPSHOT_EVENT_TYPE = 'snapshot';
+
+const _id = Symbol.for('cqrs:aggregate:id');
+const _version = Symbol.for('cqrs:aggregate:version');
+const _changes = Symbol.for('cqrs:aggregate:changes');
 
 /**
  * CQRS Command
@@ -25,6 +27,8 @@ module.exports = class AbstractAggregate {
 	 * @type {string[]}
 	 * @readonly
 	 * @static
+	 * @example
+	 * 	return ['createUser', 'changePassword'];
 	 */
 	static get handles() {
 		throw new Error('handles must be overridden to return a list of handled command types');
@@ -61,13 +65,16 @@ module.exports = class AbstractAggregate {
 	}
 
 	/**
-	 * Copy of Aggregate state
+	 * Override to define, whether an aggregate state snapshot should be taken
 	 *
-	 * @type {object}
+	 * @type {boolean}
 	 * @readonly
+	 * @example
+	 * 	// create snapshot every 50 events
+	 * 	return this.version % 50 === 0;
 	 */
-	get snapshot() {
-		return this.state ? JSON.parse(JSON.stringify(this.state)) : null;
+	get shouldTakeSnapshot() {	// eslint-disable-line class-methods-use-this
+		return false;
 	}
 
 	/**
@@ -75,21 +82,22 @@ module.exports = class AbstractAggregate {
 	 *
 	 * @param {{ id: string|number, events: IEvent[], state: object }} options
 	 */
-	constructor(options) {
-		if (!options) throw new TypeError('options argument required');
-		if (!options.id) throw new TypeError('options.id argument required');
-		if (options.events && !Array.isArray(options.events)) throw new TypeError('options.events argument, when provided, must be an Array');
+	constructor({ id, state, events }) {
+		if (!id) throw new TypeError('id argument required');
+		if (state && typeof state !== 'object') throw new TypeError('state argument, when provided, must be an Object');
+		if (events && !Array.isArray(events)) throw new TypeError('events argument, when provided, must be an Array');
 
-		this[_id] = options.id;
+		this[_id] = id;
 		this[_version] = 0;
 		this[_changes] = [];
 
 		validateHandlers(this);
 
-		if (options.state)
-			this.state = options.state;
-		if (options.events)
-			options.events.forEach(e => this.mutate(e));
+		if (state)
+			this.state = state;
+
+		if (events)
+			events.forEach(event => this.mutate(event));
 	}
 
 	/**
@@ -112,20 +120,28 @@ module.exports = class AbstractAggregate {
 	/**
 	 * Mutate aggregate state and increment aggregate version
 	 *
+	 * @protected
 	 * @param {IEvent} event
 	 */
 	mutate(event) {
-		if (this.state) {
-			const handler = this.state.mutate || getHandler(this.state, event.type);
-			if (handler)
-				handler.call(this.state, event);
+		if (event.type === SNAPSHOT_EVENT_TYPE) {
+			this.restoreSnapshot(event);
 		}
-		this[_version] += 1;
+		else {
+			if (this.state) {
+				const handler = this.state.mutate || getHandler(this.state, event.type);
+				if (handler)
+					handler.call(this.state, event);
+			}
+
+			this[_version] += 1;
+		}
 	}
 
 	/**
 	 * Format and register aggregate event and mutate aggregate state
 	 *
+	 * @protected
 	 * @param {string} type - event type
 	 * @param {object} payload - event data
 	 */
@@ -143,6 +159,7 @@ module.exports = class AbstractAggregate {
 	/**
 	 * Register aggregate event and mutate aggregate state
 	 *
+	 * @protected
 	 * @param {IEvent} event
 	 */
 	emitRaw(event) {
@@ -154,5 +171,47 @@ module.exports = class AbstractAggregate {
 		this.mutate(event);
 
 		this[_changes].push(event);
+	}
+
+	/**
+	 * Take an aggregate state snapshot and add it to the changes queue
+	 */
+	takeSnapshot() {
+		this.emit(SNAPSHOT_EVENT_TYPE, this.makeSnapshot());
+	}
+
+	/**
+	 * Create an aggregate state snapshot
+	 *
+	 * @protected
+	 * @returns {object}
+	  */
+	makeSnapshot() {
+		if (!this.state)
+			throw new Error('state property is empty, either define state or override makeSnapshot method');
+
+		return JSON.parse(JSON.stringify(this.state));
+	}
+
+	/**
+	 * Restore aggregate state from a snapshot
+	 *
+	 * @protected
+	 * @param {IEvent} snapshotEvent
+	 */
+	restoreSnapshot(snapshotEvent) {
+		if (!snapshotEvent) throw new TypeError('snapshotEvent argument required');
+		if (!snapshotEvent.type) throw new TypeError('snapshotEvent.type argument required');
+		if (!snapshotEvent.aggregateVersion) throw new TypeError('snapshotEvent.aggregateVersion argument required');
+		if (!snapshotEvent.payload) throw new TypeError('snapshotEvent.payload argument required');
+
+		if (snapshotEvent.type !== SNAPSHOT_EVENT_TYPE)
+			throw new Error(`${SNAPSHOT_EVENT_TYPE} event type expected`);
+		if (!this.state)
+			throw new Error('state property is empty, either defined state or override restoreSnapshot method');
+
+		Object.assign(this.state, snapshotEvent.payload);
+
+		this[_version] = snapshotEvent.aggregateVersion;
 	}
 };

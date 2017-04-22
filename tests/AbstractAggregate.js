@@ -1,16 +1,54 @@
 'use strict';
 
 const { AbstractAggregate, EventStream } = require('..');
-const Aggregate = require('./mocks/Aggregate');
-const StatelessAggregate = require('./mocks/StatelessAggregate');;
 const blankContext = require('./mocks/blankContext');
+const delay = ms => new Promise(rs => setTimeout(rs, ms));
 
 require('chai').should();
+
+class AggregateState {
+	mutate(event) {
+		this[event.type] = (this[event.type] || 0) + 1;
+	}
+}
+
+class Aggregate extends AbstractAggregate {
+
+	static get handles() {
+		return ['doSomething', 'doSomethingWrong', 'doSomethingStateless'];
+	}
+
+	constructor({ id, state, events }) {
+		super({ id, state: state || new AggregateState(), events });
+	}
+
+	async doSomething(payload, context) {
+		await delay(100);
+		this.emit('somethingDone', payload);
+	}
+
+	doSomethingWrong(payload, context) {
+		throw new Error('something went wrong');
+	}
+
+	doSomethingStateless(payload, context) {
+		this.emit('somethingStatelessHappened', payload);
+	}
+}
+
+class StatelessAggregate extends AbstractAggregate {
+	static get handles() {
+		return [];
+	}
+}
+
 
 describe('AbstractAggregate', function () {
 
 	let agg;
-	beforeEach(() => agg = new Aggregate({ id: 1 }));
+	beforeEach(() => {
+		agg = new Aggregate({ id: 1 });
+	});
 
 	it('is a base class for Aggregate description', function () {
 		expect(agg).is.instanceof(AbstractAggregate);
@@ -102,20 +140,6 @@ describe('AbstractAggregate', function () {
 
 			const statelessAggregate = new StatelessAggregate({ id: 2 });
 			expect(statelessAggregate.state).to.not.exist;
-		});
-	});
-
-	describe('snapshot', () => {
-
-		it('provides a read-only aggregate state snapshot', () => {
-
-			expect(agg.snapshot).to.exist;
-			expect(agg.snapshot).to.deep.equal(agg.state);
-			expect(agg.snapshot).to.not.equal(agg.state);
-			expect(agg.snapshot).to.not.equal(agg.snapshot);
-			expect(function () {
-				agg.snapshot = {};
-			}).to.throw(TypeError);
 		});
 	});
 
@@ -214,4 +238,71 @@ describe('AbstractAggregate', function () {
 			expect(() => agg.mutate({ type: 'somethingStatelessHappened' })).to.not.throw();
 		});
 	});
+
+	describe('takeSnapshot()', () => {
+
+		it('exists', () => {
+			expect(agg).to.respondTo('takeSnapshot');
+		});
+
+		it('adds aggregate state snapshot to the changes queue', async () => {
+
+			await agg.handle({ type: 'doSomething' });
+
+			agg.takeSnapshot();
+
+			const { changes } = agg;
+
+			expect(changes).to.have.length(2);
+
+			expect(changes[0]).to.have.property('type', 'somethingDone');
+			expect(changes[1]).to.have.property('type', 'snapshot');
+			expect(changes[1]).to.have.property('payload').that.deep.equals(agg.state);
+		});
+	});
+
+	describe('restoreSnapshot(snapshotEvent)', () => {
+
+		const snapshotEvent = { aggregateVersion: 1, type: 'snapshot', payload: { somethingDone: 1 } };
+
+		it('exists', () => {
+			expect(agg).to.respondTo('restoreSnapshot');
+		});
+
+		it('validates arguments', () => {
+
+			expect(() => agg.restoreSnapshot()).to.throw(TypeError);
+
+			for (const keyToMiss of Object.keys(snapshotEvent)) {
+				const keysToCopy = Object.keys(snapshotEvent).filter(k => k !== keyToMiss);
+				const brokenEvent = JSON.parse(JSON.stringify(snapshotEvent, keysToCopy));
+
+				expect(() => agg.restoreSnapshot(brokenEvent)).to.throw(TypeError);
+			}
+
+			expect(() => agg.restoreSnapshot({ aggregateVersion: 1, type: 'somethingHappened', payload: {} })).to.throw('snapshot event type expected');
+
+			expect(() => agg.restoreSnapshot(snapshotEvent)).to.not.throw();
+		});
+
+		it('being invoked by mutate(event)', () => {
+			sinon.spy(agg, 'restoreSnapshot');
+
+			agg.mutate({ type: 'somethingDone' });
+
+			assert(!agg.restoreSnapshot.called, 'agg.restoreSnapshot was called, while it shouldn\'t have to');
+
+			agg.mutate(snapshotEvent);
+
+			assert(agg.restoreSnapshot.calledOnce, 'agg.restoreSnapshot was not called once');
+		});
+
+		it('restores aggregate state and version from snapshot', () => {
+
+			agg.restoreSnapshot(snapshotEvent);
+
+			expect(agg).to.have.property('version', snapshotEvent.aggregateVersion);
+			expect(agg).to.have.property('state').that.deep.equals(snapshotEvent.payload);
+		});
+	})
 });

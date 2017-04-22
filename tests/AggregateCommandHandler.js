@@ -10,15 +10,16 @@ class MyAggregate extends AbstractAggregate {
 	static get handles() {
 		return ['createAggregate', 'doSomething'];
 	}
-	createAggregate() {
-		return delay(100).then(() => {
-			this.emit('created');
-		});
+	constructor({ id, events }) {
+		super({ id, state: {}, events });
 	}
-	doSomething() {
-		return delay(100).then(() => {
-			this.emit('somethingDone');
-		});
+	async createAggregate() {
+		await delay(100);
+		this.emit('created');
+	}
+	async doSomething() {
+		await delay(100);
+		this.emit('somethingDone');
 	}
 }
 
@@ -144,5 +145,48 @@ describe('AggregateCommandHandler', function () {
 
 		const { args } = eventStore.commit.lastCall;
 		expect(args[0]).to.be.an('Array');
+	});
+
+	it('invokes aggregate.takeSnapshot before committing event stream, when shouldTakeSnapshot equals true', async () => {
+
+		// setup
+
+		Object.defineProperty(eventStore, 'snapshotsSupported', {
+			get() { return true; }
+		});
+
+		const aggregate = new MyAggregate({ id: 1 });
+		Object.defineProperty(aggregate, 'shouldTakeSnapshot', {
+			// take snapshot every other event
+			get() { return this.version !== 0 && this.version % 2 === 0; }
+		})
+		sinon.spy(aggregate, 'takeSnapshot');
+
+		const handler = new AggregateCommandHandler({
+			eventStore,
+			aggregateType: () => aggregate
+		});
+
+		// test
+
+		expect(aggregate).to.have.property('shouldTakeSnapshot', false);
+		expect(aggregate).to.have.deep.property('takeSnapshot.called', false);
+
+		await handler.execute({ type: 'doSomething', payload: 'test' });
+
+		expect(aggregate).to.have.property('shouldTakeSnapshot', false);
+		expect(aggregate).to.have.deep.property('takeSnapshot.called', false);
+
+		await handler.execute({ type: 'doSomething', payload: 'test' });
+
+		expect(aggregate).to.have.property('shouldTakeSnapshot', true);
+		expect(aggregate).to.have.deep.property('takeSnapshot.called', true);
+
+		const [eventStream] = eventStore.commit.lastCall.args;
+
+		expect(eventStream).to.have.length(3);
+		expect(eventStream[2]).to.have.property('type', 'snapshot');
+		expect(eventStream[2]).to.have.property('aggregateVersion', 2);
+		expect(eventStream[2]).to.have.property('payload');
 	});
 });

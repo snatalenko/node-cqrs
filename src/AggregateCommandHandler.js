@@ -4,7 +4,7 @@ const Observer = require('./Observer');
 const { isClass } = require('./utils');
 
 const _eventStore = Symbol('eventStore');
-const _aggregateFactory = Symbol('aggregateTypeOrFactory');
+const _aggregateFactory = Symbol('aggregateFactory');
 const _handles = Symbol('handles');
 
 module.exports = class AggregateCommandHandler extends Observer {
@@ -79,16 +79,22 @@ module.exports = class AggregateCommandHandler extends Observer {
 			this._restoreAggregate(cmd.aggregateId) :
 			this._createAggregate());
 
-		const handleResult = aggregate.handle(cmd);
-		if (handleResult instanceof Promise)
-			await handleResult;
+		const handlerResponse = aggregate.handle(cmd);
+		if (handlerResponse instanceof Promise)
+			await handlerResponse;
 
-		const events = aggregate.changes;
+		let events = aggregate.changes;
 		this.info(`command '${cmd.type}' processed, ${events} produced`);
-
-		if (!events || !events.length)
+		if (!events.length)
 			return [];
 
-		return this[_eventStore].commit(events, { sourceCommand: cmd });
+		if (aggregate.shouldTakeSnapshot && this[_eventStore].snapshotsSupported) {
+			aggregate.takeSnapshot();
+			events = aggregate.changes;
+		}
+
+		await this[_eventStore].commit(events, { sourceCommand: cmd });
+
+		return events;
 	}
 };
