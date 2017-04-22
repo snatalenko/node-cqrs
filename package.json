@@ -31,11 +31,11 @@
   "license": "MIT",
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
   "dependencies": {
-    "debug": "^2.2.0"
+    "debug": "^2.6.3"
   },
   "devDependencies": {
     "chai": "^3.2.0",
     "mocha": "^3.2.0",
-    "sinon": "^1.17.7"
+    "sinon": "^2.1.0"
   }
 }
