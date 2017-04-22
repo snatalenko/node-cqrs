@@ -19,6 +19,13 @@ const triggeringEvent = {
 	aggregateId: 1
 };
 
+const secondEvent = {
+	type: 'somethingHappened',
+	aggregateId: 1,
+	sagaId: 1,
+	sagaVersion: 0
+};
+
 describe('SagaEventHandler', function () {
 
 	let commandBus;
@@ -35,11 +42,31 @@ describe('SagaEventHandler', function () {
 		expect(SagaEventHandler).to.be.a('Function');
 	});
 
-	it('restores saga from eventStore, passes in received event and sends emitted commands', done => {
+	it('creates saga, passes in received event and sends emitted commands', done => {
 
 		commandBus.on('doSomething', command => done());
 
 		sagaEventHandler.handle(triggeringEvent);
+	});
+
+	it('restores saga from event store, when sagaId exists', async () => {
+
+		commandBus.on('doSomething', command => { });
+		sinon.spy(sagaEventHandler, '_createSaga');
+		sinon.spy(sagaEventHandler, '_restoreSaga');
+		sinon.spy(eventStore, 'getSagaEvents');
+
+		await sagaEventHandler.handle(triggeringEvent);
+
+		expect(sagaEventHandler).to.have.deep.property('_createSaga.calledOnce', true);
+		expect(sagaEventHandler).to.have.deep.property('_restoreSaga.called', false);
+		expect(eventStore).to.have.deep.property('getSagaEvents.called', false);
+
+		await sagaEventHandler.handle(secondEvent);
+
+		expect(sagaEventHandler).to.have.deep.property('_createSaga.calledOnce', true);
+		expect(sagaEventHandler).to.have.deep.property('_restoreSaga.calledOnce', true);
+		expect(eventStore).to.have.deep.property('getSagaEvents.called', true);
 	});
 
 	it('passes command execution errors to saga.onError', async () => {

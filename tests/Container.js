@@ -1,6 +1,6 @@
 'use strict';
 
-const { InMemoryEventStorage, EventStore, CommandBus, InMemoryMessageBus, Container, Observer, AbstractAggregate, AbstractSaga } = require('..');
+const { InMemoryEventStorage, EventStore, CommandBus, InMemoryMessageBus, Container, Observer, AbstractAggregate, AbstractSaga, AbstractProjection } = require('..');
 const getClassDependencyNames = require('../src/di/getClassDependencyNames');
 const delay = ms => new Promise(done => setTimeout(done, ms));
 
@@ -180,8 +180,33 @@ describe('Container', function () {
 
 	describe('registerProjection(typeOrFactory, exposedViewName) extension', () => {
 
+		class MyProjection extends AbstractProjection {
+			static get handles() {
+				return ['somethingHappened'];
+			}
+			_somethingHappened(event) {
+				this.view.create(event.aggregateId, event.payload);
+			}
+		}
+
 		it('exists', () => {
 			c.should.respondTo('registerProjection');
+		});
+
+		it('registers projection factory', () => {
+
+			const factoriesCnt = c.factories.length;
+
+			c.registerProjection(MyProjection, 'myView');
+
+			expect(c.factories).to.have.length(factoriesCnt + 1);
+		});
+
+		it('exposes projection view thru getter', () => {
+
+			c.registerProjection(MyProjection, 'myView');
+
+			expect(c).to.have.property('myView');
 		});
 	});
 
