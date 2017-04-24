@@ -196,9 +196,7 @@ module.exports = class EventStore {
 			await this[_storage].getAggregateSnapshot(aggregateId) :
 			undefined;
 
-		const events = await this[_storage].getAggregateEvents(aggregateId, {
-			afterEvent: snapshot
-		});
+		const events = await this[_storage].getAggregateEvents(aggregateId, { snapshot });
 
 		const eventStream = EventStream.from(snapshot ? [snapshot, ...events] : events);
 		debug(`${eventStream} retrieved`);

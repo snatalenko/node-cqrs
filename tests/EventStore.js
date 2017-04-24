@@ -244,10 +244,10 @@ describe('EventStore', function () {
 
 			const [,eventFilter] = storage.getAggregateEvents.lastCall.args;
 
-			expect(eventFilter).to.have.property('afterEvent');
-			expect(eventFilter).to.have.deep.property('afterEvent.type');
-			expect(eventFilter).to.have.deep.property('afterEvent.aggregateId');
-			expect(eventFilter).to.have.deep.property('afterEvent.aggregateVersion');
+			expect(eventFilter).to.have.property('snapshot');
+			expect(eventFilter).to.have.deep.property('snapshot.type');
+			expect(eventFilter).to.have.deep.property('snapshot.aggregateId');
+			expect(eventFilter).to.have.deep.property('snapshot.aggregateVersion');
 		});
 	});
 
