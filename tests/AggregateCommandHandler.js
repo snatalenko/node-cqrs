@@ -169,18 +169,18 @@ describe('AggregateCommandHandler', function () {
 
 		// test
 
-		expect(aggregate).to.have.property('shouldTakeSnapshot', false);
 		expect(aggregate).to.have.deep.property('takeSnapshot.called', false);
+		expect(aggregate).to.have.property('version', 0);
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.property('shouldTakeSnapshot', false);
 		expect(aggregate).to.have.deep.property('takeSnapshot.called', false);
+		expect(aggregate).to.have.property('version', 1); // 1st event
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.property('shouldTakeSnapshot', true);
 		expect(aggregate).to.have.deep.property('takeSnapshot.called', true);
+		expect(aggregate).to.have.property('version', 3); // 2nd event and snapshot
 
 		const [eventStream] = eventStore.commit.lastCall.args;
 

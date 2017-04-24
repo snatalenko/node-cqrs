@@ -237,6 +237,30 @@ describe('AbstractAggregate', function () {
 
 			expect(() => agg.mutate({ type: 'somethingStatelessHappened' })).to.not.throw();
 		});
+
+
+		const snapshotEvent = { aggregateVersion: 1, type: 'snapshot', payload: { somethingDone: 1 } };
+
+		it('invokes aggregate.restoreSnapshot, when snapshot event provided', () => {
+			sinon.spy(agg, 'restoreSnapshot');
+
+			expect(agg).to.have.deep.property('restoreSnapshot.called', false);
+
+			agg.mutate(snapshotEvent);
+
+			expect(agg).to.have.deep.property('restoreSnapshot.calledOnce', true);
+		});
+
+		it('restores aggregate version and snapshotVersion, when snapshot event provided', () => {
+
+			expect(agg).to.have.property('snapshotVersion', 0);
+			expect(agg).to.have.property('version', 0);
+
+			agg.mutate(snapshotEvent);
+
+			expect(agg).to.have.property('snapshotVersion', snapshotEvent.aggregateVersion);
+			expect(agg).to.have.property('version', snapshotEvent.aggregateVersion + 1);
+		});
 	});
 
 	describe('takeSnapshot()', () => {
@@ -263,7 +287,7 @@ describe('AbstractAggregate', function () {
 
 	describe('restoreSnapshot(snapshotEvent)', () => {
 
-		const snapshotEvent = { aggregateVersion: 1, type: 'snapshot', payload: { somethingDone: 1 } };
+		const snapshotEvent = { type: 'snapshot', payload: { somethingDone: 1 } };
 
 		it('exists', () => {
 			expect(agg).to.respondTo('restoreSnapshot');
@@ -290,19 +314,18 @@ describe('AbstractAggregate', function () {
 
 			agg.mutate({ type: 'somethingDone' });
 
-			assert(!agg.restoreSnapshot.called, 'agg.restoreSnapshot was called, while it shouldn\'t have to');
+			expect(agg).to.have.deep.property('restoreSnapshot.called', false);
 
 			agg.mutate(snapshotEvent);
 
-			assert(agg.restoreSnapshot.calledOnce, 'agg.restoreSnapshot was not called once');
+			expect(agg).to.have.deep.property('restoreSnapshot.calledOnce', true);
 		});
 
-		it('restores aggregate state and version from snapshot', () => {
+		it('restores aggregate state from a snapshot', () => {
 
 			agg.restoreSnapshot(snapshotEvent);
 
-			expect(agg).to.have.property('version', snapshotEvent.aggregateVersion);
 			expect(agg).to.have.property('state').that.deep.equals(snapshotEvent.payload);
 		});
-	})
+	});
 });
