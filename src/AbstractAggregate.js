@@ -136,8 +136,10 @@ module.exports = class AbstractAggregate {
 	 * @param {IEvent} event
 	 */
 	mutate(event) {
-		if (event.type === SNAPSHOT_EVENT_TYPE) {
+		if ('aggregateVersion' in event)
 			this[_version] = event.aggregateVersion;
+
+		if (event.type === SNAPSHOT_EVENT_TYPE) {
 			this[_snapshotVersion] = event.aggregateVersion;
 			this.restoreSnapshot(event);
 		}
@@ -146,6 +148,7 @@ module.exports = class AbstractAggregate {
 			if (handler)
 				handler.call(this.state, event);
 		}
+
 		this[_version] += 1;
 	}
 
