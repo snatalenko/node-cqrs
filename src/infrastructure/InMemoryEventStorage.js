@@ -8,8 +8,17 @@
 module.exports = class InMemoryEventStorage {
 
 	constructor() {
-		this.nextId = 0;
+		this._nextId = 0;
 		this._events = Promise.resolve([]);
+		this._snapshots = new Map();
+	}
+
+	async getAggregateSnapshot(aggregateId) {
+		return this._snapshots.get(aggregateId);
+	}
+
+	async saveAggregateSnapshot(snapshotEvent) {
+		this._snapshots.set(snapshotEvent.aggregateId, snapshotEvent);
 	}
 
 	commitEvents(events) {
@@ -17,9 +26,13 @@ module.exports = class InMemoryEventStorage {
 			data.concat(events));
 	}
 
-	getAggregateEvents(aggregateId) {
-		return this._events.then(events =>
-			events.filter(e => e.aggregateId == aggregateId));
+	async getAggregateEvents(aggregateId, { snapshot } = {}) {
+		const events = await this._events;
+
+		if (snapshot)
+			return events.filter(e => e.aggregateId == aggregateId && e.aggregateVersion > snapshot.aggregateVersion);
+
+		return events.filter(e => e.aggregateId == aggregateId);
 	}
 
 	getSagaEvents(sagaId, { beforeEvent }) {
@@ -38,7 +51,7 @@ module.exports = class InMemoryEventStorage {
 	}
 
 	getNewId() {
-		this.nextId += 1;
-		return this.nextId;
+		this._nextId += 1;
+		return this._nextId;
 	}
 };

@@ -1,6 +1,6 @@
 'use strict';
 
-const { AggregateCommandHandler, AbstractAggregate } = require('..');
+const { AggregateCommandHandler, AbstractAggregate, InMemoryEventStorage, EventStore } = require('..');
 
 function delay(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
@@ -23,20 +23,6 @@ class MyAggregate extends AbstractAggregate {
 	}
 }
 
-class EventStore {
-	getNewId() {
-		return Promise.resolve('test-aggregate-id');
-	}
-	getAggregateEvents(aggregateId) {
-		return [{ type: 'aggregateCreated', aggregateId }];
-	}
-	commit(events) {
-		if (!this.committed) this.committed = [];
-		this.committed.push(...events);
-		return Promise.resolve(events);
-	}
-}
-
 class CommandBus {
 	on(messageType, listener) {
 		if (!this.handlers) this.handlers = {};
@@ -49,11 +35,14 @@ describe('AggregateCommandHandler', function () {
 	this.timeout(500);
 	this.slow(300);
 
+	let storage;
 	let eventStore;
 	let commandBus;
 
 	beforeEach(() => {
-		eventStore = new EventStore();
+		storage = new InMemoryEventStorage();
+
+		eventStore = new EventStore({ storage });
 		sinon.spy(eventStore, 'getNewId');
 		sinon.spy(eventStore, 'getAggregateEvents');
 		sinon.spy(eventStore, 'commit');
@@ -147,13 +136,9 @@ describe('AggregateCommandHandler', function () {
 		expect(args[0]).to.be.an('Array');
 	});
 
-	it('invokes aggregate.takeSnapshot before committing event stream, when shouldTakeSnapshot equals true', async () => {
+	it('invokes aggregate.takeSnapshot before committing event stream, when get shouldTakeSnapshot equals true', async () => {
 
 		// setup
-
-		Object.defineProperty(eventStore, 'snapshotsSupported', {
-			get() { return true; }
-		});
 
 		const aggregate = new MyAggregate({ id: 1 });
 		Object.defineProperty(aggregate, 'shouldTakeSnapshot', {
@@ -188,5 +173,52 @@ describe('AggregateCommandHandler', function () {
 		expect(eventStream[2]).to.have.property('type', 'snapshot');
 		expect(eventStream[2]).to.have.property('aggregateVersion', 2);
 		expect(eventStream[2]).to.have.property('payload');
+	});
+
+	it.skip('executes concurrent commands on same aggregate instance', async () => {
+
+		// setup
+
+		class PersistedAggregate extends MyAggregate {
+			get shouldTakeSnapshot() {
+				console.log(this.version, this.version > 1);
+				return this.version > 2;
+			}
+		}
+
+		const handler = new AggregateCommandHandler({ eventStore, aggregateType: PersistedAggregate });
+
+		sinon.spy(storage, 'getAggregateEvents');
+		sinon.spy(storage, 'commitEvents');
+		sinon.spy(storage, 'saveAggregateSnapshot');
+
+		// test
+
+		const cmd0 = { type: 'createAggregate' };
+
+		const [{ aggregateId }] = await handler.execute(cmd0);
+
+		expect(storage).to.have.deep.property('getAggregateEvents.callCount', 0);
+		expect(storage).to.have.deep.property('commitEvents.callCount', 1);
+		expect(storage).to.have.deep.property('saveAggregateSnapshot.callCount', 0);
+
+		const cmd1 = { aggregateId, type: 'doSomething' };
+		const cmd2 = { aggregateId, type: 'doSomething' };
+		const cmd3 = { aggregateId, type: 'doSomething' };
+
+		await Promise.all([cmd1, cmd2, cmd3].map(c => handler.execute(c)));
+
+		// expect(storage).to.have.deep.property('getAggregateEvents.callCount', 1);
+		// expect(storage).to.have.deep.property('commitEvents.callCount', 2);
+		// expect(storage).to.have.deep.property('saveAggregateSnapshot.callCount', 2);
+
+		const events = await eventStore.getAggregateEvents(aggregateId);
+
+		expect(events).to.have.length(4);
+		expect(events[0]).to.have.property('type', 'snapshot');
+		expect(events[0]).to.have.property('aggregateVersion', 1);
+		expect(events[1]).to.have.property('aggregateVersion', 2);
+		expect(events[2]).to.have.property('aggregateVersion', 3);
+		expect(events[3]).to.have.property('aggregateVersion', 4);
 	});
 });
