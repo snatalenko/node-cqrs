@@ -49,8 +49,8 @@ module.exports = class SagaEventHandler extends Observer {
 		this[_eventStore] = options.eventStore;
 		this[_commandBus] = options.commandBus;
 		this[_sagaFactory] = isClass(options.sagaType) ?
-				params => new options.sagaType(params) :
-				options.sagaType;
+			params => new options.sagaType(params) :
+			options.sagaType;
 
 		this[_handles] = options.handles || options.sagaType.handles;
 		this[_queueName] = options.queueName;
@@ -81,7 +81,9 @@ module.exports = class SagaEventHandler extends Observer {
 			this._restoreSaga(event) :
 			this._createSaga());
 
-		saga.apply(event);
+		const r = saga.apply(event);
+		if (r instanceof Promise)
+			await r;
 
 		while (saga.uncommittedMessages.length) {
 

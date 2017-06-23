@@ -87,6 +87,7 @@ module.exports = class AbstractSaga {
 	 * Modify saga state by applying an event
 	 *
 	 * @param {IEvent} event
+	 * @returns {void|Promise<void>}
 	 */
 	apply(event) {
 		if (!event) throw new TypeError('event argument required');
@@ -96,9 +97,15 @@ module.exports = class AbstractSaga {
 		if (!handler)
 			throw new Error(`'${event.type}' handler is not defined or not a function`);
 
-		handler.call(this, event);
+		const r = handler.call(this, event);
+		if (r instanceof Promise) {
+			return r.then(() => {
+				this[_version] += 1;
+			});
+		}
 
 		this[_version] += 1;
+		return undefined;
 	}
 
 	/**
