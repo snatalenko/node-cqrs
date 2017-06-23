@@ -18,13 +18,14 @@
   },
   "scripts": {
     "lint": "eslint src/",
+    "lint:strict": "eslint src/ --max-warnings=0",
     "pretest": "npm run lint",
     "test": "mocha ./tests/index.js",
     "test:coverage": "istanbul cover node_modules/.bin/_mocha tests/index.js -- -R spec",
     "pretest:coveralls": "npm run test:coverage",
     "test:coveralls": "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
     "posttest:coveralls": "rm -rf ./coverage",
-    "preversion": "npm test",
+    "preversion": "npm run lint:strict && npm test",
     "postversion": "git push --all && git push --tags"
   },
   "author": "@stas_natalenko",
