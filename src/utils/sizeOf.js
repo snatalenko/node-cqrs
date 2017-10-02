@@ -33,6 +33,13 @@ module.exports = function sizeOf(object) {
 		else if (obj instanceof Buffer) {
 			size += obj.length;
 		}
+		else if (obj instanceof Map) {
+			for (const [key, innerObj] of obj) {
+				queue.push(key);
+				if (typeof innerObj !== 'object' || !queue.includes(innerObj))
+					queue.push(innerObj);
+			}
+		}
 		else if (obj) {
 			if (!Array.isArray(obj)) {
 				for (const key of Object.keys(obj))
@@ -40,7 +47,7 @@ module.exports = function sizeOf(object) {
 			}
 			for (const key of Object.keys(obj)) {
 				const innerObj = obj[key];
-				if (queue.indexOf(innerObj) === -1)
+				if (typeof innerObj !== 'object' || !queue.includes(innerObj))
 					queue.push(innerObj);
 			}
 		}
