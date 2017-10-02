@@ -1,4 +1,4 @@
-/* eslint no-return-assign: "off", eqeqeq: "off" */
+/* eslint no-return-assign: "off", eqeqeq: "off", require-jsdoc: "off" */
 'use strict';
 
 /**

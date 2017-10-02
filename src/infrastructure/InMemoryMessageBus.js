@@ -1,3 +1,4 @@
+/* eslint require-jsdoc: "off" */
 'use strict';
 
 const debug = require('debug')('cqrs:InMemoryBus');
