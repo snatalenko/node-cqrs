@@ -12,14 +12,14 @@ describe('InMemoryMessageBus', function () {
 
 		it('registers a handler for a specific message type', function () {
 
-			bus.should.have.deep.property('_handlers');
+			bus.should.have.nested.property('_handlers');
 			bus._handlers.should.be.empty;
 
 			bus.on('doSomething', () => {});
-			bus.should.have.deep.property('_handlers.doSomething.length', 1);
+			bus.should.have.nested.property('_handlers.doSomething.length', 1);
 
 			bus.on('doSomething', () => {});
-			bus.should.have.deep.property('_handlers.doSomething.length', 2);
+			bus.should.have.nested.property('_handlers.doSomething.length', 2);
 		});
 	});
 

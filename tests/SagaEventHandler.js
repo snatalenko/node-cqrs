@@ -58,15 +58,15 @@ describe('SagaEventHandler', function () {
 
 		await sagaEventHandler.handle(triggeringEvent);
 
-		expect(sagaEventHandler).to.have.deep.property('_createSaga.calledOnce', true);
-		expect(sagaEventHandler).to.have.deep.property('_restoreSaga.called', false);
-		expect(eventStore).to.have.deep.property('getSagaEvents.called', false);
+		expect(sagaEventHandler).to.have.nested.property('_createSaga.calledOnce', true);
+		expect(sagaEventHandler).to.have.nested.property('_restoreSaga.called', false);
+		expect(eventStore).to.have.nested.property('getSagaEvents.called', false);
 
 		await sagaEventHandler.handle(secondEvent);
 
-		expect(sagaEventHandler).to.have.deep.property('_createSaga.calledOnce', true);
-		expect(sagaEventHandler).to.have.deep.property('_restoreSaga.calledOnce', true);
-		expect(eventStore).to.have.deep.property('getSagaEvents.called', true);
+		expect(sagaEventHandler).to.have.nested.property('_createSaga.calledOnce', true);
+		expect(sagaEventHandler).to.have.nested.property('_restoreSaga.calledOnce', true);
+		expect(eventStore).to.have.nested.property('getSagaEvents.called', true);
 	});
 
 	it('passes command execution errors to saga.onError', async () => {
@@ -86,8 +86,8 @@ describe('SagaEventHandler', function () {
 		const fixConfirmationCommand = await pendingPromise;
 
 		expect(fixConfirmationCommand).to.have.property('type', 'fixError');
-		expect(fixConfirmationCommand).to.have.deep.property('payload.event', triggeringEvent);
-		expect(fixConfirmationCommand).to.have.deep.property('payload.command.type', 'doSomething');
-		expect(fixConfirmationCommand).to.have.deep.property('payload.error.message', 'command execution failed');
+		expect(fixConfirmationCommand).to.have.nested.property('payload.event', triggeringEvent);
+		expect(fixConfirmationCommand).to.have.nested.property('payload.command.type', 'doSomething');
+		expect(fixConfirmationCommand).to.have.nested.property('payload.error.message', 'command execution failed');
 	});
 });

@@ -106,10 +106,10 @@ describe('EventStore', function () {
 			expect(es).to.have.property('snapshotsSupported', true);
 
 			es.commit([goodEvent]);
-			expect(storage).to.have.deep.property('saveAggregateSnapshot.called', false);
+			expect(storage).to.have.nested.property('saveAggregateSnapshot.called', false);
 
 			es.commit([goodEvent2, snapshotEvent]);
-			expect(storage).to.have.deep.property('saveAggregateSnapshot.calledOnce', true);
+			expect(storage).to.have.nested.property('saveAggregateSnapshot.calledOnce', true);
 
 			{
 				const { args } = storage.saveAggregateSnapshot.lastCall;
@@ -131,7 +131,7 @@ describe('EventStore', function () {
 
 				expect(events).to.be.an('Array');
 				expect(events).to.have.length(2);
-				expect(events).to.have.deep.property('[0].type', 'somethingHappened');
+				expect(events).to.have.nested.property('[0].type', 'somethingHappened');
 			});
 		});
 
@@ -177,8 +177,8 @@ describe('EventStore', function () {
 				committedEvents.forEach(event => {
 					expect(event).to.have.property('sagaId', sourceCommand.sagaId);
 					expect(event).to.have.property('sagaVersion', sourceCommand.sagaVersion);
-					expect(event).to.have.deep.property('context.ip', sourceCommand.context.ip);
-					expect(event).to.have.deep.property('context.hostname', eventStoreConfig.hostname);
+					expect(event).to.have.nested.property('context.ip', sourceCommand.context.ip);
+					expect(event).to.have.nested.property('context.hostname', eventStoreConfig.hostname);
 				});
 			});
 		});
@@ -225,7 +225,7 @@ describe('EventStore', function () {
 
 			expect(events).to.be.an('Array');
 			expect(events).to.have.length(1);
-			expect(events).to.have.deep.property('[0].type', 'somethingHappened');
+			expect(events).to.have.nested.property('[0].type', 'somethingHappened');
 		});
 
 		it('tries to retrieve aggregate snapshot', async () => {
@@ -239,15 +239,15 @@ describe('EventStore', function () {
 
 			const events = await es.getAggregateEvents(goodEvent2.aggregateId);
 
-			expect(storage).to.have.deep.property('getAggregateSnapshot.calledOnce', true);
-			expect(storage).to.have.deep.property('getAggregateEvents.calledOnce', true);
+			expect(storage).to.have.nested.property('getAggregateSnapshot.calledOnce', true);
+			expect(storage).to.have.nested.property('getAggregateEvents.calledOnce', true);
 
 			const [,eventFilter] = storage.getAggregateEvents.lastCall.args;
 
 			expect(eventFilter).to.have.property('snapshot');
-			expect(eventFilter).to.have.deep.property('snapshot.type');
-			expect(eventFilter).to.have.deep.property('snapshot.aggregateId');
-			expect(eventFilter).to.have.deep.property('snapshot.aggregateVersion');
+			expect(eventFilter).to.have.nested.property('snapshot.type');
+			expect(eventFilter).to.have.nested.property('snapshot.aggregateId');
+			expect(eventFilter).to.have.nested.property('snapshot.aggregateVersion');
 		});
 	});
 
@@ -269,7 +269,7 @@ describe('EventStore', function () {
 
 					expect(events).to.be.an('Array');
 					expect(events).to.have.length(1);
-					expect(events).to.have.deep.property('[0].type', 'somethingHappened');
+					expect(events).to.have.nested.property('[0].type', 'somethingHappened');
 				});
 			});
 		});
@@ -285,8 +285,8 @@ describe('EventStore', function () {
 
 					expect(events).to.be.an('Array');
 					expect(events).to.have.length(2);
-					expect(events).to.have.deep.property('[0].aggregateId', '1');
-					expect(events).to.have.deep.property('[1].aggregateId', '2');
+					expect(events).to.have.nested.property('[0].aggregateId', '1');
+					expect(events).to.have.nested.property('[1].aggregateId', '2');
 				});
 			});
 		});

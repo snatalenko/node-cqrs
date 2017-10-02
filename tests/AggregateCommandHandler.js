@@ -67,13 +67,13 @@ describe('AggregateCommandHandler', function () {
 		{
 			const { args } = commandBus.on.firstCall;
 			expect(args[0]).to.eq('createAggregate');
-			expect(args[1]).to.be.an('AsyncFunction');
+			expect(args[1]).to.be.instanceOf(Function);
 		}
 
 		{
 			const { args } = commandBus.on.secondCall;
 			expect(args[0]).to.eq('doSomething');
-			expect(args[1]).to.be.an('AsyncFunction');
+			expect(args[1]).to.be.instanceOf(Function);
 		}
 	});
 
@@ -154,17 +154,17 @@ describe('AggregateCommandHandler', function () {
 
 		// test
 
-		expect(aggregate).to.have.deep.property('takeSnapshot.called', false);
+		expect(aggregate).to.have.nested.property('takeSnapshot.called', false);
 		expect(aggregate).to.have.property('version', 0);
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.deep.property('takeSnapshot.called', false);
+		expect(aggregate).to.have.nested.property('takeSnapshot.called', false);
 		expect(aggregate).to.have.property('version', 1); // 1st event
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.deep.property('takeSnapshot.called', true);
+		expect(aggregate).to.have.nested.property('takeSnapshot.called', true);
 		expect(aggregate).to.have.property('version', 3); // 2nd event and snapshot
 
 		const [eventStream] = eventStore.commit.lastCall.args;
@@ -198,9 +198,9 @@ describe('AggregateCommandHandler', function () {
 
 		const [{ aggregateId }] = await handler.execute(cmd0);
 
-		expect(storage).to.have.deep.property('getAggregateEvents.callCount', 0);
-		expect(storage).to.have.deep.property('commitEvents.callCount', 1);
-		expect(storage).to.have.deep.property('saveAggregateSnapshot.callCount', 0);
+		expect(storage).to.have.nested.property('getAggregateEvents.callCount', 0);
+		expect(storage).to.have.nested.property('commitEvents.callCount', 1);
+		expect(storage).to.have.nested.property('saveAggregateSnapshot.callCount', 0);
 
 		const cmd1 = { aggregateId, type: 'doSomething' };
 		const cmd2 = { aggregateId, type: 'doSomething' };
@@ -208,9 +208,9 @@ describe('AggregateCommandHandler', function () {
 
 		await Promise.all([cmd1, cmd2, cmd3].map(c => handler.execute(c)));
 
-		// expect(storage).to.have.deep.property('getAggregateEvents.callCount', 1);
-		// expect(storage).to.have.deep.property('commitEvents.callCount', 2);
-		// expect(storage).to.have.deep.property('saveAggregateSnapshot.callCount', 2);
+		// expect(storage).to.have.nested.property('getAggregateEvents.callCount', 1);
+		// expect(storage).to.have.nested.property('commitEvents.callCount', 2);
+		// expect(storage).to.have.nested.property('saveAggregateSnapshot.callCount', 2);
 
 		const events = await eventStore.getAggregateEvents(aggregateId);
 

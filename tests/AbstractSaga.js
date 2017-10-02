@@ -89,7 +89,7 @@ describe('AbstractSaga', function () {
 			s.apply({ type: 'somethingHappened', payload: 'test' });
 
 			expect(receivedEvent).to.be.not.empty;
-			expect(receivedEvent).to.have.deep.property('type', 'somethingHappened');
+			expect(receivedEvent).to.have.nested.property('type', 'somethingHappened');
 		});
 
 		it('throws exception if no handler defined', () => {
@@ -110,7 +110,7 @@ describe('AbstractSaga', function () {
 			expect(uncommittedMessages[0]).to.have.property('sagaId', s.id);
 			expect(uncommittedMessages[0]).to.have.property('sagaVersion', s.version - 1);
 			expect(uncommittedMessages[0]).to.have.property('type', 'doSomething');
-			expect(uncommittedMessages[0]).to.have.deep.property('payload.foo', 'bar');
+			expect(uncommittedMessages[0]).to.have.nested.property('payload.foo', 'bar');
 		});
 	});
 

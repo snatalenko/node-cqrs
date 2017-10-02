@@ -98,9 +98,9 @@ describe('AbstractAggregate', function () {
 
 			return agg.doSomething({}, blankContext).then(() => {
 
-				expect(agg).to.have.deep.property('changes[0].type', 'somethingDone');
-				expect(agg).to.have.deep.property('changes[0].aggregateId', 1);
-				expect(agg).to.have.deep.property('changes[0].aggregateVersion', 0);
+				expect(agg).to.have.nested.property('changes[0].type', 'somethingDone');
+				expect(agg).to.have.nested.property('changes[0].aggregateId', 1);
+				expect(agg).to.have.nested.property('changes[0].aggregateVersion', 0);
 			});
 		});
 	});
@@ -151,7 +151,7 @@ describe('AbstractAggregate', function () {
 
 			await agg.handle({ type: 'doSomething' });
 
-			expect(agg).to.have.deep.property('changes[0].type', 'somethingDone');
+			expect(agg).to.have.nested.property('changes[0].type', 'somethingDone');
 		});
 
 		it('throws error, if command handler is not defined', async () => {
@@ -180,7 +180,7 @@ describe('AbstractAggregate', function () {
 		it('pushes new event to #changes', () => {
 
 			agg.emit('eventType', {});
-			expect(agg).to.have.deep.property('changes[0].type', 'eventType');
+			expect(agg).to.have.nested.property('changes[0].type', 'eventType');
 		});
 
 		it('increments aggregate #version', () => {
@@ -244,11 +244,11 @@ describe('AbstractAggregate', function () {
 		it('invokes aggregate.restoreSnapshot, when snapshot event provided', () => {
 			sinon.spy(agg, 'restoreSnapshot');
 
-			expect(agg).to.have.deep.property('restoreSnapshot.called', false);
+			expect(agg).to.have.nested.property('restoreSnapshot.called', false);
 
 			agg.mutate(snapshotEvent);
 
-			expect(agg).to.have.deep.property('restoreSnapshot.calledOnce', true);
+			expect(agg).to.have.nested.property('restoreSnapshot.calledOnce', true);
 		});
 
 		it('restores aggregate version and snapshotVersion, when snapshot event provided', () => {
@@ -314,11 +314,11 @@ describe('AbstractAggregate', function () {
 
 			agg.mutate({ type: 'somethingDone' });
 
-			expect(agg).to.have.deep.property('restoreSnapshot.called', false);
+			expect(agg).to.have.nested.property('restoreSnapshot.called', false);
 
 			agg.mutate(snapshotEvent);
 
-			expect(agg).to.have.deep.property('restoreSnapshot.calledOnce', true);
+			expect(agg).to.have.nested.property('restoreSnapshot.calledOnce', true);
 		});
 
 		it('restores aggregate state from a snapshot', () => {

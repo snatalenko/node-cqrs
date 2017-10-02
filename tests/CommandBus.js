@@ -29,8 +29,8 @@ describe('CommandBus', function () {
 			bus.on('doSomething', () => { });
 
 			expect(messageBus.on).to.have.property('calledOnce', true);
-			expect(messageBus.on).to.have.deep.property('firstCall.args[0]', 'doSomething');
-			expect(messageBus.on).to.have.deep.property('firstCall.args[1]').that.is.a('Function');
+			expect(messageBus.on).to.have.nested.property('firstCall.args[0]', 'doSomething');
+			expect(messageBus.on).to.have.nested.property('firstCall.args[1]').that.is.a('Function');
 		});
 	});
 
@@ -57,7 +57,7 @@ describe('CommandBus', function () {
 
 			return bus.sendRaw(command)
 				.then(() => {
-					expect(messageBus.send).to.have.deep.property('lastCall.args[0]', command);
+					expect(messageBus.send).to.have.nested.property('lastCall.args[0]', command);
 				});
 		});
 	});
@@ -87,18 +87,18 @@ describe('CommandBus', function () {
 
 			await bus.send(type, aggregateId, { context });
 
-			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].type', type);
-			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].aggregateId', aggregateId);
-			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].context', context);
-			expect(bus.sendRaw).to.not.have.deep.property('lastCall.args[0].payload');
+			expect(bus.sendRaw).to.have.nested.property('lastCall.args[0].type', type);
+			expect(bus.sendRaw).to.have.nested.property('lastCall.args[0].aggregateId', aggregateId);
+			expect(bus.sendRaw).to.have.nested.property('lastCall.args[0].context', context);
+			expect(bus.sendRaw).to.not.have.nested.property('lastCall.args[0].payload');
 
 			await bus.send(type, aggregateId, { context, payload, customParameter });
 
-			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].type', type);
-			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].aggregateId', aggregateId);
-			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].context', context);
-			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].payload', payload);
-			expect(bus.sendRaw).to.have.deep.property('lastCall.args[0].customParameter', customParameter);
+			expect(bus.sendRaw).to.have.nested.property('lastCall.args[0].type', type);
+			expect(bus.sendRaw).to.have.nested.property('lastCall.args[0].aggregateId', aggregateId);
+			expect(bus.sendRaw).to.have.nested.property('lastCall.args[0].context', context);
+			expect(bus.sendRaw).to.have.nested.property('lastCall.args[0].payload', payload);
+			expect(bus.sendRaw).to.have.nested.property('lastCall.args[0].customParameter', customParameter);
 		});
 
 		it('supports obsolete syntax', async () => {
@@ -109,24 +109,24 @@ describe('CommandBus', function () {
 
 			await bus.send('doSomething', aggregateId, context, payload);
 
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].type', 'doSomething');
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].aggregateId', aggregateId);
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].context', context);
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].payload', payload);
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].type', 'doSomething');
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].aggregateId', aggregateId);
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].context', context);
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].payload', payload);
 
 			await bus.send('doSomething', undefined, context, payload);
 
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].type', 'doSomething');
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].aggregateId', undefined);
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].context', context);
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].payload', payload);
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].type', 'doSomething');
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].aggregateId', undefined);
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].context', context);
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].payload', payload);
 
 			await bus.send('doSomething', undefined, context);
 
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].type', 'doSomething');
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].aggregateId', undefined);
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].context', context);
-			expect(messageBus.send).to.have.deep.property('lastCall.args[0].payload', undefined);
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].type', 'doSomething');
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].aggregateId', undefined);
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].context', context);
+			expect(messageBus.send).to.have.nested.property('lastCall.args[0].payload', undefined);
 		});
 	});
 });
