@@ -1,8 +1,9 @@
 'use strict';
 
 const Observer = require('./Observer');
-const InMemoryViewStorage = require('./infrastructure/InMemoryViewStorage');
-const { validateHandlers, sizeOf, getHandler } = require('./utils');
+const InMemoryView = require('./infrastructure/InMemoryView');
+const { getHandler } = require('./utils');
+
 const _view = Symbol('view');
 
 /**
@@ -45,12 +46,7 @@ module.exports = class AbstractProjection extends Observer {
 	 */
 	constructor(options) {
 		super();
-
-		validateHandlers(this);
-
-		Object.defineProperties(this, {
-			[_view]: { value: (options && options.view) || new InMemoryViewStorage() }
-		});
+		this[_view] = (options && options.view) || new InMemoryView();
 	}
 
 	/**
@@ -59,7 +55,7 @@ module.exports = class AbstractProjection extends Observer {
 	 * @param {object} eventStore
 	 */
 	subscribe(eventStore) {
-		Observer.subscribe(eventStore, this);
+		super.subscribe(eventStore);
 	}
 
 	/**
@@ -68,43 +64,34 @@ module.exports = class AbstractProjection extends Observer {
 	 * @param {object} eventStore
 	 * @return {Promise<IView>}
 	 */
-	restore(eventStore) {
+	async restore(eventStore) {
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
 		const messageTypes = Object.getPrototypeOf(this).constructor.handles;
 
-		return eventStore.getAllEvents(messageTypes)
-			.then(events => this.projectAll(events))
-			.then(() => {
-				this.info('projection view restored');
-				if (this.view instanceof InMemoryViewStorage) {
-					this.info(`${Object.keys(this.view.state).length} keys, ${sizeOf(this.view.state)} bytes`);
-					this.view.markAsReady();
-				}
-			}, err => {
-				this.info(`projection view restoring has failed: ${err}`);
-				throw err;
-			});
-	}
+		const events = await eventStore.getAllEvents(messageTypes);
 
-	/**
-	 * Project a set of events to projection view
-	 *
-	 * @param {IEvent[]} events
-	 * @returns {Promise<*>}
-	 */
-	projectAll(events) {
-		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
-
-		return events.reduce((cur, event) =>
-			cur.then(() => {
+		for (const event of events) {
+			try {
 				const handler = getHandler(this, event.type);
 				if (!handler)
 					throw new Error(`'${event.type}' handler is not defined or not a function`);
 
-				return handler.call(this, event);
-			}),
-			Promise.resolve());
+				const r = handler.call(this, event);
+				if (r instanceof Promise)
+					await r;
+			}
+			catch (err) {
+				this.info('projection view restoring has failed on event: %j', event);
+				this.info(err);
+				throw err;
+			}
+		}
+
+		this.info('projection view restored, %d keys, %d bytes', this.view.size, this.view.bytes);
+
+		if (typeof this.view.markAsReady === 'function')
+			this.view.markAsReady();
 	}
 };

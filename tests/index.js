@@ -20,4 +20,4 @@ require('./AggregateCommandHandler');
 require('./AbstractSaga');
 require('./SagaEventHandler');
 
-require('./AbstractProjection');
+require('./AbstractProjectionTests');
