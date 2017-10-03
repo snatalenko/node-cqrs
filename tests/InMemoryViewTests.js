@@ -105,7 +105,7 @@ describe('InMemoryView', function () {
 			v.markAsReady();
 
 			// 2-promise loop delay
-			await Promise.resolve().then(() => null).then(() => null);
+			await Promise.resolve().then().then();
 
 			expect(delayedResult).to.equal('bar');
 		});

@@ -2,6 +2,12 @@
 
 const getHandler = require('./getHandler');
 
+/**
+ * Ensure instance has handlers declared for all handled message types
+ *
+ * @param {object} instance
+ * @returns {string[]}
+ */
 module.exports = function validateHandlers(instance) {
 	if (!instance) throw new TypeError('instance argument required');
 

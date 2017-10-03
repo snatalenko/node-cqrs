@@ -1,6 +1,8 @@
 'use strict';
 
 const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore } = require('..');
+const { spy } = require('sinon');
+const getPromiseState = require('./utils/getPromiseState');
 
 class MyProjection extends AbstractProjection {
 	static get handles() {
@@ -8,13 +10,12 @@ class MyProjection extends AbstractProjection {
 	}
 
 	async _somethingHappened({ aggregateId, payload, context }) {
-		await this.view.updateEnforcingNew(aggregateId, v => {
+		return this.view.updateEnforcingNew(aggregateId, v => {
 			if (v.somethingHappenedCnt)
 				v.somethingHappenedCnt += 1;
 			else
 				v.somethingHappenedCnt = 1;
 		});
-		this.debug('somethingHappened');
 	}
 }
 
@@ -138,6 +139,46 @@ describe('AbstractProjection', function () {
 			}, err => {
 				expect(err).to.have.property('message', '\'unexpectedEvent\' handler is not defined or not a function');
 			});
+		});
+	});
+
+	describe('project(event)', () => {
+
+		const event = { type: 'somethingHappened', aggregateId: 1 };
+
+		it('waits until the view is ready', async () => {
+
+			const response = projection.project(event);
+
+			expect(await getPromiseState(response)).to.eq('pending');
+
+			projection.view.markAsReady();
+
+			await Promise.resolve().then();
+
+			expect(await getPromiseState(response)).to.eq('resolved');
+		});
+
+		it('can bypass waiting when invoked with a `nowait` flag', async () => {
+
+			const response = projection.project(event, { nowait: true });
+
+			expect(await getPromiseState(response)).to.eq('resolved');
+		});
+
+		it('passes event to projection event handler', async () => {
+
+			projection.view.markAsReady();
+			spy(projection, '_somethingHappened');
+
+			const event = { type: 'somethingHappened', aggregateId: 1 };
+
+			expect(projection._somethingHappened).to.have.property('called', false);
+
+			await projection.project(event);
+
+			expect(projection._somethingHappened).to.have.property('calledOnce', true);
+			expect(projection._somethingHappened.lastCall.args).to.eql([event]);
 		});
 	});
 });

@@ -2,7 +2,7 @@
 
 const Observer = require('./Observer');
 const InMemoryView = require('./infrastructure/InMemoryView');
-const { getHandler } = require('./utils');
+const { validateHandlers, getHandler } = require('./utils');
 
 const _view = Symbol('view');
 
@@ -46,6 +46,7 @@ module.exports = class AbstractProjection extends Observer {
 	 */
 	constructor(options) {
 		super();
+		validateHandlers(this);
 		this[_view] = (options && options.view) || new InMemoryView();
 	}
 
@@ -55,7 +56,25 @@ module.exports = class AbstractProjection extends Observer {
 	 * @param {object} eventStore
 	 */
 	subscribe(eventStore) {
-		super.subscribe(eventStore);
+		super.subscribe(eventStore, undefined, this.project);
+	}
+
+	/**
+	 * Pass event to projection event handler
+	 *
+	 * @param {IEvent} event
+	 * @param {object} [options]
+	 * @param {boolean} [options.nowait]
+	 */
+	async project(event, options) {
+		const handler = getHandler(this, event.type);
+		if (!handler)
+			throw new Error(`'${event.type}' handler is not defined or not a function`);
+
+		if (this.view.ready === false && !(options && options.nowait))
+			await this.view.once('ready');
+
+		return handler.call(this, event);
 	}
 
 	/**
@@ -74,13 +93,7 @@ module.exports = class AbstractProjection extends Observer {
 
 		for (const event of events) {
 			try {
-				const handler = getHandler(this, event.type);
-				if (!handler)
-					throw new Error(`'${event.type}' handler is not defined or not a function`);
-
-				const r = handler.call(this, event);
-				if (r instanceof Promise)
-					await r;
+				await this.project(event, { nowait: true });
 			}
 			catch (err) {
 				this.info('projection view restoring has failed on event: %j', event);
