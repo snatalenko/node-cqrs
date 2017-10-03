@@ -90,13 +90,15 @@ module.exports = class InMemoryView extends EventEmitter {
 	 * Get record with a given key; await until the view is restored
 	 *
 	 * @param {string|number} key
+	 * @param {object} [options]
+	 * @param {boolean} [options.nowait] Skip waiting until the view is restored/ready
 	 * @returns {any}
 	 * @memberof InMemoryView
 	 */
-	async get(key) {
+	async get(key, options) {
 		if (!key) throw new TypeError('key argument required');
 
-		if (!this._ready)
+		if (!this._ready && !(options && options.nowait))
 			await this.once('ready');
 
 		return this._map.get(key);
