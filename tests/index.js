@@ -8,8 +8,10 @@ global.sinon = require('sinon');
 
 require('./utilsTests');
 
-require('./EventStream');
 require('./InMemoryMessageBus');
+require('./InMemoryViewTests');
+
+require('./EventStream');
 require('./EventStore');
 require('./CommandBus');
 require('./Container');
