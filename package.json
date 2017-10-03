@@ -26,7 +26,7 @@
     "test:coveralls": "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
     "posttest:coveralls": "rm -rf ./coverage",
     "preversion": "npm run lint:strict && npm test",
-    "postversion": "git push --all && git push --tags"
+    "postversion": "git push origin && git push origin --tags"
   },
   "author": "@stas_natalenko",
   "license": "MIT",
