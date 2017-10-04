@@ -57,6 +57,9 @@ module.exports = class AbstractProjection extends Observer {
 	 */
 	subscribe(eventStore) {
 		super.subscribe(eventStore, undefined, this.project);
+
+		if (this.view.ready === false)
+			this.restore(eventStore);
 	}
 
 	/**

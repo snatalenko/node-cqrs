@@ -62,7 +62,6 @@ module.exports = class CqrsDomainContainer extends Container {
 		super.register(container => {
 			const projection = container.createInstance(ProjectionType);
 			projection.subscribe(container.eventStore);
-			projection.restore(container.eventStore);
 			return projection;
 		}, exposedViewName, p => p.view);
 	}
