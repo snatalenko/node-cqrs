@@ -197,6 +197,21 @@ describe('InMemoryView', function () {
 		});
 	});
 
+	describe('updateAll', () => {
+
+		it('updates all records that match criteria', async () => {
+
+			v.create('foo', 'bar');
+			v.create('x', { v: 'y' });
+			v.markAsReady();
+
+			v.updateAll(v => typeof v === 'string', v => `${v}-updated`);
+
+			expect(await v.get('foo')).to.eq('bar-updated');
+			expect(await v.get('x')).to.eql({ v: 'y' });
+		});
+	});
+
 	describe('delete', () => {
 
 		beforeEach(() => v.markAsReady());
@@ -215,6 +230,21 @@ describe('InMemoryView', function () {
 			v.delete('foo');
 
 			expect(await v.get('foo')).to.eq(undefined);
+		});
+	});
+
+	describe('deleteAll', () => {
+
+		it('deletes all records that match criteria', async () => {
+
+			v.create('foo', 'bar');
+			v.create('x', { v: 'y' });
+			v.markAsReady();
+
+			v.deleteAll(v => typeof v === 'object');
+
+			expect(await v.get('foo')).to.eq('bar');
+			expect(await v.get('x')).to.eq(undefined);
 		});
 	});
 
