@@ -1,6 +1,6 @@
 # Messages
 
-[Middleware]: ../../Middleware/README.md "Middleware"
+[Middleware]: ../../middleware/README.md "Middleware"
 [Aggregate]: ../Aggregate/README.md "Aggregate"
 [Saga]: ../Saga/README.md
 [Projection]: ../Projection/README.md

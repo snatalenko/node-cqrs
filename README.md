@@ -13,7 +13,7 @@ node-cqrs
 
 From a high level, on the figure below white dashed blocks are placeholders for your logic, the rest can be covered by the library. All the components are optional though and can be replaced with your own implementations.
 
-![Overview](docs/Images/node-cqrs-components.png)
+![Overview](docs/images/node-cqrs-components.png)
 
 Documentation is available at [node-cqrs.org](https://www.node-cqrs.org)
 

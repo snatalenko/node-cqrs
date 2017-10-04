@@ -1,10 +1,10 @@
 # Aggregate State
 
-[EventStore]: ../../Middleware/README.md
+[EventStore]: ../../middleware/README.md
 [AbstractAggregate.js]: https://github.com/snatalenko/node-cqrs/blob/master/src/AbstractAggregate.js
 
 
-Aggregate state is an internal aggregate property, which is used for domain logic validations in [Aggregate Command Handlers](Command Handlers.md). 
+Aggregate state is an internal aggregate property, which is used for domain logic validations in [Aggregate Command Handlers](CommandHandlers.md). 
 
 ## Implementation
 
@@ -27,7 +27,7 @@ class UserAggregateState {
 
 Each event handler is defined as a separate method, which modifies the state. Alternatively, a common `mutate(event)` handler can be defined, which will handle all aggregate events instead. 
 
-Aggregate state **should NOT throw any exceptions**, all type and business logic validations should be performed in the [aggregate command handlers](Command Handlers.md).
+Aggregate state **should NOT throw any exceptions**, all type and business logic validations should be performed in the [aggregate command handlers](CommandHandlers.md).
 
 ## Using in Aggregate
 

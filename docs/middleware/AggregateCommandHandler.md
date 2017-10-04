@@ -12,7 +12,7 @@ const myAggregateCommandHandler = new AggregateCommandHandler({
 myAggregateCommandHandler.subscribe(commandBus);
 ```
 
-Or using the [DI container](DI Container.md) (preferred method):
+Or using the [DI container](DIContainer.md) (preferred method):
 
 ```js
 container.registerAggregate(MyAggregate);

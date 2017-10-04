@@ -15,7 +15,7 @@ The associted view can be accessed thru the `view` property and provides a set o
   * `delete(key: string)`
 
 
-In case you are using the [DI container](../Middleware/DI\ Container.md), projection view will be exposed on the container automatically:
+In case you are using the [DI container](../middleware/DIContainer.md), projection view will be exposed on the container automatically:
 
 ```js
 container.registerProjection(MyProjection, 'myView'); 

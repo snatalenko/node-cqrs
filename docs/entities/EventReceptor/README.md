@@ -26,7 +26,7 @@ receptor.subscribe(eventStore);
 ```
 
 
-To register a receptor in the [DI Container](../../Middleware/DI Container.md):
+To register a receptor in the [DI Container](../../middleware/DIContainer.md):
 
 ```js
 container.registerEventReceptor(MyReceptor);

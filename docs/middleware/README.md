@@ -2,7 +2,7 @@
 
 for wiring components together
 
-* [DI Container](DI Container.md)
+* [DI Container](DIContainer.md)
 
 for delivering messages to corresponding domain objects
 
