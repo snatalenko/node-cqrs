@@ -9,7 +9,13 @@ node-cqrs
 
 ## Overview
 
-This package provides a set of backbone ES6 classes for CQRS app development. Documentation is available on [GitBooks](https://snatalenko.gitbooks.io/node-cqrs/content/).
+**node-cqrs** in a package, that provides a set of backbone ES6 classes for CQRS app development. 
+
+From a high level, on the figure below white dashed blocks are placeholders for your logic, the rest can be covered by the library. All the components are optional though and can be replaced with your own implementations.
+
+![Overview](docs/Images/node-cqrs-components.png)
+
+Documentation is available at [node-cqrs.org](https://www.node-cqrs.org)
 
 
 ## Contribution

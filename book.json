@@ -1,0 +1,23 @@
+{
+    "title": "node-cqrs",
+    "gitbook": "3.2.2",
+    "plugins": [
+        "edit-link",
+        "github",
+        "anchorjs"
+    ],
+    "pluginsConfig": {
+        "edit-link": {
+            "base": "https://github.com/snatalenko/node-cqrs/tree/master",
+            "label": "Edit This Page"
+        },
+        "github": {
+            "url": "https://github.com/snatalenko/node-cqrs/"
+        },
+        "theme-default": {
+            "styles": {
+                "website": "build/gitbook.css"
+            }
+        }
+    }
+}
