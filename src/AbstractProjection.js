@@ -105,7 +105,7 @@ module.exports = class AbstractProjection extends Observer {
 			}
 		}
 
-		this.info('projection view restored, %d keys, %d bytes', this.view.size, this.view.bytes);
+		this.info('projection view restored (%s)', this.view);
 
 		if (typeof this.view.markAsReady === 'function')
 			this.view.markAsReady();

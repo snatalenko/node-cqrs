@@ -245,4 +245,13 @@ module.exports = class InMemoryView extends EventEmitter {
 			super.once(eventType, rs);
 		});
 	}
+
+	/**
+	 * Get view summary as string
+	 *
+	 * @returns {string}
+	 */
+	toString() {
+		return `${this.size} record${this.size !== 1 ? 's' : ''}, ${this.bytes} bytes`;
+	}
 };

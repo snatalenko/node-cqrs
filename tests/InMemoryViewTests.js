@@ -217,4 +217,14 @@ describe('InMemoryView', function () {
 			expect(await v.get('foo')).to.eq(undefined);
 		});
 	});
+
+	describe('toString', () => {
+
+		it('returns view summary', () => {
+
+			expect(`${v}`).to.eq('0 records, 0 bytes');
+			v.create('foo', 'bar');
+			expect(`${v}`).to.eq('1 record, 6 bytes');
+		});
+	});
 });
