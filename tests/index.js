@@ -23,3 +23,5 @@ require('./AbstractSaga');
 require('./SagaEventHandler');
 
 require('./AbstractProjectionTests');
+
+require('../examples/user-domain-tests');

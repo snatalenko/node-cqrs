@@ -21,6 +21,7 @@
     "lint:strict": "eslint src/ --max-warnings=0",
     "pretest": "npm run lint",
     "test": "mocha ./tests/index.js",
+    "test:integration": "mocha ./examples/user-domain-tests",
     "test:coverage": "istanbul cover node_modules/.bin/_mocha tests/index.js -- -R spec",
     "pretest:coveralls": "npm run test:coverage",
     "test:coveralls": "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
