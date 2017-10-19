@@ -7,10 +7,12 @@ const { validateHandlers, getHandler } = require('./utils');
 const _view = Symbol('view');
 
 /**
- * CQRS Event
- * @typedef {{ type: string }} IEvent
+ * Base class for Projection definition
+ *
+ * @class AbstractProjection
+ * @extends {Observer}
+ * @implements {IProjection}
  */
-
 module.exports = class AbstractProjection extends Observer {
 
 	/**
@@ -27,7 +29,7 @@ module.exports = class AbstractProjection extends Observer {
 	/**
 	 * View associated with projection
 	 *
-	 * @type {InMemoryView}
+	 * @type {IProjectionView}
 	 * @readonly
 	 */
 	get view() {
@@ -37,7 +39,7 @@ module.exports = class AbstractProjection extends Observer {
 	/**
 	 * Creates an instance of AbstractProjection
 	 *
-	 * @param {{ view: InMemoryView }} options
+	 * @param {{ view: IProjectionView }} options
 	 */
 	constructor(options) {
 		super();
@@ -48,7 +50,7 @@ module.exports = class AbstractProjection extends Observer {
 	/**
 	 * Subscribe to event store
 	 *
-	 * @param {object} eventStore
+	 * @param {IEventStore} eventStore
 	 */
 	subscribe(eventStore) {
 		super.subscribe(eventStore, undefined, this.project);
@@ -77,9 +79,9 @@ module.exports = class AbstractProjection extends Observer {
 
 	/**
 	 * Restore projection view from event store
-	 *
-	 * @param {object} eventStore
-	 * @return {Promise<InMemoryView>}
+	 * @private
+	 * @param {IEventStore} eventStore
+	 * @return {Promise<void>}
 	 */
 	async restore(eventStore) {
 		if (!eventStore) throw new TypeError('eventStore argument required');

@@ -13,6 +13,7 @@
     "eventsourcing"
   ],
   "main": "index.js",
+  "types": "./src/typings/node-cqrs.d.ts",
   "engines": {
     "node": ">=7.4.0"
   },

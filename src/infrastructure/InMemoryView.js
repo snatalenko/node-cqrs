@@ -15,6 +15,7 @@ function strMapToObj(strMap) {
  *
  * @class InMemoryView
  * @extends {EventEmitter}
+ * @implements {IProjectionView}
  */
 module.exports = class InMemoryView extends EventEmitter {
 
@@ -47,16 +48,6 @@ module.exports = class InMemoryView extends EventEmitter {
 	 */
 	get size() {
 		return this._map.size;
-	}
-
-	/**
-	 * Number of bytes allocated by the View
-	 *
-	 * @type {number}
-	 * @readonly
-	 */
-	get bytes() {
-		return sizeOf(this._map);
 	}
 
 	/**
@@ -252,6 +243,6 @@ module.exports = class InMemoryView extends EventEmitter {
 	 * @returns {string}
 	 */
 	toString() {
-		return `${this.size} record${this.size !== 1 ? 's' : ''}, ${this.bytes} bytes`;
+		return `${this.size} record${this.size !== 1 ? 's' : ''}, ${sizeOf(this._map)} bytes`;
 	}
 };

@@ -3,29 +3,16 @@
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
 const debug = require('debug')('cqrs:debug:CommandBus');
 const info = require('debug')('cqrs:info:CommandBus');
-const _bus = Symbol('bus');
-
-/**
- * CQRS Command
- * @typedef {{type: string, aggregateId: string, payload: object, context: object}} ICommand
- */
-
-/**
- * CQRS Event
- * @typedef {{type: string, aggregateId: string, aggregateVersion, payload: object, context: object }} IEvent
- */
 
 module.exports = class CommandBus {
 
 	/**
 	 * Creates an instance of CommandBus.
 	 *
-	 * @param {{ messageBus: object }} options
+	 * @param {{ messageBus: IMessageBus }} options
 	 */
 	constructor(options) {
-		Object.defineProperty(this, _bus, {
-			value: (options && options.messageBus) || new InMemoryBus()
-		});
+		this._bus = (options && options.messageBus) || new InMemoryBus();
 	}
 
 	/**
@@ -40,7 +27,7 @@ module.exports = class CommandBus {
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
 		if (context) throw new TypeError('more than expected arugments supplied');
 
-		return this[_bus].on(commandType, handler);
+		return this._bus.on(commandType, handler);
 	}
 
 	/**
@@ -71,7 +58,7 @@ module.exports = class CommandBus {
 	 * Send a command for execution
 	 *
 	 * @param {ICommand} command
-	 * @returns
+	 * @returns {Promise<IEvent>} - produced events
 	 */
 	sendRaw(command) {
 		if (!command) throw new TypeError('command argument required');
@@ -79,7 +66,7 @@ module.exports = class CommandBus {
 
 		debug(`sending '${command.type}' command...`);
 
-		return this[_bus].send(command).then(r => {
+		return this._bus.send(command).then(r => {
 			debug(`'${command.type}' processed`);
 			return r;
 		}, err => {

@@ -1,11 +1,6 @@
 'use strict';
 
 /**
- * CQRS Event
- * @typedef {{ type:string, aggregateId:string, aggregateVersion:number, sagaId:string, sagaVersion:number }} IEvent
- */
-
-/**
  * Format event before adding to event stream
  *
  * @param {IEvent} event

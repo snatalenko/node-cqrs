@@ -11,15 +11,11 @@ const _version = Symbol('version');
 const _snapshotVersion = Symbol('snapshotVersion');
 
 /**
- * CQRS Command
- * @typedef {{type: string, aggregateId: string, payload: object, context: object}} ICommand
+ * Base class for Aggregate definition
+ *
+ * @class AbstractAggregate
+ * @implements {IAggregate}
  */
-
-/**
- * CQRS Event
- * @typedef {{type: string, aggregateId: string, aggregateVersion, payload: object, context: object }} IEvent
- */
-
 module.exports = class AbstractAggregate {
 
 	/**
