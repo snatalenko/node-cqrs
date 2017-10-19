@@ -39,18 +39,6 @@ describe('InMemoryView', function () {
 		});
 	});
 
-	describe('bytes', () => {
-
-		it('returns size of view in bytes', () => {
-
-			v.create('a', 'bar');
-			expect(v).to.have.property('bytes', 4);
-
-			v.create('b', 1);
-			expect(v).to.have.property('bytes', 13);
-		});
-	});
-
 	describe('ready', () => {
 
 		it('returns false, if view is not restored', () => {
