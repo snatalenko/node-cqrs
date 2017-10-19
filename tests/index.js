@@ -1,6 +1,6 @@
 'use strict';
 
-// require('debug').enable('cqrs:info:*');
+// require('debug').enable('cqrs:*');
 
 const { assert, expect, AssertionError } = require('chai');
 Object.assign(global, { assert, expect, AssertionError });
@@ -8,7 +8,7 @@ global.sinon = require('sinon');
 
 require('./utilsTests');
 
-require('./InMemoryMessageBus');
+require('./InMemoryMessageBusTests');
 require('./InMemoryViewTests');
 
 require('./EventStream');

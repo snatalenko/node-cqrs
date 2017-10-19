@@ -8,7 +8,6 @@ const EventStream = require('./EventStream');
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
 
 const _defaults = {
-	hostname: undefined,
 	publishAsync: true
 };
 
@@ -78,24 +77,19 @@ function validateMessageBus(messageBus) {
  *
  * @param {IEvent[]} events
  * @param {{ context, sagaId, sagaVersion }} sourceCommand
- * @param {{ hostname }} eventStoreConfig
  * @returns {EventStream}
  */
-function augmentEvents(events, sourceCommand = {}, eventStoreConfig) {
+function augmentEvents(events, sourceCommand = {}) {
 	if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
 	const { sagaId, sagaVersion, context } = sourceCommand;
-	const { hostname } = eventStoreConfig;
 
 	return EventStream.from(events, event => {
-		if (sagaId) {
+		if (sagaId !== undefined)
 			event.sagaId = sagaId;
+		if (sagaVersion !== undefined)
 			event.sagaVersion = sagaVersion;
-		}
-
-		if (hostname)
-			event.context = Object.assign({ hostname }, context);
-		else if (context)
+		if (context !== undefined)
 			event.context = context;
 
 		return event;
@@ -104,7 +98,6 @@ function augmentEvents(events, sourceCommand = {}, eventStoreConfig) {
 
 /**
  * @typedef {object} EventStoreConfig
- * @property {string} [hostname]
  * @property {boolean} [publishAsync]
  */
 
@@ -144,17 +137,6 @@ module.exports = class EventStore {
 	}
 
 	/**
-	 * Whether event bus supports named queues
-	 *
-	 * @type {boolean}
-	 * @readonly
-	 */
-	get distributedNamedQueuesSupported() {
-		const EventBusType = Object.getPrototypeOf(this._eventBus).constructor;
-		return EventBusType && !!EventBusType.supportsQueues;
-	}
-
-	/**
 	 * Creates an instance of EventStore.
 	 *
 	 * @param {object} options
@@ -177,9 +159,6 @@ module.exports = class EventStore {
 		this._storage = options.storage;
 		this._snapshotStorage = options.snapshotStorage;
 		this._validator = options.eventValidator || validateEvent;
-
-		/** @type {Map<string, function(IEvent):void>} */
-		this._localNamedQueueHandlers = new Map();
 
 		if (options.messageBus) {
 			this._publishEventsAfterCommit = true;
@@ -290,8 +269,7 @@ module.exports = class EventStore {
 		if (snapshot)
 			events = events.filter(e => e !== snapshot);
 
-		const { hostname } = this.config;
-		const eventStream = augmentEvents(events, sourceCommand, { hostname });
+		const eventStream = augmentEvents(events, sourceCommand);
 
 		debug(`validating ${eventStream}...`);
 		eventStream.forEach(this._validator);
@@ -332,44 +310,14 @@ module.exports = class EventStore {
 	 *
 	 * @param {string} messageType
 	 * @param {function(IEvent): any} handler
+	 * @param {object} [options]
+	 * @param {string} [options.queueName] Name of the queue in environment with multiple event handlers installed
 	 */
-	on(messageType, handler, { queueName } = {}) {
+	on(messageType, handler, options) {
 		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
 
-		if (queueName && !this.distributedNamedQueuesSupported)
-			return this._setupLocalNamedSubscription(messageType, handler, queueName);
-
-		return this._eventBus.on(messageType, handler, { queueName });
-	}
-
-	/**
-	 * Set up subscription that reacts to local events only
-	 *
-	 * @private
-	 * @param {string} messageType
-	 * @param {function(IEvent): any} handler
-	 * @param {string} queueName
-	 */
-	_setupLocalNamedSubscription(messageType, handler, queueName) {
-		if (!this.config.hostname)
-			throw new Error(`'${messageType}' handler could not be set up, unique config.hostname is required for named queue subscriptions`);
-
-		const handlerKey = `${queueName}:${messageType}`;
-		if (this._localNamedQueueHandlers.has(handlerKey))
-			throw new Error(`'${handlerKey}' handler already set up on this node`);
-
-		this._localNamedQueueHandlers.set(handlerKey, handler);
-
-		return this._eventBus.on(messageType, event => {
-
-			if (event.context.hostname !== this.config.hostname) {
-				info(`'${event.type}' committed on node '${event.context.hostname}', '${this.config.hostname}' handler will be skipped`);
-				return;
-			}
-
-			handler(event);
-		});
+		return this._eventBus.on(messageType, handler, options);
 	}
 
 	/**

@@ -82,8 +82,8 @@ declare interface IAggregateSnapshotStorage {
 }
 
 declare interface IMessageBus {
-	on(messageType: string, handler: IMessageHandler): void;
-	off?(messageType: string, handler: IMessageHandler): void;
+	on(messageType: string, handler: IMessageHandler, options?: { queueName: string }): void;
+	off?(messageType: string, handler: IMessageHandler, options?: { queueName: string }): void;
 	removeListener?(messageType: string, handler: IMessageHandler): void;
 	send(command: ICommand): Promise<any>;
 	publish(event: IEvent): Promise<any>;
