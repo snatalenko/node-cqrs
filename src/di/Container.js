@@ -1,6 +1,6 @@
 'use strict';
 
-const debug = require('debug')('cqrs:debug:Container');
+const trace = require('debug')('cqrs:trace:Container');
 const getClassDependencyNames = require('./getClassDependencyNames');
 const _factories = Symbol('factories');
 const _instances = Symbol('instances');
@@ -29,11 +29,11 @@ function createInstance(typeOrFactory, container, additionalOptions) {
 
 		const dependencies = getClassDependencyNames(Type);
 		if (!dependencies)
-			debug(`${Type.name || 'class'} has no constructor`);
+			trace(`${Type.name || 'class'} has no constructor`);
 		else if (!dependencies.length)
-			debug(`${Type.name || 'class'} has no dependencies`);
+			trace(`${Type.name || 'class'} has no dependencies`);
 		else
-			debug(`${Type.name || 'class'} dependencies: ${dependencies}`);
+			trace(`${Type.name || 'class'} dependencies: ${dependencies}`);
 
 		const parameters = dependencies ?
 			dependencies.map(dependency => {
@@ -138,7 +138,7 @@ module.exports = class Container {
 	 * @return {undefined}
 	 */
 	createUnexposedInstances() {
-		debug('creating unexposed instances...');
+		trace('creating unexposed instances...');
 		for (let i = 0; i < this.factories.length; i++) {
 			if (this.factories[i].unexposed) {
 				this.factories.splice(i, 1)[0](this);
@@ -152,7 +152,7 @@ module.exports = class Container {
 	 * @return {undefined}
 	 */
 	createAllInstances() {
-		debug('creating all instances...');
+		trace('creating all instances...');
 		while (this.factories.length)
 			this.factories.splice(0, 1)[0](this);
 	}
@@ -164,7 +164,7 @@ module.exports = class Container {
 	 * @return {Object}                   Newly created instance
 	 */
 	createInstance(typeOrFactory, additionalOptions) {
-		debug(`creating ${typeOrFactory.name || 'unnamed'} instance...`);
+		trace(`creating ${typeOrFactory.name || 'unnamed'} instance...`);
 
 		return createInstance(typeOrFactory, this, additionalOptions);
 	}
