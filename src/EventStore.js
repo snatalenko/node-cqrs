@@ -7,12 +7,6 @@ const EventStream = require('./EventStream');
 
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
 
-const _storage = Symbol('storage');
-const _eventBus = Symbol('eventBus');
-const _publishEventsAfterCommit = Symbol('publishEventsLocally');
-const _validator = Symbol('validator');
-const _config = Symbol('config');
-const _namedQueues = Symbol('queueHandlers');
 const _defaults = {
 	hostname: undefined,
 	publishAsync: true
@@ -31,6 +25,55 @@ function validateEvent(event) {
 }
 
 /**
+ * Ensure provided eventStorage matches the expected format
+ * @param {IEventStorage} storage
+ */
+function validateEventStorage(storage) {
+	if (typeof storage !== 'object' || !storage) throw new TypeError('eventStorage argument must be an Object');
+	if (typeof storage.commitEvents !== 'function') throw new TypeError('storage.commitEvents must be a Function');
+	if (typeof storage.getEvents !== 'function') throw new TypeError('storage.getEvents must be a Function');
+	if (typeof storage.getAggregateEvents !== 'function') throw new TypeError('storage.getAggregateEvents must be a Function');
+	if (typeof storage.getSagaEvents !== 'function') throw new TypeError('storage.getSagaEvents must be a Function');
+	if (typeof storage.getNewId !== 'function') throw new TypeError('storage.getNewId must be a Function');
+}
+
+/**
+ * Check if storage emits events
+ *
+ * @param {IEventStorage} storage
+ * @returns {boolean}
+ */
+function isEmitter(storage) {
+	return typeof storage.on === 'function';
+}
+
+/**
+ * Ensure snapshotStorage matches the expected format
+ * @param {IAggregateSnapshotStorage} snapshotStorage
+ */
+function validateSnapshotStorage(snapshotStorage) {
+	if (typeof snapshotStorage !== 'object' || !snapshotStorage)
+		throw new TypeError('snapshotStorage argument must be an Object');
+	if (typeof snapshotStorage.getAggregateSnapshot !== 'function')
+		throw new TypeError('snapshotStorage.getAggregateSnapshot argument must be a Function');
+	if (typeof snapshotStorage.saveAggregateSnapshot !== 'function')
+		throw new TypeError('snapshotStorage.saveAggregateSnapshot argument must be a Function');
+}
+
+/**
+ * Ensure messageBus matches the expected format
+ * @param {IMessageBus} messageBus
+ */
+function validateMessageBus(messageBus) {
+	if (typeof messageBus !== 'object' || !messageBus)
+		throw new TypeError('messageBus argument must be an Object');
+	if (typeof messageBus.on !== 'function')
+		throw new TypeError('messageBus.on argument must be a Function');
+	if (typeof messageBus.publish !== 'function')
+		throw new TypeError('messageBus.publish argument must be a Function');
+}
+
+/**
  * Attaches command and node fields to each event in a given array
  *
  * @param {IEvent[]} events
@@ -44,40 +87,36 @@ function augmentEvents(events, sourceCommand = {}, eventStoreConfig) {
 	const { sagaId, sagaVersion, context } = sourceCommand;
 	const { hostname } = eventStoreConfig;
 
-	const extension = {
-		sagaId,
-		sagaVersion,
-		context: hostname ?
-			Object.assign({ hostname }, context) :
-			context
-	};
+	return EventStream.from(events, event => {
+		if (sagaId) {
+			event.sagaId = sagaId;
+			event.sagaVersion = sagaVersion;
+		}
 
-	return EventStream.from(events, event => Object.assign({}, extension, event));
+		if (hostname)
+			event.context = Object.assign({ hostname }, context);
+		else if (context)
+			event.context = context;
+
+		return event;
+	});
 }
 
 /**
- * CQRS Event
- * @typedef {{ type:string, aggregateId?:string, aggregateVersion?:number, sagaId?:string, sagaVersion?:number }} IEvent
- * @property {string} type
- * @property {string|number} [aggregateId]
- * @property {number} [aggregateVersion]
- * @property {string|number} [sagaId]
- * @property {number} [sagaVersion]
+ * @typedef {object} EventStoreConfig
+ * @property {string} [hostname]
+ * @property {boolean} [publishAsync]
  */
 
 /**
- * Event Filter
- * @typedef {{ afterEvent?: IEvent, beforeEvent?: IEvent }} IEventFilter
- * @property {IEvent} [afterEvent]
- * @property {IEvent} [beforeEvent]
+ * @class EventStore
  */
-
 module.exports = class EventStore {
 
 	/**
 	 * Default configuration
 	 *
-	 * @type {{ hostname: string, publishAsync: boolean }}
+	 * @type {EventStoreConfig}
 	 * @static
 	 */
 	static get defaults() {
@@ -87,11 +126,11 @@ module.exports = class EventStore {
 	/**
 	 * Configuration
 	 *
-	 * @type {{ hostname: string, publishAsync: boolean }}
+	 * @type {EventStoreConfig}
 	 * @readonly
 	 */
 	get config() {
-		return this[_config];
+		return this._config;
 	}
 
 	/**
@@ -101,8 +140,7 @@ module.exports = class EventStore {
 	 * @readonly
 	 */
 	get snapshotsSupported() {
-		return 'getAggregateSnapshot' in this[_storage]
-			&& 'saveAggregateSnapshot' in this[_storage];
+		return Boolean(this._snapshotStorage);
 	}
 
 	/**
@@ -112,53 +150,58 @@ module.exports = class EventStore {
 	 * @readonly
 	 */
 	get distributedNamedQueuesSupported() {
-		const EventBusType = Object.getPrototypeOf(this[_eventBus]).constructor;
+		const EventBusType = Object.getPrototypeOf(this._eventBus).constructor;
 		return EventBusType && !!EventBusType.supportsQueues;
 	}
 
 	/**
 	 * Creates an instance of EventStore.
 	 *
-	 * @param {{ storage, messageBus, eventValidator, eventStoreConfig }} options
+	 * @param {object} options
+	 * @param {IEventStorage} options.storage
+	 * @param {IAggregateSnapshotStorage} [options.snapshotStorage]
+	 * @param {IMessageBus} [options.messageBus]
+	 * @param {function(IEvent):void} [options.eventValidator]
+	 * @param {EventStoreConfig} [options.eventStoreConfig]
 	 */
-	constructor({ storage, messageBus, eventValidator, eventStoreConfig }) {
-		if (!storage) throw new TypeError('storage argument required');
-		if (typeof storage.commitEvents !== 'function') throw new TypeError('storage.commitEvents must be a Function');
-		if (typeof storage.getEvents !== 'function') throw new TypeError('storage.getEvents must be a Function');
-		if (typeof storage.getAggregateEvents !== 'function') throw new TypeError('storage.getAggregateEvents must be a Function');
-		if (typeof storage.getSagaEvents !== 'function') throw new TypeError('storage.getSagaEvents must be a Function');
-		if (typeof storage.getNewId !== 'function') throw new TypeError('storage.getNewId must be a Function');
-		if (messageBus !== undefined && typeof messageBus.on !== 'function')
-			throw new TypeError('messageBus must implement method on(eventType, listener)');
-		if (eventValidator !== undefined && typeof eventValidator !== 'function')
+	constructor(options) {
+		validateEventStorage(options.storage);
+		if (options.snapshotStorage)
+			validateSnapshotStorage(options.snapshotStorage);
+		if (options.messageBus)
+			validateMessageBus(options.messageBus);
+		if (options.eventValidator !== undefined && typeof options.eventValidator !== 'function')
 			throw new TypeError('eventValidator, when provided, must be a function');
 
-		this[_config] = Object.freeze(Object.assign({}, EventStore.defaults, eventStoreConfig));
-		this[_storage] = storage;
-		this[_validator] = eventValidator || validateEvent;
-		this[_namedQueues] = new Map();
+		this._config = Object.freeze(Object.assign({}, EventStore.defaults, options.eventStoreConfig));
+		this._storage = options.storage;
+		this._snapshotStorage = options.snapshotStorage;
+		this._validator = options.eventValidator || validateEvent;
 
-		if (messageBus) {
-			this[_publishEventsAfterCommit] = true;
-			this[_eventBus] = messageBus;
+		/** @type {Map<string, function(IEvent):void>} */
+		this._localNamedQueueHandlers = new Map();
+
+		if (options.messageBus) {
+			this._publishEventsAfterCommit = true;
+			this._eventBus = options.messageBus;
 		}
-		else if (typeof storage.on === 'function') {
-			this[_publishEventsAfterCommit] = false;
-			this[_eventBus] = storage;
+		else if (isEmitter(options.storage)) {
+			this._publishEventsAfterCommit = false;
+			this._eventBus = options.storage;
 		}
 		else {
-			this[_publishEventsAfterCommit] = true;
-			this[_eventBus] = new InMemoryBus();
+			this._publishEventsAfterCommit = true;
+			this._eventBus = new InMemoryBus();
 		}
 	}
 
 	/**
 	 * Retrieve new ID from the storage
 	 *
-	 * @returns {Promise<string>}
+	 * @returns {Promise<Identifier>}
 	 */
 	async getNewId() {
-		return this[_storage].getNewId();
+		return this._storage.getNewId();
 	}
 
 	/**
@@ -168,12 +211,12 @@ module.exports = class EventStore {
 	 * @param {IEventFilter} [filter]
 	 * @returns {Promise<EventStream>}
 	 */
-	async getAllEvents(eventTypes) {
+	async getAllEvents(eventTypes, filter) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
 		debug(`retrieving ${eventTypes ? eventTypes.join(', ') : 'all'} events...`);
 
-		const events = await this[_storage].getEvents(eventTypes);
+		const events = await this._storage.getEvents(eventTypes, filter);
 
 		const eventStream = EventStream.from(events);
 		debug(`${eventStream} retrieved`);
@@ -193,10 +236,10 @@ module.exports = class EventStore {
 		debug(`retrieving event stream for aggregate ${aggregateId}...`);
 
 		const snapshot = this.snapshotsSupported ?
-			await this[_storage].getAggregateSnapshot(aggregateId) :
+			await this._snapshotStorage.getAggregateSnapshot(aggregateId) :
 			undefined;
 
-		const events = await this[_storage].getAggregateEvents(aggregateId, { snapshot });
+		const events = await this._storage.getAggregateEvents(aggregateId, { snapshot });
 
 		const eventStream = EventStream.from(snapshot ? [snapshot, ...events] : events);
 		debug(`${eventStream} retrieved`);
@@ -219,7 +262,7 @@ module.exports = class EventStore {
 
 		debug(`retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`);
 
-		const events = await this[_storage].getSagaEvents(sagaId, filter);
+		const events = await this._storage.getSagaEvents(sagaId, filter);
 
 		const eventStream = EventStream.from(events);
 		debug(`${eventStream} retrieved`);
@@ -251,19 +294,19 @@ module.exports = class EventStore {
 		const eventStream = augmentEvents(events, sourceCommand, { hostname });
 
 		debug(`validating ${eventStream}...`);
-		eventStream.forEach(this[_validator]);
+		eventStream.forEach(this._validator);
 
 		debug(`committing ${eventStream}...`);
 		await Promise.all([
-			this[_storage].commitEvents(eventStream),
+			this._storage.commitEvents(eventStream),
 			snapshot ?
-				this[_storage].saveAggregateSnapshot(snapshot) :
+				this._snapshotStorage.saveAggregateSnapshot(snapshot) :
 				undefined
 		]);
 
-		if (this[_publishEventsAfterCommit]) {
+		if (this._publishEventsAfterCommit) {
 			const publishEvents = () =>
-				Promise.all(eventStream.map(event => this[_eventBus].publish(event)))
+				Promise.all(eventStream.map(event => this._eventBus.publish(event)))
 					.then(() => {
 						info(`${eventStream} published`);
 					}, err => {
@@ -297,7 +340,7 @@ module.exports = class EventStore {
 		if (queueName && !this.distributedNamedQueuesSupported)
 			return this._setupLocalNamedSubscription(messageType, handler, queueName);
 
-		return this[_eventBus].on(messageType, handler, { queueName });
+		return this._eventBus.on(messageType, handler, { queueName });
 	}
 
 	/**
@@ -313,12 +356,12 @@ module.exports = class EventStore {
 			throw new Error(`'${messageType}' handler could not be set up, unique config.hostname is required for named queue subscriptions`);
 
 		const handlerKey = `${queueName}:${messageType}`;
-		if (this[_namedQueues].has(handlerKey))
+		if (this._localNamedQueueHandlers.has(handlerKey))
 			throw new Error(`'${handlerKey}' handler already set up on this node`);
 
-		this[_namedQueues].set(`${queueName}:${messageType}`, handler);
+		this._localNamedQueueHandlers.set(handlerKey, handler);
 
-		return this[_eventBus].on(messageType, event => {
+		return this._eventBus.on(messageType, event => {
 
 			if (event.context.hostname !== this.config.hostname) {
 				info(`'${event.type}' committed on node '${event.context.hostname}', '${this.config.hostname}' handler will be skipped`);
@@ -346,7 +389,8 @@ module.exports = class EventStore {
 		if (filter && typeof filter !== 'function')
 			throw new TypeError('filter argument, when specified, must be a Function');
 
-		const emitter = this[_eventBus];
+		/** @type {IMessageBus} */
+		const emitter = this._eventBus;
 
 		return new Promise(resolve => {
 

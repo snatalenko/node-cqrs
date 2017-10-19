@@ -1,6 +1,11 @@
 'use strict';
 
-const { EventStore, InMemoryEventStorage, InMemoryMessageBus } = require('../index');
+const {
+	EventStore,
+	InMemoryEventStorage,
+	InMemoryMessageBus,
+	InMemorySnapshotStorage
+} = require('../index');
 
 const goodContext = {
 	uid: '1',
@@ -32,12 +37,14 @@ const snapshotEvent = {
 
 let es;
 let storage;
+let snapshotStorage;
 
 describe('EventStore', function () {
 
 	beforeEach(() => {
 		storage = new InMemoryEventStorage();
-		es = new EventStore({ storage });
+		snapshotStorage = new InMemorySnapshotStorage();
+		es = new EventStore({ storage, snapshotStorage });
 	});
 
 	describe('validator', () => {
@@ -98,21 +105,21 @@ describe('EventStore', function () {
 
 		it('submits aggregate snapshot to storage.saveAggregateSnapshot, when provided', async () => {
 
-			storage.getAggregateSnapshot = () => snapshotEvent;
-			storage.saveAggregateSnapshot = () => { };
-			sinon.spy(storage, 'saveAggregateSnapshot');
+			snapshotStorage.getAggregateSnapshot = () => snapshotEvent;
+			// storage.saveAggregateSnapshot = () => { };
+			sinon.spy(snapshotStorage, 'saveAggregateSnapshot');
 			sinon.spy(storage, 'commitEvents');
 
 			expect(es).to.have.property('snapshotsSupported', true);
 
 			es.commit([goodEvent]);
-			expect(storage).to.have.nested.property('saveAggregateSnapshot.called', false);
+			expect(snapshotStorage).to.have.nested.property('saveAggregateSnapshot.called', false);
 
 			es.commit([goodEvent2, snapshotEvent]);
-			expect(storage).to.have.nested.property('saveAggregateSnapshot.calledOnce', true);
+			expect(snapshotStorage).to.have.nested.property('saveAggregateSnapshot.calledOnce', true);
 
 			{
-				const { args } = storage.saveAggregateSnapshot.lastCall;
+				const { args } = snapshotStorage.saveAggregateSnapshot.lastCall;
 				expect(args).to.have.length(1);
 				expect(args[0]).to.eq(snapshotEvent);
 			}
@@ -230,16 +237,16 @@ describe('EventStore', function () {
 
 		it('tries to retrieve aggregate snapshot', async () => {
 
-			storage.getAggregateSnapshot = () => snapshotEvent;
-			storage.saveAggregateSnapshot = () => { };
-			sinon.spy(storage, 'getAggregateSnapshot');
+			snapshotStorage.getAggregateSnapshot = () => snapshotEvent;
+			snapshotStorage.saveAggregateSnapshot = () => { };
+			sinon.spy(snapshotStorage, 'getAggregateSnapshot');
 			sinon.spy(storage, 'getAggregateEvents');
 
 			expect(es).to.have.property('snapshotsSupported', true);
 
 			const events = await es.getAggregateEvents(goodEvent2.aggregateId);
 
-			expect(storage).to.have.nested.property('getAggregateSnapshot.calledOnce', true);
+			expect(snapshotStorage).to.have.nested.property('getAggregateSnapshot.calledOnce', true);
 			expect(storage).to.have.nested.property('getAggregateEvents.calledOnce', true);
 
 			const [,eventFilter] = storage.getAggregateEvents.lastCall.args;

@@ -15,4 +15,5 @@ exports.AbstractProjection = require('./AbstractProjection');
 
 exports.InMemoryMessageBus = require('./infrastructure/InMemoryMessageBus');
 exports.InMemoryEventStorage = require('./infrastructure/InMemoryEventStorage');
+exports.InMemorySnapshotStorage = require('./infrastructure/InMemorySnapshotStorage');
 exports.InMemoryView = require('./infrastructure/InMemoryView');

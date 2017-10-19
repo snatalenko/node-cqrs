@@ -12,12 +12,12 @@ require('./InMemoryMessageBus');
 require('./InMemoryViewTests');
 
 require('./EventStream');
-require('./EventStore');
-require('./CommandBus');
+require('./EventStoreTests');
+require('./CommandBusTests');
 require('./Container');
 
 require('./AbstractAggregate');
-require('./AggregateCommandHandler');
+require('./AggregateCommandHandlerTests');
 
 require('./AbstractSaga');
 require('./SagaEventHandler');

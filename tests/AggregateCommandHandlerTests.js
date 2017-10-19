@@ -1,6 +1,12 @@
 'use strict';
 
-const { AggregateCommandHandler, AbstractAggregate, InMemoryEventStorage, EventStore } = require('..');
+const {
+	AggregateCommandHandler,
+	AbstractAggregate,
+	InMemoryEventStorage,
+	EventStore,
+	InMemorySnapshotStorage
+} = require('..');
 
 function delay(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
@@ -36,13 +42,15 @@ describe('AggregateCommandHandler', function () {
 	this.slow(300);
 
 	let storage;
+	let snapshotStorage;
 	let eventStore;
 	let commandBus;
 
 	beforeEach(() => {
 		storage = new InMemoryEventStorage();
+		snapshotStorage = new InMemorySnapshotStorage();
 
-		eventStore = new EventStore({ storage });
+		eventStore = new EventStore({ storage, snapshotStorage });
 		sinon.spy(eventStore, 'getNewId');
 		sinon.spy(eventStore, 'getAggregateEvents');
 		sinon.spy(eventStore, 'commit');

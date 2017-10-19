@@ -4,21 +4,15 @@
 /**
  * A simple event storage implementation intended to use for tests only.
  * Storage content resets on each app restart.
+ *
+ * @class InMemoryEventStorage
+ * @implements {IEventStorage}
  */
 module.exports = class InMemoryEventStorage {
 
 	constructor() {
 		this._nextId = 0;
 		this._events = Promise.resolve([]);
-		this._snapshots = new Map();
-	}
-
-	async getAggregateSnapshot(aggregateId) {
-		return this._snapshots.get(aggregateId);
-	}
-
-	async saveAggregateSnapshot(snapshotEvent) {
-		this._snapshots.set(snapshotEvent.aggregateId, snapshotEvent);
 	}
 
 	commitEvents(events) {
