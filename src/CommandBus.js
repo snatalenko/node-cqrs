@@ -22,10 +22,9 @@ module.exports = class CommandBus {
 	 * @param {function} handler
 	 * @returns {any}
 	 */
-	on(commandType, handler, context) {
+	on(commandType, handler) {
 		if (typeof commandType !== 'string' || !commandType.length) throw new TypeError('commandType argument must be a non-empty String');
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
-		if (context) throw new TypeError('more than expected arugments supplied');
 
 		return this._bus.on(commandType, handler);
 	}

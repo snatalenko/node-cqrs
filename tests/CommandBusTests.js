@@ -21,7 +21,6 @@ describe('CommandBus', function () {
 			expect(() => bus.on()).to.throw(TypeError);
 			expect(() => bus.on('test')).to.throw(TypeError);
 			expect(() => bus.on('test', () => { })).to.not.throw();
-			expect(() => bus.on('test', () => { }, {})).to.throw(TypeError);
 		});
 
 		it('sets up a handler on messageBus for a given commandType', () => {

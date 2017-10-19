@@ -10,8 +10,10 @@ function passToHandler(handler, messageType, payload) {
 /**
  * Default implementation of the message bus.
  * Keeps all subscriptions and messages in memory.
- * Delivers synchronously, events - asynchronously.
- * @type {[type]}
+ * Delivers commands synchronously, events - asynchronously.
+ *
+ * @class {InMemoryMessageBus}
+ * @implements {IMessageBus}
  */
 module.exports = class InMemoryMessageBus {
 
@@ -19,13 +21,13 @@ module.exports = class InMemoryMessageBus {
 		this._handlers = {};
 	}
 
-	on(messageType, handler, context) {
+	on(messageType, handler) {
 		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
 
 		const handlers = this._handlers[messageType] || (this._handlers[messageType] = []);
 
-		handlers.push(context ? handler.bind(context) : handler);
+		handlers.push(handler);
 	}
 
 	off(messageType, handler) {
