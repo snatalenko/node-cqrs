@@ -27,6 +27,7 @@ Documentation is available at [node-cqrs.org](https://www.node-cqrs.org)
 
 ## Dependencies
 
+- [node >= 7.6](https://nodejs.org)
 -	[visionmedia/debug](https://github.com/visionmedia/debug) (MIT License)
 
 
