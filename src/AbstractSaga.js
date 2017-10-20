@@ -6,17 +6,6 @@ const _id = Symbol('id');
 const _version = Symbol('version');
 const _messages = Symbol('messages');
 
-/**
- * CQRS command
- * @typedef {{ type: string, sagaId: string, sagaVersion: number, aggregateId: string, payload: object }} ICommand
- */
-
-/**
- * CQRS event
- * @typedef {{ type: string, sagaId: string, sagaVersion: number, aggregateId: string, payload: object }} IEvent
- */
-
-
 module.exports = class AbstractSaga {
 
 	/**

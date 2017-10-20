@@ -11,21 +11,6 @@ const _handles = Symbol('handles');
 const _queueName = Symbol('queueName');
 
 /**
- * CQRS command
- * @typedef {{ type: string, sagaId: string, sagaVersion: number, aggregateId: string, payload: object }} ICommand
- */
-
-/**
- * CQRS event
- * @typedef {{ type: string, sagaId: string, sagaVersion: number, aggregateId: string, payload: object }} IEvent
- */
-
-/**
- * CQRS saga
- * @typedef {{ id: string, version: number, apply:(event:IEvent)=>ICommand[] }} ISaga
- */
-
-/**
  * Listens to Saga events,
  * creates new saga or restores it from event store,
  * applies new events
@@ -36,7 +21,12 @@ module.exports = class SagaEventHandler extends Observer {
 	/**
 	 * Creates an instance of SagaEventHandler
 	 *
-	 * @param {{ sagaType:() => ISaga, eventStore: object, commandBus: object }} options
+	 * @param {object} options
+	 * @param {new(params)=>ISaga} options.sagaType
+	 * @param {IEventStore} options.eventStore
+	 * @param {ICommandBus} options.commandBus
+	 * @param {string} [options.queueName]
+	 * @param {string[]} [options.handles]
 	 */
 	constructor(options) {
 		if (!options) throw new TypeError('options argument required');
@@ -70,8 +60,8 @@ module.exports = class SagaEventHandler extends Observer {
 	/**
 	 * Handle saga event
 	 *
-	 * @param {object} event
-	 * @returns {Promise<object[]>}
+	 * @param {IEvent} event
+	 * @returns {Promise<void>}
 	 */
 	async handle(event) {
 		if (!event) throw new TypeError('event argument required');

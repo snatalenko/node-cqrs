@@ -14,12 +14,14 @@ declare interface IMessage {
 declare type ICommand = IMessage;
 declare type IEvent = IMessage;
 declare type EventStream = IEvent[];
-declare type IMessageHandler = function (IMessage): void;
 
 declare interface IAggregate {
 	readonly id: Identifier;
 	readonly version: number;
 	readonly changes: EventStream;
+
+	new(options: { id: Identifier, events: EventStream, state?: object }): IAggregate;
+
 	handle(command: ICommand): any;
 	mutate(event: IEvent): void;
 	emit(eventType: string, payload: any): void;
@@ -38,42 +40,67 @@ declare interface IProjection {
 	project(event: IEvent, options?: { nowait: boolean }): Promise<void>;
 }
 
-declare interface IEventStore {
+declare interface ISaga {
+	readonly id: Identifier;
+	readonly version: number;
+	readonly uncommittedMessages: ICommand[];
+
+	new(options: { id: Identifier, events: EventStream }): ISaga;
+
+	apply(event: IEvent): ICommand[];
+	enqueue(commandType: string, aggregateId: Identifier, payload: any): void;
+	enqueueRaw(command: ICommand): void;
+
+	resetUncommittedMessages(): void;
+	onError(err: Error, params: { event: IEvent, command: ICommand }): void;
+}
+
+declare interface IEventStore extends IObservable {
 	getNewId(): Promise<Identifier>;
 
 	commit(events: IEvent[], options?: { sourceCommand: ICommand }): Promise<EventStream>;
 
-	getAllEvents(eventTypes: string[], filter: IEventFilter): Promise<EventStream>;
+	getAllEvents(eventTypes: string[], filter?: EventFilter): Promise<EventStream>;
 	getAggregateEvents(aggregateId: Identifier): Promise<EventStream>;
-	getSagaEvents(sagaId: Identifier, filter: IEventFilter): Promise<EventStream>;
+	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<EventStream>;
 
-	on(messageType: string,
-		handler: IMessageHandler,
-		options?: { queueName: string });
-	once(messageType: string,
-		handler?: IMessageHandler,
-		filter?: function(IEvent): boolean): Promise<IEvent>;
+	once(messageType: string, handler?: IMessageHandler, filter?: function(IEvent): boolean):
+		Promise<IEvent>;
 }
 
-declare interface ICommandBus {
-	on(commandType: string, handler: IMessageHandler);
-	send(commandType: string, aggregateId: Identifier, options: { payload?: object, context?: object }): Promise<EventStream>;
-	sendRaw(ICommand): Promise<EventStream>;
+declare interface ICommandBus extends IObservable {
+	send(commandType: string, aggregateId: Identifier, options: { payload?: object, context?: object }):
+		Promise<EventStream>;
+	sendRaw(ICommand):
+		Promise<EventStream>;
 }
+
+// region Observable / Observer
+
+declare type IMessageHandler = (message: IMessage) => void;
+
+declare interface IObservable {
+	on(type: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
+}
+
+declare interface IObserver {
+	readonly handles?: string[];
+	subscribe(obervable: IObservable, messageTypes?: string[], masterHandler?: IMessageHandler | string): void;
+}
+
+// endregion
 
 // region infrastructure services
 
-declare interface IEventFilter {
-	afterEvent?: IEvent;
-	beforeEvent?: IEvent;
-}
+declare type EventFilter = { afterEvent?: IEvent; beforeEvent?: IEvent; };
+declare type SubscriptionOptions = { queueName?: string };
 
 declare interface IEventStorage {
 	getNewId(): Identifier | Promise<Identifier>;
 	commitEvents(events: IEvent[]): Promise<any>;
 	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }): Promise<EventStream>;
-	getSagaEvents(sagaId: Identifier, filter: IEventFilter): Promise<EventStream>;
-	getEvents(eventTypes: string[], filter: IEventFilter): Promise<EventStream>;
+	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<EventStream>;
+	getEvents(eventTypes: string[], filter: EventFilter): Promise<EventStream>;
 }
 
 declare interface IAggregateSnapshotStorage {
@@ -82,8 +109,8 @@ declare interface IAggregateSnapshotStorage {
 }
 
 declare interface IMessageBus {
-	on(messageType: string, handler: IMessageHandler, options?: { queueName: string }): void;
-	off?(messageType: string, handler: IMessageHandler, options?: { queueName: string }): void;
+	on(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
+	off?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
 	removeListener?(messageType: string, handler: IMessageHandler): void;
 	send(command: ICommand): Promise<any>;
 	publish(event: IEvent): Promise<any>;

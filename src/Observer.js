@@ -3,21 +3,15 @@
 const { attachLogMethods, subscribe } = require('./utils');
 
 /**
- * Observable type
- * @typedef {{ on:(type: string, handler: (message) => void) => void }} IObservable
+ * @class Observer
+ * @implements {IObserver}
  */
-
-/**
- * Observer type
- * @typedef {object} IObserver
- */
-
 module.exports = class Observer {
 
 	/**
 	 * Returns an array of handled message types. Should be overridden
 	 *
-	 * @returns {string[]} - handled message types (e.g. ['somethingHappened', 'anotherHappened'])
+	 * @returns {string[]} - handled message types (e.g. ['somethingHappened'])
 	 * @static
 	 * @readonly
 	 */
@@ -31,11 +25,11 @@ module.exports = class Observer {
 	 * @static
 	 * @param {IObservable} observable
 	 * @param {IObserver} observer
-	 * @param {{ handles: string[], masterHandler: string|function, queueName: string }}
+	 * @param {object} options
 	 * @returns
 	 */
-	static subscribe(...args) {
-		return subscribe(...args);
+	static subscribe(observable, observer, options) {
+		return subscribe(observable, observer, options);
 	}
 
 	/**
@@ -48,10 +42,9 @@ module.exports = class Observer {
 	/**
 	 * Subscribes to events or commands emitted by observable instance
 	 *
-	 * @param  {Object} observable
-	 * @param  {Array} [messageTypes] a list of messages this observer listens to
-	 * @param  {String} [masterHandler] a master handler method or method name to execute for all messages
-	 * @returns {Promise<any[]>}
+	 * @param  {IObservable} observable
+	 * @param  {string[]} [messageTypes] a list of messages this observer listens to
+	 * @param  {string|IMessageHandler} [masterHandler] a master handler method or method name to execute for all messages
 	 */
 	subscribe(observable, messageTypes, masterHandler) {
 		return subscribe(observable, this, { messageTypes, masterHandler });

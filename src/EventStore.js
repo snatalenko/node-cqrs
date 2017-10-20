@@ -39,7 +39,7 @@ function validateEventStorage(storage) {
 /**
  * Check if storage emits events
  *
- * @param {IEventStorage} storage
+ * @param {IEventStorage & IMessageBus} storage
  * @returns {boolean}
  */
 function isEmitter(storage) {
@@ -73,27 +73,21 @@ function validateMessageBus(messageBus) {
 }
 
 /**
- * Attaches command and node fields to each event in a given array
+ * Copy context fields from source command to event
  *
- * @param {IEvent[]} events
- * @param {{ context, sagaId, sagaVersion }} sourceCommand
- * @returns {EventStream}
+ * @param {ICommand} command
+ * @returns {(event: IEvent) => IEvent}
  */
-function augmentEvents(events, sourceCommand = {}) {
-	if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
-
-	const { sagaId, sagaVersion, context } = sourceCommand;
-
-	return EventStream.from(events, event => {
-		if (sagaId !== undefined)
-			event.sagaId = sagaId;
-		if (sagaVersion !== undefined)
-			event.sagaVersion = sagaVersion;
-		if (context !== undefined)
-			event.context = context;
-
+function augmentEventFromCommand(command) {
+	return event => {
+		if (command.sagaId !== undefined)
+			event.sagaId = command.sagaId;
+		if (command.sagaVersion !== undefined)
+			event.sagaVersion = command.sagaVersion;
+		if (command.context !== undefined)
+			event.context = command.context;
 		return event;
-	});
+	};
 }
 
 /**
@@ -140,7 +134,7 @@ module.exports = class EventStore {
 	 * Creates an instance of EventStore.
 	 *
 	 * @param {object} options
-	 * @param {IEventStorage} options.storage
+	 * @param {IEventStorage & IMessageBus} options.storage
 	 * @param {IAggregateSnapshotStorage} [options.snapshotStorage]
 	 * @param {IMessageBus} [options.messageBus]
 	 * @param {function(IEvent):void} [options.eventValidator]
@@ -187,7 +181,7 @@ module.exports = class EventStore {
 	 * Retrieve all events of specific types
 	 *
 	 * @param {string[]} eventTypes
-	 * @param {IEventFilter} [filter]
+	 * @param {EventFilter} [filter]
 	 * @returns {Promise<EventStream>}
 	 */
 	async getAllEvents(eventTypes, filter) {
@@ -230,7 +224,7 @@ module.exports = class EventStore {
 	 * Retrieve events of specific Saga
 	 *
 	 * @param {string|number} sagaId
-	 * @param {IEventFilter} filter
+	 * @param {EventFilter} filter
 	 * @returns {Promise<EventStream>}
 	 */
 	async getSagaEvents(sagaId, filter) {
@@ -253,9 +247,11 @@ module.exports = class EventStore {
 	 * Validate events, commit to storage and publish to messageBus, if needed
 	 *
 	 * @param {IEvent[]} events - a set of events to commit
-	 * @returns {Promise<IEvent[]>} - resolves to signed and committed events
+	 * @param {object} [options]
+	 * @param {ICommand} [options.sourceCommand]
+	 * @returns {Promise<EventStream>} - resolves to signed and committed events
 	 */
-	async commit(events, { sourceCommand } = {}) {
+	async commit(events, options) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 		if (!events.length) return events;
 
@@ -269,7 +265,9 @@ module.exports = class EventStore {
 		if (snapshot)
 			events = events.filter(e => e !== snapshot);
 
-		const eventStream = augmentEvents(events, sourceCommand);
+		const eventStream = options && options.sourceCommand ?
+			EventStream.from(events, augmentEventFromCommand(options.sourceCommand)) :
+			EventStream.from(events);
 
 		debug(`validating ${eventStream}...`);
 		eventStream.forEach(this._validator);
@@ -317,7 +315,7 @@ module.exports = class EventStore {
 		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
 
-		return this._eventBus.on(messageType, handler, options);
+		this._eventBus.on(messageType, handler, options);
 	}
 
 	/**

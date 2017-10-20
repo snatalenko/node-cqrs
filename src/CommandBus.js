@@ -19,7 +19,7 @@ module.exports = class CommandBus {
 	 * Set up a command handler
 	 *
 	 * @param {string} commandType
-	 * @param {function} handler
+	 * @param {IMessageHandler} handler
 	 * @returns {any}
 	 */
 	on(commandType, handler) {

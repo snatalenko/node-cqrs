@@ -17,7 +17,7 @@ module.exports = class EventStream extends Array {
 	 *
 	 * @static
 	 * @param {IEvent[]} events
-	 * @param {function} mapFn
+	 * @param {(event: IEvent) => IEvent} [mapFn]
 	 * @returns {EventStream}
 	 */
 	static from(events, mapFn) {
