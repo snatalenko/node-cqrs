@@ -37,7 +37,7 @@ module.exports = class CommandBus {
 	 * @param {string} aggregateId
 	 * @param {{ payload: object, context: object }} options
 	 * @param {...object} otherArgs
-	 * @returns {Promise<EventStream>} - produced events
+	 * @returns {Promise<IEventStream>} - produced events
 	 */
 	send(type, aggregateId, options, ...otherArgs) {
 		if (typeof type !== 'string' || !type.length) throw new TypeError('type argument must be a non-empty String');
@@ -58,7 +58,7 @@ module.exports = class CommandBus {
 	 * Send a command for execution
 	 *
 	 * @param {ICommand} command
-	 * @returns {Promise<EventStream>} - produced events
+	 * @returns {Promise<IEventStream>} - produced events
 	 */
 	sendRaw(command) {
 		if (!command) throw new TypeError('command argument required');

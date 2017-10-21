@@ -12,7 +12,7 @@ declare interface IMessage {
 
 declare type ICommand = IMessage;
 declare type IEvent = IMessage;
-declare type EventStream = IEvent[];
+declare type IEventStream = ReadonlyArray<Readonly<IEvent>>;
 
 // region Aggregate
 
@@ -23,12 +23,12 @@ declare interface IAggregateState {
 declare interface IAggregate {
 	readonly id: Identifier;
 	readonly version: number;
-	readonly changes: EventStream;
+	readonly changes: IEventStream;
 	readonly state?: IAggregateState;
 
 	handle(command: ICommand): any;
 	mutate(event: IEvent): void;
-	emit(eventType: string, payload: any): void;
+	emit(eventType: string, payload?: any): void;
 	emitRaw(IEvent): void;
 
 	readonly snapshotVersion?: number;
@@ -39,7 +39,7 @@ declare interface IAggregate {
 }
 
 declare interface IAggregateConstructor {
-	new(options: { id: Identifier, events: EventStream, state?: IAggregateState }): IAggregate;
+	new(options: { id: Identifier, events: IEventStream, state?: IAggregateState }): IAggregate;
 	readonly handles: string[];
 }
 
@@ -65,7 +65,7 @@ declare interface ISaga {
 }
 
 declare interface ISagaConstructor {
-	new(options: { id: Identifier, events: EventStream }): ISaga;
+	new(options: { id: Identifier, events: IEventStream }): ISaga;
 	readonly handles: string[];
 }
 
@@ -103,11 +103,11 @@ declare interface IProjectionView {
 declare interface IEventStore extends IObservable {
 	getNewId(): Promise<Identifier>;
 
-	commit(events: IEvent[], options?: { sourceCommand: ICommand }): Promise<EventStream>;
+	commit(events: IEvent[]): Promise<IEventStream>;
 
-	getAllEvents(eventTypes: string[], filter?: EventFilter): Promise<EventStream>;
-	getAggregateEvents(aggregateId: Identifier): Promise<EventStream>;
-	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<EventStream>;
+	getAllEvents(eventTypes: string[], filter?: EventFilter): Promise<IEventStream>;
+	getAggregateEvents(aggregateId: Identifier): Promise<IEventStream>;
+	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
 
 	once(messageType: string, handler?: IMessageHandler, filter?: function(IEvent): boolean):
 		Promise<IEvent>;
@@ -115,9 +115,9 @@ declare interface IEventStore extends IObservable {
 
 declare interface ICommandBus extends IObservable {
 	send(commandType: string, aggregateId: Identifier, options: { payload?: object, context?: object }):
-		Promise<EventStream>;
+		Promise<IEventStream>;
 	sendRaw(ICommand):
-		Promise<EventStream>;
+		Promise<IEventStream>;
 }
 
 // region Observable / Observer
@@ -143,9 +143,9 @@ declare type SubscriptionOptions = { queueName?: string };
 declare interface IEventStorage {
 	getNewId(): Identifier | Promise<Identifier>;
 	commitEvents(events: IEvent[]): Promise<any>;
-	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }): Promise<EventStream>;
-	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<EventStream>;
-	getEvents(eventTypes: string[], filter: EventFilter): Promise<EventStream>;
+	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }): Promise<IEventStream>;
+	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
+	getEvents(eventTypes: string[], filter: EventFilter): Promise<IEventStream>;
 }
 
 declare interface IAggregateSnapshotStorage {

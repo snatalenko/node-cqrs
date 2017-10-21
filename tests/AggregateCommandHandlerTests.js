@@ -1,12 +1,15 @@
 'use strict';
 
+const { expect } = require('chai');
+const sinon = require('sinon');
+
 const {
 	AggregateCommandHandler,
 	AbstractAggregate,
 	InMemoryEventStorage,
 	EventStore,
 	InMemorySnapshotStorage
-} = require('..');
+} = require('../src/');
 
 function delay(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
@@ -121,6 +124,27 @@ describe('AggregateCommandHandler', function () {
 		const { args } = aggregate.handle.lastCall;
 		expect(args[0]).to.have.property('type', 'doSomething');
 		expect(args[0]).to.have.property('payload', 'test');
+	});
+
+	it('attaches command context, sagaId, sagaVersion to produced events', async () => {
+
+		const aggregate = new MyAggregate({ id: 1 });
+
+		const handler = new AggregateCommandHandler({
+			eventStore,
+			aggregateType: () => aggregate
+		});
+
+		const sagaId = 'saga-1';
+		const sagaVersion = 1;
+		const context = { ip: 'localhost' };
+		const command = { type: 'doSomething', payload: 'test', context, sagaId, sagaVersion };
+
+		const events = await handler.execute(command);
+
+		expect(events[0]).to.have.property('context', context);
+		expect(events[0]).to.have.property('sagaId', sagaId);
+		expect(events[0]).to.have.property('sagaVersion', sagaVersion);
 	});
 
 	it('resolves to produced events', async () => {

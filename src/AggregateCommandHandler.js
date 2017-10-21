@@ -3,6 +3,25 @@
 const Observer = require('./Observer');
 const { isClass } = require('./utils');
 
+/**
+ * Copy context fields from source command to event
+ *
+ * @param {ICommand} command
+ * @returns {(event: IEvent) => Readonly<IEvent>}
+ */
+function augmentEventFromCommand(command) {
+	return event => {
+		if (event.context === undefined && command.context !== undefined)
+			event.context = command.context;
+		if (event.sagaId === undefined && command.sagaId !== undefined)
+			event.sagaId = command.sagaId;
+		if (event.sagaVersion === undefined && command.sagaVersion !== undefined)
+			event.sagaVersion = command.sagaVersion;
+
+		return Object.freeze(event);
+	};
+}
+
 const _eventStore = Symbol('eventStore');
 const _aggregateFactory = Symbol('aggregateFactory');
 const _handles = Symbol('handles');
@@ -91,12 +110,14 @@ module.exports = class AggregateCommandHandler extends Observer {
 		if (!events.length)
 			return [];
 
+		events.forEach(augmentEventFromCommand(cmd));
+
 		if (aggregate.shouldTakeSnapshot && this[_eventStore].snapshotsSupported) {
 			aggregate.takeSnapshot();
 			events = aggregate.changes;
 		}
 
-		await this[_eventStore].commit(events, { sourceCommand: cmd });
+		await this[_eventStore].commit(events);
 
 		return events;
 	}

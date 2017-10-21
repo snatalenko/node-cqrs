@@ -28,7 +28,8 @@ function validateEvent(event) {
  * @param {IEventStorage} storage
  */
 function validateEventStorage(storage) {
-	if (typeof storage !== 'object' || !storage) throw new TypeError('eventStorage argument must be an Object');
+	if (!storage) throw new TypeError('storage argument required');
+	if (typeof storage !== 'object') throw new TypeError('storage argument must be an Object');
 	if (typeof storage.commitEvents !== 'function') throw new TypeError('storage.commitEvents must be a Function');
 	if (typeof storage.getEvents !== 'function') throw new TypeError('storage.getEvents must be a Function');
 	if (typeof storage.getAggregateEvents !== 'function') throw new TypeError('storage.getAggregateEvents must be a Function');
@@ -70,24 +71,6 @@ function validateMessageBus(messageBus) {
 		throw new TypeError('messageBus.on argument must be a Function');
 	if (typeof messageBus.publish !== 'function')
 		throw new TypeError('messageBus.publish argument must be a Function');
-}
-
-/**
- * Copy context fields from source command to event
- *
- * @param {ICommand} command
- * @returns {(event: IEvent) => IEvent}
- */
-function augmentEventFromCommand(command) {
-	return event => {
-		if (command.sagaId !== undefined)
-			event.sagaId = command.sagaId;
-		if (command.sagaVersion !== undefined)
-			event.sagaVersion = command.sagaVersion;
-		if (command.context !== undefined)
-			event.context = command.context;
-		return event;
-	};
 }
 
 /**
@@ -182,17 +165,17 @@ module.exports = class EventStore {
 	 *
 	 * @param {string[]} eventTypes
 	 * @param {EventFilter} [filter]
-	 * @returns {Promise<EventStream>}
+	 * @returns {Promise<IEventStream>}
 	 */
 	async getAllEvents(eventTypes, filter) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
-		debug(`retrieving ${eventTypes ? eventTypes.join(', ') : 'all'} events...`);
+		debug('retrieving %s events...', eventTypes ? eventTypes.join(', ') : 'all');
 
 		const events = await this._storage.getEvents(eventTypes, filter);
 
 		const eventStream = EventStream.from(events);
-		debug(`${eventStream} retrieved`);
+		debug('%s retrieved', eventStream);
 
 		return eventStream;
 	}
@@ -201,7 +184,7 @@ module.exports = class EventStore {
 	 * Retrieve all events of specific Aggregate
 	 *
 	 * @param {string|number} aggregateId
-	 * @returns {Promise<EventStream>}
+	 * @returns {Promise<IEventStream>}
 	 */
 	async getAggregateEvents(aggregateId) {
 		if (!aggregateId) throw new TypeError('aggregateId argument required');
@@ -215,7 +198,7 @@ module.exports = class EventStore {
 		const events = await this._storage.getAggregateEvents(aggregateId, { snapshot });
 
 		const eventStream = EventStream.from(snapshot ? [snapshot, ...events] : events);
-		debug(`${eventStream} retrieved`);
+		debug('%s retrieved', eventStream);
 
 		return eventStream;
 	}
@@ -225,7 +208,7 @@ module.exports = class EventStore {
 	 *
 	 * @param {string|number} sagaId
 	 * @param {EventFilter} filter
-	 * @returns {Promise<EventStream>}
+	 * @returns {Promise<IEventStream>}
 	 */
 	async getSagaEvents(sagaId, filter) {
 		if (!sagaId) throw new TypeError('sagaId argument required');
@@ -238,7 +221,7 @@ module.exports = class EventStore {
 		const events = await this._storage.getSagaEvents(sagaId, filter);
 
 		const eventStream = EventStream.from(events);
-		debug(`${eventStream} retrieved`);
+		debug('%s retrieved', eventStream);
 
 		return eventStream;
 	}
@@ -247,11 +230,9 @@ module.exports = class EventStore {
 	 * Validate events, commit to storage and publish to messageBus, if needed
 	 *
 	 * @param {IEvent[]} events - a set of events to commit
-	 * @param {object} [options]
-	 * @param {ICommand} [options.sourceCommand]
-	 * @returns {Promise<EventStream>} - resolves to signed and committed events
+	 * @returns {Promise<IEventStream>} - resolves to signed and committed events
 	 */
-	async commit(events, options) {
+	async commit(events) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 		if (!events.length) return events;
 
@@ -265,14 +246,12 @@ module.exports = class EventStore {
 		if (snapshot)
 			events = events.filter(e => e !== snapshot);
 
-		const eventStream = options && options.sourceCommand ?
-			EventStream.from(events, augmentEventFromCommand(options.sourceCommand)) :
-			EventStream.from(events);
+		const eventStream = EventStream.from(events);
 
-		debug(`validating ${eventStream}...`);
+		debug('validating %s...', eventStream);
 		eventStream.forEach(this._validator);
 
-		debug(`committing ${eventStream}...`);
+		debug('committing %s...', eventStream);
 		await Promise.all([
 			this._storage.commitEvents(eventStream),
 			snapshot ?
@@ -284,18 +263,18 @@ module.exports = class EventStore {
 			const publishEvents = () =>
 				Promise.all(eventStream.map(event => this._eventBus.publish(event)))
 					.then(() => {
-						info(`${eventStream} published`);
+						info('%s published', eventStream);
 					}, err => {
-						info(`${eventStream} publishing failed: ${err}`);
+						info('%s publishing failed: %s', eventStream, err);
 						throw err;
 					});
 
 			if (this.config.publishAsync) {
-				debug(`publishing ${eventStream} asynchronously...`);
+				debug('publishing %s asynchronously...', eventStream);
 				setImmediate(publishEvents);
 			}
 			else {
-				debug(`publishing ${eventStream} synchronously...`);
+				debug('publishing %s synchronously...', eventStream);
 				await publishEvents();
 			}
 		}

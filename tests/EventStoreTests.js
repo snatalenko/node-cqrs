@@ -1,11 +1,14 @@
 'use strict';
 
+const { expect } = require('chai');
+const sinon = require('sinon');
+
 const {
 	EventStore,
 	InMemoryEventStorage,
 	InMemoryMessageBus,
 	InMemorySnapshotStorage
-} = require('../index');
+} = require('../src');
 
 const goodContext = {
 	uid: '1',
@@ -162,33 +165,6 @@ describe('EventStore', function () {
 			});
 		});
 
-		it('attaches sourceCommand context, sagaId, sagaVersion and node hostname to events', () => {
-
-			const eventStoreConfig = { hostname: 'test' };
-			es = new EventStore({ storage, eventStoreConfig });
-
-			const sourceCommand = {
-				sagaId: 1,
-				sagaVersion: 1,
-				context: {
-					ip: 'localhost'
-				}
-			};
-
-			const events = [
-				{ type: 'somethingHappened' },
-				{ type: 'somethingHappened2' }
-			];
-
-			return es.commit(events, { sourceCommand }).then(committedEvents => {
-				committedEvents.forEach(event => {
-					expect(event).to.have.property('sagaId', sourceCommand.sagaId);
-					expect(event).to.have.property('sagaVersion', sourceCommand.sagaVersion);
-					expect(event).to.have.nested.property('context.ip', sourceCommand.context.ip);
-				});
-			});
-		});
-
 		it('emits events asynchronously after processing is done', function (done) {
 
 			let committed = 0;
@@ -305,11 +281,8 @@ describe('EventStore', function () {
 		});
 
 		it('fails, when trying to set up second messageType handler within the same node and named queue (Receptors)', () => {
-			const eventStoreConfig = {
-				hostname: 'test'
-			};
 
-			es = new EventStore({ storage, eventStoreConfig });
+			es = new EventStore({ storage });
 
 			expect(() => {
 				es.on('somethingHappened', () => { }, { queueName: 'namedQueue' });

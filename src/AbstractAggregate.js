@@ -89,7 +89,7 @@ module.exports = class AbstractAggregate {
 	 *
 	 * @param {object} options
 	 * @param {Identifier} options.id
-	 * @param {EventStream} options.events
+	 * @param {IEventStream} options.events
 	 * @param {IAggregateState} [options.state]
 	 */
 	constructor(options) {
@@ -157,7 +157,7 @@ module.exports = class AbstractAggregate {
 	 *
 	 * @protected
 	 * @param {string} type - event type
-	 * @param {object} payload - event data
+	 * @param {object} [payload] - event data
 	 */
 	emit(type, payload) {
 		if (typeof type !== 'string' || !type.length) throw new TypeError('type argument must be a non-empty string');

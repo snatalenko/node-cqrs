@@ -22,10 +22,10 @@ module.exports = class InMemorySnapshotStorage {
 	 * Get latest aggregate snapshot
 	 *
 	 * @param {Identifier} aggregateId
-	 * @returns {IEvent}
+	 * @returns {Promise<IEvent>}
 	 * @memberof InMemorySnapshotStorage
 	 */
-	getAggregateSnapshot(aggregateId) {
+	async getAggregateSnapshot(aggregateId) {
 		return this._snapshots.get(aggregateId);
 	}
 
@@ -35,7 +35,7 @@ module.exports = class InMemorySnapshotStorage {
 	 * @param {IEvent} snapshotEvent
 	 * @memberof InMemorySnapshotStorage
 	 */
-	saveAggregateSnapshot(snapshotEvent) {
+	async saveAggregateSnapshot(snapshotEvent) {
 		this._snapshots.set(snapshotEvent.aggregateId, snapshotEvent);
 	}
 };

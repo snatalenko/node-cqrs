@@ -16,9 +16,9 @@ module.exports = class EventStream extends Array {
 	 * Create EventStream instance from enumerable source
 	 *
 	 * @static
-	 * @param {IEvent[]} events
-	 * @param {(event: IEvent) => IEvent} [mapFn]
-	 * @returns {EventStream}
+	 * @param {ArrayLike<IEvent>} events
+	 * @param {(this: void, event: IEvent, k: number) => IEvent} [mapFn]
+	 * @returns {IEventStream}
 	 */
 	static from(events, mapFn) {
 		return Object.freeze(super.from(events, mapFn));
