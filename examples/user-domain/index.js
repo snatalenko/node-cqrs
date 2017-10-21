@@ -1,6 +1,12 @@
 'use strict';
 
-const { Container, InMemoryEventStorage } = require('../..'); // node-cqrs
+const {
+	Container,
+	InMemoryEventStorage,
+	CommandBus,
+	EventStore,
+	AggregateCommandHandler
+} = require('../../src'); // node-cqrs
 const UserAggregate = require('./UserAggregate');
 const UsersProjection = require('./UsersProjection');
 
@@ -23,4 +29,31 @@ exports.createContainer = () => {
 	container.createUnexposedInstances();
 
 	return container;
+};
+
+/**
+ * Same as above, but without the DI container
+ */
+exports.createBaseInstances = () => {
+	// create infrastructure services
+	const storage = new InMemoryEventStorage();
+	const eventStore = new EventStore({ storage });
+	const commandBus = new CommandBus();
+
+	/** @type {IAggregateConstructor} */
+	const aggregateType = UserAggregate;
+
+	/** @type {ICommandHandler} */
+	const userCommandHandler = new AggregateCommandHandler({ eventStore, aggregateType });
+	userCommandHandler.subscribe(commandBus);
+
+	/** @type {IProjection} */
+	const usersProjection = new UsersProjection();
+	usersProjection.subscribe(eventStore);
+
+	return {
+		eventStore,
+		commandBus,
+		users: usersProjection.view
+	};
 };

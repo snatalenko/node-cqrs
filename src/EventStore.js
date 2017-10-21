@@ -134,7 +134,7 @@ module.exports = class EventStore {
 	 * Creates an instance of EventStore.
 	 *
 	 * @param {object} options
-	 * @param {IEventStorage & IMessageBus} options.storage
+	 * @param {IEventStorage & IMessageBus | IEventStorage} options.storage
 	 * @param {IAggregateSnapshotStorage} [options.snapshotStorage]
 	 * @param {IMessageBus} [options.messageBus]
 	 * @param {function(IEvent):void} [options.eventValidator]
@@ -321,7 +321,7 @@ module.exports = class EventStore {
 	/**
 	 * Creates one-time subscription for one or multiple events that match a filter
 	 *
-	 * @param {string[]} messageTypes - Array of event type to subscribe to
+	 * @param {string|string[]} messageTypes - Array of event type to subscribe to
 	 * @param {function(IEvent):any} [handler] - Optional handler to execute for a first event received
 	 * @param {function(IEvent):boolean} [filter] - Optional filter to apply before executing a handler
 	 * @return {Promise<IEvent>} Resolves to first event that passes filter

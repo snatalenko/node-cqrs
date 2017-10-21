@@ -1,7 +1,7 @@
 // @ts-check
 'use strict';
 
-const { AbstractProjection } = require('../..'); // node-cqrs
+const { AbstractProjection } = require('../../src'); // node-cqrs
 
 /**
  * Users projection listens to events and updates associated view (read model)
@@ -28,7 +28,7 @@ module.exports = class UsersProjection extends AbstractProjection {
 	 * userCreated event handler
 	 *
 	 * @param {object} event
-	 * @param {string|number} event.aggregateId
+	 * @param {Identifier} event.aggregateId
 	 * @param {object} event.payload
 	 * @param {string} event.payload.username
 	 * @param {string} event.payload.passwordHash

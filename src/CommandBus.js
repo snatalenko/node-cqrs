@@ -9,7 +9,8 @@ module.exports = class CommandBus {
 	/**
 	 * Creates an instance of CommandBus.
 	 *
-	 * @param {{ messageBus: IMessageBus }} options
+	 * @param {object} [options]
+	 * @param {IMessageBus} [options.messageBus]
 	 */
 	constructor(options) {
 		this._bus = (options && options.messageBus) || new InMemoryBus();
@@ -36,7 +37,7 @@ module.exports = class CommandBus {
 	 * @param {string} aggregateId
 	 * @param {{ payload: object, context: object }} options
 	 * @param {...object} otherArgs
-	 * @returns {Promise<IEvent>} - produced events
+	 * @returns {Promise<EventStream>} - produced events
 	 */
 	send(type, aggregateId, options, ...otherArgs) {
 		if (typeof type !== 'string' || !type.length) throw new TypeError('type argument must be a non-empty String');
@@ -57,7 +58,7 @@ module.exports = class CommandBus {
 	 * Send a command for execution
 	 *
 	 * @param {ICommand} command
-	 * @returns {Promise<IEvent>} - produced events
+	 * @returns {Promise<EventStream>} - produced events
 	 */
 	sendRaw(command) {
 		if (!command) throw new TypeError('command argument required');

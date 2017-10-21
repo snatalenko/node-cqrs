@@ -87,9 +87,13 @@ module.exports = class AbstractAggregate {
 	/**
 	 * Creates an instance of AbstractAggregate.
 	 *
-	 * @param {{ id: string|number, events: IEvent[], state: object }} options
+	 * @param {object} options
+	 * @param {Identifier} options.id
+	 * @param {EventStream} options.events
+	 * @param {IAggregateState} [options.state]
 	 */
-	constructor({ id, state, events }) {
+	constructor(options) {
+		const { id, state, events } = options;
 		if (!id) throw new TypeError('id argument required');
 		if (state && typeof state !== 'object') throw new TypeError('state argument, when provided, must be an Object');
 		if (events && !Array.isArray(events)) throw new TypeError('events argument, when provided, must be an Array');
@@ -158,7 +162,7 @@ module.exports = class AbstractAggregate {
 	emit(type, payload) {
 		if (typeof type !== 'string' || !type.length) throw new TypeError('type argument must be a non-empty string');
 
-		return this.emitRaw({
+		this.emitRaw({
 			aggregateId: this.id,
 			aggregateVersion: this.version,
 			type,

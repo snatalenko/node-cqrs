@@ -1,4 +1,3 @@
-declare type AggeregateId = string | number;
 declare type Identifier = string | number;
 
 declare interface IMessage {
@@ -15,37 +14,47 @@ declare type ICommand = IMessage;
 declare type IEvent = IMessage;
 declare type EventStream = IEvent[];
 
+// region Aggregate
+
+declare interface IAggregateState {
+	mutate?(event: IEvent): void;
+}
+
 declare interface IAggregate {
 	readonly id: Identifier;
 	readonly version: number;
 	readonly changes: EventStream;
-
-	new(options: { id: Identifier, events: EventStream, state?: object }): IAggregate;
+	readonly state?: IAggregateState;
 
 	handle(command: ICommand): any;
 	mutate(event: IEvent): void;
 	emit(eventType: string, payload: any): void;
 	emitRaw(IEvent): void;
 
-	readonly snapshotVersion: number;
-	readonly shouldTakeSnapshot: boolean;
-	takeSnapshot(): void;
-	makeSnapshot(): IEvent;
-	restoreSnapshot(snapshotEvent: IEvent): void;
+	readonly snapshotVersion?: number;
+	readonly shouldTakeSnapshot?: boolean;
+	takeSnapshot?(): void;
+	makeSnapshot?(): IEvent;
+	restoreSnapshot?(snapshotEvent: IEvent): void;
 }
 
-declare interface IProjection {
-	readonly view: IProjectionView;
-	subscribe(eventStore: object): void;
-	project(event: IEvent, options?: { nowait: boolean }): Promise<void>;
+declare interface IAggregateConstructor {
+	new(options: { id: Identifier, events: EventStream, state?: IAggregateState }): IAggregate;
+	readonly handles: string[];
 }
+
+declare interface ICommandHandler extends IObserver {
+	subscribe(commandBus: ICommandBus): void;
+}
+
+// endregion Aggregate
+
+// region Saga
 
 declare interface ISaga {
 	readonly id: Identifier;
 	readonly version: number;
 	readonly uncommittedMessages: ICommand[];
-
-	new(options: { id: Identifier, events: EventStream }): ISaga;
 
 	apply(event: IEvent): ICommand[];
 	enqueue(commandType: string, aggregateId: Identifier, payload: any): void;
@@ -54,6 +63,42 @@ declare interface ISaga {
 	resetUncommittedMessages(): void;
 	onError(err: Error, params: { event: IEvent, command: ICommand }): void;
 }
+
+declare interface ISagaConstructor {
+	new(options: { id: Identifier, events: EventStream }): ISaga;
+	readonly handles: string[];
+}
+
+declare interface IEventReceptor extends IObserver { 
+	subscribe(eventStore: IEventStore): void;
+}
+
+// endregion Saga
+
+// region Projection
+
+declare interface IProjection extends IObserver {
+	readonly view: IProjectionView;
+	subscribe(eventStore: IEventStore): void;
+	project(event: IEvent, options?: { nowait: boolean }): Promise<void>;
+}
+
+declare type ViewUpdateCallback = function(any): any;
+
+declare interface IProjectionView {
+	readonly ready: boolean;
+
+	has(key: Identifier): boolean;
+	get(key: Identifier, options?: { nowait: boolean }): Promise<object>;
+	create(key: Identifier, update: ViewUpdateCallback | any): Promise<void>;
+	update(key: Identifier, update: ViewUpdateCallback): Promive<void>;
+	updateEnforcingNew(key: Identifier, update: ViewUpdateCallback): Promise<void>;
+	updateAll(filter: function(any): boolean, update: ViewUpdateCallback): Promise<void>;
+	delete(key: Identifier): Promise<void>;
+	deleteAll(filter: function(any): boolean): Promise<void>;
+}
+
+// endregion Projection
 
 declare interface IEventStore extends IObservable {
 	getNewId(): Promise<Identifier>;
@@ -114,21 +159,6 @@ declare interface IMessageBus {
 	removeListener?(messageType: string, handler: IMessageHandler): void;
 	send(command: ICommand): Promise<any>;
 	publish(event: IEvent): Promise<any>;
-}
-
-declare type ViewUpdateCallback = function(any): any;
-
-declare interface IProjectionView {
-	readonly ready: boolean;
-
-	has(key: string): boolean;
-	get(key: string, options?: { nowait: boolean }): Promise<object>;
-	create(key: string, update: ViewUpdateCallback | any): Promise<void>;
-	update(key: string, update: ViewUpdateCallback): Promive<void>;
-	updateEnforcingNew(key: string, update: ViewUpdateCallback): Promise<void>;
-	updateAll(filter: function(any): boolean, update: ViewUpdateCallback): Promise<void>;
-	delete(key: string): Promise<void>;
-	deleteAll(filter: function(any): boolean): Promise<void>;
 }
 
 // endregion

@@ -12,18 +12,21 @@ module.exports = class AggregateCommandHandler extends Observer {
 	/**
 	 * Creates an instance of AggregateCommandHandler.
 	 *
-	 * @param {{ eventStore: object, aggregateType: class, handles: string[] }}
+	 * @param {object} options
+	 * @param {IEventStore} options.eventStore
+	 * @param {IAggregateConstructor} options.aggregateType
+	 * @param {string[]} [options.handles]
 	 */
-	constructor({ eventStore, aggregateType, handles }) {
-		if (!eventStore) throw new TypeError('eventStore argument required');
-		if (!aggregateType) throw new TypeError('aggregateType argument required');
+	constructor(options) {
+		if (!options.eventStore) throw new TypeError('eventStore argument required');
+		if (!options.aggregateType) throw new TypeError('aggregateType argument required');
 		super();
 
-		this[_eventStore] = eventStore;
-		this[_aggregateFactory] = isClass(aggregateType) ?
-			params => new aggregateType(params) : // eslint-disable-line new-cap
-			aggregateType;
-		this[_handles] = handles || aggregateType.handles;
+		this[_eventStore] = options.eventStore;
+		this[_aggregateFactory] = isClass(options.aggregateType) ?
+			params => new options.aggregateType(params) : // eslint-disable-line new-cap
+			options.aggregateType;
+		this[_handles] = options.handles || options.aggregateType.handles;
 	}
 
 	/**

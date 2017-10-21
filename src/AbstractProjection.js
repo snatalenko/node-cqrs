@@ -39,7 +39,8 @@ module.exports = class AbstractProjection extends Observer {
 	/**
 	 * Creates an instance of AbstractProjection
 	 *
-	 * @param {{ view: IProjectionView }} options
+	 * @param {object} [options]
+	 * @param {IProjectionView} [options.view]
 	 */
 	constructor(options) {
 		super();

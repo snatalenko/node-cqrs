@@ -1,16 +1,11 @@
 'use strict';
 
 const { expect } = require('chai');
-const { createContainer } = require('../../examples/user-domain');
+const { createContainer, createBaseInstances } = require('../../examples/user-domain');
 
 describe('user-domain example', () => {
 
-	let container;
-	beforeEach(() => {
-		container = createContainer();
-	});
-
-	it('handles user aggregate commands, emits events', async () => {
+	const testEventFlow = async container => {
 
 		const { commandBus, eventStore } = container;
 
@@ -50,9 +45,9 @@ describe('user-domain example', () => {
 		expect(userPasswordChanged).to.have.property('aggregateVersion', 1);
 		expect(userPasswordChanged).to.have.property('type', 'userPasswordChanged');
 		expect(userPasswordChanged).to.have.nested.property('payload.passwordHash').that.does.not.eq('no-magic');
-	});
+	};
 
-	it('updates Users projection view', async () => {
+	const testProjection = async container => {
 
 		const { commandBus, eventStore, users } = container;
 
@@ -69,5 +64,23 @@ describe('user-domain example', () => {
 
 		expect(viewRecord).to.exist;
 		expect(viewRecord).to.have.property('username', 'sherlock');
+	};
+
+	describe('with DI container', () => {
+
+		it('handles user aggregate commands, emits events',
+			() => testEventFlow(createContainer()));
+
+		it('updates Users projection view',
+			() => testProjection(createContainer()));
+	});
+
+	describe('with manual instantiation', () => {
+
+		it('handles user aggregate commands, emits events', () =>
+			testEventFlow(createBaseInstances()));
+
+		it('updates Users projection view', () =>
+			testProjection(createBaseInstances()));
 	});
 });
