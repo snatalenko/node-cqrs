@@ -59,20 +59,22 @@ module.exports = class Container {
 
 	/**
 	 * Registered component factories
-	 * @type {(function)[]}
+	 *
+	 * @type {Set<(container: object) => object>}
 	 * @readonly
 	 */
 	get factories() {
-		return this[_factories] || (this[_factories] = []);
+		return this[_factories] || (this[_factories] = new Set());
 	}
 
 	/**
 	 * Component instances
-	 * @type {object}
+	 *
+	 * @type {Map<string,object>}
 	 * @readonly
 	 */
 	get instances() {
-		return this[_instances] || (this[_instances] = {});
+		return this[_instances] || (this[_instances] = new Map());
 	}
 
 	/**
@@ -84,10 +86,9 @@ module.exports = class Container {
 
 	/**
 	 * Registers a type or factory in the container
-	 *
-	 * @param {Function} typeOrFactory Either a constructor function or a component factor
-	 * @param {String} [exposeAs] Optional component name to use for instance exposing on the container
-	 * @param {Function} [exposeMap] Optional Instance -> Object-to-Expose mapping
+	 * @param {TOF} typeOrFactory Either a constructor function or a component factory
+	 * @param {string} [exposeAs] Component name to use for instance exposing on the container
+	 * @param {(instance: object) => object} [exposeMap] Instance -> Object-to-Expose mapping
 	 */
 	register(typeOrFactory, exposeAs, exposeMap) {
 		if (typeof typeOrFactory !== 'function') throw new TypeError('typeOrFactory argument must be a Function');
@@ -97,19 +98,25 @@ module.exports = class Container {
 		const factory = container => container.createInstance(typeOrFactory);
 
 		if (exposeAs) {
+			const getOrCreate = () => {
+				if (!this.instances.has(exposeAs))
+					this.instances.set(exposeAs, exposeMap ? exposeMap(factory(this)) : factory(this));
+
+				return this.instances.get(exposeAs);
+			};
+
 			Object.defineProperty(this, exposeAs, {
+				get: getOrCreate,
 				configurable: true,
-				get() {
-					return this.instances[exposeAs]
-						|| (this.instances[exposeAs] = exposeMap ? exposeMap(factory(this)) : factory(this));
-				}
+				enumerable: true
 			});
 
-			this.factories.push(container => container[exposeAs]);
+			this.factories.add(getOrCreate);
 		}
 		else {
+			// @ts-ignore
 			factory.unexposed = true;
-			this.factories.push(factory);
+			this.factories.add(factory);
 		}
 	}
 
@@ -122,13 +129,11 @@ module.exports = class Container {
 		if (!isObject(instance)) throw new TypeError('instance argument must be an Object');
 		if (typeof exposeAs !== 'string' || !exposeAs.length) throw new TypeError('exposeAs argument must be a non-empty String');
 
-		this.instances[exposeAs] = instance;
+		this.instances.set(exposeAs, instance);
 
-		Object.defineProperty(this, exposeAs, {
-			get() {
-				return this.instances[exposeAs];
-			}
-		});
+		const get = () => this.instances.get(exposeAs);
+
+		Object.defineProperty(this, exposeAs, { get });
 	}
 
 	/**
@@ -137,10 +142,11 @@ module.exports = class Container {
 	 */
 	createUnexposedInstances() {
 		trace('creating unexposed instances...');
-		for (let i = 0; i < this.factories.length; i++) {
-			if (this.factories[i].unexposed) {
-				this.factories.splice(i, 1)[0](this);
-				i -= 1;
+		for (const factory of this.factories.values()) {
+			// @ts-ignore
+			if (factory.unexposed) {
+				factory(this);
+				this.factories.delete(factory);
 			}
 		}
 	}
@@ -150,8 +156,10 @@ module.exports = class Container {
 	 */
 	createAllInstances() {
 		trace('creating all instances...');
-		while (this.factories.length)
-			this.factories.splice(0, 1)[0](this);
+		for (const factory of this.factories.values()) {
+			factory(this);
+			this.factories.delete(factory);
+		}
 	}
 
 	/**

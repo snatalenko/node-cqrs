@@ -1,6 +1,17 @@
 'use strict';
 
-const { InMemoryEventStorage, EventStore, CommandBus, InMemoryMessageBus, Container, Observer, AbstractAggregate, AbstractSaga, AbstractProjection } = require('..');
+const { expect } = require('chai');
+const sinon = require('sinon');
+const {
+	InMemoryEventStorage,
+	CommandBus,
+	InMemoryMessageBus,
+	Container,
+	Observer,
+	AbstractAggregate,
+	AbstractSaga,
+	AbstractProjection
+} = require('../src');
 const getClassDependencyNames = require('../src/di/getClassDependencyNames');
 const delay = ms => new Promise(done => setTimeout(done, ms));
 
@@ -24,8 +35,8 @@ describe('Container', function () {
 
 		it('registers type or factory in the container', () => {
 
-			c.factories.should.not.be.empty;
-			c.instances.should.have.property('container');
+			expect(c.factories).to.not.be.empty;
+			expect(c.instances).to.include.key('container');
 		});
 
 		it('creates getter that initializes instance on first access, along with its dependencies', () => {
@@ -34,8 +45,8 @@ describe('Container', function () {
 
 			es.should.be.an('Object');
 
-			c.instances.should.have.property('eventStore');
-			c.instances.should.have.property('storage');
+			expect(c.instances).to.include.key('eventStore');
+			expect(c.instances).to.include.key('storage');
 		});
 	});
 
@@ -49,15 +60,14 @@ describe('Container', function () {
 		}
 
 		it('registers a command handler factory', () => {
-			const factoriesCnt = c.factories.length;
+			const factoriesCnt = c.factories.size;
 			c.registerCommandHandler(MyCommandHandler);
-			c.factories.should.have.length(factoriesCnt + 1);
+			expect(c.factories.size).to.eq(factoriesCnt + 1);
 		});
 
 		it('subscribes to commandBus upon instance creation', () => {
 
 			c.registerCommandHandler(MyCommandHandler);
-			// expect(c.messageBus).to.have.property('requests').that.is.empty;
 			expect(c.messageBus.on.callCount).to.eq(0);
 
 			c.createUnexposedInstances();
@@ -69,7 +79,9 @@ describe('Container', function () {
 	describe('registerEventReceptor(typeOrFactory) extension', () => {
 
 		let somethingHappenedCnt;
-		beforeEach(() => { somethingHappenedCnt = 0; });
+		beforeEach(() => {
+			somethingHappenedCnt = 0;
+		});
 
 		class MyEventReceptor extends Observer {
 			static get handles() {
@@ -81,9 +93,9 @@ describe('Container', function () {
 		}
 
 		it('registers an event receptor factory', () => {
-			const factoriesCnt = c.factories.length;
+			const factoriesCnt = c.factories.size;
 			c.registerEventReceptor(MyEventReceptor);
-			c.factories.should.have.length(factoriesCnt + 1);
+			expect(c.factories.size).to.eq(factoriesCnt + 1);
 		});
 
 		it('subscribes to eventStore upon instance creation', () => {
@@ -136,7 +148,7 @@ describe('Container', function () {
 					super(options);
 					dependencyMet = (options.aggregateDependency instanceof SomeService);
 				}
-				_doSomething(payload, context) { }
+				_doSomething() { }
 			}
 
 			c.registerAggregate(MyAggregate);
@@ -195,11 +207,11 @@ describe('Container', function () {
 
 		it('registers projection factory', () => {
 
-			const factoriesCnt = c.factories.length;
+			const factoriesCnt = c.factories.size;
 
 			c.registerProjection(MyProjection, 'myView');
 
-			expect(c.factories).to.have.length(factoriesCnt + 1);
+			expect(c.factories.size).to.eq(factoriesCnt + 1);
 		});
 
 		it('exposes projection view thru getter', () => {
@@ -265,7 +277,7 @@ describe('Container', function () {
 
 		it('extracts destructed parameters from ctor parameter object', () => {
 			class MyClass {
-				constructor({someService, anotherService}) {
+				constructor({ someService, anotherService }) {
 					this._someService = someService;
 					this._anotherService = anotherService;
 				}
@@ -276,7 +288,7 @@ describe('Container', function () {
 			dependencies[0].should.be.an('Array').that.has.length(2);
 			dependencies[0][0].should.eq('someService');
 			dependencies[0][1].should.eq('anotherService');
-		})
+		});
 
 		it('extracts ES5 class constructor parameter names', () => {
 
