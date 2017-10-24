@@ -55,13 +55,10 @@ describe('InMemoryView', function () {
 			expect(v).to.have.property('ready', true);
 		});
 
-		it('emits "ready" event', async () => {
-
-			return Promise.all([
-				v.once('ready'),
-				v.markAsReady()
-			]);
-		});
+		it('emits "ready" event', async () => Promise.all([
+			v.once('ready'),
+			v.markAsReady()
+		]));
 	});
 
 	describe('has', () => {
@@ -83,7 +80,7 @@ describe('InMemoryView', function () {
 			const response = v.get('foo');
 			expect(response).to.be.instanceof(Promise);
 
-			let delayedResult = undefined;
+			let delayedResult;
 			response.then(result => {
 				delayedResult = result;
 			});
@@ -124,7 +121,7 @@ describe('InMemoryView', function () {
 			v.create('foo', () => 'bar');
 			expect(await v.get('foo')).to.eq('bar');
 		});
-	})
+	});
 
 	describe('update', () => {
 
@@ -141,7 +138,7 @@ describe('InMemoryView', function () {
 
 			expect(await v.get('foo')).to.eq('bar');
 
-			v.updateEnforcingNew('foo', v => v + '-upd');
+			v.updateEnforcingNew('foo', v => `${v}-upd`);
 
 			expect(await v.get('foo')).to.eq('bar-upd');
 		});
@@ -179,7 +176,7 @@ describe('InMemoryView', function () {
 
 			expect(await v.get('foo')).to.eq('bar');
 
-			v.updateEnforcingNew('foo', v => v + '-upd');
+			v.updateEnforcingNew('foo', v => `${v}-upd`);
 
 			expect(await v.get('foo')).to.eq('bar-upd');
 		});

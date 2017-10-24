@@ -109,6 +109,7 @@ describe('EventStore', function () {
 		it('submits aggregate snapshot to storage.saveAggregateSnapshot, when provided', async () => {
 
 			snapshotStorage.getAggregateSnapshot = () => snapshotEvent;
+
 			// storage.saveAggregateSnapshot = () => { };
 			sinon.spy(snapshotStorage, 'saveAggregateSnapshot');
 			sinon.spy(storage, 'commitEvents');
@@ -135,15 +136,12 @@ describe('EventStore', function () {
 			}
 		});
 
-		it('returns a promise that resolves to events committed', () => {
+		it('returns a promise that resolves to events committed', () => es.commit([goodEvent, goodEvent2]).then(events => {
 
-			return es.commit([goodEvent, goodEvent2]).then(events => {
-
-				expect(events).to.be.an('Array');
-				expect(events).to.have.length(2);
-				expect(events).to.have.nested.property('[0].type', 'somethingHappened');
-			});
-		});
+			expect(events).to.be.an('Array');
+			expect(events).to.have.length(2);
+			expect(events).to.have.nested.property('[0].type', 'somethingHappened');
+		}));
 
 		it('returns a promise that rejects, when commit doesn\'t succeed', () => {
 
@@ -189,12 +187,9 @@ describe('EventStore', function () {
 
 	describe('getNewId', () => {
 
-		it('retrieves a unique ID for new aggregate from storage', () => {
-
-			return es.getNewId().then(id => {
-				expect(id).to.equal(1);
-			});
-		});
+		it('retrieves a unique ID for new aggregate from storage', () => es.getNewId().then(id => {
+			expect(id).to.equal(1);
+		}));
 	});
 
 	describe('getAggregateEvents(aggregateId)', () => {
@@ -224,7 +219,7 @@ describe('EventStore', function () {
 			expect(snapshotStorage).to.have.nested.property('getAggregateSnapshot.calledOnce', true);
 			expect(storage).to.have.nested.property('getAggregateEvents.calledOnce', true);
 
-			const [,eventFilter] = storage.getAggregateEvents.lastCall.args;
+			const [, eventFilter] = storage.getAggregateEvents.lastCall.args;
 
 			expect(eventFilter).to.have.property('snapshot');
 			expect(eventFilter).to.have.nested.property('snapshot.type');
@@ -245,33 +240,24 @@ describe('EventStore', function () {
 
 			const triggeredBy = events[1];
 
-			return es.commit(events).then(() => {
+			return es.commit(events).then(() => es.getSagaEvents(1, { beforeEvent: triggeredBy }).then(events => {
 
-				return es.getSagaEvents(1, { beforeEvent: triggeredBy }).then(events => {
-
-					expect(events).to.be.an('Array');
-					expect(events).to.have.length(1);
-					expect(events).to.have.nested.property('[0].type', 'somethingHappened');
-				});
-			});
+				expect(events).to.be.an('Array');
+				expect(events).to.have.length(1);
+				expect(events).to.have.nested.property('[0].type', 'somethingHappened');
+			}));
 		});
 	});
 
 	describe('getAllEvents(eventTypes)', () => {
 
-		it('returns a promise that resolves to all committed events of specific types', () => {
+		it('returns a promise that resolves to all committed events of specific types', () => es.commit([goodEvent, goodEvent2]).then(() => es.getAllEvents(['somethingHappened']).then(events => {
 
-			return es.commit([goodEvent, goodEvent2]).then(() => {
-
-				return es.getAllEvents(['somethingHappened']).then(events => {
-
-					expect(events).to.be.an('Array');
-					expect(events).to.have.length(2);
-					expect(events).to.have.nested.property('[0].aggregateId', '1');
-					expect(events).to.have.nested.property('[1].aggregateId', '2');
-				});
-			});
-		});
+			expect(events).to.be.an('Array');
+			expect(events).to.have.length(2);
+			expect(events).to.have.nested.property('[0].aggregateId', '1');
+			expect(events).to.have.nested.property('[1].aggregateId', '2');
+		})));
 	});
 
 	describe('on(eventType, handler)', () => {

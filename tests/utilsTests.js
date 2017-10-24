@@ -1,12 +1,13 @@
 'use strict';
 
+const { expect } = require('chai');
 const sizeOf = require('../src/utils/sizeOf');
 
 describe('sizeOf(obj)', () => {
 
 	it('validates arguments', () => {
 		expect(() => sizeOf()).to.throw();
-	})
+	});
 
 	it('calculates approximate size of the passed in object', () => {
 

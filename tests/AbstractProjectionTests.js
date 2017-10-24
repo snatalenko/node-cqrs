@@ -1,7 +1,8 @@
 'use strict';
 
-const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore } = require('..');
-const { spy } = require('sinon');
+const { expect, assert, AssertionError } = require('chai');
+const sinon = require('sinon');
+const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore } = require('../src');
 const getPromiseState = require('./utils/getPromiseState');
 
 class MyProjection extends AbstractProjection {
@@ -169,7 +170,7 @@ describe('AbstractProjection', function () {
 		it('passes event to projection event handler', async () => {
 
 			projection.view.markAsReady();
-			spy(projection, '_somethingHappened');
+			sinon.spy(projection, '_somethingHappened');
 
 			const event = { type: 'somethingHappened', aggregateId: 1 };
 

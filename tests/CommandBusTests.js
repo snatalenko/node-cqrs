@@ -1,5 +1,7 @@
 'use strict';
 
+const { expect } = require('chai');
+const sinon = require('sinon');
 const { CommandBus, InMemoryMessageBus } = require('../src');
 
 describe('CommandBus', function () {

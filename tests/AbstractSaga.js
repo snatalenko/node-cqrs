@@ -1,6 +1,8 @@
 'use strict';
 
-const { AbstractSaga } = require('..');
+const { expect } = require('chai');
+const sinon = require('sinon');
+const { AbstractSaga } = require('../src');
 
 class Saga extends AbstractSaga {
 	static get handles() {
@@ -69,7 +71,9 @@ describe('AbstractSaga', function () {
 		it('returns immutable list of uncommitted commands enqueued by saga', () => {
 
 			expect(s).to.have.property('uncommittedMessages');
-			expect(() => s.uncommittedMessages = null).to.throw();
+			expect(() => {
+				s.uncommittedMessages = null;
+			}).to.throw();
 
 			expect(s.uncommittedMessages).to.be.an('Array');
 			expect(s.uncommittedMessages).to.be.empty;
@@ -84,7 +88,9 @@ describe('AbstractSaga', function () {
 		it('passes event to saga event handler', () => {
 
 			let receivedEvent;
-			s._somethingHappened = event => receivedEvent = event;
+			s._somethingHappened = event => {
+				receivedEvent = event;
+			};
 
 			s.apply({ type: 'somethingHappened', payload: 'test' });
 

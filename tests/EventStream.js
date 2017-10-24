@@ -1,6 +1,7 @@
 'use strict';
 
-const { EventStream } = require('..');
+const { expect } = require('chai');
+const { EventStream } = require('../src');
 
 describe('EventStream', function () {
 
@@ -47,7 +48,7 @@ describe('EventStream', function () {
 		it('is immutable', () => {
 
 			expect(() => {
-				es[0].aggregateId = 'test'
+				es[0].aggregateId = 'test';
 			}).to.throw('Cannot assign to read only property \'aggregateId\' of object \'#<Object>\'');
 
 			expect(() => {

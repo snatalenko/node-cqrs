@@ -1,6 +1,6 @@
 'use strict';
 
-const { expect } = require('chai');
+const { expect, assert } = require('chai');
 const sinon = require('sinon');
 
 const {
@@ -175,8 +175,10 @@ describe('AggregateCommandHandler', function () {
 		const aggregate = new MyAggregate({ id: 1 });
 		Object.defineProperty(aggregate, 'shouldTakeSnapshot', {
 			// take snapshot every other event
-			get() { return this.version !== 0 && this.version % 2 === 0; }
-		})
+			get() {
+				return this.version !== 0 && this.version % 2 === 0;
+			}
+		});
 		sinon.spy(aggregate, 'takeSnapshot');
 
 		const handler = new AggregateCommandHandler({

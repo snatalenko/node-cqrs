@@ -1,5 +1,7 @@
 'use strict';
 
+const { expect } = require('chai');
+const sinon = require('sinon');
 const { SagaEventHandler, InMemoryEventStorage, EventStore, CommandBus, AbstractSaga } = require('..');
 
 class Saga extends AbstractSaga {
@@ -72,7 +74,9 @@ describe('SagaEventHandler', function () {
 	it('passes command execution errors to saga.onError', async () => {
 
 		let resolvePromise;
-		const pendingPromise = new Promise(resolve => { resolvePromise = resolve; });
+		const pendingPromise = new Promise(resolve => {
+			resolvePromise = resolve;
+		});
 
 		commandBus.on('fixError', command => {
 			resolvePromise(command);

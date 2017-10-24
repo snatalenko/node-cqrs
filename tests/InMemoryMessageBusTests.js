@@ -87,8 +87,8 @@ describe('InMemoryMessageBus', function () {
 
 		it('publishes a message to all handlers', async () => {
 
-			let handler1 = spy();
-			let handler2 = spy();
+			const handler1 = spy();
+			const handler2 = spy();
 
 			bus.on('somethingHappened', handler1);
 			bus.on('somethingHappened', handler2);

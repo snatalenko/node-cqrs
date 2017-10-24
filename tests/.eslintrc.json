@@ -1,0 +1,15 @@
+{
+    "env": {
+        "mocha": true
+    },
+    "rules": {
+        "require-jsdoc": "off",
+        "prefer-arrow-callback": "off",
+        "func-names": "off",
+        "class-methods-use-this": "off",
+        "no-shadow": "off",
+        "no-unused-expressions": "off",
+        "no-return-assign": "off",
+        "no-loop-func": "off"
+    }
+}

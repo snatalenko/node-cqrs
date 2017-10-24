@@ -1,6 +1,8 @@
 'use strict';
 
-const { AbstractAggregate, EventStream } = require('..');
+const { expect, assert, AssertionError } = require('chai');
+const sinon = require('sinon');
+const { AbstractAggregate, EventStream } = require('../src');
 const blankContext = require('./mocks/blankContext');
 const delay = ms => new Promise(rs => setTimeout(rs, ms));
 
@@ -22,16 +24,16 @@ class Aggregate extends AbstractAggregate {
 		super({ id, state: state || new AggregateState(), events });
 	}
 
-	async doSomething(payload, context) {
+	async doSomething(payload) {
 		await delay(100);
 		this.emit('somethingDone', payload);
 	}
 
-	doSomethingWrong(payload, context) {
+	doSomethingWrong() {
 		throw new Error('something went wrong');
 	}
 
-	doSomethingStateless(payload, context) {
+	doSomethingStateless(payload) {
 		this.emit('somethingStatelessHappened', payload);
 	}
 }
@@ -60,7 +62,7 @@ describe('AbstractAggregate', function () {
 
 			class AggregateWithoutHandles extends AbstractAggregate { }
 
-			expect(() => s = new AggregateWithoutHandles({ id: 1 })).to.throw('handles must be overridden to return a list of handled command types');
+			expect(() => new AggregateWithoutHandles({ id: 1 })).to.throw('handles must be overridden to return a list of handled command types');
 		});
 
 		it('throws exception if event handler is not defined', () => {
@@ -71,7 +73,7 @@ describe('AbstractAggregate', function () {
 				}
 			}
 
-			expect(() => s = new AggregateWithoutHandler({ id: 1 })).to.throw('\'somethingHappened\' handler is not defined or not a function');
+			expect(() => new AggregateWithoutHandler({ id: 1 })).to.throw('\'somethingHappened\' handler is not defined or not a function');
 		});
 	});
 
@@ -227,7 +229,7 @@ describe('AbstractAggregate', function () {
 
 			const state = new class AggregateState {
 				somethingHappened() { }
-			};
+			}();
 			sinon.spy(state, 'somethingHappened');
 
 			agg = new Aggregate({ id: 2, state });
