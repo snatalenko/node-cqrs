@@ -14,10 +14,9 @@ function strMapToObj(strMap) {
  * In-memory Projection View, which suspends get()'s until it is ready
  *
  * @class InMemoryView
- * @extends {EventEmitter}
  * @implements {IProjectionView}
  */
-module.exports = class InMemoryView extends EventEmitter {
+module.exports = class InMemoryView {
 
 	/**
 	 * Current view state as an object
@@ -54,10 +53,9 @@ module.exports = class InMemoryView extends EventEmitter {
 	 * Creates an instance of InMemoryView
 	 */
 	constructor() {
-		super();
-
 		this._map = new Map();
 		this._ready = false;
+		this._emitter = new EventEmitter();
 
 		// explicitly bind functions to this object for easier using in Promises
 		Object.defineProperties(this, {
@@ -83,7 +81,7 @@ module.exports = class InMemoryView extends EventEmitter {
 	 * @param {string|number} key
 	 * @param {object} [options]
 	 * @param {boolean} [options.nowait] Skip waiting until the view is restored/ready
-	 * @returns {any}
+	 * @returns {Promise<any>}
 	 * @memberof InMemoryView
 	 */
 	async get(key, options) {
@@ -219,7 +217,7 @@ module.exports = class InMemoryView extends EventEmitter {
 	 */
 	markAsReady() {
 		this._ready = true;
-		this.emit('ready');
+		this._emitter.emit('ready');
 	}
 
 	/**
@@ -228,12 +226,12 @@ module.exports = class InMemoryView extends EventEmitter {
 	 * @param {string} eventType
 	 * @returns {Promise<any>}
 	 */
-	once(eventType, cb) {
-		if (typeof eventType !== 'string' || !eventType.length) throw new TypeError('eventType argument must be a non-empty String');
-		if (typeof cb === 'function') throw new Error('once(..) method returns a Promise, no callback needed');
+	once(eventType) {
+		if (typeof eventType !== 'string' || !eventType.length)
+			throw new TypeError('eventType argument must be a non-empty String');
 
 		return new Promise(rs => {
-			super.once(eventType, rs);
+			this._emitter.once(eventType, rs);
 		});
 	}
 
