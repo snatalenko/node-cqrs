@@ -40,7 +40,7 @@ function validateEventStorage(storage) {
 /**
  * Check if storage emits events
  *
- * @param {IEventStorage & IMessageBus} storage
+ * @param {object} storage
  * @returns {boolean}
  */
 function isEmitter(storage) {

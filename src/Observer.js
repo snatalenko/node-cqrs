@@ -42,9 +42,9 @@ module.exports = class Observer {
 	/**
 	 * Subscribes to events or commands emitted by observable instance
 	 *
-	 * @param  {IObservable} observable
-	 * @param  {string[]} [messageTypes] a list of messages this observer listens to
-	 * @param  {string|IMessageHandler} [masterHandler] a master handler method or method name to execute for all messages
+	 * @param {IObservable} observable
+	 * @param {string[]} [messageTypes] a list of messages this observer listens to
+	 * @param {IMessageHandler} [masterHandler] a master handler method to execute for all messages
 	 */
 	subscribe(observable, messageTypes, masterHandler) {
 		return subscribe(observable, this, { messageTypes, masterHandler });

@@ -22,7 +22,7 @@ module.exports = class SagaEventHandler extends Observer {
 	 * Creates an instance of SagaEventHandler
 	 *
 	 * @param {object} options
-	 * @param {new(params)=>ISaga} options.sagaType
+	 * @param {ISagaConstructor} options.sagaType
 	 * @param {IEventStore} options.eventStore
 	 * @param {ICommandBus} options.commandBus
 	 * @param {string} [options.queueName]

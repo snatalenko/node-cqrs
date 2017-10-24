@@ -84,10 +84,10 @@ module.exports = class Container {
 
 	/**
 	 * Registers a type or factory in the container
-	 * @param  {Function} 	typeOrFactory	Either a constructor function or a component factor
-	 * @param  {String} 	exposeAs      	Optional component name to use for instance exposing on the container
-	 * @param  {Function} 	[exposeMap]     	Optional Instance -> Object-to-Expose mapping
-	 * @return {void}
+	 *
+	 * @param {Function} typeOrFactory Either a constructor function or a component factor
+	 * @param {String} [exposeAs] Optional component name to use for instance exposing on the container
+	 * @param {Function} [exposeMap] Optional Instance -> Object-to-Expose mapping
 	 */
 	register(typeOrFactory, exposeAs, exposeMap) {
 		if (typeof typeOrFactory !== 'function') throw new TypeError('typeOrFactory argument must be a Function');
@@ -117,7 +117,6 @@ module.exports = class Container {
 	 * Registers an object instance in the container
 	 * @param  {Object} instance Object instance to register
 	 * @param  {String} exposeAs Object name to use for instance exposing on the container
-	 * @return {undefined}
 	 */
 	registerInstance(instance, exposeAs) {
 		if (!isObject(instance)) throw new TypeError('instance argument must be an Object');
@@ -135,7 +134,6 @@ module.exports = class Container {
 	/**
 	 * Create instances for components that do not have lazy getters defined on the Container.
 	 * For example, event or command handlers, that are not referenced from external components.
-	 * @return {undefined}
 	 */
 	createUnexposedInstances() {
 		trace('creating unexposed instances...');
@@ -149,7 +147,6 @@ module.exports = class Container {
 
 	/**
 	 * Creates instances for all types or factories registered in the Container
-	 * @return {undefined}
 	 */
 	createAllInstances() {
 		trace('creating all instances...');

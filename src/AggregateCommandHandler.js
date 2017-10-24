@@ -91,7 +91,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 	 * Pass a command to corresponding aggregate
 	 *
 	 * @param {ICommand} cmd - command to execute
-	 * @return {Promise<object[]>} events
+	 * @return {Promise<IEventStream>} events
 	 */
 	async execute(cmd) {
 		if (!cmd) throw new TypeError('cmd argument required');

@@ -14,6 +14,26 @@ declare type ICommand = IMessage;
 declare type IEvent = IMessage;
 declare type IEventStream = ReadonlyArray<Readonly<IEvent>>;
 
+declare interface IEventStore extends IObservable {
+	getNewId(): Promise<Identifier>;
+
+	commit(events: IEvent[]): Promise<IEventStream>;
+
+	getAllEvents(eventTypes: string[], filter?: EventFilter): Promise<IEventStream>;
+	getAggregateEvents(aggregateId: Identifier): Promise<IEventStream>;
+	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
+
+	once(messageType: string, handler?: IMessageHandler, filter?: function(IEvent): boolean):
+		Promise<IEvent>;
+}
+
+declare interface ICommandBus extends IObservable {
+	send(commandType: string, aggregateId: Identifier, options: { payload?: object, context?: object }):
+		Promise<IEventStream>;
+	sendRaw(ICommand):
+		Promise<IEventStream>;
+}
+
 // region Aggregate
 
 declare interface IAggregateState {
@@ -69,7 +89,7 @@ declare interface ISagaConstructor {
 	readonly handles: string[];
 }
 
-declare interface IEventReceptor extends IObserver { 
+declare interface IEventReceptor extends IObserver {
 	subscribe(eventStore: IEventStore): void;
 }
 
@@ -78,7 +98,7 @@ declare interface IEventReceptor extends IObserver {
 // region Projection
 
 declare interface IProjection extends IObserver {
-	readonly view: IProjectionView;
+	readonly view: object;
 	subscribe(eventStore: IEventStore): void;
 	project(event: IEvent, options?: { nowait: boolean }): Promise<void>;
 }
@@ -86,39 +106,12 @@ declare interface IProjection extends IObserver {
 declare type ViewUpdateCallback = function(any): any;
 
 declare interface IProjectionView {
-	readonly ready: boolean;
-
-	has(key: Identifier): boolean;
-	get(key: Identifier, options?: { nowait: boolean }): Promise<object>;
-	create(key: Identifier, update: ViewUpdateCallback | any): Promise<void>;
-	update(key: Identifier, update: ViewUpdateCallback): Promive<void>;
-	updateEnforcingNew(key: Identifier, update: ViewUpdateCallback): Promise<void>;
-	updateAll(filter: function(any): boolean, update: ViewUpdateCallback): Promise<void>;
-	delete(key: Identifier): Promise<void>;
-	deleteAll(filter: function(any): boolean): Promise<void>;
+	readonly ready?: boolean;
+	once?(eventType: string): Promise<void>;
+	markAsReady?(): void;
 }
 
 // endregion Projection
-
-declare interface IEventStore extends IObservable {
-	getNewId(): Promise<Identifier>;
-
-	commit(events: IEvent[]): Promise<IEventStream>;
-
-	getAllEvents(eventTypes: string[], filter?: EventFilter): Promise<IEventStream>;
-	getAggregateEvents(aggregateId: Identifier): Promise<IEventStream>;
-	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
-
-	once(messageType: string, handler?: IMessageHandler, filter?: function(IEvent): boolean):
-		Promise<IEvent>;
-}
-
-declare interface ICommandBus extends IObservable {
-	send(commandType: string, aggregateId: Identifier, options: { payload?: object, context?: object }):
-		Promise<IEventStream>;
-	sendRaw(ICommand):
-		Promise<IEventStream>;
-}
 
 // region Observable / Observer
 
@@ -135,14 +128,13 @@ declare interface IObserver {
 
 // endregion
 
-// region infrastructure services
 
-declare type EventFilter = { afterEvent?: IEvent; beforeEvent?: IEvent; };
+declare type EventFilter = { aftrEvent?: IEvent; beforeEvent?: IEvent; };
 declare type SubscriptionOptions = { queueName?: string };
 
 declare interface IEventStorage {
 	getNewId(): Identifier | Promise<Identifier>;
-	commitEvents(events: IEvent[]): Promise<any>;
+	commitEvents(events: ReadonlyArray<IEvent>): Promise<any>;
 	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }): Promise<IEventStream>;
 	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
 	getEvents(eventTypes: string[], filter: EventFilter): Promise<IEventStream>;
@@ -162,3 +154,98 @@ declare interface IMessageBus {
 }
 
 // endregion
+
+declare interface IConstructor<T> {
+	new(...args: any[]): T;
+}
+declare type TOF = ((...args: any[]) => object) | IConstructor<object>;
+
+declare module 'node-cqrs' {
+
+	declare class Container {
+		register(
+			typeOrFactory: TOF,
+			exposeAs?: string,
+			exposeMap?: (container: Container) => object
+		): void;
+		registerInstance(instance: object, exposeAs: string): void;
+		registerCommandHandler(typeOrFactory: TOF);
+		registerEventReceptor(typeOrFactory: TOF);
+		registerProjection(projection: IConstructor<IProjection>, exposedViewName: string);
+		registerAggregate(aggregateType: IAggregateConstructor);
+		registerSaga(sagaType: ISagaConstructor);
+		createAllInstances(): void;
+		createUnexposedInstances(): void;
+	}
+
+	declare class EventStream implements IEventStream { }
+
+	declare class CommandBus implements ICommandBus {
+		constructor(options: {
+			messageBus?: IMessageBus
+		});
+	}
+
+	declare class EventStore implements IEventStore {
+		constructor(options: {
+			storage: IEventStorage,
+			snapshotStorage?: IAggregateSnapshotStorage,
+			messageBus?: IMessageBus,
+			eventValidator?: function(IEvent): void,
+			eventStoreConfig?: EventStoreConfig
+		});
+	}
+
+	declare class Observer implements IObserver {
+		constructor();
+	}
+
+	declare class AbstractAggregate implements IAggregate { }
+
+	declare class AggregateCommandHandler implements ICommandHandler {
+		constructor(options: {
+			eventStore: IEventStore,
+			aggregateType: IAggregateConstructor,
+			handles?: string[]
+		});
+	}
+
+	declare class AbstractSaga implements ISaga { }
+
+	declare class SagaEventHandler implements IEventReceptor {
+		constructor(options: {
+			sagaType: ISagaConstructor,
+			commandBus: ICommandBus,
+			queueName?: string,
+			handles?: string[]
+		});
+	}
+
+	declare class AbstractProjection implements IProjection {
+		constructor(options?: { view?: object });
+	}
+
+	declare class InMemoryMessageBus implements IMessageBus {
+		constructor();
+	}
+
+	declare class InMemoryEventStorage implements IEventStorage {
+		constructor();
+	}
+
+	declare class InMemorySnapshotStorage implements IAggregateSnapshotStorage {
+		constructor();
+	}
+
+	declare class InMemoryView implements IProjectionView {
+		constructor();
+		has(key: Identifier): boolean;
+		get(key: Identifier, options?: { nowait: boolean }): Promise<object>;
+		create(key: Identifier, update: ViewUpdateCallback | any): Promise<void>;
+		update(key: Identifier, update: ViewUpdateCallback): Promive<void>;
+		updateEnforcingNew(key: Identifier, update: ViewUpdateCallback): Promise<void>;
+		updateAll(filter: function(any): boolean, update: ViewUpdateCallback): Promise<void>;
+		delete(key: Identifier): Promise<void>;
+		deleteAll(filter: function(any): boolean): Promise<void>;
+	}
+}	
