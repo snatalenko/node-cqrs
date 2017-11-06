@@ -129,7 +129,7 @@ declare interface IObserver {
 // endregion
 
 
-declare type EventFilter = { aftrEvent?: IEvent; beforeEvent?: IEvent; };
+declare type EventFilter = { afterEvent?: IEvent; beforeEvent?: IEvent; };
 declare type SubscriptionOptions = { queueName?: string };
 
 declare interface IEventStorage {
