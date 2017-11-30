@@ -2,7 +2,8 @@
 
 const Observer = require('./Observer');
 const InMemoryView = require('./infrastructure/InMemoryView');
-const { validateHandlers, getHandler } = require('./utils');
+const { validateHandlers, getHandler, getClassName } = require('./utils');
+const info = require('debug')('cqrs:info');
 
 const _view = Symbol('view');
 
@@ -10,7 +11,6 @@ const _view = Symbol('view');
  * Base class for Projection definition
  *
  * @class AbstractProjection
- * @extends {Observer}
  * @implements {IProjection}
  */
 module.exports = class AbstractProjection extends Observer {
@@ -97,15 +97,22 @@ module.exports = class AbstractProjection extends Observer {
 				await this.project(event, { nowait: true });
 			}
 			catch (err) {
-				this.info('projection view restoring has failed on event: %j', event);
-				this.info(err);
+				info('%s view restoring has failed on event: %j', this, event);
+				info(err);
 				throw err;
 			}
 		}
 
-		this.info('projection view restored (%s)', this.view);
+		info('%s view restored (%s)', this, this.view);
 
 		if (typeof this.view.markAsReady === 'function')
 			this.view.markAsReady();
+	}
+
+	/**
+	 * Get human-readable Projection name
+	 */
+	toString() {
+		return getClassName(this);
 	}
 };

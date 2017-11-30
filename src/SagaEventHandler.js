@@ -3,12 +3,7 @@
 
 const Observer = require('./Observer');
 const { isClass } = require('./utils');
-
-const _eventStore = Symbol('eventStore');
-const _commandBus = Symbol('commandBus');
-const _sagaFactory = Symbol('sagaFactory');
-const _handles = Symbol('handles');
-const _queueName = Symbol('queueName');
+const info = require('debug')('cqrs:info');
 
 /**
  * Listens to Saga events,
@@ -36,14 +31,14 @@ module.exports = class SagaEventHandler extends Observer {
 
 		super();
 
-		this[_eventStore] = options.eventStore;
-		this[_commandBus] = options.commandBus;
-		this[_sagaFactory] = isClass(options.sagaType) ?
+		this._eventStore = options.eventStore;
+		this._commandBus = options.commandBus;
+		this._sagaFactory = isClass(options.sagaType) ?
 			params => new options.sagaType(params) :
 			options.sagaType;
 
-		this[_handles] = options.handles || options.sagaType.handles;
-		this[_queueName] = options.queueName;
+		this._handles = options.handles || options.sagaType.handles;
+		this._queueName = options.queueName;
 	}
 
 	/**
@@ -51,9 +46,9 @@ module.exports = class SagaEventHandler extends Observer {
 	 */
 	subscribe(eventStore) {
 		Observer.subscribe(eventStore, this, {
-			messageTypes: this[_handles],
+			messageTypes: this._handles,
 			masterHandler: this.handle,
-			queueName: this[_queueName]
+			queueName: this._queueName
 		});
 	}
 
@@ -67,9 +62,9 @@ module.exports = class SagaEventHandler extends Observer {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');
 
-		const saga = await (event.sagaId ?
-			this._restoreSaga(event) :
-			this._createSaga());
+		const saga = event.sagaId ?
+			await this._restoreSaga(event) :
+			await this._createSaga();
 
 		const r = saga.apply(event);
 		if (r instanceof Promise)
@@ -79,7 +74,7 @@ module.exports = class SagaEventHandler extends Observer {
 
 			const commands = saga.uncommittedMessages;
 			saga.resetUncommittedMessages();
-			this.info(`saga ${saga.id} '${event.type}' event produced ${commands.map(c => c.type).join(',') || 'no commands'}`);
+			info('%s "%s" event processed, %s produced', event.type, commands.map(c => c.type).join(',') || 'no commands');
 
 			for (const command of commands) {
 
@@ -87,7 +82,7 @@ module.exports = class SagaEventHandler extends Observer {
 				command.context = event.context;
 
 				try {
-					await this[_commandBus].sendRaw(command);
+					await this._commandBus.sendRaw(command);
 				}
 				catch (err) {
 					if (typeof saga.onError === 'function') {
@@ -109,11 +104,11 @@ module.exports = class SagaEventHandler extends Observer {
 	 * @private
 	 */
 	async _createSaga() {
-		const id = await this[_eventStore].getNewId();
+		const id = await this._eventStore.getNewId();
 
 		/** @type {ISaga} */
-		const saga = this[_sagaFactory]({ id });
-		this.info(`saga ${saga.id} instance created`);
+		const saga = this._sagaFactory.call(null, { id });
+		info('%s instance created', saga);
 
 		return saga;
 	}
@@ -129,13 +124,13 @@ module.exports = class SagaEventHandler extends Observer {
 		if (!event.sagaId) throw new TypeError('event.sagaId argument required');
 		if (typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion argument required, when event.sagaId provided');
 
-		const events = await this[_eventStore].getSagaEvents(event.sagaId, {
+		const events = await this._eventStore.getSagaEvents(event.sagaId, {
 			beforeEvent: event
 		});
 
 		/** @type {ISaga} */
-		const saga = this[_sagaFactory]({ id: event.sagaId, events });
-		this.info(`saga ${saga.id} (v${saga.version}) restored from ${events}`);
+		const saga = this._sagaFactory.call(null, { id: event.sagaId, events });
+		info('%s state restored from %s', saga, events);
 
 		return saga;
 	}

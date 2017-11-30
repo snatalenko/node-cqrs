@@ -1,6 +1,6 @@
 'use strict';
 
-const { validateHandlers, getHandler } = require('./utils');
+const { validateHandlers, getHandler, getClassName } = require('./utils');
 const EventStream = require('./EventStream');
 
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
@@ -224,5 +224,12 @@ module.exports = class AbstractAggregate {
 			throw new Error('state property is empty, either defined state or override restoreSnapshot method');
 
 		Object.assign(this.state, snapshotEvent.payload);
+	}
+
+	/**
+	 * Get human-readable aggregate identifier
+	 */
+	toString() {
+		return `${getClassName(this)} ${this.id} (v${this.version})`;
 	}
 };

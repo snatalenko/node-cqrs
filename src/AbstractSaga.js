@@ -1,6 +1,6 @@
 'use strict';
 
-const { validateHandlers, getHandler } = require('./utils');
+const { validateHandlers, getHandler, getClassName } = require('./utils');
 
 const _id = Symbol('id');
 const _version = Symbol('version');
@@ -136,5 +136,12 @@ module.exports = class AbstractSaga {
 	 */
 	resetUncommittedMessages() {
 		this[_messages].length = 0;
+	}
+
+	/**
+	 * Get human-readable Saga name
+	 */
+	toString() {
+		return `${getClassName(this)} ${this.id} (v${this.version})`;
 	}
 };

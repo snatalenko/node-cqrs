@@ -2,6 +2,7 @@
 
 const Observer = require('./Observer');
 const { isClass } = require('./utils');
+const info = require('debug')('cqrs:info');
 
 /**
  * Copy context fields from source command to event
@@ -22,10 +23,9 @@ function augmentEventFromCommand(command) {
 	};
 }
 
-const _eventStore = Symbol('eventStore');
-const _aggregateFactory = Symbol('aggregateFactory');
-const _handles = Symbol('handles');
-
+/**
+ * Aggregate command handler
+ */
 module.exports = class AggregateCommandHandler extends Observer {
 
 	/**
@@ -41,21 +41,21 @@ module.exports = class AggregateCommandHandler extends Observer {
 		if (!options.aggregateType) throw new TypeError('aggregateType argument required');
 		super();
 
-		this[_eventStore] = options.eventStore;
-		this[_aggregateFactory] = isClass(options.aggregateType) ?
+		this._eventStore = options.eventStore;
+		this._aggregateFactory = isClass(options.aggregateType) ?
 			params => new options.aggregateType(params) : // eslint-disable-line new-cap
 			options.aggregateType;
-		this[_handles] = options.handles || options.aggregateType.handles;
+		this._handles = options.handles || options.aggregateType.handles;
 	}
 
 	/**
 	 * Subscribe to all command types handled by aggregateType
 	 *
 	 * @param {ICommandBus} commandBus
-	 * @returns {Promise<any[]>} - whatever EventEmitter.on returns for each messageType
+	 * @returns {any} - whatever EventEmitter.on returns for each messageType
 	 */
 	subscribe(commandBus) {
-		return super.subscribe(commandBus, this[_handles], this.execute);
+		return super.subscribe(commandBus, this._handles, this.execute);
 	}
 
 	/**
@@ -67,9 +67,9 @@ module.exports = class AggregateCommandHandler extends Observer {
 	async _restoreAggregate(id) {
 		if (!id) throw new TypeError('id argument required');
 
-		const events = await this[_eventStore].getAggregateEvents(id);
-		const aggregate = this[_aggregateFactory]({ id, events });
-		this.info(`aggregate ${aggregate.id} (v${aggregate.version}) restored from event store`);
+		const events = await this._eventStore.getAggregateEvents(id);
+		const aggregate = this._aggregateFactory.call(null, { id, events });
+		info('%s state restored from %s', aggregate, events);
 
 		return aggregate;
 	}
@@ -80,9 +80,9 @@ module.exports = class AggregateCommandHandler extends Observer {
 	 * @returns {Promise<IAggregate>}
 	 */
 	async _createAggregate() {
-		const id = await this[_eventStore].getNewId();
-		const aggregate = this[_aggregateFactory]({ id });
-		this.info(`aggregate ${aggregate.id} created`);
+		const id = await this._eventStore.getNewId();
+		const aggregate = this._aggregateFactory.call(null, { id });
+		info('%s created', aggregate);
 
 		return aggregate;
 	}
@@ -97,27 +97,27 @@ module.exports = class AggregateCommandHandler extends Observer {
 		if (!cmd) throw new TypeError('cmd argument required');
 		if (!cmd.type) throw new TypeError('cmd.type argument required');
 
-		const aggregate = await (cmd.aggregateId ?
-			this._restoreAggregate(cmd.aggregateId) :
-			this._createAggregate());
+		const aggregate = cmd.aggregateId ?
+			await this._restoreAggregate(cmd.aggregateId) :
+			await this._createAggregate();
 
 		const handlerResponse = aggregate.handle(cmd);
 		if (handlerResponse instanceof Promise)
 			await handlerResponse;
 
 		let events = aggregate.changes;
-		this.info(`command '${cmd.type}' processed, ${events} produced`);
+		info('%s "%s" command processed, %s produced', aggregate, cmd.type, events);
 		if (!events.length)
 			return [];
 
 		events.forEach(augmentEventFromCommand(cmd));
 
-		if (aggregate.shouldTakeSnapshot && this[_eventStore].snapshotsSupported) {
+		if (aggregate.shouldTakeSnapshot && this._eventStore.snapshotsSupported) {
 			aggregate.takeSnapshot();
 			events = aggregate.changes;
 		}
 
-		await this[_eventStore].commit(events);
+		await this._eventStore.commit(events);
 
 		return events;
 	}

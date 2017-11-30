@@ -1,6 +1,6 @@
 'use strict';
 
-const { attachLogMethods, subscribe } = require('./utils');
+const { subscribe } = require('./utils');
 
 /**
  * @class Observer
@@ -30,13 +30,6 @@ module.exports = class Observer {
 	 */
 	static subscribe(observable, observer, options) {
 		return subscribe(observable, observer, options);
-	}
-
-	/**
-	 * Creates an instance of Observer
-	 */
-	constructor() {
-		attachLogMethods(this);
 	}
 
 	/**

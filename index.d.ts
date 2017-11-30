@@ -25,6 +25,8 @@ declare interface IEventStore extends IObservable {
 
 	once(messageType: string, handler?: IMessageHandler, filter?: function(IEvent): boolean):
 		Promise<IEvent>;
+
+	snapshotsSupported?: boolean;
 }
 
 declare interface ICommandBus extends IObservable {
@@ -138,6 +140,9 @@ declare interface IEventStorage {
 	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }): Promise<IEventStream>;
 	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
 	getEvents(eventTypes: string[], filter: EventFilter): Promise<IEventStream>;
+
+	on?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
+	off?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
 }
 
 declare interface IAggregateSnapshotStorage {
