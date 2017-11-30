@@ -234,7 +234,25 @@ module.exports = class EventStore {
 	 */
 	async commit(events) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
-		if (!events.length) return events;
+
+		const eventStream = await this.save(events);
+
+		// after events are saved to the persistent storage,
+		// publish them to the event bus (i.e. RabbitMq)
+		if (this._publishEventsAfterCommit)
+			await this.publish(eventStream);
+
+		return eventStream;
+	}
+
+	/**
+	 * Save events to the persistent storage
+	 *
+	 * @param {IEvent[]} events
+	 * @returns {Promise<IEventStream>}
+	 */
+	async save(events) {
+		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
 		const snapshotEvents = events.filter(e => e.type === SNAPSHOT_EVENT_TYPE);
 		if (snapshotEvents.length > 1)
@@ -251,7 +269,7 @@ module.exports = class EventStore {
 		debug('validating %s...', eventStream);
 		eventStream.forEach(this._validator);
 
-		debug('committing %s...', eventStream);
+		debug('saving %s...', eventStream);
 		await Promise.all([
 			this._storage.commitEvents(eventStream),
 			snapshot ?
@@ -259,27 +277,31 @@ module.exports = class EventStore {
 				undefined
 		]);
 
-		if (this._publishEventsAfterCommit) {
-			const publishEvents = () =>
-				Promise.all(eventStream.map(event => this._eventBus.publish(event)))
-					.then(() => {
-						info('%s published', eventStream);
-					}, err => {
-						info('%s publishing failed: %s', eventStream, err);
-						throw err;
-					});
-
-			if (this.config.publishAsync) {
-				debug('publishing %s asynchronously...', eventStream);
-				setImmediate(publishEvents);
-			}
-			else {
-				debug('publishing %s synchronously...', eventStream);
-				await publishEvents();
-			}
-		}
-
 		return eventStream;
+	}
+
+	/**
+	 * After events are
+	 * @param {IEventStream} eventStream
+	 */
+	async publish(eventStream) {
+		const publishEvents = () =>
+			Promise.all(eventStream.map(event => this._eventBus.publish(event)))
+				.then(() => {
+					info('%s published', eventStream);
+				}, err => {
+					info('%s publishing failed: %s', eventStream, err);
+					throw err;
+				});
+
+		if (this.config.publishAsync) {
+			debug('publishing %s asynchronously...', eventStream);
+			setImmediate(publishEvents);
+		}
+		else {
+			debug('publishing %s synchronously...', eventStream);
+			await publishEvents();
+		}
 	}
 
 	/**
