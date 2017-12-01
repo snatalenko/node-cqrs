@@ -6,7 +6,24 @@ const _id = Symbol('id');
 const _version = Symbol('version');
 const _messages = Symbol('messages');
 
-module.exports = class AbstractSaga {
+/**
+ * Base class for Saga definition
+ *
+ * @class {AbstractSaga}
+ * @implements {ISaga}
+ */
+class AbstractSaga {
+
+	/**
+	 * List of events that start new saga, must be overridden in Saga implementation
+	 *
+	 * @type {string[]}
+	 * @readonly
+	 * @static
+	 */
+	static get startsWith() {
+		throw new Error('startsWith must be overriden to return a list of event types that start saga');
+	}
 
 	/**
 	 * List of event types being handled by Saga, must be overridden in Saga implementation
@@ -16,7 +33,7 @@ module.exports = class AbstractSaga {
 	 * @static
 	 */
 	static get handles() {
-		throw new Error('handles must be overridden to return a list of handled event types');
+		return [];
 	}
 
 	/**
@@ -52,7 +69,7 @@ module.exports = class AbstractSaga {
 	/**
 	 * Creates an instance of AbstractSaga
 	 *
-	 * @param {{ id: string, events: IEvent[] }} options
+	 * @param {TSagaParams} options
 	 */
 	constructor(options) {
 		if (!options) throw new TypeError('options argument required');
@@ -62,7 +79,8 @@ module.exports = class AbstractSaga {
 		this[_version] = 0;
 		this[_messages] = [];
 
-		validateHandlers(this);
+		validateHandlers(this, 'startsWith');
+		validateHandlers(this, 'handles');
 
 		if (options.events) {
 			options.events.forEach(e => this.apply(e));
@@ -144,4 +162,6 @@ module.exports = class AbstractSaga {
 	toString() {
 		return `${getClassName(this)} ${this.id} (v${this.version})`;
 	}
-};
+}
+
+module.exports = AbstractSaga;

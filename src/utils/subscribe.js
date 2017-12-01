@@ -2,6 +2,8 @@
 
 const getHandler = require('./getHandler');
 
+const unique = arr => [...new Set(arr)];
+
 /**
  * Subscribe observer to observable
  *
@@ -27,7 +29,7 @@ module.exports = function subscribe(observable, observer, options) {
 
 	const subscriptionOptions = queueName ? { queueName } : undefined;
 
-	subscribeTo.forEach(messageType => {
+	unique(subscribeTo).forEach(messageType => {
 		const handler = masterHandler || getHandler(observer, messageType);
 		if (!handler)
 			throw new Error(`'${messageType}' handler is not defined or not a function`);

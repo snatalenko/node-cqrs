@@ -320,9 +320,15 @@ describe('EventStore', function () {
 			es.commit([goodEvent2, goodEvent2]);
 
 			setTimeout(() => {
-				expect(firstAggregateCounter).to.equal(1);
-				expect(secondAggregateCounter).to.equal(1);
-				done();
+				try {
+					expect(firstAggregateCounter).to.equal(1);
+					expect(secondAggregateCounter).to.equal(1);
+
+					done();
+				}
+				catch (err) {
+					done(err);
+				}
 			}, 100);
 		});
 

@@ -17,10 +17,11 @@ module.exports = class SagaEventHandler extends Observer {
 	 * Creates an instance of SagaEventHandler
 	 *
 	 * @param {object} options
-	 * @param {ISagaConstructor} options.sagaType
+	 * @param {ISagaConstructor | ISagaFactory} options.sagaType
 	 * @param {IEventStore} options.eventStore
 	 * @param {ICommandBus} options.commandBus
 	 * @param {string} [options.queueName]
+	 * @param {string[]} [options.startsWith]
 	 * @param {string[]} [options.handles]
 	 */
 	constructor(options) {
@@ -33,12 +34,22 @@ module.exports = class SagaEventHandler extends Observer {
 
 		this._eventStore = options.eventStore;
 		this._commandBus = options.commandBus;
-		this._sagaFactory = isClass(options.sagaType) ?
-			params => new options.sagaType(params) :
-			options.sagaType;
-
-		this._handles = options.handles || options.sagaType.handles;
 		this._queueName = options.queueName;
+
+		if (isClass(options.sagaType)) {
+			/** @type {ISagaConstructor} */
+			// @ts-ignore
+			const SagaType = options.sagaType;
+
+			this._sagaFactory = params => new SagaType(params);
+			this._startsWith = SagaType.startsWith;
+			this._handles = SagaType.handles;
+		}
+		else {
+			this._sagaFactory = options.sagaType;
+			this._startsWith = options.startsWith;
+			this._handles = options.handles;
+		}
 	}
 
 	/**
@@ -46,7 +57,7 @@ module.exports = class SagaEventHandler extends Observer {
 	 */
 	subscribe(eventStore) {
 		Observer.subscribe(eventStore, this, {
-			messageTypes: this._handles,
+			messageTypes: [...this._startsWith, ...this._handles],
 			masterHandler: this.handle,
 			queueName: this._queueName
 		});
@@ -62,9 +73,9 @@ module.exports = class SagaEventHandler extends Observer {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');
 
-		const saga = event.sagaId ?
-			await this._restoreSaga(event) :
-			await this._createSaga();
+		const saga = this._startsWith.includes(event.type) ?
+			await this._createSaga() :
+			await this._restoreSaga(event.sagaId, event);
 
 		const r = saga.apply(event);
 		if (r instanceof Promise)
@@ -116,20 +127,18 @@ module.exports = class SagaEventHandler extends Observer {
 	/**
 	 * Restore saga from event store
 	 *
-	 * @param {IEvent} event
+	 * @param {Identifier} id
+	 * @param {IEvent} event Event that triggered saga execution
 	 * @returns {Promise<ISaga>}
 	 * @private
 	 */
-	async _restoreSaga(event) {
-		if (!event.sagaId) throw new TypeError('event.sagaId argument required');
-		if (typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion argument required, when event.sagaId provided');
+	async _restoreSaga(id, event) {
+		if (!id) throw new TypeError('id argument required');
 
-		const events = await this._eventStore.getSagaEvents(event.sagaId, {
-			beforeEvent: event
-		});
+		const events = await this._eventStore.getSagaEvents(id, { beforeEvent: event });
 
 		/** @type {ISaga} */
-		const saga = this._sagaFactory.call(null, { id: event.sagaId, events });
+		const saga = this._sagaFactory.call(null, { id, events });
 		info('%s state restored from %s', saga, events);
 
 		return saga;

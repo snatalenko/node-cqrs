@@ -15,8 +15,8 @@ require('./ContainerTests');
 require('./AbstractAggregate');
 require('./AggregateCommandHandlerTests');
 
-require('./AbstractSaga');
-require('./SagaEventHandler');
+require('./AbstractSagaTests');
+require('./SagaEventHandlerTests');
 
 require('./AbstractProjectionTests');
 

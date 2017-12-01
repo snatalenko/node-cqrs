@@ -85,7 +85,7 @@ module.exports = class CqrsDomainContainer extends Container {
 	/**
 	 * Register saga type in the container
 	 *
-	 * @param {function} SagaType
+	 * @param {ISagaConstructor} SagaType
 	 */
 	registerSaga(SagaType) {
 		if (!isClass(SagaType))
@@ -96,6 +96,7 @@ module.exports = class CqrsDomainContainer extends Container {
 			commandBus: container.commandBus,
 			sagaType: options => container.createInstance(SagaType, options),
 			handles: SagaType.handles,
+			startsWith: SagaType.startsWith,
 			queueName: SagaType.name
 		}));
 	}

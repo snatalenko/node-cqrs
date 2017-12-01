@@ -8,10 +8,10 @@ const getHandler = require('./getHandler');
  * @param {object} instance
  * @returns {string[]}
  */
-module.exports = function validateHandlers(instance) {
+module.exports = function validateHandlers(instance, handlesFieldName = 'handles') {
 	if (!instance) throw new TypeError('instance argument required');
 
-	const messageTypes = Object.getPrototypeOf(instance).constructor.handles;
+	const messageTypes = Object.getPrototypeOf(instance).constructor[handlesFieldName];
 	if (!Array.isArray(messageTypes)) throw new TypeError('handles getter must return an Array');
 
 	return messageTypes.map(type => {

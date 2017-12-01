@@ -86,8 +86,12 @@ declare interface ISaga {
 	onError(err: Error, params: { event: IEvent, command: ICommand }): void;
 }
 
+declare type TSagaParams = { id: Identifier, events?: IEventStream };
+declare type ISagaFactory = (options: TSagaParams) => ISaga;
+
 declare interface ISagaConstructor {
-	new(options: { id: Identifier, events: IEventStream }): ISaga;
+	new(options: TSagaParams): ISaga;
+	readonly startsWith: string[];
 	readonly handles: string[];
 }
 

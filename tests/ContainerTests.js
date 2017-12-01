@@ -169,7 +169,7 @@ describe('Container', function () {
 		it('sets up saga event handler', done => {
 
 			class Saga extends AbstractSaga {
-				static get handles() {
+				static get startsWith() {
 					return ['somethingHappened'];
 				}
 				somethingHappened(event) {

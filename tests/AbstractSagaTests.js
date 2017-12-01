@@ -1,11 +1,10 @@
 'use strict';
 
 const { expect } = require('chai');
-const sinon = require('sinon');
 const { AbstractSaga } = require('../src');
 
 class Saga extends AbstractSaga {
-	static get handles() {
+	static get startsWith() {
 		return ['somethingHappened'];
 	}
 	_somethingHappened(event) {
@@ -27,13 +26,13 @@ describe('AbstractSaga', function () {
 
 			class SagaWithoutHandles extends AbstractSaga { }
 
-			expect(() => s = new SagaWithoutHandles({ id: 1 })).to.throw('handles must be overridden to return a list of handled event types');
+			expect(() => s = new SagaWithoutHandles({ id: 1 })).to.throw('startsWith must be overriden to return a list of event types that start saga');
 		});
 
 		it('throws exception if event handler is not defined', () => {
 
 			class SagaWithoutHandler extends AbstractSaga {
-				static get handles() {
+				static get startsWith() {
 					return ['somethingHappened'];
 				}
 			}
