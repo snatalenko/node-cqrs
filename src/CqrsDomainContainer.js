@@ -52,7 +52,7 @@ module.exports = class CqrsDomainContainer extends Container {
 	 * Register projection, which will expose view and will be subscribed
 	 * to eventStore and will restore its state upon instance creation
 	 *
-	 * @param {function} typeOrFactory
+	 * @param {function} ProjectionType
 	 * @param {string} exposedViewName
 	 */
 	registerProjection(ProjectionType, exposedViewName) {
@@ -69,7 +69,7 @@ module.exports = class CqrsDomainContainer extends Container {
 	/**
 	 * Register aggregate type in the container
 	 *
-	 * @param {function} aggregateType
+	 * @param {IAggregateConstructor} AggregateType
 	 */
 	registerAggregate(AggregateType) {
 		if (!isClass(AggregateType))

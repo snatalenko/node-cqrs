@@ -60,8 +60,11 @@ declare interface IAggregate {
 	restoreSnapshot?(snapshotEvent: IEvent): void;
 }
 
+declare type TAggregateParams = { id: Identifier, events?: IEventStream, state?: IAggregateState };
+declare type IAggregateFactory = (options: TAggregateParams) => IAggregate;
+
 declare interface IAggregateConstructor {
-	new(options: { id: Identifier, events: IEventStream, state?: IAggregateState }): IAggregate;
+	new(options: TAggregateParams): IAggregate;
 	readonly handles: string[];
 }
 
@@ -77,6 +80,7 @@ declare interface ISaga {
 	readonly id: Identifier;
 	readonly version: number;
 	readonly uncommittedMessages: ICommand[];
+	readonly restored?: boolean;
 
 	apply(event: IEvent): ICommand[];
 	enqueue(commandType: string, aggregateId: Identifier, payload: any): void;
@@ -138,15 +142,17 @@ declare interface IObserver {
 declare type EventFilter = { afterEvent?: IEvent; beforeEvent?: IEvent; };
 declare type SubscriptionOptions = { queueName?: string };
 
-declare interface IEventStorage {
+declare interface IEventEmitter {
+	on?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
+	off?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
+}
+
+declare interface IEventStorage extends IEventEmitter {
 	getNewId(): Identifier | Promise<Identifier>;
 	commitEvents(events: ReadonlyArray<IEvent>): Promise<any>;
 	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }): Promise<IEventStream>;
 	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
 	getEvents(eventTypes: string[], filter: EventFilter): Promise<IEventStream>;
-
-	on?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
-	off?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
 }
 
 declare interface IAggregateSnapshotStorage {
@@ -154,10 +160,7 @@ declare interface IAggregateSnapshotStorage {
 	saveAggregateSnapshot(IEvent): Promise<void>;
 }
 
-declare interface IMessageBus {
-	on(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
-	off?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
-	removeListener?(messageType: string, handler: IMessageHandler): void;
+declare interface IMessageBus extends IEventEmitter {
 	send(command: ICommand): Promise<any>;
 	publish(event: IEvent): Promise<any>;
 }

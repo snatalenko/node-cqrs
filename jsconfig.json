@@ -3,7 +3,10 @@
         "target": "es6",
         "module": "commonjs",
         "allowSyntheticDefaultImports": true,
-        "checkJs": true
+        "checkJs": true,
+        "lib": [
+            "es7"
+        ]
     },
     "exclude": [
         "node_modules"

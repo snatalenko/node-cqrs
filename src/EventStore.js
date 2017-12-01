@@ -74,6 +74,55 @@ function validateMessageBus(messageBus) {
 }
 
 /**
+ * Create one-time eventEmitter subscription for one or multiple events that match a filter
+ *
+ * @param {IEventEmitter} emitter
+ * @param {string[]} messageTypes Array of event type to subscribe to
+ * @param {function(IEvent):any} [handler] Optional handler to execute for a first event received
+ * @param {function(IEvent):boolean} [filter] Optional filter to apply before executing a handler
+ * @return {Promise<IEvent>} Resolves to first event that passes filter
+ */
+function setupOneTimeEmitterSubscription(emitter, messageTypes, filter, handler) {
+	if (typeof emitter !== 'object' || !emitter)
+		throw new TypeError('emitter argument must be an Object');
+	if (!Array.isArray(messageTypes) || messageTypes.some(m => !m || typeof m !== 'string'))
+		throw new TypeError('messageTypes argument must be an Array of non-empty Strings');
+	if (handler && typeof handler !== 'function')
+		throw new TypeError('handler argument, when specified, must be a Function');
+	if (filter && typeof filter !== 'function')
+		throw new TypeError('filter argument, when specified, must be a Function');
+
+	return new Promise(resolve => {
+
+		// handler will be invoked only once,
+		// even if multiple events have been emitted before subscription was destroyed
+		// https://nodejs.org/api/events.html#events_emitter_removelistener_eventname_listener
+		let handled = false;
+
+		function filteredHandler(event) {
+			if (filter && !filter(event)) return;
+			if (handled) return;
+			handled = true;
+
+			for (const messageType of messageTypes)
+				emitter.off(messageType, filteredHandler);
+
+			debug('\'%s\' received, one-time subscription to \'%s\' removed', event.type, messageTypes.join(','));
+
+			if (handler)
+				handler(event);
+
+			resolve(event);
+		}
+
+		for (const messageType of messageTypes)
+			emitter.on(messageType, filteredHandler);
+
+		debug('set up one-time %s to \'%s\'', filter ? 'filtered subscription' : 'subscription', messageTypes.join(','));
+	});
+}
+
+/**
  * @typedef {object} EventStoreConfig
  * @property {boolean} [publishAsync]
  */
@@ -117,7 +166,7 @@ module.exports = class EventStore {
 	 * Creates an instance of EventStore.
 	 *
 	 * @param {object} options
-	 * @param {IEventStorage & IMessageBus | IEventStorage} options.storage
+	 * @param {IEventStorage} options.storage
 	 * @param {IAggregateSnapshotStorage} [options.snapshotStorage]
 	 * @param {IMessageBus} [options.messageBus]
 	 * @param {function(IEvent):void} [options.eventValidator]
@@ -138,16 +187,17 @@ module.exports = class EventStore {
 		this._validator = options.eventValidator || validateEvent;
 
 		if (options.messageBus) {
-			this._publishEventsAfterCommit = true;
-			this._eventBus = options.messageBus;
+			this._publishTo = options.messageBus;
+			this._eventEmitter = options.messageBus;
 		}
 		else if (isEmitter(options.storage)) {
-			this._publishEventsAfterCommit = false;
-			this._eventBus = options.storage;
+			/** @type {IEventEmitter} */
+			this._eventEmitter = options.storage;
 		}
 		else {
-			this._publishEventsAfterCommit = true;
-			this._eventBus = new InMemoryBus();
+			const internalMessageBus = new InMemoryBus();
+			this._publishTo = internalMessageBus;
+			this._eventEmitter = internalMessageBus;
 		}
 	}
 
@@ -239,7 +289,7 @@ module.exports = class EventStore {
 
 		// after events are saved to the persistent storage,
 		// publish them to the event bus (i.e. RabbitMq)
-		if (this._publishEventsAfterCommit)
+		if (this._publishTo)
 			await this.publish(eventStream);
 
 		return eventStream;
@@ -261,10 +311,7 @@ module.exports = class EventStore {
 			throw new Error(`${SNAPSHOT_EVENT_TYPE} event type is not supported by the storage`);
 
 		const snapshot = snapshotEvents[0];
-		if (snapshot)
-			events = events.filter(e => e !== snapshot);
-
-		const eventStream = EventStream.from(events);
+		const eventStream = EventStream.from(events.filter(e => e !== snapshot));
 
 		debug('validating %s...', eventStream);
 		eventStream.forEach(this._validator);
@@ -286,9 +333,9 @@ module.exports = class EventStore {
 	 */
 	async publish(eventStream) {
 		const publishEvents = () =>
-			Promise.all(eventStream.map(event => this._eventBus.publish(event)))
+			Promise.all(eventStream.map(event => this._publishTo.publish(event)))
 				.then(() => {
-					info('%s published', eventStream);
+					debug('%s published', eventStream);
 				}, err => {
 					info('%s publishing failed: %s', eventStream, err);
 					throw err;
@@ -316,7 +363,7 @@ module.exports = class EventStore {
 		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
 
-		this._eventBus.on(messageType, handler, options);
+		this._eventEmitter.on(messageType, handler, options);
 	}
 
 	/**
@@ -328,48 +375,8 @@ module.exports = class EventStore {
 	 * @return {Promise<IEvent>} Resolves to first event that passes filter
 	 */
 	once(messageTypes, handler, filter) {
-		if (!Array.isArray(messageTypes)) messageTypes = [messageTypes];
-		if (messageTypes.filter(t => !t || typeof t !== 'string').length)
-			throw new TypeError('messageType argument must be either a non-empty String or an Array of non-empty Strings');
-		if (handler && typeof handler !== 'function')
-			throw new TypeError('handler argument, when specified, must be a Function');
-		if (filter && typeof filter !== 'function')
-			throw new TypeError('filter argument, when specified, must be a Function');
+		const subscribeTo = Array.isArray(messageTypes) ? messageTypes : [messageTypes];
 
-		/** @type {IMessageBus} */
-		const emitter = this._eventBus;
-
-		return new Promise(resolve => {
-
-			// handler will be invoked only once,
-			// even if multiple events have been emitted before subscription was destroyed
-			// https://nodejs.org/api/events.html#events_emitter_removelistener_eventname_listener
-			let handled = false;
-
-			function filteredHandler(event) {
-				if (filter && !filter(event)) return;
-				if (handled) return;
-				handled = true;
-
-				for (const messageType of messageTypes) {
-					if (typeof emitter.removeListener === 'function')
-						emitter.removeListener(messageType, filteredHandler);
-					else
-						emitter.off(messageType, filteredHandler);
-				}
-
-				debug(`'${event.type}' received, one-time subscription to '${messageTypes.join(',')}' removed`);
-
-				if (handler)
-					handler(event);
-
-				resolve(event);
-			}
-
-			for (const messageType of messageTypes)
-				emitter.on(messageType, filteredHandler);
-
-			debug(`set up one-time ${filter ? 'filtered subscription' : 'subscription'} to '${messageTypes.join(',')}'`);
-		});
+		return setupOneTimeEmitterSubscription(this._eventEmitter, subscribeTo, filter, handler);
 	}
 };

@@ -114,9 +114,9 @@
         "no-octal": "error",
         "no-octal-escape": "error",
         "no-param-reassign": [
-            "off",
+            "warn",
             {
-                "props": true
+                "props": false
             }
         ],
         "no-proto": "error",

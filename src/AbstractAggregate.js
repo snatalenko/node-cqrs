@@ -16,7 +16,7 @@ const _snapshotVersion = Symbol('snapshotVersion');
  * @class AbstractAggregate
  * @implements {IAggregate}
  */
-module.exports = class AbstractAggregate {
+class AbstractAggregate {
 
 	/**
 	 * List of commands handled by Aggregate
@@ -64,7 +64,7 @@ module.exports = class AbstractAggregate {
 	/**
 	 * Events emitted by Aggregate command handlers
 	 *
-	 * @type {IEvent[]}
+	 * @type {IEventStream}
 	 * @readonly
 	 */
 	get changes() {
@@ -87,10 +87,7 @@ module.exports = class AbstractAggregate {
 	/**
 	 * Creates an instance of AbstractAggregate.
 	 *
-	 * @param {object} options
-	 * @param {Identifier} options.id
-	 * @param {IEventStream} options.events
-	 * @param {IAggregateState} [options.state]
+	 * @param {TAggregateParams} options
 	 */
 	constructor(options) {
 		const { id, state, events } = options;
@@ -232,4 +229,6 @@ module.exports = class AbstractAggregate {
 	toString() {
 		return `${getClassName(this)} ${this.id} (v${this.version})`;
 	}
-};
+}
+
+module.exports = AbstractAggregate;

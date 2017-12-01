@@ -33,7 +33,7 @@ module.exports = class AggregateCommandHandler extends Observer {
 	 *
 	 * @param {object} options
 	 * @param {IEventStore} options.eventStore
-	 * @param {IAggregateConstructor} options.aggregateType
+	 * @param {IAggregateConstructor | IAggregateFactory} options.aggregateType
 	 * @param {string[]} [options.handles]
 	 */
 	constructor(options) {
@@ -42,10 +42,18 @@ module.exports = class AggregateCommandHandler extends Observer {
 		super();
 
 		this._eventStore = options.eventStore;
-		this._aggregateFactory = isClass(options.aggregateType) ?
-			params => new options.aggregateType(params) : // eslint-disable-line new-cap
-			options.aggregateType;
-		this._handles = options.handles || options.aggregateType.handles;
+		if (isClass(options.aggregateType)) {
+			/** @type {IAggregateConstructor} */
+			// @ts-ignore
+			const AggregateType = options.aggregateType;
+
+			this._aggregateFactory = params => new AggregateType(params);
+			this._handles = AggregateType.handles;
+		}
+		else {
+			this._aggregateFactory = options.aggregateType;
+			this._handles = options.handles;
+		}
 	}
 
 	/**
