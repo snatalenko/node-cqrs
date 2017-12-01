@@ -46,6 +46,9 @@ module.exports = class SagaEventHandler extends Observer {
 			this._handles = SagaType.handles;
 		}
 		else {
+			if (!Array.isArray(options.startsWith)) throw new TypeError('options.startsWith argument must be an Array');
+			if (!Array.isArray(options.handles)) throw new TypeError('options.handles argument must be an Array');
+
 			this._sagaFactory = options.sagaType;
 			this._startsWith = options.startsWith;
 			this._handles = options.handles;
@@ -75,7 +78,7 @@ module.exports = class SagaEventHandler extends Observer {
 
 		const saga = this._startsWith.includes(event.type) ?
 			await this._createSaga() :
-			await this._restoreSaga(event.sagaId, event);
+			await this._restoreSaga(event);
 
 		const r = saga.apply(event);
 		if (r instanceof Promise)
@@ -127,18 +130,17 @@ module.exports = class SagaEventHandler extends Observer {
 	/**
 	 * Restore saga from event store
 	 *
-	 * @param {Identifier} id
 	 * @param {IEvent} event Event that triggered saga execution
 	 * @returns {Promise<ISaga>}
 	 * @private
 	 */
-	async _restoreSaga(id, event) {
-		if (!id) throw new TypeError('id argument required');
+	async _restoreSaga(event) {
+		if (!event.sagaId) throw new TypeError('event.sagaId argument required');
 
-		const events = await this._eventStore.getSagaEvents(id, { beforeEvent: event });
+		const events = await this._eventStore.getSagaEvents(event.sagaId, { beforeEvent: event });
 
 		/** @type {ISaga} */
-		const saga = this._sagaFactory.call(null, { id, events });
+		const saga = this._sagaFactory.call(null, { id: event.sagaId, events });
 		info('%s state restored from %s', saga, events);
 
 		return saga;
