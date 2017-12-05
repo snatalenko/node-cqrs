@@ -93,7 +93,8 @@ module.exports = class SagaEventHandler extends Observer {
 			for (const command of commands) {
 
 				// attach event context to produced command
-				command.context = event.context;
+				if (command.context === undefined && event.context !== undefined)
+					command.context = event.context;
 
 				try {
 					await this._commandBus.sendRaw(command);
