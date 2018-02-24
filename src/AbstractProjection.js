@@ -29,11 +29,11 @@ module.exports = class AbstractProjection extends Observer {
 	/**
 	 * View associated with projection
 	 *
-	 * @type {IProjectionView}
+	 * @type {InMemoryView}
 	 * @readonly
 	 */
 	get view() {
-		return this[_view];
+		return this[_view] || (this[_view] = new InMemoryView());
 	}
 
 	/**
@@ -45,7 +45,8 @@ module.exports = class AbstractProjection extends Observer {
 	constructor(options) {
 		super();
 		validateHandlers(this);
-		this[_view] = (options && options.view) || new InMemoryView();
+		if (options && options.view)
+			this[_view] = options.view;
 	}
 
 	/**
