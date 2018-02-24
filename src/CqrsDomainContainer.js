@@ -11,7 +11,13 @@ function isClass(func) {
 		&& Function.prototype.toString.call(func).startsWith('class');
 }
 
-module.exports = class CqrsDomainContainer extends Container {
+/**
+ * Dependency injection container with CQRS-specific methods
+ *
+ * @class CqrsDomainContainer
+ * @extends {Container}
+ */
+class CqrsDomainContainer extends Container {
 
 	/**
 	 * Creates an instance of CqrsDomainContainer
@@ -100,4 +106,6 @@ module.exports = class CqrsDomainContainer extends Container {
 			queueName: SagaType.name
 		}));
 	}
-};
+}
+
+module.exports = CqrsDomainContainer;

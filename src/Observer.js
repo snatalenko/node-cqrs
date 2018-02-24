@@ -6,7 +6,7 @@ const { subscribe } = require('./utils');
  * @class Observer
  * @implements {IObserver}
  */
-module.exports = class Observer {
+class Observer {
 
 	/**
 	 * Returns an array of handled message types. Should be overridden
@@ -42,4 +42,6 @@ module.exports = class Observer {
 	subscribe(observable, messageTypes, masterHandler) {
 		return subscribe(observable, this, { messageTypes, masterHandler });
 	}
-};
+}
+
+module.exports = Observer;

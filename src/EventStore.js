@@ -129,8 +129,9 @@ function setupOneTimeEmitterSubscription(emitter, messageTypes, filter, handler)
 
 /**
  * @class EventStore
+ * @implements {IEventStore}
  */
-module.exports = class EventStore {
+class EventStore {
 
 	/**
 	 * Default configuration
@@ -379,4 +380,6 @@ module.exports = class EventStore {
 
 		return setupOneTimeEmitterSubscription(this._eventEmitter, subscribeTo, filter, handler);
 	}
-};
+}
+
+module.exports = EventStore;

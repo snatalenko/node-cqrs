@@ -10,8 +10,12 @@ const info = require('debug')('cqrs:info');
  * creates new saga or restores it from event store,
  * applies new events
  * and passes command(s) to command bus
+ *
+ * @class {SagaEventHandler}
+ * @extends {Observer}
+ * @implements {IEventReceptor}
  */
-module.exports = class SagaEventHandler extends Observer {
+class SagaEventHandler extends Observer {
 
 	/**
 	 * Creates an instance of SagaEventHandler
@@ -146,4 +150,6 @@ module.exports = class SagaEventHandler extends Observer {
 
 		return saga;
 	}
-};
+}
+
+module.exports = SagaEventHandler;

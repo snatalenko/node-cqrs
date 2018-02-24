@@ -24,9 +24,17 @@ function augmentEventFromCommand(command) {
 }
 
 /**
- * Aggregate command handler
+ * Aggregate command handler.
+ *
+ * Subscribes to event store and awaits aggregate commands.
+ * Upon command receiving creates an instance of aggregate,
+ * restores its state, passes command and commits emitted events to event store.
+ *
+ * @class AggregateCommandHandler
+ * @extends {Observer}
+ * @implements {ICommandHandler}
  */
-module.exports = class AggregateCommandHandler extends Observer {
+class AggregateCommandHandler extends Observer {
 
 	/**
 	 * Creates an instance of AggregateCommandHandler.
@@ -125,8 +133,11 @@ module.exports = class AggregateCommandHandler extends Observer {
 			events = aggregate.changes;
 		}
 
+		// @ts-ignore
 		await this._eventStore.commit(events);
 
 		return events;
 	}
-};
+}
+
+module.exports = AggregateCommandHandler;

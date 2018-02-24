@@ -4,7 +4,11 @@ const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
 const debug = require('debug')('cqrs:debug:CommandBus');
 const info = require('debug')('cqrs:info:CommandBus');
 
-module.exports = class CommandBus {
+/**
+ * @class CommandBus
+ * @implements {ICommandBus}
+ */
+class CommandBus {
 
 	/**
 	 * Creates an instance of CommandBus.
@@ -74,4 +78,6 @@ module.exports = class CommandBus {
 			throw err;
 		});
 	}
-};
+}
+
+module.exports = CommandBus;

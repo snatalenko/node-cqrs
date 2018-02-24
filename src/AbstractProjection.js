@@ -13,7 +13,7 @@ const _view = Symbol('view');
  * @class AbstractProjection
  * @implements {IProjection}
  */
-module.exports = class AbstractProjection extends Observer {
+class AbstractProjection extends Observer {
 
 	/**
 	 * List of event types being handled by projection. Must be overridden in projection implementation
@@ -116,4 +116,6 @@ module.exports = class AbstractProjection extends Observer {
 	toString() {
 		return getClassName(this);
 	}
-};
+}
+
+module.exports = AbstractProjection;

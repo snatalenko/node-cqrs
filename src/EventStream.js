@@ -10,7 +10,15 @@ function formatEvent(event) {
 	return Object.freeze(event);
 }
 
-module.exports = class EventStream extends Array {
+/**
+ * An immutable collection of events
+ *
+ * @class EventStream
+ * @extends {Array}
+ * @implements {IEventStream}
+ */
+// @ts-ignore
+class EventStream extends Array {
 
 	/**
 	 * Create EventStream instance from enumerable source
@@ -54,4 +62,6 @@ module.exports = class EventStream extends Array {
 
 		return `${this.length} events`;
 	}
-};
+}
+
+module.exports = EventStream;
