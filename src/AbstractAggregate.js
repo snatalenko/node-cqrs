@@ -123,7 +123,9 @@ class AbstractAggregate {
 		if (!handler)
 			throw new Error(`'${command.type}' handler is not defined or not a function`);
 
-		return handler.apply(this, [command.payload, command.context]);
+		this.command = command;
+
+		return handler.call(this, command.payload, command.context);
 	}
 
 	/**
@@ -159,12 +161,26 @@ class AbstractAggregate {
 	emit(type, payload) {
 		if (typeof type !== 'string' || !type.length) throw new TypeError('type argument must be a non-empty string');
 
-		this.emitRaw({
+		/** @type {IEvent} */
+		const event = {
 			aggregateId: this.id,
 			aggregateVersion: this.version,
 			type,
 			payload
-		});
+		};
+
+		if (this.command) {
+			// augment event with command context
+			const { context, sagaId, sagaVersion } = this.command;
+			if (context !== undefined)
+				event.context = context;
+			if (sagaId !== undefined)
+				event.sagaId = sagaId;
+			if (sagaVersion !== undefined)
+				event.sagaVersion = sagaVersion;
+		}
+
+		this.emitRaw(event);
 	}
 
 	/**
