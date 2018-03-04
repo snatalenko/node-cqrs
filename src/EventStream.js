@@ -1,54 +1,46 @@
 'use strict';
 
 /**
- * Format event before adding to event stream
- *
- * @param {IEvent} event
- * @returns {IEvent}
- */
-function formatEvent(event) {
-	return Object.freeze(event);
-}
-
-/**
  * An immutable collection of events
  *
  * @class EventStream
  * @extends {Array}
  * @implements {IEventStream}
  */
-// @ts-ignore
 class EventStream extends Array {
-
-	/**
-	 * Create EventStream instance from enumerable source
-	 *
-	 * @static
-	 * @param {ArrayLike<IEvent>} events
-	 * @param {(this: void, event: IEvent, k: number) => IEvent} [mapFn]
-	 * @returns {IEventStream}
-	 */
-	static from(events, mapFn) {
-		return Object.freeze(super.from(events, mapFn));
-	}
 
 	/**
 	 * Creates an instance of EventStream
 	 *
-	 * @param {...IEvent} events
+	 * @param {...(IEvent | Array<IEvent> | ReadonlyArray<IEvent>)} args
 	 */
-	constructor(...events) {
-		super(...events.map(formatEvent));
+	constructor(...args) {
+		const events = [].concat(...args);
+		super(...events.map(el => Object.freeze(el)));
+		Object.freeze(this);
 	}
 
 	/**
-	 * Add new events to event stream
+	 * Create new EventStream with events that match certain condition
 	 *
-	 * @param {...IEvent} events
-	 * @returns
+	 * @param {(event: IEvent, index: number, all: Array<IEvent>) => boolean} condition
+	 * @returns {EventStream}
+	 * @memberof EventStream
 	 */
-	push(...events) {
-		return super.push(...events.map(formatEvent));
+	filter(condition) {
+		return new EventStream([...this].filter(condition));
+	}
+
+	/**
+	 * Map stream events to another collection
+	 *
+	 * @template TResult
+	 * @param {(event: IEvent, index: number, all: Array<IEvent>) => TResult} mapFn
+	 * @returns {Array<TResult>}
+	 * @memberof EventStream
+	 */
+	map(mapFn) {
+		return [...this].map(mapFn);
 	}
 
 	/**

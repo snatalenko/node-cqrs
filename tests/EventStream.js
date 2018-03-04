@@ -10,30 +10,16 @@ describe('EventStream', function () {
 		{ type: 'somethingHappened', aggregateId: '1', aggregateVersion: 1 }
 	];
 
-	describe('static from(events, mapFn)', () => {
-
-		it('creates EventStream from enumerable object', () => {
-
-			const es = EventStream.from(src, e => {
-				e.context = {};
-				return e;
-			});
-			expect(es).to.be.instanceof(EventStream).that.has.length(2);
-			expect(es[0]).to.have.property('context');
-		});
-	});
-
 	describe('constructor(...events)', () => {
 
-		it('creates unfrozen EventStream from a set of events', () => {
+		it('creates frozen EventStream from a set of events', () => {
 
-			const es = new EventStream(...src);
+			const es = new EventStream(src);
 			expect(es).to.be.instanceof(EventStream);
 			expect(es).to.have.length(2);
 			expect(() => {
 				es.push({ type: 'test' });
-			}).to.not.throw();
-			expect(es).to.have.length(3);
+			}).to.throw('Cannot add property 2, object is not extensible');
 		});
 	});
 
@@ -42,7 +28,7 @@ describe('EventStream', function () {
 		let es;
 
 		beforeEach(() => {
-			es = EventStream.from(src);
+			es = new EventStream(src);
 		});
 
 		it('is immutable', () => {
@@ -57,7 +43,7 @@ describe('EventStream', function () {
 
 			expect(() => {
 				es.splice(1);
-			}).to.throw('Cannot add/remove sealed array elements');
+			}).to.throw('Cannot assign to read only property \'length\' of object \'[object Array]\'');
 		});
 
 		it('is enumerable', () => {
@@ -70,10 +56,10 @@ describe('EventStream', function () {
 
 		it('describes content, when being converted to string', () => {
 
-			const singleEvent = EventStream.from(src.slice(0, 1));
+			const singleEvent = new EventStream(src.slice(0, 1));
 			expect(String(singleEvent)).to.equal('\'somethingHappened\'');
 
-			const multipleEvents = EventStream.from(src.slice(0, 2));
+			const multipleEvents = new EventStream(src.slice(0, 2));
 			expect(String(multipleEvents)).to.equal('2 events');
 		});
 	});

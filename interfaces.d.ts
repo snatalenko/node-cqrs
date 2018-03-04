@@ -17,7 +17,7 @@ declare type IEventStream = ReadonlyArray<Readonly<IEvent>>;
 declare interface IEventStore extends IObservable {
 	getNewId(): Promise<Identifier>;
 
-	commit(events: IEvent[]): Promise<IEventStream>;
+	commit(events: IEventStream): Promise<IEventStream>;
 
 	getAllEvents(eventTypes: string[], filter?: EventFilter): Promise<IEventStream>;
 	getAggregateEvents(aggregateId: Identifier): Promise<IEventStream>;

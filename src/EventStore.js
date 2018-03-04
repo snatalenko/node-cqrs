@@ -225,7 +225,7 @@ class EventStore {
 
 		const events = await this._storage.getEvents(eventTypes, filter);
 
-		const eventStream = EventStream.from(events);
+		const eventStream = new EventStream(events);
 		debug('%s retrieved', eventStream);
 
 		return eventStream;
@@ -248,7 +248,7 @@ class EventStore {
 
 		const events = await this._storage.getAggregateEvents(aggregateId, { snapshot });
 
-		const eventStream = EventStream.from(snapshot ? [snapshot, ...events] : events);
+		const eventStream = new EventStream(snapshot ? [snapshot, ...events] : events);
 		debug('%s retrieved', eventStream);
 
 		return eventStream;
@@ -271,7 +271,7 @@ class EventStore {
 
 		const events = await this._storage.getSagaEvents(sagaId, filter);
 
-		const eventStream = EventStream.from(events);
+		const eventStream = new EventStream(events);
 		debug('%s retrieved', eventStream);
 
 		return eventStream;
@@ -312,7 +312,7 @@ class EventStore {
 			throw new Error(`${SNAPSHOT_EVENT_TYPE} event type is not supported by the storage`);
 
 		const snapshot = snapshotEvents[0];
-		const eventStream = EventStream.from(events.filter(e => e !== snapshot));
+		const eventStream = new EventStream(events.filter(e => e !== snapshot));
 
 		debug('validating %s...', eventStream);
 		eventStream.forEach(this._validator);

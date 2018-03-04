@@ -68,7 +68,7 @@ class AbstractAggregate {
 	 * @readonly
 	 */
 	get changes() {
-		return EventStream.from(this[_changes]);
+		return new EventStream(this[_changes]);
 	}
 
 	/**
