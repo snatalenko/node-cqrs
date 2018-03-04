@@ -14,7 +14,7 @@ function strMapToObj(strMap) {
  * In-memory Projection View, which suspends get()'s until it is ready
  *
  * @class InMemoryView
- * @implements {IProjectionView}
+ * @implements {IProjectionView<any>}
  */
 module.exports = class InMemoryView {
 
@@ -97,7 +97,7 @@ module.exports = class InMemoryView {
 	 * Create record with a given key and value
 	 *
 	 * @param {string|number} key
-	 * @param {function(any):any|any} update Either initial value or an initial value factory
+	 * @param {(function(any):any)|any} update Either initial value or an initial value factory
 	 * @memberof InMemoryView
 	 */
 	create(key, update) {

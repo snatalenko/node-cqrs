@@ -40,7 +40,7 @@ class AbstractProjection extends Observer {
 	 * Creates an instance of AbstractProjection
 	 *
 	 * @param {object} [options]
-	 * @param {IProjectionView} [options.view]
+	 * @param {IProjectionView<any>} [options.view]
 	 */
 	constructor(options) {
 		super();

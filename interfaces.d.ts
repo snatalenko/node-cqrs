@@ -116,10 +116,12 @@ declare interface IProjection extends IObserver {
 
 declare type ViewUpdateCallback = function(any): any;
 
-declare interface IProjectionView {
+declare interface IProjectionView<TRecord> {
 	readonly ready?: boolean;
 	once?(eventType: string): Promise<void>;
 	markAsReady?(): void;
+
+	get(key: any): Promise<TRecord>;
 }
 
 // endregion Projection
