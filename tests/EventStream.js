@@ -19,7 +19,7 @@ describe('EventStream', function () {
 			expect(es).to.have.length(2);
 			expect(() => {
 				es.push({ type: 'test' });
-			}).to.throw('Cannot add property 2, object is not extensible');
+			}).to.throw();
 		});
 	});
 
