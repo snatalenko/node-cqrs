@@ -57,6 +57,8 @@ class SagaEventHandler extends Observer {
 			this._startsWith = options.startsWith;
 			this._handles = options.handles;
 		}
+
+		this._eventStore.registerSagaStarters(options.startsWith);
 	}
 
 	/**
@@ -79,10 +81,9 @@ class SagaEventHandler extends Observer {
 	async handle(event) {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');
+		if (!event.sagaId) throw new TypeError('event.sagaId argument required');
 
-		const saga = this._startsWith.includes(event.type) ?
-			await this._createSaga() :
-			await this._restoreSaga(event);
+		const saga = await this._restoreSaga(event);
 
 		const r = saga.apply(event);
 		if (r instanceof Promise)
@@ -114,22 +115,6 @@ class SagaEventHandler extends Observer {
 				}
 			}
 		}
-	}
-
-	/**
-	 * Create new saga instance
-	 *
-	 * @returns {Promise<ISaga>}
-	 * @private
-	 */
-	async _createSaga() {
-		const id = await this._eventStore.getNewId();
-
-		/** @type {ISaga} */
-		const saga = this._sagaFactory.call(null, { id });
-		info('%s instance created', saga);
-
-		return saga;
 	}
 
 	/**

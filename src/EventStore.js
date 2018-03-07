@@ -187,6 +187,9 @@ class EventStore {
 		this._snapshotStorage = options.snapshotStorage;
 		this._validator = options.eventValidator || validateEvent;
 
+		/** @type {string[]} */
+		this._sagaStarters = [];
+
 		if (options.messageBus) {
 			this._publishTo = options.messageBus;
 			this._eventEmitter = options.messageBus;
@@ -278,29 +281,73 @@ class EventStore {
 	}
 
 	/**
+	 * Register event types that start sagas.
+	 * Upon such event commit a new sagaId will be assigned
+	 *
+	 * @param {string[]} eventTypes
+	 * @memberof EventStore
+	 */
+	registerSagaStarters(eventTypes = []) {
+		const uniqueEventTypes = eventTypes.filter(e => !this._sagaStarters.includes(e));
+		this._sagaStarters.push(...uniqueEventTypes);
+	}
+
+	/**
 	 * Validate events, commit to storage and publish to messageBus, if needed
 	 *
-	 * @param {IEvent[]} events - a set of events to commit
+	 * @param {IEventStream} events - a set of events to commit
 	 * @returns {Promise<IEventStream>} - resolves to signed and committed events
 	 */
 	async commit(events) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
 
-		const eventStream = await this.save(events);
+		const containsSagaStarters = this._sagaStarters.length && events.some(e => this._sagaStarters.includes(e.type));
+		const augmentedEvents = containsSagaStarters ?
+			await this._attachSagaIdToSagaStarterEvents(events) :
+			events;
+
+		const eventStreamWithoutSnapshots = await this.save(augmentedEvents);
 
 		// after events are saved to the persistent storage,
 		// publish them to the event bus (i.e. RabbitMq)
 		if (this._publishTo)
-			await this.publish(eventStream);
+			await this.publish(eventStreamWithoutSnapshots);
 
-		return eventStream;
+		return eventStreamWithoutSnapshots;
 	}
 
 	/**
-	 * Save events to the persistent storage
+	 * Generate and attach sagaId to events that start new sagas
 	 *
-	 * @param {IEvent[]} events
+	 * @param {IEventStream} events
 	 * @returns {Promise<IEventStream>}
+	 * @memberof EventStore
+	 * @private
+	 */
+	async _attachSagaIdToSagaStarterEvents(events) {
+		const r = [];
+		for (const event of events) {
+			if (this._sagaStarters.includes(event.type)) {
+				if (event.sagaId)
+					throw new Error(`Event "${event.type}" already contains sagaId. Multiple sagas with same event type are not supported`);
+
+				r.push(Object.assign({
+					sagaId: await this.getNewId(),
+					sagaVersion: 0
+				}, event));
+			}
+			else {
+				r.push(event);
+			}
+		}
+		return new EventStream(r);
+	}
+
+	/**
+	 * Save events to the persistent storage(s)
+	 *
+	 * @param {IEventStream} events Event stream that may include snapshot events
+	 * @returns {Promise<IEventStream>} Event stream without snapshot events
 	 */
 	async save(events) {
 		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');

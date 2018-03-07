@@ -23,6 +23,8 @@ declare interface IEventStore extends IObservable {
 	getAggregateEvents(aggregateId: Identifier): Promise<IEventStream>;
 	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
 
+	registerSagaStarters(eventTypes: string[]): void;
+
 	once(messageType: string, handler?: IMessageHandler, filter?: function(IEvent): boolean):
 		Promise<IEvent>;
 

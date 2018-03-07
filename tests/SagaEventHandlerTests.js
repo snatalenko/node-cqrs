@@ -18,11 +18,6 @@ class Saga extends AbstractSaga {
 
 const triggeringEvent = {
 	type: 'somethingHappened',
-	aggregateId: 1
-};
-
-const secondEvent = {
-	type: 'somethingHappened',
 	aggregateId: 1,
 	sagaId: 1,
 	sagaVersion: 0
@@ -44,31 +39,24 @@ describe('SagaEventHandler', function () {
 		expect(SagaEventHandler).to.be.a('Function');
 	});
 
-	it('creates saga, passes in received event and sends emitted commands', done => {
+	it('restores saga state, passes in received event and sends emitted commands', async () => {
 
-		commandBus.on('doSomething', command => done());
+		const doSomethingCommandHandler = new Promise(resolve => {
+			commandBus.on('doSomething', resolve);
+		});
 
-		sagaEventHandler.handle(triggeringEvent);
-	});
-
-	it.skip('restores saga from event store, when sagaId exists', async () => {
-
-		commandBus.on('doSomething', command => { });
-		sinon.spy(sagaEventHandler, '_createSaga');
 		sinon.spy(sagaEventHandler, '_restoreSaga');
 		sinon.spy(eventStore, 'getSagaEvents');
 
+		expect(sagaEventHandler._restoreSaga).to.have.property('callCount', 0);
+		expect(eventStore.getSagaEvents).to.have.property('callCount', 0);
+
 		await sagaEventHandler.handle(triggeringEvent);
 
-		expect(sagaEventHandler).to.have.nested.property('_createSaga.calledOnce', true);
-		expect(sagaEventHandler).to.have.nested.property('_restoreSaga.called', false);
-		expect(eventStore).to.have.nested.property('getSagaEvents.called', false);
+		expect(sagaEventHandler._restoreSaga).to.have.property('callCount', 1);
+		expect(eventStore.getSagaEvents).to.have.property('callCount', 1);
 
-		await sagaEventHandler.handle(secondEvent);
-
-		expect(sagaEventHandler).to.have.nested.property('_createSaga.calledOnce', true);
-		expect(sagaEventHandler).to.have.nested.property('_restoreSaga.calledOnce', true);
-		expect(eventStore).to.have.nested.property('getSagaEvents.called', true);
+		await doSomethingCommandHandler;
 	});
 
 	it('passes command execution errors to saga.onError', async () => {
