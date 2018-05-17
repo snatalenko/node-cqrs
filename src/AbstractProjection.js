@@ -37,6 +37,19 @@ class AbstractProjection extends Observer {
 	}
 
 	/**
+	 * Indicates if view should be restored from EventStore on start.
+	 * Override for custom behavior.
+	 *
+	 * @type {boolean}
+	 * @readonly
+	 */
+	get shouldRestoreView() {
+		return (this.view instanceof Map)
+			|| (this.view instanceof InMemoryView)
+			|| (this.view.ready === false);
+	}
+
+	/**
 	 * Creates an instance of AbstractProjection
 	 *
 	 * @param {object} [options]
@@ -57,7 +70,7 @@ class AbstractProjection extends Observer {
 	subscribe(eventStore) {
 		super.subscribe(eventStore, undefined, this.project);
 
-		if (this.view.ready === false)
+		if (this.shouldRestoreView)
 			this.restore(eventStore);
 	}
 
