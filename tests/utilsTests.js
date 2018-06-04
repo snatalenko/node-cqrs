@@ -14,7 +14,7 @@ describe('sizeOf(obj)', () => {
 		const innerObj = { s: 'inner object, that must be counted only once' };
 		const s = sizeOf({
 			b: true, // 1 + 4
-			bf: new Buffer('test', 'utf8'), // 2 + 4
+			bf: Buffer.from('test', 'utf8'), // 2 + 4
 			s: 'test', // 1 + 4
 			u: undefined, // 1
 			n: null, // 1
