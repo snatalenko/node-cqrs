@@ -30,7 +30,7 @@ const aggregateRecord = await view.get('my-aggregate-id');
 Since the view keeps state in memory, upon creation it needs to be restored from the EventStore.
 This is [handled by the AbstractProjection](./README.md) automatically.
 
-All queries to the `view.get(..)` get suspended, until the view state is restored. Alternatively, you can either chech the `ready` flag or subscribe to the "ready" event manually:
+All queries to the `view.get(..)` get suspended, until the view state is restored. Alternatively, you can either check the `ready` flag or subscribe to the "ready" event manually:
 
 ```js
 // wait until the view state is restored
