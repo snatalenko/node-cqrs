@@ -139,17 +139,21 @@ class UsersProjection extends AbstractProjection {
 By default, projection uses async `InMemoryView` for inner view, but we’ll use `Map` to make it more familiar:
 
 ```js
-class UsersProjection {  
+class UsersProjection extends AbstractProjection {
   get view() {
     return this._view || (this._view = new Map());
   }
+
+  // ...
 }
 ```
 
 With `Map` view, our event handler can look this way:
 
 ```js
-class UsersProjection {
+class UsersProjection extends AbstractProjection {
+  // ...
+
   userCreated(event) {
     this.view.set(event.aggregateId, {
       username: event.payload.username
