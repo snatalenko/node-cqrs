@@ -169,6 +169,19 @@ class AbstractAggregate {
 	emit(type, payload) {
 		if (typeof type !== 'string' || !type.length) throw new TypeError('type argument must be a non-empty string');
 
+		const event = this.makeEvent(type, payload, this.command);
+
+		this.emitRaw(event);
+	}
+
+	/**
+	 *
+	 * @param {string} type
+	 * @param {any} [payload]
+	 * @param {ICommand} [sourceCommand]
+	 * @returns {IEvent}
+	 */
+	makeEvent(type, payload, sourceCommand) {
 		/** @type {IEvent} */
 		const event = {
 			aggregateId: this.id,
@@ -177,9 +190,9 @@ class AbstractAggregate {
 			payload
 		};
 
-		if (this.command) {
+		if (sourceCommand) {
 			// augment event with command context
-			const { context, sagaId, sagaVersion } = this.command;
+			const { context, sagaId, sagaVersion } = sourceCommand;
 			if (context !== undefined)
 				event.context = context;
 			if (sagaId !== undefined)
@@ -188,7 +201,7 @@ class AbstractAggregate {
 				event.sagaVersion = sagaVersion;
 		}
 
-		this.emitRaw(event);
+		return event;
 	}
 
 	/**
