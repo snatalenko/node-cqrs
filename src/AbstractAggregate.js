@@ -3,6 +3,14 @@
 const { validateHandlers, getHandler, getClassName } = require('./utils');
 const EventStream = require('./EventStream');
 
+/**
+ * Deep-clone simple JS object
+ * @template T
+ * @param {T} obj
+ * @returns {T}
+ */
+const clone = obj => JSON.parse(JSON.stringify(obj));
+
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
 
 const _id = Symbol('id');
@@ -217,7 +225,7 @@ class AbstractAggregate {
 		if (!this.state)
 			throw new Error('state property is empty, either define state or override makeSnapshot method');
 
-		return JSON.parse(JSON.stringify(this.state));
+		return clone(this.state);
 	}
 
 	/**
@@ -236,7 +244,7 @@ class AbstractAggregate {
 		if (!this.state)
 			throw new Error('state property is empty, either defined state or override restoreSnapshot method');
 
-		Object.assign(this.state, snapshotEvent.payload);
+		Object.assign(this.state, clone(snapshotEvent.payload));
 	}
 
 	/**
