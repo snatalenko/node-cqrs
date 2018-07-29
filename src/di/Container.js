@@ -122,11 +122,10 @@ module.exports = class Container {
 
 	/**
 	 * Registers an object instance in the container
-	 * @param  {Object} instance Object instance to register
+	 * @param  {any} instance Instance to register
 	 * @param  {String} exposeAs Object name to use for instance exposing on the container
 	 */
 	registerInstance(instance, exposeAs) {
-		if (!isObject(instance)) throw new TypeError('instance argument must be an Object');
 		if (typeof exposeAs !== 'string' || !exposeAs.length) throw new TypeError('exposeAs argument must be a non-empty String');
 
 		this.instances.set(exposeAs, instance);
