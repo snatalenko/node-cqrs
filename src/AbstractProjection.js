@@ -5,7 +5,19 @@ const InMemoryView = require('./infrastructure/InMemoryView');
 const { validateHandlers, getHandler, getClassName } = require('./utils');
 const info = require('debug')('cqrs:info');
 
-const _view = Symbol('view');
+const implementsIInMemoryView = view =>
+	view instanceof InMemoryView
+	|| (
+		typeof view.ready === 'boolean' &&
+		typeof view.once === 'function' &&
+		typeof view.markAsReady === 'function'
+	);
+
+/**
+ * @param {any} view
+ * @returns {IInMemoryView?}
+ */
+const asInMemoryView = view => (implementsIInMemoryView(view) ? view : undefined);
 
 /**
  * Base class for Projection definition
@@ -23,17 +35,17 @@ class AbstractProjection extends Observer {
 	 * @static
 	 */
 	static get handles() {
-		throw new Error('handles must be overridden to return a list of handled event types');
+		throw new Error('AbstractProjection.handles must be overridden to return a list of handled event types');
 	}
 
 	/**
 	 * View associated with projection
 	 *
-	 * @type {InMemoryView}
+	 * @type {IProjectionView<any>}
 	 * @readonly
 	 */
 	get view() {
-		return this[_view] || (this[_view] = new InMemoryView());
+		return this._view || (this._view = new InMemoryView());
 	}
 
 	/**
@@ -45,8 +57,7 @@ class AbstractProjection extends Observer {
 	 */
 	get shouldRestoreView() {
 		return (this.view instanceof Map)
-			|| (this.view instanceof InMemoryView)
-			|| (this.view.ready === false);
+			|| implementsIInMemoryView(this.view);
 	}
 
 	/**
@@ -57,9 +68,11 @@ class AbstractProjection extends Observer {
 	 */
 	constructor(options) {
 		super();
+
 		validateHandlers(this);
+
 		if (options && options.view)
-			this[_view] = options.view;
+			this._view = options.view;
 	}
 
 	/**
@@ -86,8 +99,9 @@ class AbstractProjection extends Observer {
 		if (!handler)
 			throw new Error(`'${event.type}' handler is not defined or not a function`);
 
-		if (this.view.ready === false && !(options && options.nowait))
-			await this.view.once('ready');
+		const inMemoryView = asInMemoryView(this.view);
+		if (inMemoryView && inMemoryView.ready === false && !(options && options.nowait))
+			await inMemoryView.once('ready');
 
 		return handler.call(this, event);
 	}
@@ -119,8 +133,9 @@ class AbstractProjection extends Observer {
 
 		info('%s view restored (%s)', this, this.view);
 
-		if (typeof this.view.markAsReady === 'function')
-			this.view.markAsReady();
+		const inMemoryView = asInMemoryView(this.view);
+		if (inMemoryView)
+			inMemoryView.markAsReady();
 	}
 
 	/**

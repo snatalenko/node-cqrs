@@ -14,7 +14,7 @@ function strMapToObj(strMap) {
  * In-memory Projection View, which suspends get()'s until it is ready
  *
  * @class InMemoryView
- * @implements {IProjectionView<any>}
+ * @implements {IInMemoryView<any>}
  */
 module.exports = class InMemoryView {
 
