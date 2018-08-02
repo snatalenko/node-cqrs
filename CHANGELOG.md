@@ -4,15 +4,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## UNRELEASED
 
+* Added: `InMemoryView.prototype.getAll` as an alternative to the deprecated `state` property
 * Changed: separated IProjectionView and IInMemoryView interfaces
 
 ## 0.14.2 - 2018-07-29
 
-* Fixed: Container.prototype.registerInstance requires an Object as first parameter
+* Fixed: `Container.prototype.registerInstance` requires an Object as first parameter
 
 ## 0.14.1 - 2018-07-14
 
-* Added: Aggregate.prototype.makeEvent as a separate method for testing purposes
+* Added: `Aggregate.prototype.makeEvent` as a separate method for testing purposes
 * Fixed: Aggregate snapshot modification thru Aggregate state
 * Fixed: Tests with NodeJS@^10
 

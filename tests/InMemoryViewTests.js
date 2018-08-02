@@ -1,7 +1,7 @@
 'use strict';
 
 const InMemoryView = require('../src/infrastructure/InMemoryView');
-const { expect } = require('chai');
+const { expect, assert } = require('chai');
 
 describe('InMemoryView', function () {
 
@@ -103,6 +103,57 @@ describe('InMemoryView', function () {
 			const result = await v.get('foo');
 
 			expect(result).to.equal('bar');
+		});
+	});
+
+	describe('getAll', () => {
+
+		it('validates parameters', async () => {
+			try {
+				await v.getAll(true);
+				assert(false, 'did not throw');
+			}
+			catch (err) {
+				if (!(err instanceof TypeError))
+					throw err;
+			}
+		});
+
+		it('asynchronously returns set of records that match filter', async () => {
+			v.create('foo', 'bar');
+			v.create('a', 2);
+			v.create('b', {});
+			v.create('c', 'test');
+			v.markAsReady();
+
+			const result = await v.getAll(value => typeof value === 'string');
+
+			expect(result).to.eql([
+				['foo', 'bar'],
+				['c', 'test']
+			]);
+		});
+
+		it('waits until view is marked as ready', async () => {
+
+			v.create('foo', 'bar');
+
+			const response = v.getAll((value, key) => key === 'foo');
+			expect(response).to.be.instanceof(Promise);
+
+			let delayedResult;
+			response.then(result => {
+				delayedResult = result;
+			});
+
+			expect(delayedResult).to.equal(undefined);
+
+			v.markAsReady();
+
+			// 2-promise loop delay
+			await Promise.resolve().then().then();
+
+			expect(delayedResult).to.eql([['foo', 'bar']]);
 		});
 	});
 

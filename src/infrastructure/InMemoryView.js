@@ -94,6 +94,27 @@ module.exports = class InMemoryView {
 	}
 
 	/**
+	 * Get all records matching an optional filter
+	 *
+	 * @param {(record: any, key?: any) => boolean} [filter]
+	 */
+	async getAll(filter) {
+		if (filter && typeof filter !== 'function')
+			throw new TypeError('filter argument, when defined, must be a Function');
+
+		if (!this._ready)
+			await this.once('ready');
+
+		const r = [];
+		for (const entry of this._map.entries()) {
+			if (filter && filter(entry[1], entry[0]))
+				r.push(entry);
+		}
+
+		return r;
+	}
+
+	/**
 	 * Create record with a given key and value
 	 *
 	 * @param {string|number} key
