@@ -36,7 +36,9 @@ module.exports = class InMemoryView {
 
 	/**
 	 * Current view state as an object
-	 * @deprecated
+	 *
+	 * @deprecated Use `async getAll()` instead
+	 *
 	 * @type {Object}
 	 * @readonly
 	 */
@@ -82,6 +84,8 @@ module.exports = class InMemoryView {
 	/**
 	 * Check if view contains a record with a given key.
 	 * This is the only synchronous method, so make sure to check the `ready` flag, if necessary
+	 *
+	 * @deprecated Use `async get()` instead
 	 *
 	 * @param {string|number} key
 	 * @returns {boolean}
@@ -141,7 +145,7 @@ module.exports = class InMemoryView {
 		if (!key) throw new TypeError('key argument required');
 		if (typeof value === 'function') throw new TypeError('value argument must be an instance of an Object');
 
-		if (this.has(key))
+		if (this._map.has(key))
 			throw new Error(`Key '${key}' already exists`);
 
 		this._map.set(key, value);
@@ -158,7 +162,7 @@ module.exports = class InMemoryView {
 		if (!key) throw new TypeError('key argument required');
 		if (typeof update !== 'function') throw new TypeError('update argument must be a Function');
 
-		if (!this.has(key))
+		if (!this._map.has(key))
 			throw new Error(`Key '${key}' does not exist`);
 
 		this._update(key, update);
@@ -176,7 +180,7 @@ module.exports = class InMemoryView {
 		if (!key) throw new TypeError('key argument required');
 		if (typeof update !== 'function') throw new TypeError('update argument must be a Function');
 
-		if (!this.has(key))
+		if (!this._map.has(key))
 			return this.create(key, applyUpdate(initialValue, update));
 
 		return this._update(key, update);
