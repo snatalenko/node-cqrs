@@ -4,6 +4,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## UNRELEASED
 
+* Added: `InMemoryView.prototype.updateEnforcingNew` 3rd parameter can contain an initial value that will be used if record does not exist
+* Changed: `InMemoryView.prototype.create` 2nd parameter must be an instance of an Object, not a factory function
 * Added: `InMemoryView.prototype.getAll` as an alternative to the deprecated `state` property
 * Changed: separated IProjectionView and IInMemoryView interfaces
 

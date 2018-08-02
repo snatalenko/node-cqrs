@@ -167,10 +167,15 @@ describe('InMemoryView', function () {
 			expect(await v.get('foo')).to.eq('bar');
 		});
 
-		it('creates new record, as passed in cb result', async () => {
-
-			v.create('foo', () => 'bar');
-			expect(await v.get('foo')).to.eq('bar');
+		it('fails, when trying to pass a function as a value', async () => {
+			try {
+				v.create('foo', () => 'bar');
+				assert(false, 'did not fail');
+			}
+			catch (err) {
+				if (!(err instanceof TypeError))
+					throw err;
+			}
 		});
 	});
 

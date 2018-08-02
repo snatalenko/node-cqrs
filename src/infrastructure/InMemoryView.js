@@ -11,6 +11,22 @@ function strMapToObj(strMap) {
 }
 
 /**
+ * Update given value with an update Cb and return updated value.
+ * Wrapper is needed for backward compatibility with update methods that were modifying the passed in objects directly
+ *
+ * @template TObjectValue
+ * @param {TObjectValue} view
+ * @param {(v: TObjectValue) => TObjectValue} update
+ * @returns TValue
+ */
+const applyUpdate = (view, update) => {
+	const valueReturnedByUpdate = update(view);
+	return valueReturnedByUpdate === undefined ?
+		view :
+		valueReturnedByUpdate;
+};
+
+/**
  * In-memory Projection View, which suspends get()'s until it is ready
  *
  * @class InMemoryView
@@ -118,23 +134,17 @@ module.exports = class InMemoryView {
 	 * Create record with a given key and value
 	 *
 	 * @param {string|number} key
-	 * @param {(function(any):any)|any} update Either initial value or an initial value factory
+	 * @param {object} [value]
 	 * @memberof InMemoryView
 	 */
-	create(key, update) {
+	create(key, value = {}) {
 		if (!key) throw new TypeError('key argument required');
-		if (!update) throw new TypeError('update argument required');
+		if (typeof value === 'function') throw new TypeError('value argument must be an instance of an Object');
 
 		if (this.has(key))
 			throw new Error(`Key '${key}' already exists`);
 
-		if (typeof update === 'function') {
-			const initialValue = {};
-			this._map.set(key, update(initialValue) || initialValue);
-		}
-		else {
-			this._map.set(key, update);
-		}
+		this._map.set(key, value);
 	}
 
 	/**
@@ -159,14 +169,15 @@ module.exports = class InMemoryView {
 	 *
 	 * @param {string|number} key
 	 * @param {function(any):any} update
+	 * @param {any} [initialValue]
 	 * @memberof InMemoryView
 	 */
-	updateEnforcingNew(key, update) {
+	updateEnforcingNew(key, update, initialValue = {}) {
 		if (!key) throw new TypeError('key argument required');
 		if (typeof update !== 'function') throw new TypeError('update argument must be a Function');
 
 		if (!this.has(key))
-			return this.create(key, update);
+			return this.create(key, applyUpdate(initialValue, update));
 
 		return this._update(key, update);
 	}
@@ -196,13 +207,7 @@ module.exports = class InMemoryView {
 	 */
 	_update(key, update) {
 		const value = this._map.get(key);
-
-		// OBSOLETE: if update function returns undefined, then it modifies passed in value;
-		// logic left here for backward compatibility
-		const updateResult = update(value);
-		const newValue = updateResult !== undefined ? updateResult : value;
-
-		this._map.set(key, newValue);
+		this._map.set(key, applyUpdate(value, update));
 	}
 
 	/**
