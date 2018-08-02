@@ -1,9 +1,8 @@
 'use strict';
 
 const { InMemoryMessageBus } = require('..');
-const { expect, assert, should, AssertionError } = require('chai');
+const { expect, assert, AssertionError } = require('chai');
 const { spy } = require('sinon');
-should();
 
 describe('InMemoryMessageBus', function () {
 
@@ -83,7 +82,7 @@ describe('InMemoryMessageBus', function () {
 
 	describe('publish(event)', function () {
 
-		it('exists', () => bus.should.respondTo('publish'));
+		it('exists', () => expect(bus).to.respondTo('publish'));
 
 		it('publishes a message to all handlers', async () => {
 

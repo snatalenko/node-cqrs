@@ -15,8 +15,6 @@ const {
 const getClassDependencyNames = require('../src/di/getClassDependencyNames');
 const delay = ms => new Promise(done => setTimeout(done, ms));
 
-require('chai').should();
-
 describe('Container', function () {
 
 	let c;
@@ -43,7 +41,7 @@ describe('Container', function () {
 
 			const es = c.eventStore;
 
-			es.should.be.an('Object');
+			expect(es).to.be.an('Object');
 
 			expect(c.instances).to.include.key('eventStore');
 			expect(c.instances).to.include.key('storage');
@@ -155,12 +153,12 @@ describe('Container', function () {
 			c.createUnexposedInstances();
 
 			await c.commandBus.sendRaw({ type: 'doSomething' });
-			dependencyMet.should.equal(false);
+			expect(dependencyMet).to.equal(false);
 
 			c.register(SomeService, 'aggregateDependency');
 
 			await c.commandBus.sendRaw({ type: 'doSomething' });
-			dependencyMet.should.equal(true);
+			expect(dependencyMet).to.equal(true);
 		});
 	});
 
@@ -202,7 +200,7 @@ describe('Container', function () {
 		}
 
 		it('exists', () => {
-			c.should.respondTo('registerProjection');
+			expect(c).to.respondTo('registerProjection');
 		});
 
 		it('registers projection factory', () => {
@@ -236,20 +234,20 @@ describe('Container', function () {
 
 			c.createUnexposedInstances();
 
-			instancesCount.should.equal(1);
+			expect(instancesCount).to.equal(1);
 
 			c.createUnexposedInstances();
 			c.createAllInstances();
 
 			// second instance should not be created
-			instancesCount.should.equal(1);
+			expect(instancesCount).to.equal(1);
 		});
 	});
 
 	describe('createAllInstances', () => {
 
 		it('exists', () => {
-			c.should.respondTo('createAllInstances');
+			expect(c).to.respondTo('createAllInstances');
 		});
 	});
 
@@ -267,12 +265,12 @@ describe('Container', function () {
 			}
 
 			const dependencies = getClassDependencyNames(MyClass);
-			dependencies.should.have.length(2);
-			dependencies[0].should.equal('service');
+			expect(dependencies).to.have.length(2);
+			expect(dependencies[0]).to.equal('service');
 
-			dependencies[1].should.have.length(2);
-			dependencies[1][0].should.equal('someOption');
-			dependencies[1][1].should.equal('test');
+			expect(dependencies[1]).to.have.length(2);
+			expect(dependencies[1][0]).to.equal('someOption');
+			expect(dependencies[1][1]).to.equal('test');
 		});
 
 		it('extracts destructed parameters from ctor parameter object', () => {
@@ -284,10 +282,10 @@ describe('Container', function () {
 			}
 
 			const dependencies = getClassDependencyNames(MyClass);
-			dependencies.should.have.length(1);
-			dependencies[0].should.be.an('Array').that.has.length(2);
-			dependencies[0][0].should.eq('someService');
-			dependencies[0][1].should.eq('anotherService');
+			expect(dependencies).to.have.length(1);
+			expect(dependencies[0]).to.be.an('Array').that.has.length(2);
+			expect(dependencies[0][0]).to.eq('someService');
+			expect(dependencies[0][1]).to.eq('anotherService');
 		});
 
 		it('extracts ES5 class constructor parameter names', () => {
@@ -301,8 +299,8 @@ describe('Container', function () {
 			};
 			const deps1 = getClassDependencyNames(AnotherClass);
 			expect(deps1).to.exist;
-			deps1.should.have.length(2);
-			deps1[0].should.equal('service');
+			expect(deps1).to.have.length(2);
+			expect(deps1[0]).to.equal('service');
 
 			// declared as const Name = function Name (...)
 
@@ -313,8 +311,8 @@ describe('Container', function () {
 			};
 			const deps2 = getClassDependencyNames(ThirdClass);
 			expect(deps2).to.exist;
-			deps2.should.have.length(2);
-			deps2[0].should.equal('service');
+			expect(deps2).to.have.length(2);
+			expect(deps2[0]).to.equal('service');
 
 			// declared as function Name(...)
 
@@ -325,8 +323,8 @@ describe('Container', function () {
 			}
 			const deps3 = getClassDependencyNames(FourthClass);
 			expect(deps3).to.exist;
-			deps3.should.have.length(2);
-			deps3[0].should.equal('service');
+			expect(deps3).to.have.length(2);
+			expect(deps3[0]).to.equal('service');
 		});
 	});
 });

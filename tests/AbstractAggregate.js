@@ -6,8 +6,6 @@ const { AbstractAggregate, EventStream } = require('../src');
 const blankContext = require('./mocks/blankContext');
 const delay = ms => new Promise(rs => setTimeout(rs, ms));
 
-require('chai').should();
-
 class AggregateState {
 	mutate(event) {
 		this[event.type] = (this[event.type] || 0) + 1;
@@ -147,7 +145,7 @@ describe('AbstractAggregate', function () {
 
 	describe('handle(command)', () => {
 
-		it('exists', () => agg.should.respondTo('handle'));
+		it('exists', () => expect(agg).to.respondTo('handle'));
 
 		it('passes command to a handler declared within aggregate, returns a Promise', async () => {
 
@@ -206,7 +204,7 @@ describe('AbstractAggregate', function () {
 
 		const event = { type: 'somethingHappened' };
 
-		it('exists', () => agg.should.respondTo('mutate'));
+		it('exists', () => expect(agg).to.respondTo('mutate'));
 
 		it('increases aggregate version', () => {
 
