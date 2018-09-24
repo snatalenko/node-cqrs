@@ -420,6 +420,9 @@ class EventStore {
 	 * @param {string} name
 	 */
 	queue(name) {
+		if (typeof this._eventEmitter.queue !== 'function')
+			throw new Error('Named queues are not supported by the underlying message bus');
+
 		return this._eventEmitter.queue(name);
 	}
 
