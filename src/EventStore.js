@@ -73,6 +73,7 @@ function validateMessageBus(messageBus) {
 		throw new TypeError('messageBus.publish argument must be a Function');
 }
 
+
 /**
  * Create one-time eventEmitter subscription for one or multiple events that match a filter
  *
@@ -404,14 +405,22 @@ class EventStore {
 	 *
 	 * @param {string} messageType
 	 * @param {function(IEvent): any} handler
-	 * @param {object} [options]
-	 * @param {string} [options.queueName] Name of the queue in environment with multiple event handlers installed
 	 */
-	on(messageType, handler, options) {
+	on(messageType, handler) {
 		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
+		if (arguments.length !== 2) throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
 
-		this._eventEmitter.on(messageType, handler, options);
+		this._eventEmitter.on(messageType, handler);
+	}
+
+	/**
+	 * Get or create a named queue, which delivers events to a single handler only
+	 *
+	 * @param {string} name
+	 */
+	queue(name) {
+		return this._eventEmitter.queue(name);
 	}
 
 	/**
