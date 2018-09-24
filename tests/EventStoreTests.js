@@ -271,16 +271,16 @@ describe('EventStore', function () {
 			es = new EventStore({ storage });
 
 			expect(() => {
-				es.on('somethingHappened', () => { }, { queueName: 'namedQueue' });
+				es.queue('namedQueue').on('somethingHappened', () => { });
 			}).to.not.throw();
 
 			expect(() => {
-				es.on('somethingHappened', () => { }, { queueName: 'anotherNamedQueue' });
+				es.queue('anotherNamedQueue').on('somethingHappened', () => { });
 			}).to.not.throw();
 
 			expect(() => {
-				es.on('somethingHappened', () => { }, { queueName: 'namedQueue' });
-			}).to.throw('\'namedQueue:somethingHappened\' handler already set up on this node');
+				es.queue('namedQueue').on('somethingHappened', () => { });
+			}).to.throw('"somethingHappened" handler is already set up on the "namedQueue" queue');
 		});
 
 		it('sets up multiple handlers for same messageType, when queue name is not defined (Projections)', () => {

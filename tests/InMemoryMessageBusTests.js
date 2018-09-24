@@ -100,15 +100,14 @@ describe('InMemoryMessageBus', function () {
 
 		it('does not allow to setup multiple subscriptions for same event + queueName combination', () => {
 
-			const queueName = 'notifications';
-			bus.on('somethingHappened', () => { }, { queueName });
+			bus.queue('notifications').on('somethingHappened', () => { });
 
 			try {
-				bus.on('somethingHappened', () => { }, { queueName });
+				bus.queue('notifications').on('somethingHappened', () => { });
 				throw new AssertionError('did not fail');
 			}
 			catch (err) {
-				if (err.message !== '\'notifications:somethingHappened\' handler already set up on this node')
+				if (err.message !== '"somethingHappened" handler is already set up on the "notifications" queue')
 					throw err;
 			}
 		});

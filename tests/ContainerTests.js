@@ -170,7 +170,7 @@ describe('Container', function () {
 				static get startsWith() {
 					return ['somethingHappened'];
 				}
-				somethingHappened(event) {
+				somethingHappened() {
 					super.enqueue('doSomething', undefined, { foo: 'bar' });
 				}
 			}
@@ -178,7 +178,7 @@ describe('Container', function () {
 			c.registerSaga(Saga);
 			c.createUnexposedInstances();
 
-			c.commandBus.on('doSomething', cmd => done());
+			c.commandBus.on('doSomething', () => done());
 
 			const events = [
 				{ type: 'somethingHappened', aggregateId: 1 }

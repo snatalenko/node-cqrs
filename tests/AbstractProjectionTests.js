@@ -122,7 +122,7 @@ describe('AbstractProjection', function () {
 		it('assigns "ready=true" property to InMemoryView view', () => {
 
 			const blankProjection = new MyProjection();
-			expect(blankProjection.view).to.have.property('ready', false);
+			expect(blankProjection.view).to.have.property('ready').that.is.not.ok;
 
 			expect(projection.view).to.have.property('ready', true);
 		});
@@ -147,13 +147,15 @@ describe('AbstractProjection', function () {
 
 		const event = { type: 'somethingHappened', aggregateId: 1 };
 
-		it('waits until the view is ready', async () => {
+		it('waits until the restoring process is done', async () => {
+
+			const storage = new InMemoryEventStorage();
+			const es = new EventStore({ storage });
+			projection.restore(es);
 
 			const response = projection.project(event);
 
 			expect(await getPromiseState(response)).to.eq('pending');
-
-			projection.view.markAsReady();
 
 			await Promise.resolve().then();
 
@@ -169,7 +171,7 @@ describe('AbstractProjection', function () {
 
 		it('passes event to projection event handler', async () => {
 
-			projection.view.markAsReady();
+			projection.view.ready = true;
 			sinon.spy(projection, '_somethingHappened');
 
 			const event = { type: 'somethingHappened', aggregateId: 1 };

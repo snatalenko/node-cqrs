@@ -251,6 +251,15 @@ module.exports = class InMemoryView {
 	}
 
 	/**
+	 * Mark view as 'ready' when it's restored by projection
+	 * @deprecated Use `ready = true`
+	 * @memberof InMemoryView
+	 */
+	markAsReady() {
+		this.ready = true;
+	}
+
+	/**
 	 * Create a Promise which will resolve to a first emitted event of a given type
 	 *
 	 * @param {string} eventType

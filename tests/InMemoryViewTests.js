@@ -39,28 +39,6 @@ describe('InMemoryView', function () {
 		});
 	});
 
-	describe('ready', () => {
-
-		it('returns false, if view is not restored', () => {
-
-			expect(v).to.have.property('ready', false);
-
-		});
-	});
-
-	describe('markAsReady', () => {
-
-		it('switches the `ready` flag to true', () => {
-			v.markAsReady();
-			expect(v).to.have.property('ready', true);
-		});
-
-		it('emits "ready" event', async () => Promise.all([
-			v.once('ready'),
-			v.markAsReady()
-		]));
-	});
-
 	describe('has', () => {
 
 		it('checks whether the view has a value with a given key', () => {
@@ -87,7 +65,7 @@ describe('InMemoryView', function () {
 
 			expect(delayedResult).to.equal(undefined);
 
-			v.markAsReady();
+			v.ready = true;
 
 			// 2-promise loop delay
 			await Promise.resolve().then().then();
@@ -98,7 +76,7 @@ describe('InMemoryView', function () {
 		it('asynchronously returns a view record with a given key', async () => {
 
 			v.create('foo', 'bar');
-			v.markAsReady();
+			v.ready = true;
 
 			const result = await v.get('foo');
 
@@ -124,7 +102,7 @@ describe('InMemoryView', function () {
 			v.create('a', 2);
 			v.create('b', {});
 			v.create('c', 'test');
-			v.markAsReady();
+			v.ready = true;
 
 			const result = await v.getAll(value => typeof value === 'string');
 
@@ -148,7 +126,7 @@ describe('InMemoryView', function () {
 
 			expect(delayedResult).to.equal(undefined);
 
-			v.markAsReady();
+			v.ready = true;
 
 			// 2-promise loop delay
 			await Promise.resolve().then().then();
@@ -159,7 +137,7 @@ describe('InMemoryView', function () {
 
 	describe('create', () => {
 
-		beforeEach(() => v.markAsReady());
+		beforeEach(() => v.ready = true);
 
 		it('creates new record, as passed in value', async () => {
 
@@ -181,11 +159,11 @@ describe('InMemoryView', function () {
 
 	describe('update', () => {
 
-		beforeEach(() => v.markAsReady());
+		beforeEach(() => v.ready = true);
 
 		it('fails, if record does not exist', () => {
 
-			expect(() => v.update('foo', v => null)).to.throw('Key \'foo\' does not exist');
+			expect(() => v.update('foo', () => null)).to.throw('Key \'foo\' does not exist');
 		});
 
 		it('updates existing record by update fn result', async () => {
@@ -215,13 +193,13 @@ describe('InMemoryView', function () {
 
 	describe('updateEnforcingNew', () => {
 
-		beforeEach(() => v.markAsReady());
+		beforeEach(() => v.ready = true);
 
 		it('creates record, if it does not exist', async () => {
 
 			expect(await v.get('foo')).to.eq(undefined);
 
-			v.updateEnforcingNew('foo', v => 'bar');
+			v.updateEnforcingNew('foo', () => 'bar');
 
 			expect(await v.get('foo')).to.eq('bar');
 		});
@@ -244,7 +222,7 @@ describe('InMemoryView', function () {
 
 			v.create('foo', 'bar');
 			v.create('x', { v: 'y' });
-			v.markAsReady();
+			v.ready = true;
 
 			v.updateAll(v => typeof v === 'string', v => `${v}-updated`);
 
@@ -255,7 +233,7 @@ describe('InMemoryView', function () {
 
 	describe('delete', () => {
 
-		beforeEach(() => v.markAsReady());
+		beforeEach(() => v.ready = true);
 
 		it('does nothing, if record does not exist', () => {
 
@@ -280,7 +258,7 @@ describe('InMemoryView', function () {
 
 			v.create('foo', 'bar');
 			v.create('x', { v: 'y' });
-			v.markAsReady();
+			v.ready = true;
 
 			v.deleteAll(v => typeof v === 'object');
 
