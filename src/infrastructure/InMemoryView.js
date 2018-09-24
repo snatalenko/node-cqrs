@@ -48,14 +48,24 @@ module.exports = class InMemoryView {
 
 	/**
 	 * Whether the view is restored
-	 *
-	 * @readonly
 	 * @type {boolean}
-	 * @memberof InMemoryView
 	 */
 	get ready() {
 		return this._ready;
 	}
+
+	/**
+	 * Whether the view is restored
+	 *
+	 * @type {boolean}
+	 * @memberof InMemoryView
+	 */
+	set ready(value) {
+		this._ready = value;
+		if (this._ready)
+			this._emitter.emit('ready');
+	}
+
 
 	/**
 	 * Number of records in the View
@@ -72,7 +82,6 @@ module.exports = class InMemoryView {
 	 */
 	constructor() {
 		this._map = new Map();
-		this._ready = false;
 		this._emitter = new EventEmitter();
 
 		// explicitly bind functions to this object for easier using in Promises
@@ -239,15 +248,6 @@ module.exports = class InMemoryView {
 			if (!filter || filter(value))
 				this._map.delete(key);
 		}
-	}
-
-	/**
-	 * Mark view as 'ready' when it's restored by projection
-	 * @memberof InMemoryView
-	 */
-	markAsReady() {
-		this._ready = true;
-		this._emitter.emit('ready');
 	}
 
 	/**

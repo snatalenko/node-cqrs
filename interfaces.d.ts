@@ -119,13 +119,12 @@ declare interface IProjection extends IObserver {
 declare type ViewUpdateCallback = function(any): any;
 
 declare interface IProjectionView<TRecord> {
+	ready?: boolean;
 	get(key: any): Promise<TRecord>;
 }
 
 declare interface IInMemoryView<TRecord> extends IProjectionView<TRecord> {
-	readonly ready: boolean;
 	once(eventType: "ready"): Promise<void>;
-	markAsReady(): void;
 }
 
 // endregion Projection
@@ -135,7 +134,8 @@ declare interface IInMemoryView<TRecord> extends IProjectionView<TRecord> {
 declare type IMessageHandler = (message: IMessage) => void;
 
 declare interface IObservable {
-	on(type: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
+	on(type: string, handler: IMessageHandler): void;
+	queue?(name: string): IObservable;
 }
 
 declare interface IObserver {
@@ -147,11 +147,10 @@ declare interface IObserver {
 
 
 declare type EventFilter = { afterEvent?: IEvent; beforeEvent?: IEvent; };
-declare type SubscriptionOptions = { queueName?: string };
 
-declare interface IEventEmitter {
-	on?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
-	off?(messageType: string, handler: IMessageHandler, options?: SubscriptionOptions): void;
+declare interface IEventEmitter extends IObservable {
+	on?(messageType: string, handler: IMessageHandler): void;
+	off?(messageType: string, handler: IMessageHandler): void;
 }
 
 declare interface IEventStorage extends IEventEmitter {

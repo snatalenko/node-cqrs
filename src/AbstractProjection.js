@@ -5,19 +5,21 @@ const InMemoryView = require('./infrastructure/InMemoryView');
 const { validateHandlers, getHandler, getClassName } = require('./utils');
 const info = require('debug')('cqrs:info');
 
-const implementsIInMemoryView = view =>
-	view instanceof InMemoryView
-	|| (
-		typeof view.ready === 'boolean' &&
-		typeof view.once === 'function' &&
-		typeof view.markAsReady === 'function'
-	);
+function makeTrigger() {
+	let resolve;
 
-/**
- * @param {any} view
- * @returns {IInMemoryView?}
- */
-const asInMemoryView = view => (implementsIInMemoryView(view) ? view : undefined);
+	/** @type {Promise & { done: boolean, markAsDone: () => void }} */
+	// @ts-ignore
+	const trigger = new Promise(rs => {
+		resolve = rs;
+	});
+	trigger.done = false;
+	trigger.markAsDone = () => {
+		trigger.done = true;
+		resolve();
+	};
+	return trigger;
+}
 
 /**
  * Base class for Projection definition
@@ -57,7 +59,7 @@ class AbstractProjection extends Observer {
 	 */
 	get shouldRestoreView() {
 		return (this.view instanceof Map)
-			|| implementsIInMemoryView(this.view);
+			|| (this.view instanceof InMemoryView);
 	}
 
 	/**
@@ -91,17 +93,23 @@ class AbstractProjection extends Observer {
 	 * Pass event to projection event handler
 	 *
 	 * @param {IEvent} event
-	 * @param {object} [options]
-	 * @param {boolean} [options.nowait]
 	 */
-	async project(event, options) {
+	async project(event) {
+		if (this._restoring && !this._restoring.done)
+			await this._restoring;
+
+		return this._project(event);
+	}
+
+	/**
+	 * Pass event to projection event handler, without awaiting for restore operation to complete
+	 * @protected
+	 * @param {IEvent} event
+	 */
+	async _project(event) {
 		const handler = getHandler(this, event.type);
 		if (!handler)
 			throw new Error(`'${event.type}' handler is not defined or not a function`);
-
-		const inMemoryView = asInMemoryView(this.view);
-		if (inMemoryView && inMemoryView.ready === false && !(options && options.nowait))
-			await inMemoryView.once('ready');
 
 		return handler.call(this, event);
 	}
@@ -116,13 +124,16 @@ class AbstractProjection extends Observer {
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
+		this._restoring = makeTrigger();
+		this.view.ready = false;
+
 		const messageTypes = Object.getPrototypeOf(this).constructor.handles;
 
 		const events = await eventStore.getAllEvents(messageTypes);
 
 		for (const event of events) {
 			try {
-				await this.project(event, { nowait: true });
+				await this._project(event);
 			}
 			catch (err) {
 				info('%s view restoring has failed on event: %j', this, event);
@@ -133,9 +144,8 @@ class AbstractProjection extends Observer {
 
 		info('%s view restored (%s)', this, this.view);
 
-		const inMemoryView = asInMemoryView(this.view);
-		if (inMemoryView)
-			inMemoryView.markAsReady();
+		this._restoring.markAsDone();
+		this.view.ready = true;
 	}
 
 	/**
