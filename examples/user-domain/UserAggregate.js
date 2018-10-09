@@ -50,7 +50,7 @@ class UserAggregateState {
  * @class UserAggregate
  * @extends {AbstractAggregate}
  */
-module.exports = class UserAggregate extends AbstractAggregate {
+class UserAggregate extends AbstractAggregate {
 
 	/**
 	 * List of commands supported by User Aggregate
@@ -125,4 +125,6 @@ module.exports = class UserAggregate extends AbstractAggregate {
 			passwordHash: md5Hash(password)
 		});
 	}
-};
+}
+
+module.exports = UserAggregate;

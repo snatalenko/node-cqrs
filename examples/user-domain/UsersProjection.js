@@ -9,7 +9,7 @@ const { AbstractProjection } = require('../../src'); // node-cqrs
  * @class UsersProjection
  * @extends {AbstractProjection}
  */
-module.exports = class UsersProjection extends AbstractProjection {
+class UsersProjection extends AbstractProjection {
 
 	/**
 	 * Events being handled by Projection
@@ -41,4 +41,6 @@ module.exports = class UsersProjection extends AbstractProjection {
 			username: payload.username
 		});
 	}
-};
+}
+
+module.exports = UsersProjection;

@@ -5,7 +5,7 @@
         "allowSyntheticDefaultImports": true,
         "checkJs": true,
         "lib": [
-            "es7"
+            "es2017"
         ]
     },
     "exclude": [
