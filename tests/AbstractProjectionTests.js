@@ -151,27 +151,27 @@ describe('AbstractProjection', function () {
 
 			const storage = new InMemoryEventStorage();
 			const es = new EventStore({ storage });
-			projection.restore(es);
 
-			const response = projection.project(event);
+			const restoreProcess = projection.restore(es);
+			const projectProcess = projection.project(event);
 
-			expect(await getPromiseState(response)).to.eq('pending');
+			expect(await getPromiseState(projectProcess)).to.eq('pending');
 
-			await Promise.resolve().then();
+			await restoreProcess;
 
-			expect(await getPromiseState(response)).to.eq('resolved');
+			expect(await getPromiseState(projectProcess)).to.eq('resolved');
 		});
 
-		it('can bypass waiting when invoked with a `nowait` flag', async () => {
+		it('can bypass waiting when invoked as a protected method', async () => {
 
-			const response = projection.project(event, { nowait: true });
+			const response = projection._project(event);
 
 			expect(await getPromiseState(response)).to.eq('resolved');
 		});
 
 		it('passes event to projection event handler', async () => {
 
-			projection.view.ready = true;
+			projection.view.unlock();
 			sinon.spy(projection, '_somethingHappened');
 
 			const event = { type: 'somethingHappened', aggregateId: 1 };

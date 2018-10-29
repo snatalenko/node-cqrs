@@ -65,7 +65,7 @@ describe('InMemoryView', function () {
 
 			expect(delayedResult).to.equal(undefined);
 
-			v.ready = true;
+			v.unlock();
 
 			// 2-promise loop delay
 			await Promise.resolve().then().then();
@@ -76,7 +76,7 @@ describe('InMemoryView', function () {
 		it('asynchronously returns a view record with a given key', async () => {
 
 			v.create('foo', 'bar');
-			v.ready = true;
+			v.unlock();
 
 			const result = await v.get('foo');
 
@@ -102,7 +102,7 @@ describe('InMemoryView', function () {
 			v.create('a', 2);
 			v.create('b', {});
 			v.create('c', 'test');
-			v.ready = true;
+			v.unlock();
 
 			const result = await v.getAll(value => typeof value === 'string');
 
@@ -126,7 +126,7 @@ describe('InMemoryView', function () {
 
 			expect(delayedResult).to.equal(undefined);
 
-			v.ready = true;
+			v.unlock();
 
 			// 2-promise loop delay
 			await Promise.resolve().then().then();
@@ -137,7 +137,7 @@ describe('InMemoryView', function () {
 
 	describe('create', () => {
 
-		beforeEach(() => v.ready = true);
+		beforeEach(() => v.unlock());
 
 		it('creates new record, as passed in value', async () => {
 
@@ -159,7 +159,7 @@ describe('InMemoryView', function () {
 
 	describe('update', () => {
 
-		beforeEach(() => v.ready = true);
+		beforeEach(() => v.unlock());
 
 		it('fails, if record does not exist', () => {
 
@@ -193,7 +193,7 @@ describe('InMemoryView', function () {
 
 	describe('updateEnforcingNew', () => {
 
-		beforeEach(() => v.ready = true);
+		beforeEach(() => v.unlock());
 
 		it('creates record, if it does not exist', async () => {
 
@@ -222,7 +222,7 @@ describe('InMemoryView', function () {
 
 			v.create('foo', 'bar');
 			v.create('x', { v: 'y' });
-			v.ready = true;
+			v.unlock();
 
 			v.updateAll(v => typeof v === 'string', v => `${v}-updated`);
 
@@ -233,7 +233,7 @@ describe('InMemoryView', function () {
 
 	describe('delete', () => {
 
-		beforeEach(() => v.ready = true);
+		beforeEach(() => v.unlock());
 
 		it('does nothing, if record does not exist', () => {
 
@@ -258,7 +258,7 @@ describe('InMemoryView', function () {
 
 			v.create('foo', 'bar');
 			v.create('x', { v: 'y' });
-			v.ready = true;
+			v.unlock();
 
 			v.deleteAll(v => typeof v === 'object');
 

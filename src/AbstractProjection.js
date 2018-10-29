@@ -1,25 +1,25 @@
 'use strict';
 
-const Observer = require('./Observer');
+const { subscribe } = require('./Observer');
 const InMemoryView = require('./infrastructure/InMemoryView');
 const { validateHandlers, getHandler, getClassName } = require('./utils');
 const info = require('debug')('cqrs:info');
 
-function makeTrigger() {
-	let resolve;
+/**
+ * @param {IConcurrentView | any} view
+ */
+const isConcurrentView = view =>
+	typeof view.lock === 'function' &&
+	typeof view.unlock === 'function' &&
+	typeof view.once === 'function';
 
-	/** @type {Promise & { done: boolean, markAsDone: () => void }} */
-	// @ts-ignore
-	const trigger = new Promise(rs => {
-		resolve = rs;
-	});
-	trigger.done = false;
-	trigger.markAsDone = () => {
-		trigger.done = true;
-		resolve();
-	};
-	return trigger;
-}
+/**
+ * @template TRecord
+ * @param {IProjectionView<TRecord>} view
+ * @returns {IConcurrentView<TRecord>}
+ */
+// @ts-ignore
+const asConcurrentView = view => (isConcurrentView(view) ? view : undefined);
 
 /**
  * Base class for Projection definition
@@ -27,7 +27,7 @@ function makeTrigger() {
  * @class AbstractProjection
  * @implements {IProjection}
  */
-class AbstractProjection extends Observer {
+class AbstractProjection {
 
 	/**
 	 * List of event types being handled by projection. Must be overridden in projection implementation
@@ -54,7 +54,7 @@ class AbstractProjection extends Observer {
 	 * Indicates if view should be restored from EventStore on start.
 	 * Override for custom behavior.
 	 *
-	 * @type {boolean}
+	 * @type {boolean | Promise<boolean>}
 	 * @readonly
 	 */
 	get shouldRestoreView() {
@@ -69,8 +69,6 @@ class AbstractProjection extends Observer {
 	 * @param {IProjectionView<any>} [options.view]
 	 */
 	constructor(options) {
-		super();
-
 		validateHandlers(this);
 
 		if (options && options.view)
@@ -81,12 +79,14 @@ class AbstractProjection extends Observer {
 	 * Subscribe to event store
 	 *
 	 * @param {IEventStore} eventStore
+	 * @return {Promise<void>}
 	 */
-	subscribe(eventStore) {
-		super.subscribe(eventStore, undefined, this.project);
+	async subscribe(eventStore) {
+		subscribe(eventStore, this, {
+			masterHandler: this.project
+		});
 
-		if (this.shouldRestoreView)
-			this.restore(eventStore);
+		await this.restore(eventStore);
 	}
 
 	/**
@@ -95,8 +95,9 @@ class AbstractProjection extends Observer {
 	 * @param {IEvent} event
 	 */
 	async project(event) {
-		if (this._restoring && !this._restoring.done)
-			await this._restoring;
+		const concurrentView = asConcurrentView(this.view);
+		if (concurrentView && !concurrentView.ready)
+			await concurrentView.once('ready');
 
 		return this._project(event);
 	}
@@ -116,20 +117,43 @@ class AbstractProjection extends Observer {
 
 	/**
 	 * Restore projection view from event store
-	 * @private
+	 *
 	 * @param {IEventStore} eventStore
 	 * @return {Promise<void>}
 	 */
 	async restore(eventStore) {
+		// lock the view to ensure same restoring procedure
+		// won't be performed by another projection instance
+		const concurrentView = asConcurrentView(this.view);
+		if (concurrentView)
+			await concurrentView.lock();
+
+		const shouldRestore = await this.shouldRestoreView;
+		if (shouldRestore)
+			await this._restore(eventStore);
+
+		if (concurrentView)
+			concurrentView.unlock();
+	}
+
+	/**
+	 * Restore projection view from event store
+	 * @protected
+	 * @param {IEventStore} eventStore
+	 * @return {Promise<void>}
+	 */
+	async _restore(eventStore) {
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
-		this._restoring = makeTrigger();
-		this.view.ready = false;
+		info('%s retrieving events...', this);
 
 		const messageTypes = Object.getPrototypeOf(this).constructor.handles;
-
 		const events = await eventStore.getAllEvents(messageTypes);
+		if (!events.length)
+			return;
+
+		info('%s restoring from %d event(s)...', this, events.length);
 
 		for (const event of events) {
 			try {
@@ -143,9 +167,6 @@ class AbstractProjection extends Observer {
 		}
 
 		info('%s view restored (%s)', this, this.view);
-
-		this._restoring.markAsDone();
-		this.view.ready = true;
 	}
 
 	/**

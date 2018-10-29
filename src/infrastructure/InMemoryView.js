@@ -55,19 +55,6 @@ module.exports = class InMemoryView {
 	}
 
 	/**
-	 * Whether the view is restored
-	 *
-	 * @type {boolean}
-	 * @memberof InMemoryView
-	 */
-	set ready(value) {
-		this._ready = value;
-		if (this._ready)
-			this._emitter.emit('ready');
-	}
-
-
-	/**
 	 * Number of records in the View
 	 *
 	 * @type {number}
@@ -88,6 +75,24 @@ module.exports = class InMemoryView {
 		Object.defineProperties(this, {
 			get: { value: this.get.bind(this) }
 		});
+	}
+
+	/**
+	 * Lock the view to prevent concurrent modifications
+	 */
+	async lock() {
+		if (this.ready === false)
+			await this.once('ready');
+
+		this._ready = false;
+	}
+
+	/**
+	 * Release the lock
+	 */
+	async unlock() {
+		this._ready = true;
+		this._emitter.emit('ready');
 	}
 
 	/**
@@ -252,11 +257,11 @@ module.exports = class InMemoryView {
 
 	/**
 	 * Mark view as 'ready' when it's restored by projection
-	 * @deprecated Use `ready = true`
+	 * @deprecated Use `unlock()`
 	 * @memberof InMemoryView
 	 */
 	markAsReady() {
-		this.ready = true;
+		this.unlock();
 	}
 
 	/**

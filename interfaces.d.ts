@@ -119,11 +119,13 @@ declare interface IProjection extends IObserver {
 declare type ViewUpdateCallback = function(any): any;
 
 declare interface IProjectionView<TRecord> {
-	ready?: boolean;
 	get(key: any): Promise<TRecord>;
 }
 
-declare interface IInMemoryView<TRecord> extends IProjectionView<TRecord> {
+declare interface IConcurrentView<TRecord> extends IProjectionView<TRecord> {
+	ready: boolean;
+	lock(): Promise<void>;
+	unlock(): Promise<void>;
 	once(eventType: "ready"): Promise<void>;
 }
 
@@ -138,7 +140,14 @@ declare interface IObservable {
 	queue?(name: string): IObservable;
 }
 
+declare type TSubscribeOptions = {
+	messageTypes?: string[],
+	masterHandler?: IMessageHandler,
+	queueName?: string
+}
+
 declare interface IObserver {
+	static subscribe(obervable: IObservable, observer: IObserver, options: TSubscribeOptions): void;
 	readonly handles?: string[];
 	subscribe(obervable: IObservable, messageTypes?: string[], masterHandler?: IMessageHandler | string): void;
 }

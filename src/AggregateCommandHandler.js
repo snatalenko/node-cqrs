@@ -1,6 +1,6 @@
 'use strict';
 
-const Observer = require('./Observer');
+const { subscribe } = require('./Observer');
 const { isClass } = require('./utils');
 const info = require('debug')('cqrs:info');
 
@@ -12,10 +12,9 @@ const info = require('debug')('cqrs:info');
  * restores its state, passes command and commits emitted events to event store.
  *
  * @class AggregateCommandHandler
- * @extends {Observer}
  * @implements {ICommandHandler}
  */
-class AggregateCommandHandler extends Observer {
+class AggregateCommandHandler {
 
 	/**
 	 * Creates an instance of AggregateCommandHandler.
@@ -28,7 +27,6 @@ class AggregateCommandHandler extends Observer {
 	constructor(options) {
 		if (!options.eventStore) throw new TypeError('eventStore argument required');
 		if (!options.aggregateType) throw new TypeError('aggregateType argument required');
-		super();
 
 		this._eventStore = options.eventStore;
 		if (isClass(options.aggregateType)) {
@@ -52,7 +50,10 @@ class AggregateCommandHandler extends Observer {
 	 * @returns {any} - whatever EventEmitter.on returns for each messageType
 	 */
 	subscribe(commandBus) {
-		return super.subscribe(commandBus, this._handles, this.execute);
+		subscribe(commandBus, this, {
+			messageTypes: this._handles,
+			masterHandler: this.execute
+		});
 	}
 
 	/**
