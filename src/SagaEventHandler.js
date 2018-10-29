@@ -1,7 +1,7 @@
 /* eslint new-cap: "off" */
 'use strict';
 
-const Observer = require('./Observer');
+const { subscribe } = require('./Observer');
 const { isClass } = require('./utils');
 const info = require('debug')('cqrs:info');
 
@@ -12,10 +12,9 @@ const info = require('debug')('cqrs:info');
  * and passes command(s) to command bus
  *
  * @class {SagaEventHandler}
- * @extends {Observer}
  * @implements {IEventReceptor}
  */
-class SagaEventHandler extends Observer {
+class SagaEventHandler {
 
 	/**
 	 * Creates an instance of SagaEventHandler
@@ -33,8 +32,6 @@ class SagaEventHandler extends Observer {
 		if (!options.sagaType) throw new TypeError('options.sagaType argument required');
 		if (!options.eventStore) throw new TypeError('options.eventStore argument required');
 		if (!options.commandBus) throw new TypeError('options.commandBus argument required');
-
-		super();
 
 		this._eventStore = options.eventStore;
 		this._commandBus = options.commandBus;
@@ -65,7 +62,7 @@ class SagaEventHandler extends Observer {
 	 * Overrides observer subscribe method
 	 */
 	subscribe(eventStore) {
-		Observer.subscribe(eventStore, this, {
+		subscribe(eventStore, this, {
 			messageTypes: [...this._startsWith, ...this._handles],
 			masterHandler: this.handle,
 			queueName: this._queueName
