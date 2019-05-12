@@ -17,4 +17,5 @@ exports.InMemoryEventStorage = require('./infrastructure/InMemoryEventStorage');
 exports.InMemorySnapshotStorage = require('./infrastructure/InMemorySnapshotStorage');
 exports.InMemoryView = require('./infrastructure/InMemoryView');
 
+exports.getMessageHandlerNames = require('./getMessageHandlerNames');
 exports.subscribe = require('./subscribe');

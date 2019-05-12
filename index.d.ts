@@ -11,6 +11,7 @@ export {
 	Container,
 	EventStore,
 	EventStream,
+	getMessageHandlerNames,
 	InMemoryEventStorage,
 	InMemoryMessageBus,
 	InMemorySnapshotStorage,
