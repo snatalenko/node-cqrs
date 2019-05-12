@@ -7,10 +7,10 @@ const {
 	CommandBus,
 	InMemoryMessageBus,
 	Container,
-	Observer,
 	AbstractAggregate,
 	AbstractSaga,
-	AbstractProjection
+	AbstractProjection,
+	subscribe
 } = require('../src');
 const getClassDependencyNames = require('../src/di/getClassDependencyNames');
 const delay = ms => new Promise(done => setTimeout(done, ms));
@@ -50,9 +50,12 @@ describe('Container', function () {
 
 	describe('registerCommandHandler(typeOrFactory) extension', () => {
 
-		class MyCommandHandler extends Observer {
+		class MyCommandHandler {
 			static get handles() {
 				return ['doSomething'];
+			}
+			subscribe(observer) {
+				subscribe(observer, this);
 			}
 			_doSomething() { }
 		}
@@ -81,9 +84,12 @@ describe('Container', function () {
 			somethingHappenedCnt = 0;
 		});
 
-		class MyEventReceptor extends Observer {
+		class MyEventReceptor {
 			static get handles() {
 				return ['somethingHappened'];
+			}
+			subscribe(observable) {
+				subscribe(observable, this);
 			}
 			_somethingHappened() {
 				somethingHappenedCnt += 1;

@@ -71,7 +71,7 @@ declare interface IAggregateConstructor {
 	readonly handles: string[];
 }
 
-declare interface ICommandHandler extends IObserver {
+declare interface ICommandHandler {
 	subscribe(commandBus: ICommandBus): void;
 }
 

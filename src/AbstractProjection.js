@@ -1,6 +1,6 @@
 'use strict';
 
-const { subscribe } = require('./Observer');
+const subscribe = require('./subscribe');
 const InMemoryView = require('./infrastructure/InMemoryView');
 const { validateHandlers, getHandler, getClassName } = require('./utils');
 const info = require('debug')('cqrs:info');

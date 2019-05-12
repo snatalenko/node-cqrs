@@ -5,7 +5,6 @@ exports.EventStream = require('./EventStream');
 
 exports.CommandBus = require('./CommandBus');
 exports.EventStore = require('./EventStore');
-exports.Observer = require('./Observer');
 
 exports.AbstractAggregate = require('./AbstractAggregate');
 exports.AggregateCommandHandler = require('./AggregateCommandHandler');
@@ -17,3 +16,5 @@ exports.InMemoryMessageBus = require('./infrastructure/InMemoryMessageBus');
 exports.InMemoryEventStorage = require('./infrastructure/InMemoryEventStorage');
 exports.InMemorySnapshotStorage = require('./infrastructure/InMemorySnapshotStorage');
 exports.InMemoryView = require('./infrastructure/InMemoryView');
+
+exports.subscribe = require('./subscribe');

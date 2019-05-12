@@ -1,7 +1,7 @@
 /* eslint new-cap: "off" */
 'use strict';
 
-const { subscribe } = require('./Observer');
+const subscribe = require('./subscribe');
 const { isClass } = require('./utils');
 const info = require('debug')('cqrs:info');
 

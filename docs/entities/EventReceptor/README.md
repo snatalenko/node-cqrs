@@ -3,13 +3,17 @@
 Event receptor is an Observer that subscribes to events and performs operations non-related to core domain logic (i.e. send welcome email to a new user upon signup). 
 
 ```js
-const { Observer } = require('node-cqrs');
+const { subscribe } = require('node-cqrs');
 
-class MyReceptor extends Observer {
+class MyReceptor {
   static get handles() {
     return [
       'userSignedUp'
     ];
+  }
+
+  subscribe(observable) {
+    subscribe(observable, this);
   }
   
   userSignedUp({ payload }) {

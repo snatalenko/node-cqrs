@@ -15,6 +15,6 @@ export {
 	InMemoryMessageBus,
 	InMemorySnapshotStorage,
 	InMemoryView,
-	Observer,
-	SagaEventHandler
+	SagaEventHandler,
+	subscribe
 } from "./src";
