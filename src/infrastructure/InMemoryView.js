@@ -3,13 +3,6 @@
 const EventEmitter = require('events');
 const { sizeOf } = require('../utils');
 
-function strMapToObj(strMap) {
-	const obj = Object.create(null);
-	for (const [k, v] of strMap)
-		obj[k] = v;
-	return obj;
-}
-
 /**
  * Update given value with an update Cb and return updated value.
  * Wrapper is needed for backward compatibility with update methods that were modifying the passed in objects directly
@@ -33,18 +26,6 @@ const applyUpdate = (view, update) => {
  * @implements {IInMemoryView<any>}
  */
 module.exports = class InMemoryView {
-
-	/**
-	 * Current view state as an object
-	 *
-	 * @deprecated Use `async getAll()` instead
-	 *
-	 * @type {Object}
-	 * @readonly
-	 */
-	get state() {
-		return strMapToObj(this._map);
-	}
 
 	/**
 	 * Whether the view is restored

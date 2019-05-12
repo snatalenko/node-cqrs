@@ -9,15 +9,16 @@ describe('InMemoryView', function () {
 
 	beforeEach(() => {
 		v = new InMemoryView();
+		v.unlock();
 	});
 
 	describe('create', () => {
 
-		it('creates a record', () => {
+		it('creates a record', async () => {
 
 			v.create('foo', 'bar');
 
-			expect(v).to.have.nested.property('state.foo', 'bar');
+			expect(await v.get('foo')).to.eq('bar');
 		});
 
 		it('fails if record already exists', () => {
