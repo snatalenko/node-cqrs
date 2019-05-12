@@ -187,15 +187,14 @@ module.exports = class InMemoryView {
 	 *
 	 * @param {string|number} key
 	 * @param {function(any):any} update
-	 * @param {any} [initialValue]
 	 * @memberof InMemoryView
 	 */
-	updateEnforcingNew(key, update, initialValue = {}) {
+	updateEnforcingNew(key, update) {
 		if (!key) throw new TypeError('key argument required');
 		if (typeof update !== 'function') throw new TypeError('update argument must be a Function');
 
 		if (!this._map.has(key))
-			return this.create(key, applyUpdate(initialValue, update));
+			return this.create(key, applyUpdate(undefined, update));
 
 		return this._update(key, update);
 	}

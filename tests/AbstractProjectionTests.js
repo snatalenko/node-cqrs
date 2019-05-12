@@ -11,11 +11,12 @@ class MyProjection extends AbstractProjection {
 	}
 
 	async _somethingHappened({ aggregateId, payload, context }) {
-		return this.view.updateEnforcingNew(aggregateId, v => {
+		return this.view.updateEnforcingNew(aggregateId, (v = {}) => {
 			if (v.somethingHappenedCnt)
 				v.somethingHappenedCnt += 1;
 			else
 				v.somethingHappenedCnt = 1;
+			return v;
 		});
 	}
 }

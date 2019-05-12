@@ -4,9 +4,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.15.0 - UNRELEASED
 
-* Added: `InMemoryView.prototype.updateEnforcingNew` 3rd parameter can contain an initial value that will be used if record does not exist
 * Added: `InMemoryView.prototype.getAll` as an alternative to the deprecated `state` property
 * Changed: `InMemoryView.prototype.create` 2nd parameter must be an instance of an Object, not a factory function
+* Changed: `InMemoryView.prototype.updateEnforcingNew` does not pass an empty object as a parameter when record does not exist
 * Changed: Observable `on(,,{queueName})` replaced with `queue(name).on(,)`;
 * Changed: separated IProjectionView and IConcurrentView interfaces
 * Changed: `IProjectionView.prototype.shouldRestore` can return Promise
