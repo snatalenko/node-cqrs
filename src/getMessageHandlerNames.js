@@ -1,31 +1,46 @@
 'use strict';
 
-const KNOWN_COMMON_FUNCTION_NAMES = [
-	'constructor',
-	'subscribe',
-	'project',
-	'apply',
-	'handle',
-	'makeSnapshot',
-	'restoreSnapshot'
-];
+function getInheritedPropertyNames(prototype) {
+	const parentPrototype = prototype && Object.getPrototypeOf(prototype);
+	if (!parentPrototype)
+		return [];
+
+	const propDescriptors = Object.getOwnPropertyDescriptors(parentPrototype);
+	const propNames = Object.keys(propDescriptors);
+
+	return [
+		...propNames,
+		...getInheritedPropertyNames(parentPrototype)
+	];
+}
 
 /**
  * Get message handler names from a command/event handler class.
  * Assumes all private method names start from underscore ("_").
  *
- * @param {any} type Command or event handler class
+ * @param {any} observerInstanceOrClass Command or event handler class
  * @returns {string[]}
  */
-function getMessageHandlerNames(type) {
-	if (typeof type !== 'function' || !type.prototype)
-		throw new TypeError('type argument must be a Class');
+function getMessageHandlerNames(observerInstanceOrClass) {
+	if (!observerInstanceOrClass)
+		throw new TypeError('observerInstanceOrClass argument required');
 
-	const properties = Object.getOwnPropertyDescriptors(type.prototype);
-	return Object.keys(properties).filter(key =>
-		!KNOWN_COMMON_FUNCTION_NAMES.includes(key) &&
+	const prototype = typeof observerInstanceOrClass === 'function' ?
+		observerInstanceOrClass.prototype :
+		Object.getPrototypeOf(observerInstanceOrClass);
+
+	if (!prototype)
+		throw new TypeError('prototype cannot be resolved');
+
+	const inheritedProperties = new Set(getInheritedPropertyNames(prototype));
+
+	const propDescriptors = Object.getOwnPropertyDescriptors(prototype);
+	const propNames = Object.keys(propDescriptors);
+
+	return propNames.filter(key =>
 		!key.startsWith('_') &&
-		typeof properties[key].value === 'function');
+		!inheritedProperties.has(key) &&
+		typeof propDescriptors[key].value === 'function');
 }
 
 module.exports = getMessageHandlerNames;
