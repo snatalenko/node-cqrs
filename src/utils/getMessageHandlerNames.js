@@ -1,5 +1,9 @@
 'use strict';
 
+const KNOWN_METHOD_NAMES = new Set([
+	'subscribe'
+]);
+
 function getInheritedPropertyNames(prototype) {
 	const parentPrototype = prototype && Object.getPrototypeOf(prototype);
 	if (!parentPrototype)
@@ -40,6 +44,7 @@ function getMessageHandlerNames(observerInstanceOrClass) {
 	return propNames.filter(key =>
 		!key.startsWith('_') &&
 		!inheritedProperties.has(key) &&
+		!KNOWN_METHOD_NAMES.has(key) &&
 		typeof propDescriptors[key].value === 'function');
 }
 

@@ -147,9 +147,7 @@ declare type TSubscribeOptions = {
 }
 
 declare interface IObserver {
-	static subscribe(obervable: IObservable, observer: IObserver, options: TSubscribeOptions): void;
-	readonly handles?: string[];
-	subscribe(obervable: IObservable, messageTypes?: string[], masterHandler?: IMessageHandler | string): void;
+	subscribe(obervable: IObservable): void;
 }
 
 // endregion

@@ -26,7 +26,9 @@ describe('AbstractProjection', function () {
 
 	let projection;
 
-	beforeEach(() => projection = new MyProjection());
+	beforeEach(() => {
+		projection = new MyProjection();
+	});
 
 	describe('view', () => {
 
@@ -41,45 +43,63 @@ describe('AbstractProjection', function () {
 
 	describe('subscribe(eventStore)', () => {
 
-		it('throws exception if "static get handles" is not overridden', () => {
+		let observable;
 
-			class ProjectionWithoutHandles extends AbstractProjection { }
-
-			expect(() => {
-				new ProjectionWithoutHandles().subscribe({ on() { } });
-			}).to.throw('handles must be overridden to return a list of handled event types');
+		beforeEach(() => {
+			observable = {
+				getAllEvents() {
+					return [];
+				},
+				on() { }
+			};
+			sinon.spy(observable, 'on');
 		});
 
-		it('throws exception if event handler is not defined', () => {
+		it('subscribes to all handlers defined', () => {
 
-			class ProjectionWithoutHandler extends AbstractProjection {
-				static get handles() {
-					return ['somethingHappened'];
+			class ProjectionWithoutHandles extends AbstractProjection {
+				somethingHappened() { }
+				somethingHappened2() { }
+			}
+
+			new ProjectionWithoutHandles().subscribe(observable);
+
+			expect(observable.on).to.have.property('callCount', 2);
+			expect(observable.on).to.have.nested.property('firstCall.args[0]').that.eql('somethingHappened');
+			expect(observable.on).to.have.nested.property('lastCall.args[0]').that.eql('somethingHappened2');
+		});
+
+		it('ignores overridden projection methods', () => {
+
+			class ProjectionWithoutHandles extends AbstractProjection {
+				somethingHappened() { }
+
+				/** overridden projection method */
+				project(event) {
+					return super.project(event);
 				}
 			}
 
-			expect(() => {
-				new ProjectionWithoutHandler().subscribe({ on() { } });
-			}).to.throw('\'somethingHappened\' handler is not defined or not a function');
+			new ProjectionWithoutHandles().subscribe(observable);
+
+			expect(observable.on).to.have.property('calledOnce', true);
+			expect(observable.on).to.have.nested.property('lastCall.args[0]').that.eql('somethingHappened');
 		});
 
-		it('subscribes projection to all events returned by "handles"', done => {
+		it('subscribes projection to all events returned by "handles"', () => {
 
-			const storage = new InMemoryEventStorage();
-			const es = new EventStore({ storage });
-
-			es.on = (eventType, handler) => {
-				try {
-					expect(eventType).to.equal('somethingHappened');
-					expect(handler).to.be.instanceOf(Function);
-					done();
+			class ProjectionWithHandles extends AbstractProjection {
+				static get handles() {
+					return ['somethingHappened2'];
 				}
-				catch (err) {
-					done(err);
-				}
-			};
+				somethingHappened() { }
+				somethingHappened2() { }
+			}
 
-			projection.subscribe(es);
+			new ProjectionWithHandles().subscribe(observable);
+
+			expect(observable.on).to.have.property('calledOnce', true);
+			expect(observable.on).to.have.nested.property('lastCall.args[0]').that.eql('somethingHappened2');
 		});
 	});
 

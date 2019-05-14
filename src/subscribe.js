@@ -1,6 +1,7 @@
 'use strict';
 
 const { getHandler } = require('./utils');
+const getHandledMessageTypes = require('./utils/getHandledMessageTypes');
 
 const unique = arr => [...new Set(arr)];
 
@@ -25,13 +26,11 @@ function subscribe(observable, observer, options = {}) {
 	if (queueName && typeof observable.queue !== 'function')
 		throw new TypeError('observable.queue, when queueName is specified, must be a Function');
 
-	const subscribeTo = messageTypes
-		|| observer.handles
-		|| Object.getPrototypeOf(observer).constructor.handles;
+	const subscribeTo = messageTypes || getHandledMessageTypes(observer);
 	if (!Array.isArray(subscribeTo))
 		throw new TypeError('either options.messageTypes, observer.handles or ObserverType.handles is required');
 
-	unique(subscribeTo).forEach(messageType => {
+	for (const messageType of unique(subscribeTo)) {
 		const handler = masterHandler || getHandler(observer, messageType);
 		if (!handler)
 			throw new Error(`'${messageType}' handler is not defined or not a function`);
@@ -40,7 +39,7 @@ function subscribe(observable, observer, options = {}) {
 			observable.queue(queueName).on(messageType, handler.bind(observer));
 		else
 			observable.on(messageType, handler.bind(observer));
-	});
+	}
 }
 
 module.exports = subscribe;

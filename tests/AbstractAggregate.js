@@ -56,13 +56,6 @@ describe('AbstractAggregate', function () {
 
 	describe('constructor(id, state, events)', () => {
 
-		it('throws exception if "static get handles" is not overridden', () => {
-
-			class AggregateWithoutHandles extends AbstractAggregate { }
-
-			expect(() => new AggregateWithoutHandles({ id: 1 })).to.throw('handles must be overridden to return a list of handled command types');
-		});
-
 		it('throws exception if event handler is not defined', () => {
 
 			class AggregateWithoutHandler extends AbstractAggregate {

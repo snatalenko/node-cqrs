@@ -2,6 +2,7 @@
 
 const subscribe = require('./subscribe');
 const InMemoryView = require('./infrastructure/InMemoryView');
+const getHandledMessageTypes = require('./utils/getHandledMessageTypes');
 const { validateHandlers, getHandler, getClassName } = require('./utils');
 const info = require('debug')('cqrs:info');
 
@@ -30,14 +31,14 @@ const asConcurrentView = view => (isConcurrentView(view) ? view : undefined);
 class AbstractProjection {
 
 	/**
-	 * List of event types being handled by projection. Must be overridden in projection implementation
+	 * List of event types being handled by projection. Can be overridden in projection implementation
 	 *
 	 * @type {string[]}
 	 * @readonly
 	 * @static
 	 */
 	static get handles() {
-		throw new Error('AbstractProjection.handles must be overridden to return a list of handled event types');
+		return undefined;
 	}
 
 	/**
@@ -148,7 +149,7 @@ class AbstractProjection {
 
 		info('%s retrieving events...', this);
 
-		const messageTypes = Object.getPrototypeOf(this).constructor.handles;
+		const messageTypes = getHandledMessageTypes(this);
 		const events = await eventStore.getAllEvents(messageTypes);
 		if (!events.length)
 			return;

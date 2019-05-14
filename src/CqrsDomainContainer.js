@@ -5,6 +5,7 @@ const SagaEventHandler = require('./SagaEventHandler');
 const AggregateCommandHandler = require('./AggregateCommandHandler');
 const CommandBus = require('./CommandBus');
 const EventStore = require('./EventStore');
+const getHandledMessageTypes = require('./utils/getHandledMessageTypes');
 
 function isClass(func) {
 	return typeof func === 'function'
@@ -84,7 +85,7 @@ class CqrsDomainContainer extends Container {
 		this.registerCommandHandler(container => new AggregateCommandHandler({
 			eventStore: container.eventStore,
 			aggregateType: options => container.createInstance(AggregateType, options),
-			handles: AggregateType.handles
+			handles: getHandledMessageTypes(AggregateType)
 		}));
 	}
 

@@ -27,7 +27,7 @@ const _snapshotVersion = Symbol('snapshotVersion');
 class AbstractAggregate {
 
 	/**
-	 * List of commands handled by Aggregate
+	 * List of commands handled by Aggregate. Can be overridden in aggregate implementation
 	 *
 	 * @type {string[]}
 	 * @readonly
@@ -36,7 +36,7 @@ class AbstractAggregate {
 	 * 	return ['createUser', 'changePassword'];
 	 */
 	static get handles() {
-		throw new Error('handles must be overridden to return a list of handled command types');
+		return undefined;
 	}
 
 	/**

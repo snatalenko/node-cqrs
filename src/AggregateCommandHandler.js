@@ -2,6 +2,7 @@
 
 const subscribe = require('./subscribe');
 const { isClass } = require('./utils');
+const getHandledMessageTypes = require('./utils/getHandledMessageTypes');
 const info = require('debug')('cqrs:info');
 
 /**
@@ -35,7 +36,7 @@ class AggregateCommandHandler {
 			const AggregateType = options.aggregateType;
 
 			this._aggregateFactory = params => new AggregateType(params);
-			this._handles = AggregateType.handles;
+			this._handles = getHandledMessageTypes(AggregateType);
 		}
 		else {
 			this._aggregateFactory = options.aggregateType;
