@@ -122,7 +122,7 @@ module.exports = class InMemoryView {
 
 		const r = [];
 		for (const entry of this._map.entries()) {
-			if (filter && filter(entry[1], entry[0]))
+			if (!filter || filter(entry[1], entry[0]))
 				r.push(entry);
 		}
 
