@@ -17,6 +17,7 @@ function isClass(func) {
  *
  * @class CqrsDomainContainer
  * @extends {Container}
+ * @implements {ICqrsDomainContainer}
  */
 class CqrsDomainContainer extends Container {
 

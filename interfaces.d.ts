@@ -38,6 +38,28 @@ declare interface ICommandBus extends IObservable {
 		Promise<IEventStream>;
 }
 
+// region CqrsDomainContainer
+
+declare interface Container {
+	register(typeOrFactory: TOF, exposeAs: string, exposeMap: (instance: object) => object): void;
+	constructor(): void;
+	readonly instances: Map<string, object>;
+	readonly factories: Set<(container: object) => object>;
+	registerInstance(instance: any, exposeAs: string): void;
+	createUnexposedInstances(): void;
+	createAllInstances(): void;
+	createInstance(typeOrFactory: TOF, additionalOptions: Object): Object;
+}
+
+declare interface ICqrsDomainContainer extends Container {
+	registerCommandHandler(typeOrFactory: TOF): void;
+	registerEventReceptor(typeOrFactory: TOF): void;
+	registerProjection(typeOrFactory: TOF): void;
+	registerAggregate(typeOrFactory: TOF): void;
+	registerSaga(typeOrFactory: TOF): void;
+}
+// endregion
+
 // region Aggregate
 
 declare interface IAggregateState extends Object {
