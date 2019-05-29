@@ -40,24 +40,39 @@ declare interface ICommandBus extends IObservable {
 
 // region CqrsDomainContainer
 
-declare interface Container {
-	register(typeOrFactory: TOF, exposeAs: string, exposeMap: (instance: object) => object): void;
+declare interface IFactory<T> {
+	(...args: any[]): T;
+};
+
+declare interface IConstructor<T> {
+	new(...args: any[]): T;
+};
+
+declare type ITypeOrFactory<T> = IConstructor<T> | IFactory<T>;
+
+declare interface IContainer { }
+
+declare interface IContainerBuilder {
 	constructor(): void;
 	readonly instances: Map<string, object>;
 	readonly factories: Set<(container: object) => object>;
+
+	register<T>(typeOrFactory: ITypeOrFactory<T>, exposeAs?: string, exposeMap?: (instance: object) => object): void;
 	registerInstance(instance: any, exposeAs: string): void;
+
 	createUnexposedInstances(): void;
 	createAllInstances(): void;
-	createInstance(typeOrFactory: TOF, additionalOptions: Object): Object;
+	createInstance<T>(typeOrFactory: ITypeOrFactory<T>, additionalOptions: Object): Object;
 }
 
-declare interface ICqrsDomainContainer extends Container {
-	registerCommandHandler(typeOrFactory: TOF): void;
-	registerEventReceptor(typeOrFactory: TOF): void;
-	registerProjection(typeOrFactory: TOF): void;
-	registerAggregate(typeOrFactory: TOF): void;
-	registerSaga(typeOrFactory: TOF): void;
+declare interface ICqrsDomainContainerBuilder extends IContainerBuilder {
+	registerCommandHandler(typeOrFactory: ITypeOrFactory<ICommandHandler>): void;
+	registerEventReceptor(typeOrFactory: ITypeOrFactory<IEventReceptor>): void;
+	registerProjection(typeOrFactory: ITypeOrFactory<IProjection>, alias?: string): void;
+	registerAggregate(typeOrFactory: ITypeOrFactory<IAggregate>): void;
+	registerSaga(typeOrFactory: ITypeOrFactory<ISaga>): void;
 }
+
 // endregion
 
 // region Aggregate
@@ -81,7 +96,7 @@ declare interface IAggregate {
 	readonly snapshotVersion?: number;
 	readonly shouldTakeSnapshot?: boolean;
 	takeSnapshot?(): void;
-	makeSnapshot?(): IEvent;
+	makeSnapshot?(): any;
 	restoreSnapshot?(snapshotEvent: IEvent): void;
 }
 
@@ -90,7 +105,7 @@ declare type IAggregateFactory = (options: TAggregateParams) => IAggregate;
 
 declare interface IAggregateConstructor {
 	new(options: TAggregateParams): IAggregate;
-	readonly handles: string[];
+	readonly handles?: string[];
 }
 
 declare interface ICommandHandler {
@@ -107,12 +122,12 @@ declare interface ISaga {
 	readonly uncommittedMessages: ICommand[];
 	readonly restored?: boolean;
 
-	apply(event: IEvent): ICommand[];
+	apply(event: IEvent): void | Promise<void>;
 	enqueue(commandType: string, aggregateId: Identifier, payload: any): void;
 	enqueueRaw(command: ICommand): void;
 
 	resetUncommittedMessages(): void;
-	onError(err: Error, params: { event: IEvent, command: ICommand }): void;
+	onError?(err: Error, params: { event: IEvent, command: ICommand }): void;
 }
 
 declare type TSagaParams = { id: Identifier, events?: IEventStream };
@@ -201,8 +216,3 @@ declare interface IMessageBus extends IEventEmitter {
 }
 
 // endregion
-
-declare interface IConstructor<T> {
-	new(...args: any[]): T;
-}
-declare type TOF = ((...args: any[]) => object) | IConstructor<object>;

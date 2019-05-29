@@ -13,7 +13,7 @@ const UsersProjection = require('./UsersProjection');
 /**
  * DI container factory
  *
- * @returns {Container}
+ * @returns {IContainer}
  */
 exports.createContainer = () => {
 	const container = new Container();

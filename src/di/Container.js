@@ -55,7 +55,10 @@ function createInstance(typeOrFactory, container, additionalOptions) {
 }
 
 
-module.exports = class Container {
+/**
+ * @implements {IContainerBuilder & IContainer}
+ */
+class Container {
 
 	/**
 	 * Registered component factories
@@ -86,7 +89,7 @@ module.exports = class Container {
 
 	/**
 	 * Registers a type or factory in the container
-	 * @param {TOF} typeOrFactory Either a constructor function or a component factory
+	 * @param {ITypeOrFactory<object>} typeOrFactory Either a constructor function or a component factory
 	 * @param {string} [exposeAs] Component name to use for instance exposing on the container
 	 * @param {(instance: object) => object} [exposeMap] Instance -> Object-to-Expose mapping
 	 */
@@ -172,4 +175,6 @@ module.exports = class Container {
 
 		return createInstance(typeOrFactory, this, additionalOptions);
 	}
-};
+}
+
+module.exports = Container;
