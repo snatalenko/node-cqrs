@@ -15,8 +15,12 @@ class EventStream extends Array {
 	 * @param {...(IEvent | Array<IEvent> | ReadonlyArray<IEvent>)} args
 	 */
 	constructor(...args) {
+		super();
+
 		const events = [].concat(...args);
-		super(...events.map(el => Object.freeze(el)));
+		for (const e of events)
+			super.push(Object.freeze(e));
+
 		Object.freeze(this);
 	}
 

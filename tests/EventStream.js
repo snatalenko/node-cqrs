@@ -21,6 +21,16 @@ describe('EventStream', function () {
 				es.push({ type: 'test' });
 			}).to.throw();
 		});
+
+		it('does not fail on large number of events', () => {
+
+			const largeSrc = [];
+			for (let i = 0; i < 200000; i++)
+				largeSrc.push(Object.assign({}, src[0]));
+
+			const es = new EventStream(largeSrc);
+			expect(es).to.have.length(200000);
+		});
 	});
 
 	describe('prototype', () => {
