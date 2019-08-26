@@ -2,6 +2,14 @@
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.16.0 - UNRELEASED
+
+* Changed: EventStore to return async event generators (requires NodeJS version 10+)
+
+## 0.15.1 - 2018-08-26
+
+* Changed: upgraded dev dependencies to fix audit vulnerability
+
 ## 0.15.0 - 2018-08-25
 
 * Added: `InMemoryView.prototype.getAll` as an alternative to the deprecated `state` property

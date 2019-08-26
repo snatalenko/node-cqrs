@@ -19,7 +19,7 @@ declare interface IEventStore extends IObservable {
 
 	commit(events: IEventStream): Promise<IEventStream>;
 
-	getAllEvents(eventTypes: string[], filter?: EventFilter): Promise<IEventStream>;
+	getAllEvents(eventTypes: string[], filter?: EventFilter): AsyncIterableIterator<IEvent>;
 	getAggregateEvents(aggregateId: Identifier): Promise<IEventStream>;
 	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
 
@@ -199,10 +199,18 @@ declare interface IEventEmitter extends IObservable {
 
 declare interface IEventStorage extends IEventEmitter {
 	getNewId(): Identifier | Promise<Identifier>;
-	commitEvents(events: ReadonlyArray<IEvent>): Promise<any>;
-	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }): Promise<IEventStream>;
-	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
-	getEvents(eventTypes: string[], filter: EventFilter): Promise<IEventStream>;
+
+	commitEvents(events: ReadonlyArray<IEvent>):
+		Promise<any>;
+
+	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }):
+		Promise<IEventStream> | AsyncIterableIterator<IEvent>;
+
+	getSagaEvents(sagaId: Identifier, filter: EventFilter):
+		Promise<IEventStream> | AsyncIterableIterator<IEvent>;
+
+	getEvents(eventTypes: string[]):
+		Promise<IEventStream> | AsyncIterableIterator<IEvent>;
 }
 
 declare interface IAggregateSnapshotStorage {

@@ -147,16 +147,12 @@ class AbstractProjection {
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
-		info('%s retrieving events...', this);
+		info('retrieving events and restoring %s projection...', this);
 
 		const messageTypes = getHandledMessageTypes(this);
-		const events = await eventStore.getAllEvents(messageTypes);
-		if (!events.length)
-			return;
+		const eventsIterable = eventStore.getAllEvents(messageTypes);
 
-		info('%s restoring from %d event(s)...', this, events.length);
-
-		for (const event of events) {
+		for await (const event of eventsIterable) {
 			try {
 				await this._project(event);
 			}
