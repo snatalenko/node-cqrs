@@ -109,12 +109,10 @@ describe('AbstractProjection', function () {
 
 		beforeEach(() => {
 			es = {
-				async getAllEvents() {
-					return [
-						{ type: 'somethingHappened', aggregateId: 1, aggregateVersion: 1 },
-						{ type: 'somethingHappened', aggregateId: 1, aggregateVersion: 2 },
-						{ type: 'somethingHappened', aggregateId: 2, aggregateVersion: 1 }
-					];
+				async* getAllEvents() {
+					yield { type: 'somethingHappened', aggregateId: 1, aggregateVersion: 1 };
+					yield { type: 'somethingHappened', aggregateId: 1, aggregateVersion: 2 };
+					yield { type: 'somethingHappened', aggregateId: 2, aggregateVersion: 1 };
 				}
 			};
 			sinon.spy(es, 'getAllEvents');
@@ -151,8 +149,8 @@ describe('AbstractProjection', function () {
 		it('throws, if projection error encountered', () => {
 
 			es = {
-				getAllEvents() {
-					return Promise.resolve([{ type: 'unexpectedEvent' }]);
+				async* getAllEvents() {
+					yield { type: 'unexpectedEvent' };
 				}
 			};
 

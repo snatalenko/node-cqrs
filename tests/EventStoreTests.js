@@ -98,9 +98,10 @@ describe('EventStore', function () {
 
 			await es.commit([goodEvent]);
 
-			const events = await es.getAllEvents();
+			const events = [];
+			for await (const e of es.getAllEvents())
+				events.push(e);
 
-			expect(events).to.be.instanceof(Array);
 			expect(events[0]).to.have.property('type', 'somethingHappened');
 			expect(events[0]).to.have.property('context');
 			expect(events[0].context).to.have.property('ip', goodContext.ip);
@@ -251,13 +252,17 @@ describe('EventStore', function () {
 
 	describe('getAllEvents(eventTypes)', () => {
 
-		it('returns a promise that resolves to all committed events of specific types', () => es.commit([goodEvent, goodEvent2]).then(() => es.getAllEvents(['somethingHappened']).then(events => {
+		it('returns a promise that resolves to all committed events of specific types', async () => {
+			await es.commit([goodEvent, goodEvent2]);
 
-			expect(events).to.be.an('Array');
+			const events = [];
+			for await (const e of es.getAllEvents(['somethingHappened']))
+				events.push(e);
+
 			expect(events).to.have.length(2);
 			expect(events).to.have.nested.property('[0].aggregateId', '1');
 			expect(events).to.have.nested.property('[1].aggregateId', '2');
-		})));
+		});
 	});
 
 	describe('on(eventType, handler)', () => {
