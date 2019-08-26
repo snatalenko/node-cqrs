@@ -15,7 +15,7 @@
   "main": "index.js",
   "types": "index.d.ts",
   "engines": {
-    "node": ">=7.6.0"
+    "node": ">=10.3.0"
   },
   "scripts": {
     "lint": "npx eslint src/",

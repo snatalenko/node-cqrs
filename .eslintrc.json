@@ -5,7 +5,7 @@
     },
     "parserOptions": {
         "sourceType": "script",
-        "ecmaVersion": 8
+        "ecmaVersion": 2018
     },
     "rules": {
         "accessor-pairs": "off",

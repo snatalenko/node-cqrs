@@ -4,8 +4,9 @@
         "module": "commonjs",
         "allowSyntheticDefaultImports": true,
         "checkJs": true,
+        "resolveJsonModule": true,
         "lib": [
-            "es2017"
+            "es2018"
         ]
     },
     "exclude": [
