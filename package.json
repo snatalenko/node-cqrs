@@ -23,7 +23,7 @@
     "pretest": "npm run lint",
     "test": "mocha ./tests/index.js",
     "test:integration": "mocha ./examples/user-domain-tests",
-    "test:coverage": "istanbul cover node_modules/.bin/_mocha tests/index.js -- -R spec",
+    "test:coverage": "nyc --reporter=lcov --reporter=text-summary node_modules/.bin/_mocha tests/index.js",
     "pretest:coveralls": "npm run test:coverage",
     "test:coveralls": "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
     "posttest:coveralls": "rm -rf ./coverage",

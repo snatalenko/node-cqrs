@@ -4,9 +4,8 @@ node_js:
   - "10"
 
 before_script:
-  - npm install -g eslint istanbul@next
+  - npm install -g eslint nyc coveralls
   - npm install
-  - npm install coveralls
 
 script: npm run test:coveralls
 

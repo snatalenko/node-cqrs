@@ -8,6 +8,7 @@ node_modules/
 app/tests/coverage/
 .bower-*/
 coverage/
+.nyc_output/
 
 # IDE's
 # =====
