@@ -1,5 +1,8 @@
 # [0.16.0-1](https://github.com/snatalenko/node-cqrs/compare/v0.16.0-0...v0.16.0-1) (2019-11-28)
 
+### Changes
+
+* EventStore to return async event generators (requires NodeJS version 10+)
 
 ### Build
 
@@ -18,16 +21,6 @@
 ### Upgrade
 
 * debug, mocha, sinon ([ac80c27](https://github.com/snatalenko/node-cqrs/commit/ac80c27653828904cf7b80d37b0ecade860b7490))
-
-
-
-# Change Log
-
-This project adheres to [Semantic Versioning](http://semver.org/).
-
-## 0.16.0 - UNRELEASED
-
-* Changed: EventStore to return async event generators (requires NodeJS version 10+)
 
 ## 0.15.1 - 2018-08-26
 
