@@ -147,7 +147,7 @@ class AbstractProjection {
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
-		info('retrieving events and restoring %s projection...', this);
+		info('retrieving events and restoring %s projection...', getClassName(this));
 
 		const messageTypes = getHandledMessageTypes(this);
 		const eventsIterable = eventStore.getAllEvents(messageTypes);
@@ -157,20 +157,13 @@ class AbstractProjection {
 				await this._project(event);
 			}
 			catch (err) {
-				info('%s view restoring has failed on event: %j', this, event);
+				info('%s view restoring has failed on event: %j', getClassName(this), event);
 				info(err);
 				throw err;
 			}
 		}
 
-		info('%s view restored (%s)', this, this.view);
-	}
-
-	/**
-	 * Get human-readable Projection name
-	 */
-	toString() {
-		return getClassName(this);
+		info('%s view restored (%s)', getClassName(this), this.view.toString());
 	}
 }
 
