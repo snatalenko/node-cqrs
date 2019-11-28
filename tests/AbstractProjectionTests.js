@@ -3,7 +3,6 @@
 const { expect, assert, AssertionError } = require('chai');
 const sinon = require('sinon');
 const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore } = require('../src');
-const getPromiseState = require('./utils/getPromiseState');
 
 class MyProjection extends AbstractProjection {
 	static get handles() {
@@ -171,21 +170,31 @@ describe('AbstractProjection', function () {
 			const storage = new InMemoryEventStorage();
 			const es = new EventStore({ storage });
 
-			const restoreProcess = projection.restore(es);
-			const projectProcess = projection.project(event);
+			let restored = false;
+			let projected = false;
+			const restoreProcess = projection.restore(es).then(() => {
+				restored = true;
+			});
+			const projectProcess = projection.project(event).then(() => {
+				projected = true;
+			});
 
-			expect(await getPromiseState(projectProcess)).to.eq('pending');
+			expect(restored).to.eq(false);
+			expect(projected).to.eq(false);
 
 			await restoreProcess;
 
-			expect(await getPromiseState(projectProcess)).to.eq('resolved');
+			expect(restored).to.eq(true);
+			expect(projected).to.eq(false);
+
+			await projectProcess;
+
+			expect(restored).to.eq(true);
+			expect(projected).to.eq(true);
 		});
 
 		it('can bypass waiting when invoked as a protected method', async () => {
-
-			const response = projection._project(event);
-
-			expect(await getPromiseState(response)).to.eq('resolved');
+			await projection._project(event);
 		});
 
 		it('passes event to projection event handler', async () => {

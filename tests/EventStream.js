@@ -53,7 +53,7 @@ describe('EventStream', function () {
 
 			expect(() => {
 				es.splice(1);
-			}).to.throw('Cannot assign to read only property \'length\' of object \'[object Array]\'');
+			}).to.throw();
 		});
 
 		it('is enumerable', () => {
