@@ -1,7 +1,5 @@
 'use strict';
 
-// require('debug').enable('cqrs:*');
-
 require('./utilsTests');
 
 require('./InMemoryMessageBusTests');

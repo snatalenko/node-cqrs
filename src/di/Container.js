@@ -1,6 +1,5 @@
 'use strict';
 
-const trace = require('debug')('cqrs:trace:Container');
 const getClassDependencyNames = require('./getClassDependencyNames');
 const _factories = Symbol('factories');
 const _instances = Symbol('instances');
@@ -28,13 +27,6 @@ function createInstance(typeOrFactory, container, additionalOptions) {
 		const Type = typeOrFactory;
 
 		const dependencies = getClassDependencyNames(Type);
-		if (!dependencies)
-			trace(`${Type.name || 'class'} has no constructor`);
-		else if (!dependencies.length)
-			trace(`${Type.name || 'class'} has no dependencies`);
-		else
-			trace(`${Type.name || 'class'} dependencies: ${dependencies}`);
-
 		const parameters = dependencies ?
 			dependencies.map(dependency => {
 				if (typeof dependency === 'string') {
@@ -143,7 +135,6 @@ class Container {
 	 * For example, event or command handlers, that are not referenced from external components.
 	 */
 	createUnexposedInstances() {
-		trace('creating unexposed instances...');
 		for (const factory of this.factories.values()) {
 			// @ts-ignore
 			if (factory.unexposed) {
@@ -157,7 +148,6 @@ class Container {
 	 * Creates instances for all types or factories registered in the Container
 	 */
 	createAllInstances() {
-		trace('creating all instances...');
 		for (const factory of this.factories.values()) {
 			factory(this);
 			this.factories.delete(factory);
@@ -171,8 +161,6 @@ class Container {
 	 * @return {Object}                   Newly created instance
 	 */
 	createInstance(typeOrFactory, additionalOptions) {
-		trace(`creating ${typeOrFactory.name || 'unnamed'} instance...`);
-
 		return createInstance(typeOrFactory, this, additionalOptions);
 	}
 }

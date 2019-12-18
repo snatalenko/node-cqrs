@@ -2,8 +2,8 @@
 'use strict';
 
 const subscribe = require('./subscribe');
-const { isClass } = require('./utils');
-const info = require('debug')('cqrs:info');
+const { isClass, getClassName } = require('./utils');
+const nullLogger = require('./utils/nullLogger');
 
 /**
  * Listens to Saga events,
@@ -23,6 +23,7 @@ class SagaEventHandler {
 	 * @param {ISagaConstructor | ISagaFactory} options.sagaType
 	 * @param {IEventStore} options.eventStore
 	 * @param {ICommandBus} options.commandBus
+	 * @param {ILogger} [options.logger]
 	 * @param {string} [options.queueName]
 	 * @param {string[]} [options.startsWith]
 	 * @param {string[]} [options.handles]
@@ -36,6 +37,7 @@ class SagaEventHandler {
 		this._eventStore = options.eventStore;
 		this._commandBus = options.commandBus;
 		this._queueName = options.queueName;
+		this._logger = options.logger || nullLogger;
 
 		if (isClass(options.sagaType)) {
 			/** @type {ISagaConstructor} */
@@ -90,7 +92,9 @@ class SagaEventHandler {
 
 			const commands = saga.uncommittedMessages;
 			saga.resetUncommittedMessages();
-			info('%s "%s" event processed, %s produced', event.type, commands.map(c => c.type).join(',') || 'no commands');
+			this._logger.log('debug', `"${event.type}" event processed, ${commands.map(c => c.type).join(',') || 'no commands'} produced`, {
+				service: getClassName(saga)
+			});
 
 			for (const command of commands) {
 
@@ -128,7 +132,7 @@ class SagaEventHandler {
 
 		/** @type {ISaga} */
 		const saga = this._sagaFactory.call(null, { id: event.sagaId, events });
-		info('%s state restored from %s', saga, events);
+		this._logger.log('info', `Saga state restored from ${events}`, { service: getClassName(saga) });
 
 		return saga;
 	}

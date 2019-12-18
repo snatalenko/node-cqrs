@@ -181,13 +181,6 @@ container.users
 * [eslint](http://eslint.org)
 * `npm test -- --watch`
 
-
-## Dependencies
-
-- [node >= 7.6](https://nodejs.org)
--	[visionmedia/debug](https://github.com/visionmedia/debug) (MIT License)
-
-
 ## License
 
 * [MIT License](https://github.com/snatalenko/node-cqrs/blob/master/LICENSE)

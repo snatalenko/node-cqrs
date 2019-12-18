@@ -1,11 +1,11 @@
 'use strict';
 
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
-const debug = require('debug')('cqrs:debug:EventStore');
-const info = require('debug')('cqrs:info:EventStore');
+const nullLogger = require('./utils/nullLogger');
 const EventStream = require('./EventStream');
 
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
+const service = 'EventStore';
 
 const _defaults = {
 	publishAsync: true
@@ -81,9 +81,10 @@ function validateMessageBus(messageBus) {
  * @param {string[]} messageTypes Array of event type to subscribe to
  * @param {function(IEvent):any} [handler] Optional handler to execute for a first event received
  * @param {function(IEvent):boolean} [filter] Optional filter to apply before executing a handler
+ * @param {ILogger} logger
  * @return {Promise<IEvent>} Resolves to first event that passes filter
  */
-function setupOneTimeEmitterSubscription(emitter, messageTypes, filter, handler) {
+function setupOneTimeEmitterSubscription(emitter, messageTypes, filter, handler, logger) {
 	if (typeof emitter !== 'object' || !emitter)
 		throw new TypeError('emitter argument must be an Object');
 	if (!Array.isArray(messageTypes) || messageTypes.some(m => !m || typeof m !== 'string'))
@@ -108,7 +109,8 @@ function setupOneTimeEmitterSubscription(emitter, messageTypes, filter, handler)
 			for (const messageType of messageTypes)
 				emitter.off(messageType, filteredHandler);
 
-			debug('\'%s\' received, one-time subscription to \'%s\' removed', event.type, messageTypes.join(','));
+			if (logger)
+				logger.log('debug', `'${event.type}' received, one-time subscription to '${messageTypes.join(',')}' removed`, { service });
 
 			if (handler)
 				handler(event);
@@ -119,7 +121,8 @@ function setupOneTimeEmitterSubscription(emitter, messageTypes, filter, handler)
 		for (const messageType of messageTypes)
 			emitter.on(messageType, filteredHandler);
 
-		debug('set up one-time %s to \'%s\'', filter ? 'filtered subscription' : 'subscription', messageTypes.join(','));
+		if (logger)
+			logger.log('debug', `set up one-time ${filter ? 'filtered subscription' : 'subscription'} to '${messageTypes.join(',')}'`, { service });
 	});
 }
 
@@ -173,6 +176,7 @@ class EventStore {
 	 * @param {IMessageBus} [options.messageBus]
 	 * @param {function(IEvent):void} [options.eventValidator]
 	 * @param {EventStoreConfig} [options.eventStoreConfig]
+	 * @param {ILogger} [options.logger]
 	 */
 	constructor(options) {
 		validateEventStorage(options.storage);
@@ -187,6 +191,7 @@ class EventStore {
 		this._storage = options.storage;
 		this._snapshotStorage = options.snapshotStorage;
 		this._validator = options.eventValidator || validateEvent;
+		this._logger = options.logger || nullLogger;
 
 		/** @type {string[]} */
 		this._sagaStarters = [];
@@ -224,13 +229,13 @@ class EventStore {
 	async* getAllEvents(eventTypes) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
-		debug('retrieving %s events...', eventTypes ? eventTypes.join(', ') : 'all');
+		this._logger.log('debug', `retrieving ${eventTypes ? eventTypes.join(', ') : 'all'} events...`, { service });
 
 		const eventsIterable = await this._storage.getEvents(eventTypes);
 
 		yield* eventsIterable;
 
-		debug('%s events retrieved', eventTypes ? eventTypes.join(', ') : 'all');
+		this._logger.log('debug', `${eventTypes ? eventTypes.join(', ') : 'all'} events retrieved`, { service });
 	}
 
 	/**
@@ -242,7 +247,7 @@ class EventStore {
 	async getAggregateEvents(aggregateId) {
 		if (!aggregateId) throw new TypeError('aggregateId argument required');
 
-		debug(`retrieving event stream for aggregate ${aggregateId}...`);
+		this._logger.log('debug', `retrieving event stream for aggregate ${aggregateId}...`, { service });
 
 		const snapshot = this.snapshotsSupported ?
 			await this._snapshotStorage.getAggregateSnapshot(aggregateId) :
@@ -257,7 +262,7 @@ class EventStore {
 			events.push(event);
 
 		const eventStream = new EventStream(events);
-		debug('%s retrieved', eventStream);
+		this._logger.log('debug', `${eventStream} retrieved`, { service });
 
 		return eventStream;
 	}
@@ -275,7 +280,7 @@ class EventStore {
 		if (!filter.beforeEvent) throw new TypeError('filter.beforeEvent argument required');
 		if (filter.beforeEvent.sagaVersion === undefined) throw new TypeError('filter.beforeEvent.sagaVersion argument required');
 
-		debug(`retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`);
+		this._logger.log('debug', `retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`, { service });
 
 		const events = [];
 		const eventsIterable = await this._storage.getSagaEvents(sagaId, filter);
@@ -283,7 +288,7 @@ class EventStore {
 			events.push(event);
 
 		const eventStream = new EventStream(events);
-		debug('%s retrieved', eventStream);
+		this._logger.log('debug', `${eventStream.toString()} retrieved`, { service });
 
 		return eventStream;
 	}
@@ -369,10 +374,10 @@ class EventStore {
 		const snapshot = snapshotEvents[0];
 		const eventStream = new EventStream(events.filter(e => e !== snapshot));
 
-		debug('validating %s...', eventStream);
+		this._logger.log('debug', `validating ${eventStream}...`, { service });
 		eventStream.forEach(this._validator);
 
-		debug('saving %s...', eventStream);
+		this._logger.log('debug', `saving ${eventStream}...`, { service });
 		await Promise.all([
 			this._storage.commitEvents(eventStream),
 			snapshot ?
@@ -391,18 +396,18 @@ class EventStore {
 		const publishEvents = () =>
 			Promise.all(eventStream.map(event => this._publishTo.publish(event)))
 				.then(() => {
-					debug('%s published', eventStream);
-				}, err => {
-					info('%s publishing failed: %s', eventStream, err);
-					throw err;
+					this._logger.log('debug', `${eventStream} published`, { service });
+				}, error => {
+					this._logger.log('error', `${eventStream} publishing failed: ${error.message}`, { service, stack: error.stack });
+					throw error;
 				});
 
 		if (this.config.publishAsync) {
-			debug('publishing %s asynchronously...', eventStream);
+			this._logger.log('debug', `publishing ${eventStream} asynchronously...`, { service });
 			setImmediate(publishEvents);
 		}
 		else {
-			debug('publishing %s synchronously...', eventStream);
+			this._logger.log('debug', `publishing ${eventStream} synchronously...`, { service });
 			await publishEvents();
 		}
 	}

@@ -4,7 +4,7 @@ const subscribe = require('./subscribe');
 const InMemoryView = require('./infrastructure/InMemoryView');
 const getHandledMessageTypes = require('./utils/getHandledMessageTypes');
 const { validateHandlers, getHandler, getClassName } = require('./utils');
-const info = require('debug')('cqrs:info');
+const nullLogger = require('./utils/nullLogger');
 
 /**
  * @param {IConcurrentView | any} view
@@ -68,12 +68,15 @@ class AbstractProjection {
 	 *
 	 * @param {object} [options]
 	 * @param {IProjectionView<any>} [options.view]
+	 * @param {ILogger} [options.logger]
 	 */
 	constructor(options) {
 		validateHandlers(this);
 
 		if (options && options.view)
 			this._view = options.view;
+
+		this._logger = (options && options.logger) || nullLogger;
 	}
 
 	/**
@@ -147,7 +150,8 @@ class AbstractProjection {
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
-		info('retrieving events and restoring %s projection...', getClassName(this));
+		const service = getClassName(this);
+		this._logger.log('debug', 'retrieving events and restoring projection...', { service });
 
 		const messageTypes = getHandledMessageTypes(this);
 		const eventsIterable = eventStore.getAllEvents(messageTypes);
@@ -157,13 +161,16 @@ class AbstractProjection {
 				await this._project(event);
 			}
 			catch (err) {
-				info('%s view restoring has failed on event: %j', getClassName(this), event);
-				info(err);
+				this._logger.log('error', `view restoring has failed: ${err.message}`, {
+					service,
+					event,
+					stack: err.stack
+				});
 				throw err;
 			}
 		}
 
-		info('%s view restored (%s)', getClassName(this), this.view.toString());
+		this._logger.log('info', `view restored (${this.view})`, { service });
 	}
 }
 

@@ -1,9 +1,9 @@
 'use strict';
 
 const subscribe = require('./subscribe');
-const { isClass } = require('./utils');
+const { isClass, getClassName } = require('./utils');
 const getHandledMessageTypes = require('./utils/getHandledMessageTypes');
-const info = require('debug')('cqrs:info');
+const nullLogger = require('./utils/nullLogger');
 
 /**
  * Aggregate command handler.
@@ -24,12 +24,15 @@ class AggregateCommandHandler {
 	 * @param {IEventStore} options.eventStore
 	 * @param {IAggregateConstructor | IAggregateFactory} options.aggregateType
 	 * @param {string[]} [options.handles]
+	 * @param {ILogger} [options.logger]
 	 */
 	constructor(options) {
 		if (!options.eventStore) throw new TypeError('eventStore argument required');
 		if (!options.aggregateType) throw new TypeError('aggregateType argument required');
 
 		this._eventStore = options.eventStore;
+		this._logger = options.logger || nullLogger;
+
 		if (isClass(options.aggregateType)) {
 			/** @type {IAggregateConstructor} */
 			// @ts-ignore
@@ -68,7 +71,7 @@ class AggregateCommandHandler {
 
 		const events = await this._eventStore.getAggregateEvents(id);
 		const aggregate = this._aggregateFactory.call(null, { id, events });
-		info('%s state restored from %s', aggregate, events);
+		this._logger.log('info', `${aggregate} state restored from ${events}`, { service: getClassName(aggregate) });
 
 		return aggregate;
 	}
@@ -81,7 +84,7 @@ class AggregateCommandHandler {
 	async _createAggregate() {
 		const id = await this._eventStore.getNewId();
 		const aggregate = this._aggregateFactory.call(null, { id });
-		info('%s created', aggregate);
+		this._logger.log('info', `${aggregate} created`, { service: getClassName(aggregate) });
 
 		return aggregate;
 	}
@@ -105,7 +108,7 @@ class AggregateCommandHandler {
 			await handlerResponse;
 
 		let events = aggregate.changes;
-		info('%s "%s" command processed, %s produced', aggregate, cmd.type, events);
+		this._logger.log('info', `${aggregate} "${cmd.type}" command processed, ${events} produced`, { service: getClassName(aggregate) });
 		if (!events.length)
 			return [];
 

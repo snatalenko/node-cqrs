@@ -34,9 +34,7 @@
   "author": "@stas_natalenko",
   "license": "MIT",
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
-  "dependencies": {
-    "debug": "^4.1.1"
-  },
+  "dependencies": {},
   "devDependencies": {
     "chai": "^4.2.0",
     "mocha": "^6.2.2",

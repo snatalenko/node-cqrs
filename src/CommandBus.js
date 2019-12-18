@@ -1,8 +1,8 @@
 'use strict';
 
 const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
-const debug = require('debug')('cqrs:debug:CommandBus');
-const info = require('debug')('cqrs:info:CommandBus');
+const nullLogger = require('./utils/nullLogger');
+const service = 'CommandBus';
 
 /**
  * @class CommandBus
@@ -15,9 +15,11 @@ class CommandBus {
 	 *
 	 * @param {object} [options]
 	 * @param {IMessageBus} [options.messageBus]
+	 * @param {ILogger} [options.logger]
 	 */
 	constructor(options) {
 		this._bus = (options && options.messageBus) || new InMemoryBus();
+		this._logger = (options && options.logger) || nullLogger;
 	}
 
 	/**
@@ -68,14 +70,14 @@ class CommandBus {
 		if (!command) throw new TypeError('command argument required');
 		if (!command.type) throw new TypeError('command.type argument required');
 
-		debug(`sending '${command.type}' command...`);
+		this._logger.log('debug', `sending '${command.type}' command...`, { service });
 
 		return this._bus.send(command).then(r => {
-			debug(`'${command.type}' processed`);
+			this._logger.log('debug', `'${command.type}' processed`, { service });
 			return r;
-		}, err => {
-			info(`'${command.type}' processing has failed: ${err}`);
-			throw err;
+		}, error => {
+			this._logger.log('error', `'${command.type}' processing has failed: ${error.message}`, { service, stack: error.stack });
+			throw error;
 		});
 	}
 }
