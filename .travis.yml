@@ -1,15 +1,12 @@
 language: node_js
 
 node_js:
-  - "7"
-  - "8"
-  - "9"
   - "10"
+  - "12"
 
 before_script:
-  - npm install -g eslint istanbul@next
+  - npm install -g eslint nyc coveralls
   - npm install
-  - npm install coveralls
 
 script: npm run test:coveralls
 

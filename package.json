@@ -1,6 +1,6 @@
 {
   "name": "node-cqrs",
-  "version": "0.15.1",
+  "version": "0.16.0-1",
   "description": "Basic ES6 backbone for CQRS app development",
   "repository": "snatalenko/node-cqrs",
   "keywords": [
@@ -15,7 +15,7 @@
   "main": "index.js",
   "types": "index.d.ts",
   "engines": {
-    "node": ">=7.6.0"
+    "node": ">=10.3.0"
   },
   "scripts": {
     "lint": "npx eslint src/",
@@ -23,12 +23,13 @@
     "pretest": "npm run lint",
     "test": "mocha ./tests/index.js",
     "test:integration": "mocha ./examples/user-domain-tests",
-    "test:coverage": "istanbul cover node_modules/.bin/_mocha tests/index.js -- -R spec",
+    "test:coverage": "nyc --reporter=lcov --reporter=text-summary node_modules/.bin/_mocha tests/index.js",
     "pretest:coveralls": "npm run test:coverage",
-    "test:coveralls": "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
+    "test:coveralls": "cat ./coverage/lcov.info | coveralls",
     "posttest:coveralls": "rm -rf ./coverage",
+    "changelog": "conventional-changelog -p eslint -i CHANGELOG.md -s",
     "preversion": "npm run lint:strict && npm test",
-    "postversion": "git push origin && git push origin --tags"
+    "version": "npm run changelog && git add CHANGELOG.md"
   },
   "author": "@stas_natalenko",
   "license": "MIT",
@@ -38,7 +39,7 @@
   },
   "devDependencies": {
     "chai": "^4.2.0",
-    "mocha": "^5.2.0",
-    "sinon": "^7.4.1"
+    "mocha": "^6.2.2",
+    "sinon": "^7.5.0"
   }
 }

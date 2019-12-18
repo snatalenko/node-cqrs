@@ -219,20 +219,18 @@ class EventStore {
 	 * Retrieve all events of specific types
 	 *
 	 * @param {string[]} eventTypes
-	 * @param {EventFilter} [filter]
-	 * @returns {Promise<IEventStream>}
+	 * @returns {AsyncIterableIterator<IEvent>}
 	 */
-	async getAllEvents(eventTypes, filter) {
+	async* getAllEvents(eventTypes) {
 		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
 
 		debug('retrieving %s events...', eventTypes ? eventTypes.join(', ') : 'all');
 
-		const events = await this._storage.getEvents(eventTypes, filter);
+		const eventsIterable = await this._storage.getEvents(eventTypes);
 
-		const eventStream = new EventStream(events);
-		debug('%s retrieved', eventStream);
+		yield* eventsIterable;
 
-		return eventStream;
+		debug('%s events retrieved', eventTypes ? eventTypes.join(', ') : 'all');
 	}
 
 	/**
@@ -250,9 +248,15 @@ class EventStore {
 			await this._snapshotStorage.getAggregateSnapshot(aggregateId) :
 			undefined;
 
-		const events = await this._storage.getAggregateEvents(aggregateId, { snapshot });
+		const events = [];
+		if (snapshot)
+			events.push(snapshot);
 
-		const eventStream = new EventStream(snapshot ? [snapshot, ...events] : events);
+		const eventsIterable = await this._storage.getAggregateEvents(aggregateId, { snapshot });
+		for await (const event of eventsIterable)
+			events.push(event);
+
+		const eventStream = new EventStream(events);
 		debug('%s retrieved', eventStream);
 
 		return eventStream;
@@ -273,7 +277,10 @@ class EventStore {
 
 		debug(`retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`);
 
-		const events = await this._storage.getSagaEvents(sagaId, filter);
+		const events = [];
+		const eventsIterable = await this._storage.getSagaEvents(sagaId, filter);
+		for await (const event of eventsIterable)
+			events.push(event);
 
 		const eventStream = new EventStream(events);
 		debug('%s retrieved', eventStream);
