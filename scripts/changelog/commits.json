@@ -1,0 +1,10 @@
+{
+    "bae5ac41b52172446149af04c0b98796e3ff81e4": {
+        "tag": null,
+        "message": null
+    },
+    "ef01cc33b63a95a8783a83b34c4fcb3f4830fe52": {
+        "tag": "Change",
+        "message": "Upgrade dev dependencies to fix audit script"
+    }
+}

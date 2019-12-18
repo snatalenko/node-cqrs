@@ -22,45 +22,69 @@
 
 * debug, mocha, sinon ([ac80c27](https://github.com/snatalenko/node-cqrs/commit/ac80c27653828904cf7b80d37b0ecade860b7490))
 
-## 0.15.1 - 2018-08-26
-
-* Changed: upgraded dev dependencies to fix audit vulnerability
-
 ## 0.15.0 - 2018-08-25
 
-* Added: `InMemoryView.prototype.getAll` as an alternative to the deprecated `state` property
-* Changed: `InMemoryView.prototype.create` 2nd parameter must be an instance of an Object, not a factory function
-* Changed: `InMemoryView.prototype.updateEnforcingNew` does not pass an empty object as a parameter when record does not exist
-* Changed: Observable `on(,,{queueName})` replaced with `queue(name).on(,)`;
-* Changed: separated IProjectionView and IConcurrentView interfaces
-* Changed: `IProjectionView.prototype.shouldRestore` can return Promise
-* Changed: Projection `restore` process flow to support async concurrent views
-* Fixed: Typings
-* Fixed: Call stack overflow in EventStream constructor on large number of events
 
-## 0.14.2 - 2018-07-29
+### Features
 
-* Fixed: `Container.prototype.registerInstance` requires an Object as first parameter
+* `InMemoryView.prototype.getAll` as an alternative to the deprecated `state` property
 
-## 0.14.1 - 2018-07-14
+### Changes
 
-* Added: `Aggregate.prototype.makeEvent` as a separate method for testing purposes
-* Fixed: Aggregate snapshot modification thru Aggregate state
-* Fixed: Tests with NodeJS@^10
+* `InMemoryView.prototype.create` 2nd parameter must be an instance of an Object, not a factory function
+* `InMemoryView.prototype.updateEnforcingNew` does not pass an empty object as a parameter when record does not exist
+* Observable `on(,,{queueName})` replaced with `queue(name).on(,)`;
+* separated IProjectionView and IConcurrentView interfaces
+* `IProjectionView.prototype.shouldRestore` can return Promise
+* Projection `restore` process flow to support async concurrent views
 
-## 0.14.0 - 2018-05-17
+### Fixes
 
-* Added: examples/user-domain
-* Added: typings
-* Added: changelog
-* Changed: snapshotStorage moved to a separate interface/entity
-* Changed: named queues handling moved out of EventStore to InMemoryMessageBus implementation
-* Changed: command-to-event context copying moved out of EventStore to AbstractAggregate.prototype.emit, which frees up road for a concurrent operations on same aggregate implementation
-* Changed: EventStream is immutable
-* Changed: `AbstractProjection.prototype.shouldRestoreView` can be overriden in projection for own view implementations
+* Typings
+* Call stack overflow in EventStream constructor on large number of events
 
-## 0.13.0 - 2017-10-04
+## 0.14.2 (2018-07-29)
 
-* Changed: In-Memory views do not respond to get(..) requests until they are restored
-* Changed: In-Memory views restoring is handled by AbstractProjection
-* Added: docs publishing to [node-cqrs.org](https://www.node-cqrs.org)
+
+### Fixes
+
+* `Container.prototype.registerInstance` requires an Object as first parameter
+
+## 0.14.1 (2018-07-14)
+
+### Features
+
+* `Aggregate.prototype.makeEvent` as a separate method for testing purposes
+
+### Fixes
+
+* Aggregate snapshot modification thru Aggregate state
+* Tests with NodeJS@^10
+
+## 0.14.0 (2018-05-17)
+
+
+### Features
+
+* examples/user-domain
+* typings
+* changelog
+
+### Changes
+
+* snapshotStorage moved to a separate interface/entity
+* named queues handling moved out of EventStore to InMemoryMessageBus implementation
+* command-to-event context copying moved out of EventStore to AbstractAggregate.prototype.emit, which frees up road for a concurrent operations on same aggregate implementation
+* EventStream is immutable
+* `AbstractProjection.prototype.shouldRestoreView` can be overriden in projection for own view implementations
+
+## 0.13.0 (2017-10-04)
+
+### Documentation
+
+* docs publishing to [node-cqrs.org](https://www.node-cqrs.org)
+
+### Changes
+
+* In-Memory views do not respond to get(..) requests until they are restored
+* In-Memory views restoring is handled by AbstractProjection

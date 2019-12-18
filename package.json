@@ -27,7 +27,7 @@
     "pretest:coveralls": "npm run test:coverage",
     "test:coveralls": "cat ./coverage/lcov.info | coveralls",
     "posttest:coveralls": "rm -rf ./coverage",
-    "changelog": "conventional-changelog -p eslint -i CHANGELOG.md -s",
+    "changelog": "conventional-changelog -n ./scripts/changelog -i CHANGELOG.md -s",
     "preversion": "npm run lint:strict && npm test",
     "version": "npm run changelog && git add CHANGELOG.md"
   },
