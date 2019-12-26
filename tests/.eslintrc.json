@@ -3,13 +3,16 @@
         "mocha": true
     },
     "rules": {
-        "require-jsdoc": "off",
-        "prefer-arrow-callback": "off",
-        "func-names": "off",
         "class-methods-use-this": "off",
+        "func-names": "off",
+        "no-loop-func": "off",
+        "no-param-reassign": "off",
+        "no-plusplus": "off",
+        "no-return-assign": "off",
         "no-shadow": "off",
         "no-unused-expressions": "off",
-        "no-return-assign": "off",
-        "no-loop-func": "off"
+        "no-unused-vars": "off",
+        "prefer-arrow-callback": "off",
+        "require-jsdoc": "off"
     }
 }

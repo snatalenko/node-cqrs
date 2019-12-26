@@ -73,7 +73,7 @@ describe('AggregateCommandHandler', function () {
 
 		handler.subscribe(commandBus);
 
-		assert(commandBus.on.callCount === 2, 'commandBus.on was not called twice');
+		expect(commandBus.on).to.have.property('callCount', 2);
 
 		{
 			const { args } = commandBus.on.firstCall;
@@ -215,7 +215,6 @@ describe('AggregateCommandHandler', function () {
 
 		class PersistedAggregate extends MyAggregate {
 			get shouldTakeSnapshot() {
-				console.log(this.version, this.version > 1);
 				return this.version > 2;
 			}
 		}

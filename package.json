@@ -18,8 +18,7 @@
     "node": ">=10.3.0"
   },
   "scripts": {
-    "lint": "npx eslint src/",
-    "lint:strict": "npx eslint src/ --max-warnings=0",
+    "lint": "eslint . --max-warnings=0",
     "pretest": "npm run lint",
     "test": "mocha ./tests/index.js ./examples/user-domain-tests",
     "test:coverage": "nyc --reporter=lcov --reporter=text-summary node_modules/.bin/_mocha tests/index.js",
@@ -27,7 +26,7 @@
     "test:coveralls": "cat ./coverage/lcov.info | coveralls",
     "posttest:coveralls": "rm -rf ./coverage",
     "changelog": "conventional-changelog -n ./scripts/changelog -i CHANGELOG.md -s",
-    "preversion": "npm run lint:strict && npm test",
+    "preversion": "npm run lint && npm test",
     "version": "npm run changelog && git add CHANGELOG.md"
   },
   "author": "@stas_natalenko",

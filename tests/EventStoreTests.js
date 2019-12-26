@@ -6,7 +6,6 @@ const sinon = require('sinon');
 const {
 	EventStore,
 	InMemoryEventStorage,
-	InMemoryMessageBus,
 	InMemorySnapshotStorage
 } = require('../src');
 
