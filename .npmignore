@@ -1,9 +1,12 @@
 .vscode/
+.nyc_output/
 docs/
 coverage/
+scripts/
 tests/
 .editorconfig
 .eslintrc.json
 .eslintignore
 .gitignore
 .travis.yml
+book.json
