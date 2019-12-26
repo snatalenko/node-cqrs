@@ -1,7 +1,7 @@
 'use strict';
 
 const {
-	Container,
+	ContainerBuilder,
 	InMemoryEventStorage,
 	CommandBus,
 	EventStore,
@@ -12,23 +12,19 @@ const UsersProjection = require('./UsersProjection');
 
 /**
  * DI container factory
- *
- * @returns {IContainer}
  */
 exports.createContainer = () => {
-	const container = new Container();
+	const builder = new ContainerBuilder();
 
 	// register infrastructure services
-	container.register(InMemoryEventStorage, 'storage');
+	builder.register(InMemoryEventStorage).as('storage');
 
 	// register domain entities
-	container.registerAggregate(UserAggregate);
-	container.registerProjection(UsersProjection, 'users');
+	builder.registerAggregate(UserAggregate);
+	builder.registerProjection(UsersProjection, 'users');
 
 	// create instances of command/event handlers and related subscriptions
-	container.createUnexposedInstances();
-
-	return container;
+	return builder.container();
 };
 
 /**

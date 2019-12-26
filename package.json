@@ -33,10 +33,15 @@
   "author": "@stas_natalenko",
   "license": "MIT",
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
-  "dependencies": {},
+  "dependencies": {
+    "di6": "github:snatalenko/di6#v0.1.0"
+  },
   "devDependencies": {
     "chai": "^4.2.0",
+    "coveralls": "^3.0.9",
+    "eslint": "^6.8.0",
     "mocha": "^6.2.2",
+    "nyc": "^15.0.0",
     "sinon": "^7.5.0"
   }
 }

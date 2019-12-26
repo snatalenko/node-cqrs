@@ -38,44 +38,7 @@ declare interface ICommandBus extends IObservable {
 		Promise<IEventStream>;
 }
 
-// region CqrsDomainContainer
-
-declare interface IFactory<T> {
-	(...args: any[]): T;
-};
-
-declare interface IConstructor<T> {
-	new(...args: any[]): T;
-};
-
-declare type ITypeOrFactory<T> = IConstructor<T> | IFactory<T>;
-
-declare interface IContainer { }
-
-declare interface IContainerBuilder {
-	constructor(): void;
-	readonly instances: Map<string, object>;
-	readonly factories: Set<(container: object) => object>;
-
-	register<T>(typeOrFactory: ITypeOrFactory<T>, exposeAs?: string, exposeMap?: (instance: object) => object): void;
-	registerInstance(instance: any, exposeAs: string): void;
-
-	createUnexposedInstances(): void;
-	createAllInstances(): void;
-	createInstance<T>(typeOrFactory: ITypeOrFactory<T>, additionalOptions: Object): Object;
-}
-
-declare interface ICqrsDomainContainerBuilder extends IContainerBuilder {
-	registerCommandHandler(typeOrFactory: ITypeOrFactory<ICommandHandler>): void;
-	registerEventReceptor(typeOrFactory: ITypeOrFactory<IEventReceptor>): void;
-	registerProjection(typeOrFactory: ITypeOrFactory<IProjection>, alias?: string): void;
-	registerAggregate(typeOrFactory: ITypeOrFactory<IAggregate>): void;
-	registerSaga(typeOrFactory: ITypeOrFactory<ISaga>): void;
-}
-
-// endregion
-
-// region Aggregate
+// Aggregate
 
 declare interface IAggregateState extends Object {
 	mutate?(event: IEvent): void;
@@ -112,9 +75,7 @@ declare interface ICommandHandler {
 	subscribe(commandBus: ICommandBus): void;
 }
 
-// endregion Aggregate
-
-// region Saga
+// Saga
 
 declare interface ISaga {
 	readonly id: Identifier;
@@ -143,9 +104,7 @@ declare interface IEventReceptor extends IObserver {
 	subscribe(eventStore: IEventStore): void;
 }
 
-// endregion Saga
-
-// region Projection
+// Projection
 
 declare interface IProjection extends IObserver {
 	readonly view: object;
@@ -166,9 +125,7 @@ declare interface IConcurrentView<TRecord> extends IProjectionView<TRecord> {
 	once(eventType: "ready"): Promise<void>;
 }
 
-// endregion Projection
-
-// region Observable / Observer
+// Observable / Observer
 
 declare type IMessageHandler = (message: IMessage) => void;
 
@@ -186,9 +143,6 @@ declare type TSubscribeOptions = {
 declare interface IObserver {
 	subscribe(obervable: IObservable): void;
 }
-
-// endregion
-
 
 declare type EventFilter = { afterEvent?: IEvent; beforeEvent?: IEvent; };
 
@@ -222,8 +176,6 @@ declare interface IMessageBus extends IEventEmitter {
 	send(command: ICommand): Promise<any>;
 	publish(event: IEvent): Promise<any>;
 }
-
-// endregion
 
 declare interface ILogger {
 	log(level: 'debug' | 'info' | 'warn' | 'error', message: string, meta?: { [key: string]: any }): void;

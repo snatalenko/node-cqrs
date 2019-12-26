@@ -8,7 +8,7 @@ export {
 	AbstractSaga,
 	AggregateCommandHandler,
 	CommandBus,
-	Container,
+	ContainerBuilder,
 	EventStore,
 	EventStream,
 	getMessageHandlerNames,

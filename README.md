@@ -77,12 +77,13 @@ Then register aggregate in the [DI container](middleware/DIContainer.md).
 All the wiring can be done manually, without a DI container (you can find it in samples), but with container it’s just easier:
 
 ```js
-const { Container, InMemoryEventStorage } = require('node-cqrs');
+const { ContainerBuilder, InMemoryEventStorage } = require('node-cqrs');
 
-const container = new Container();
-container.register(InMemoryEventStorage, 'storage');
-container.registerAggregate(UserAggregate);
-container.createUnexposedInstances();
+const builder = new ContainerBuilder();
+builder.register(InMemoryEventStorage).as('storage');
+builder.registerAggregate(UserAggregate);
+
+const container = builder.container();
 ```
 
 Then send a command:
@@ -165,7 +166,7 @@ class UsersProjection extends AbstractProjection {
 Once the projection is ready, it can be registered in the DI container: 
 
 ```js
-container.registerProjection(UsersProjection, 'users');
+builder.registerProjection(UsersProjection, 'users');
 ```
 
 And accessed from anywhere in your app:

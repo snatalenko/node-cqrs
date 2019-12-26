@@ -5,8 +5,9 @@ DI Container intended to make components wiring easier.
 All named component instances are exposed on container thru getters and get created upon accessing a getter. Default `EventStore` and `CommandBus` components are registered upon container instance creation:
 
 ```js
-const { Container } = require('node-cqrs');
-const container = new Container();
+const { ContainerBuilder } = require('node-cqrs');
+const builder = new ContainerBuilder();
+const container = builder.container();
 
 container.eventStore; // instance of EventStore
 container.commandBus; // instance of CommandBus
@@ -16,10 +17,10 @@ Other components can be registered either as classes or as factories:
 
 ```js
 // class with automatic dependency injection
-container.register(SomeService, 'someService');
+builder.register(SomeService).as('someService');
 
 // OR factory with more precise control
-container.register(cn => new SomeService(cn.commandBus), 'someService');
+builder.register(container => new SomeService(container.commandBus)).as('someService');
 ```
 
 Container scans class constructors (or constructor functions) for dependencies and injects them, where possible: 
@@ -28,41 +29,37 @@ Container scans class constructors (or constructor functions) for dependencies a
 class SomeRepository { /* ... */ }
 
 class ServiceA { 
-  // named dependency
-  constructor(repository) { /* ... */ }
-}
-
-class ServiceB { 
   // dependency definition, as a parameter object property
   constructor(options) { 
     this._repository = options.repository;
   }
 }
 
-class ServiceC {
+class ServiceB {
   // dependency defined thru parameter object destructuring
-  constructor({ repository }) { /* ... */ }
+  constructor({ repository, a }) { /* ... */ }
 }
 
-// named dependency as a function argument
-function ServiceD(repository) {
-  this._repository = repository;
+class ServiceC {
+  constructor(repository, a, b) { /* ... */ }
 }
+
+// dependencies passed thru factory
+const serviceFactory = ({ repository, a, b }) => new ServiceC(repository, a, b);
 
 container.register(SomeRepository, 'repository');
 container.register(ServiceA, 'a');
 container.register(ServiceB, 'b');
-container.register(ServiceC, 'c');
-container.register(ServiceD, 'd');
+container.register(serviceFactory, 'c');
 ```
 
-Components that aren't going to be accessed directly by name can also be registered in the container, but their instances will only be created after invoking `createUnexposedInstances` or `createAllInstances` method:
+Components that aren't going to be accessed directly by name can also be registered in the builder. Their instances will be created after invoking `container()` method:
 
 ```js
-container.register(SomeEventObserver);
+builder.register(SomeEventObserver);
 // at this point the registered observer does not exist
 
-container.createUnexposedInstances();
+const container = builder.container();
 // now it exists and got all its constructor dependencies
 ```
 
@@ -75,23 +72,26 @@ DI container has a set of methods for CQRS components registration:
 * __registerCommandHandler(typeOrFactory)__ - registers command handler and subscribes it to commandBus
 * __registerEventReceptor(typeOrFactory)__ - registers event receptor and subscribes it to eventStore
 
-Alltogether:
+
+Altogether:
 
 ```js
-const { Container, InMemoryEventStorage } = require('node-cqrs');
-const container = new Container();
+const { ContainerBuilder, InMemoryEventStorage } = require('node-cqrs');
+const builder = new ContainerBuilder();
 
-container.registerAggregate(UserAggregate);
+builder.registerAggregate(UserAggregate);
 
 // we are using non-persistent in-memory event storage, 
 // for a permanent storage you can look at https://www.npmjs.com/package/node-cqrs-mongo
-container.register(InMemoryEventStorage, 'storage');
+builder.register(InMemoryEventStorage)
+  .as('storage');
 
 // as an example of UserAggregate dependency
-container.register(AuthService, 'authService');
+builder.register(AuthService)
+  .as('authService');
 
 // setup command and event handler listeners
-container.createUnexposedInstances();
+const container = builder.container();
 
 // send a command
 const aggregateId = undefined;
