@@ -53,7 +53,8 @@ class UserAggregateState {
 class UserAggregate extends AbstractAggregate {
 
 	/**
-	 * List of commands supported by User Aggregate
+	 * Optional list of commands supported by User Aggregate
+	 *
 	 * @type {string[]}
 	 * @readonly
 	 * @static
@@ -68,6 +69,7 @@ class UserAggregate extends AbstractAggregate {
 
 	/**
 	 * Aggregate state
+	 *
 	 * @type {IAggregateState}
 	 * @readonly
 	 */

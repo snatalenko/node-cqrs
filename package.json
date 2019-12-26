@@ -2,15 +2,21 @@
   "name": "node-cqrs",
   "version": "0.16.0-2",
   "description": "Basic ES6 backbone for CQRS app development",
-  "repository": "snatalenko/node-cqrs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/snatalnko/node-cqrs.git"
+  },
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
   "keywords": [
     "cqrs",
+    "eventsourcing",
     "ddd",
     "domain",
-    "command",
-    "event",
-    "eventstore",
-    "eventsourcing"
+    "eventstore"
   ],
   "main": "index.js",
   "types": "index.d.ts",

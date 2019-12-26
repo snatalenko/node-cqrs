@@ -12,7 +12,8 @@ const { AbstractProjection } = require('../../src'); // node-cqrs
 class UsersProjection extends AbstractProjection {
 
 	/**
-	 * Events being handled by Projection
+	 * Optional list of events being handled by Projection
+	 *
 	 * @type {string[]}
 	 * @readonly
 	 * @static
