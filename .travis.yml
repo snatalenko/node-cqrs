@@ -5,7 +5,6 @@ node_js:
   - "12"
 
 before_script:
-  - npm install -g eslint nyc coveralls
   - npm install
 
 script: npm run test:coveralls
