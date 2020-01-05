@@ -166,17 +166,17 @@ function* describeClass(className, definitions) {
 	yield ' {';
 
 
-	for (const m of members.filter(m => m.kind === 'member')) {
+	for (const member of members.filter(m => m.kind === 'member')) {
 		yield '\n\n';
-		yield* describeProperty(m);
+		yield* describeProperty(member);
 	}
 
 	yield '\n\n';
 	yield* describeMethod({ ...ctor, name: 'constructor' });
 
-	for (const m of members.filter(m => m.kind === 'function')) {
+	for (const member of members.filter(m => m.kind === 'function')) {
 		yield '\n\n';
-		yield* describeMethod(m);
+		yield* describeMethod(member);
 	}
 
 	yield '\n}\n';
