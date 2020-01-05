@@ -27,7 +27,7 @@ class EventStream extends Array {
 	/**
 	 * Create new EventStream with events that match certain condition
 	 *
-	 * @param {(event: IEvent, index: number, all: Array<IEvent>) => boolean} condition
+	 * @param {function(IEvent, number, Array<IEvent>): boolean} condition
 	 * @returns {EventStream}
 	 * @memberof EventStream
 	 */
@@ -39,7 +39,7 @@ class EventStream extends Array {
 	 * Map stream events to another collection
 	 *
 	 * @template TResult
-	 * @param {(event: IEvent, index: number, all: Array<IEvent>) => TResult} mapFn
+	 * @param {function(IEvent, number, Array<IEvent>): TResult} mapFn
 	 * @returns {Array<TResult>}
 	 * @memberof EventStream
 	 */

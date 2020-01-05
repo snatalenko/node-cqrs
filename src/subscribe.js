@@ -10,7 +10,10 @@ const unique = arr => [...new Set(arr)];
  *
  * @param {IObservable} observable
  * @param {object} observer
- * @param {TSubscribeOptions} [options]
+ * @param {object} [options]
+ * @param {string[]} [options.messageTypes]
+ * @param {IMessageHandler} [options.masterHandler]
+ * @param {string} [options.queueName]
  */
 function subscribe(observable, observer, options = {}) {
 	if (typeof observable !== 'object' || !observable)

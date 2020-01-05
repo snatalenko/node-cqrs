@@ -9,7 +9,7 @@ const _messages = Symbol('messages');
 /**
  * Base class for Saga definition
  *
- * @class {AbstractSaga}
+ * @class AbstractSaga
  * @implements {ISaga}
  */
 class AbstractSaga {
@@ -22,7 +22,7 @@ class AbstractSaga {
 	 * @static
 	 */
 	static get startsWith() {
-		throw new Error('startsWith must be overriden to return a list of event types that start saga');
+		throw new Error('startsWith must be overridden to return a list of event types that start saga');
 	}
 
 	/**
@@ -118,6 +118,7 @@ class AbstractSaga {
 	/**
 	 * Format a command and put it to the execution queue
 	 *
+	 * @protected
 	 * @param {string} commandType
 	 * @param {string|number} aggregateId
 	 * @param {object} payload
@@ -140,6 +141,7 @@ class AbstractSaga {
 	/**
 	 * Put a command to the execution queue
 	 *
+	 * @protected
 	 * @param {ICommand} command
 	 */
 	enqueueRaw(command) {
@@ -158,6 +160,8 @@ class AbstractSaga {
 
 	/**
 	 * Get human-readable Saga name
+	 *
+	 * @returns {string}
 	 */
 	toString() {
 		return `${getClassName(this)} ${this.id} (v${this.version})`;

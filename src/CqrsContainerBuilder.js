@@ -58,7 +58,7 @@ class CqrsContainerBuilder extends ContainerBuilder {
 	 * Register projection, which will expose view and will be subscribed
 	 * to eventStore and will restore its state upon instance creation
 	 *
-	 * @param {{ new(c?: any): IProjection }} ProjectionType
+	 * @param {IProjectionConstructor} ProjectionType
 	 * @param {string} exposedViewAlias
 	 */
 	registerProjection(ProjectionType, exposedViewAlias) {

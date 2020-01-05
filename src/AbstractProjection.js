@@ -97,6 +97,7 @@ class AbstractProjection {
 	 * Pass event to projection event handler
 	 *
 	 * @param {IEvent} event
+	 * @returns {Promise<void>}
 	 */
 	async project(event) {
 		const concurrentView = asConcurrentView(this.view);

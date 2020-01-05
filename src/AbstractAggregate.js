@@ -27,7 +27,8 @@ const _snapshotVersion = Symbol('snapshotVersion');
 class AbstractAggregate {
 
 	/**
-	 * List of commands handled by Aggregate. Can be overridden in aggregate implementation
+	 * Optional list of commands handled by Aggregate.
+	 * Can be overridden in the aggregate implementation
 	 *
 	 * @type {string[]}
 	 * @readonly
@@ -70,7 +71,7 @@ class AbstractAggregate {
 	}
 
 	/**
-	 * Events emitted by Aggregate command handlers
+	 * Events emitted by Aggregate
 	 *
 	 * @type {IEventStream}
 	 * @readonly
@@ -80,7 +81,7 @@ class AbstractAggregate {
 	}
 
 	/**
-	 * Override to define, whether an aggregate state snapshot should be taken
+	 * Override to define whether an aggregate state snapshot should be taken
 	 *
 	 * @type {boolean}
 	 * @readonly
@@ -95,7 +96,7 @@ class AbstractAggregate {
 	/**
 	 * Creates an instance of AbstractAggregate.
 	 *
-	 * @param {TAggregateParams} options
+	 * @param {TAggregateConstructorParams} options
 	 */
 	constructor(options) {
 		const { id, state, events } = options;
@@ -175,7 +176,10 @@ class AbstractAggregate {
 	}
 
 	/**
+	 * Format event based on a current aggregate state
+	 * and a command being executed
 	 *
+	 * @protected
 	 * @param {string} type
 	 * @param {any} [payload]
 	 * @param {ICommand} [sourceCommand]
@@ -262,6 +266,8 @@ class AbstractAggregate {
 
 	/**
 	 * Get human-readable aggregate identifier
+	 *
+	 * @returns {string}
 	 */
 	toString() {
 		return `${getClassName(this)} ${this.id} (v${this.version})`;

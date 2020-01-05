@@ -11,7 +11,7 @@ const nullLogger = require('./utils/nullLogger');
  * applies new events
  * and passes command(s) to command bus
  *
- * @class {SagaEventHandler}
+ * @class SagaEventHandler
  * @implements {IEventReceptor}
  */
 class SagaEventHandler {

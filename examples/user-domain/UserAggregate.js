@@ -70,7 +70,6 @@ class UserAggregate extends AbstractAggregate {
 	/**
 	 * Aggregate state
 	 *
-	 * @type {IAggregateState}
 	 * @readonly
 	 */
 	get state() {
