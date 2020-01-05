@@ -1,6 +1,6 @@
 # External Dependencies
 
-If you are going to use a built-in [DI container](../../middleware/DIContainer.md),your aggregate constructor can accept instances of the services it depends on, they will be injected automatically upon each aggregate instance creation:
+If you are going to use a built-in [DI container](../../middleware/DIContainer.md), your aggregate constructor can accept instances of the services it depends on, they will be injected automatically upon each aggregate instance creation:
 
 ```js
 class UserAggregate extends AbstractAggregate {

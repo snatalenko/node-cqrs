@@ -31,7 +31,7 @@ Aggregate state **should NOT throw any exceptions**, all type and business logic
 
 ## Using in Aggregate
 
-[AbstractAggregate](AbstractAggregate.md) restores aggregate state automatically in [its constructor][AbstractAggregate.js] from events, retrieved from the [EventStore][EventStore].
+`AbstractAggregate` restores aggregate state automatically in [its constructor][AbstractAggregate.js] from events, retrieved from the [EventStore][EventStore].
 
 In order to make Aggregate use your state implementation, pass its instance as a property to the AbstractAggregate constructor, or define it as a read-only stateful property in your aggregate class:
 

@@ -69,7 +69,7 @@ class AbstractSaga {
 	/**
 	 * Creates an instance of AbstractSaga
 	 *
-	 * @param {TSagaParams} options
+	 * @param {TSagaConstructorParams} options
 	 */
 	constructor(options) {
 		if (!options) throw new TypeError('options argument required');

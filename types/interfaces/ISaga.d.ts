@@ -1,22 +1,29 @@
 declare interface ISaga {
-	readonly id: Identifier;
-	readonly version: number;
+	/** List of event types that trigger new saga start */
+	static readonly startsWith: string[];
+
+	/** List of events being handled by Saga */
+	static readonly handles?: string[];
+
+	/** List of commands emitted by Saga */
 	readonly uncommittedMessages: ICommand[];
-	readonly restored?: boolean;
 
+	/** Main entry point for Saga events */
 	apply(event: IEvent): void | Promise<void>;
-	enqueue(commandType: string, aggregateId: Identifier, payload: any): void;
-	enqueueRaw(command: ICommand): void;
 
+	/** Reset emitted commands when they are not longer needed */
 	resetUncommittedMessages(): void;
-	onError?(err: Error, params: { event: IEvent, command: ICommand }): void;
 }
 
-declare type TSagaParams = { id: Identifier, events?: IEventStream };
-declare type ISagaFactory = (options: TSagaParams) => ISaga;
+declare type TSagaConstructorParams = {
+	id: Identifier,
+	events?: IEventStream
+};
+
+declare type ISagaFactory = (options: TSagaConstructorParams) => ISaga;
 
 declare interface ISagaConstructor {
-	new(options: TSagaParams): ISaga;
+	new(options: TSagaConstructorParams): ISaga;
 	readonly startsWith: string[];
 	readonly handles: string[];
 }

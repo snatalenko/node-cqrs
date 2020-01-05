@@ -4,7 +4,6 @@
 * [Entities](/docs/entities/README.md)
   * [Messages](/docs/entities/Messages/README.md)
   * [Aggregate](/docs/entities/Aggregate/README.md)
-    * [AbstractAggregate](/docs/entities/Aggregate/AbstractAggregate.md)
     * [State](/docs/entities/Aggregate/State.md)
     * [Command Handlers](/docs/entities/Aggregate/CommandHandlers.md)
     * [External Dependencies](/docs/entities/Aggregate/Dependencies.md)

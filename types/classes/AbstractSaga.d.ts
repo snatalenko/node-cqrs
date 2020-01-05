@@ -17,7 +17,7 @@ declare abstract class AbstractSaga implements ISaga {
 	readonly uncommittedMessages: Array<ICommand>;
 
 	/** Creates an instance of AbstractSaga */
-	constructor(options: TSagaParams): AbstractSaga;
+	constructor(options: TSagaConstructorParams): AbstractSaga;
 
 	/** Modify saga state by applying an event */
 	apply(event: IEvent): void | Promise<void>;
