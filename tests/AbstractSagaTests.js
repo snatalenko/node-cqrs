@@ -26,7 +26,7 @@ describe('AbstractSaga', function () {
 
 			class SagaWithoutHandles extends AbstractSaga { }
 
-			expect(() => s = new SagaWithoutHandles({ id: 1 })).to.throw('startsWith must be overriden to return a list of event types that start saga');
+			expect(() => s = new SagaWithoutHandles({ id: 1 })).to.throw('startsWith must be overridden to return a list of event types that start saga');
 		});
 
 		it('throws exception if event handler is not defined', () => {
