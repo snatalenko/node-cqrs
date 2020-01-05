@@ -1,4 +1,4 @@
-declare class CqrsContainerBuilder {
+declare class CqrsContainerBuilder extends ContainerBuilder {
 
 	/** Creates an instance of CqrsContainerBuilder */
 	constructor(): CqrsContainerBuilder;
