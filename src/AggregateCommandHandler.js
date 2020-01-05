@@ -56,7 +56,7 @@ class AggregateCommandHandler {
 	subscribe(commandBus) {
 		subscribe(commandBus, this, {
 			messageTypes: this._handles,
-			masterHandler: this.execute
+			masterHandler: c => this.execute(c)
 		});
 	}
 

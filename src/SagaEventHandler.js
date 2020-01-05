@@ -66,7 +66,7 @@ class SagaEventHandler {
 	subscribe(eventStore) {
 		subscribe(eventStore, this, {
 			messageTypes: [...this._startsWith, ...this._handles],
-			masterHandler: this.handle,
+			masterHandler: e => this.handle(e),
 			queueName: this._queueName
 		});
 	}

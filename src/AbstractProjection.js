@@ -87,7 +87,7 @@ class AbstractProjection {
 	 */
 	async subscribe(eventStore) {
 		subscribe(eventStore, this, {
-			masterHandler: this.project
+			masterHandler: e => this.project(e)
 		});
 
 		await this.restore(eventStore);

@@ -39,9 +39,9 @@ function subscribe(observable, observer, options = {}) {
 			throw new Error(`'${messageType}' handler is not defined or not a function`);
 
 		if (queueName)
-			observable.queue(queueName).on(messageType, handler.bind(observer));
+			observable.queue(queueName).on(messageType, handler);
 		else
-			observable.on(messageType, handler.bind(observer));
+			observable.on(messageType, handler);
 	}
 }
 
