@@ -7,7 +7,7 @@ const { validateHandlers, getHandler, getClassName } = require('./utils');
 const nullLogger = require('./utils/nullLogger');
 
 /**
- * @param {IConcurrentView | any} view
+ * @param {any} view
  */
 const isConcurrentView = view =>
 	typeof view.lock === 'function' &&
@@ -16,10 +16,9 @@ const isConcurrentView = view =>
 
 /**
  * @template TRecord
- * @param {IProjectionView<TRecord>} view
- * @returns {IConcurrentView<TRecord>}
+ * @param {any} view
+ * @returns {IConcurrentView}
  */
-// @ts-ignore
 const asConcurrentView = view => (isConcurrentView(view) ? view : undefined);
 
 /**
@@ -31,7 +30,9 @@ const asConcurrentView = view => (isConcurrentView(view) ? view : undefined);
 class AbstractProjection {
 
 	/**
-	 * List of event types being handled by projection. Can be overridden in projection implementation
+	 * Optional list of event types being handled by projection.
+	 * Can be overridden in projection implementation.
+	 * If not overridden, will detect event types from event handlers declared on the Projection class
 	 *
 	 * @type {string[]}
 	 * @readonly
@@ -42,9 +43,9 @@ class AbstractProjection {
 	}
 
 	/**
-	 * View associated with projection
+	 * Default view associated with projection.
+	 * If not defined, an instance of `NodeCqrs.InMemoryView` is created on first access.
 	 *
-	 * @type {IProjectionView<any>}
 	 * @readonly
 	 */
 	get view() {
@@ -67,7 +68,7 @@ class AbstractProjection {
 	 * Creates an instance of AbstractProjection
 	 *
 	 * @param {object} [options]
-	 * @param {IProjectionView<any>} [options.view]
+	 * @param {any} [options.view]
 	 * @param {ILogger} [options.logger]
 	 */
 	constructor(options) {
