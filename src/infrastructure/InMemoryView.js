@@ -235,15 +235,6 @@ class InMemoryView {
 	}
 
 	/**
-	 * Mark view as 'ready' when it's restored by projection
-	 *
-	 * @deprecated Use `unlock()`
-	 */
-	markAsReady() {
-		this.unlock();
-	}
-
-	/**
 	 * Create a Promise which will resolve to a first emitted event of a given type
 	 *
 	 * @param {"ready"} eventType
