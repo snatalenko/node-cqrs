@@ -450,7 +450,7 @@ class EventStore {
 	once(messageTypes, handler, filter) {
 		const subscribeTo = Array.isArray(messageTypes) ? messageTypes : [messageTypes];
 
-		return setupOneTimeEmitterSubscription(this._eventEmitter, subscribeTo, filter, handler);
+		return setupOneTimeEmitterSubscription(this._eventEmitter, subscribeTo, filter, handler, this._logger);
 	}
 }
 
