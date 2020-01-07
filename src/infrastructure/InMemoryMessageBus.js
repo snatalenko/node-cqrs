@@ -3,10 +3,10 @@
 /**
  * Default implementation of the message bus. Keeps all subscriptions and messages in memory.
  *
- * @class {InMemoryMessageBus}
+ * @class InMemoryMessageBus
  * @implements {IMessageBus}
  */
-module.exports = class InMemoryMessageBus {
+class InMemoryMessageBus {
 
 	/**
 	 * Indicates that message bus supports named queue subscriptions
@@ -127,4 +127,6 @@ module.exports = class InMemoryMessageBus {
 
 		return Promise.all(handlers.map(handler => handler(event)));
 	}
-};
+}
+
+module.exports = InMemoryMessageBus;

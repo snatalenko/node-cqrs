@@ -1,14 +1,17 @@
-declare class CommandBus implements ICommandBus {
+namespace NodeCqrs {
 
-	/** Creates an instance of CommandBus. */
-	constructor(options?: { messageBus?: IMessageBus, logger?: ILogger }): CommandBus;
+	declare class CommandBus implements ICommandBus {
 
-	/** Set up a command handler */
-	on(commandType: string, handler: IMessageHandler): any;
+		/** Creates an instance of CommandBus. */
+		constructor(options?: { messageBus?: IMessageBus, logger?: ILogger }): void;
 
-	/** Format and send a command for execution */
-	send(type: string, aggregateId: string, options: Object, otherArgs: object): Promise<IEventStream>;
+		/** Set up a command handler */
+		on(commandType: string, handler: IMessageHandler): any;
 
-	/** Send a command for execution */
-	sendRaw(command: ICommand): Promise<IEventStream>;
+		/** Format and send a command for execution */
+		send(type: string, aggregateId: string, options: Object, otherArgs: object): Promise<IEventStream>;
+
+		/** Send a command for execution */
+		sendRaw(command: ICommand): Promise<IEventStream>;
+	}
 }

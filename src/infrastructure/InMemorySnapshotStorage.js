@@ -7,11 +7,10 @@
  * @class InMemorySnapshotStorage
  * @implements {IAggregateSnapshotStorage}
  */
-module.exports = class InMemorySnapshotStorage {
+class InMemorySnapshotStorage {
 
 	/**
 	 * Creates an instance of InMemorySnapshotStorage
-	 * @memberof InMemorySnapshotStorage
 	 */
 	constructor() {
 		/** @type {Map<Identifier, IEvent>} */
@@ -23,7 +22,6 @@ module.exports = class InMemorySnapshotStorage {
 	 *
 	 * @param {Identifier} aggregateId
 	 * @returns {Promise<IEvent>}
-	 * @memberof InMemorySnapshotStorage
 	 */
 	async getAggregateSnapshot(aggregateId) {
 		return this._snapshots.get(aggregateId);
@@ -33,9 +31,10 @@ module.exports = class InMemorySnapshotStorage {
 	 * Save new aggregate snapshot
 	 *
 	 * @param {IEvent} snapshotEvent
-	 * @memberof InMemorySnapshotStorage
 	 */
 	async saveAggregateSnapshot(snapshotEvent) {
 		this._snapshots.set(snapshotEvent.aggregateId, snapshotEvent);
 	}
-};
+}
+
+module.exports = InMemorySnapshotStorage;

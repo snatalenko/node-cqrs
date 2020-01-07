@@ -1,27 +1,30 @@
-/** Base class for Projection definition */
-declare abstract class AbstractProjection implements IProjection {
+namespace NodeCqrs {
 
-	/** List of event types being handled by projection. Can be overridden in projection implementation */
-	static readonly handles: Array<string>;
+	/** Base class for Projection definition */
+	declare abstract class AbstractProjection implements IProjection {
 
-	/** View associated with projection */
-	readonly view: IProjectionView<any>;
+		/** List of event types being handled by projection. Can be overridden in projection implementation */
+		static readonly handles: Array<string>;
 
-	/**
-	 * Indicates if view should be restored from EventStore on start.
-	 * Override for custom behavior.
-	 */
-	readonly shouldRestoreView: boolean | Promise<boolean>;
+		/** View associated with projection */
+		readonly view: IProjectionView<any>;
 
-	/** Creates an instance of AbstractProjection */
-	constructor(options?: { view?: IProjectionView<any>, logger?: ILogger }): AbstractProjection;
+		/**
+		 * Indicates if view should be restored from EventStore on start.
+		 * Override for custom behavior.
+		 */
+		readonly shouldRestoreView: boolean | Promise<boolean>;
 
-	/** Subscribe to event store */
-	subscribe(eventStore: IEventStore): Promise<void>;
+		/** Creates an instance of AbstractProjection */
+		constructor(options?: { view?: IProjectionView<any>, logger?: ILogger }): void;
 
-	/** Pass event to projection event handler */
-	project(event: IEvent): Promise<void>;
+		/** Subscribe to event store */
+		subscribe(eventStore: IEventStore): Promise<void>;
 
-	/** Restore projection view from event store */
-	restore(eventStore: IEventStore): Promise<void>;
+		/** Pass event to projection event handler */
+		project(event: IEvent): Promise<void>;
+
+		/** Restore projection view from event store */
+		restore(eventStore: IEventStore): Promise<void>;
+	}
 }

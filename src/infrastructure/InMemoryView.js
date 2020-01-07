@@ -9,7 +9,7 @@ const { sizeOf } = require('../utils');
  *
  * @template TObjectValue
  * @param {TObjectValue} view
- * @param {(v: TObjectValue) => TObjectValue} update
+ * @param {function (TObjectValue): TObjectValue} update
  * @returns TValue
  */
 const applyUpdate = (view, update) => {
@@ -25,7 +25,7 @@ const applyUpdate = (view, update) => {
  * @class InMemoryView
  * @implements {IInMemoryView<any>}
  */
-module.exports = class InMemoryView {
+class InMemoryView {
 
 	/**
 	 * Whether the view is restored
@@ -84,7 +84,6 @@ module.exports = class InMemoryView {
 	 *
 	 * @param {string|number} key
 	 * @returns {boolean}
-	 * @memberof InMemoryView
 	 */
 	has(key) {
 		return this._map.has(key);
@@ -97,7 +96,6 @@ module.exports = class InMemoryView {
 	 * @param {object} [options]
 	 * @param {boolean} [options.nowait] Skip waiting until the view is restored/ready
 	 * @returns {Promise<any>}
-	 * @memberof InMemoryView
 	 */
 	async get(key, options) {
 		if (!key) throw new TypeError('key argument required');
@@ -111,7 +109,7 @@ module.exports = class InMemoryView {
 	/**
 	 * Get all records matching an optional filter
 	 *
-	 * @param {(record: any, key?: any) => boolean} [filter]
+	 * @param {function(any, any): boolean} [filter]
 	 */
 	async getAll(filter) {
 		if (filter && typeof filter !== 'function')
@@ -267,4 +265,6 @@ module.exports = class InMemoryView {
 	toString() {
 		return `${this.size} record${this.size !== 1 ? 's' : ''}, ${sizeOf(this._map)} bytes`;
 	}
-};
+}
+
+module.exports = InMemoryView;

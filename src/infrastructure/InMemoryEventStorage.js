@@ -8,18 +8,27 @@
  * @class InMemoryEventStorage
  * @implements {IEventStorage}
  */
-module.exports = class InMemoryEventStorage {
+class InMemoryEventStorage {
 
 	constructor() {
 		this._nextId = 0;
 		this._events = Promise.resolve([]);
 	}
 
+	/**
+	 * @param {IEvent[]} events
+	 * @returns {Promise<void>}
+	 */
 	commitEvents(events) {
 		return this._events = this._events.then(data =>
 			data.concat(events));
 	}
 
+	/**
+	 * @param {Identifier} aggregateId
+	 * @param {object} [options]
+	 * @param {IEvent} [options.snapshot]
+	 */
 	async getAggregateEvents(aggregateId, { snapshot } = {}) {
 		const events = await this._events;
 
@@ -29,6 +38,11 @@ module.exports = class InMemoryEventStorage {
 		return events.filter(e => e.aggregateId == aggregateId);
 	}
 
+	/**
+	 * @param {Identifier} sagaId
+	 * @param {object} [options]
+	 * @param {IEvent} [options.beforeEvent]
+	 */
 	getSagaEvents(sagaId, { beforeEvent }) {
 		return this._events.then(events =>
 			events.filter(e =>
@@ -36,6 +50,9 @@ module.exports = class InMemoryEventStorage {
 				&& e.sagaVersion < beforeEvent.sagaVersion));
 	}
 
+	/**
+	 * @param {string[]} eventTypes
+	 */
 	getEvents(eventTypes) {
 		if (!eventTypes)
 			return this._events;
@@ -44,8 +61,13 @@ module.exports = class InMemoryEventStorage {
 			events.filter(e => eventTypes.includes(e.type)));
 	}
 
+	/**
+	 * @returns {number}
+	 */
 	getNewId() {
 		this._nextId += 1;
 		return this._nextId;
 	}
-};
+}
+
+module.exports = InMemoryEventStorage;

@@ -1,61 +1,64 @@
-/** Base class for Aggregate definition */
-declare abstract class AbstractAggregate implements IAggregate {
+namespace NodeCqrs {
 
-	/**
-	 * Optional list of commands handled by Aggregate.
-	 * Can be overridden in the aggregate implementation
-	 */
-	static readonly handles: Array<string>;
+	/** Base class for Aggregate definition */
+	declare abstract class AbstractAggregate implements IAggregate {
 
-	/** Aggregate ID */
-	readonly id: string | number;
+		/**
+		 * Optional list of commands handled by Aggregate.
+		 * Can be overridden in the aggregate implementation
+		 */
+		static readonly handles: Array<string>;
 
-	/** Aggregate Version */
-	readonly version: number;
+		/** Aggregate ID */
+		readonly id: string | number;
 
-	/** Aggregate Snapshot Version */
-	readonly snapshotVersion: number | undefined;
+		/** Aggregate Version */
+		readonly version: number;
 
-	/** Events emitted by Aggregate */
-	readonly changes: IEventStream;
+		/** Aggregate Snapshot Version */
+		readonly snapshotVersion: number | undefined;
 
-	/** Override to define whether an aggregate state snapshot should be taken */
-	readonly shouldTakeSnapshot: boolean;
+		/** Events emitted by Aggregate */
+		readonly changes: IEventStream;
 
-	state;
+		/** Override to define whether an aggregate state snapshot should be taken */
+		readonly shouldTakeSnapshot: boolean;
 
-	command;
+		state;
 
-	/** Creates an instance of AbstractAggregate. */
-	constructor(options: TAggregateConstructorParams): AbstractAggregate;
+		command;
 
-	/** Pass command to command handler */
-	handle(command: ICommand): any;
+		/** Creates an instance of AbstractAggregate. */
+		constructor(options: TAggregateConstructorParams): void;
 
-	/** Mutate aggregate state and increment aggregate version */
-	protected mutate(event: IEvent): void;
+		/** Pass command to command handler */
+		handle(command: ICommand): any;
 
-	/** Format and register aggregate event and mutate aggregate state */
-	protected emit(type: string, payload?: object): void;
+		/** Mutate aggregate state and increment aggregate version */
+		protected mutate(event: IEvent): void;
 
-	/**
-	 * Format event based on a current aggregate state
-	 * and a command being executed
-	 */
-	protected makeEvent(type: string, payload?: any, sourceCommand?: ICommand): IEvent;
+		/** Format and register aggregate event and mutate aggregate state */
+		protected emit(type: string, payload?: object): void;
 
-	/** Register aggregate event and mutate aggregate state */
-	protected emitRaw(event: IEvent): void;
+		/**
+		 * Format event based on a current aggregate state
+		 * and a command being executed
+		 */
+		protected makeEvent(type: string, payload?: any, sourceCommand?: ICommand): IEvent;
 
-	/** Take an aggregate state snapshot and add it to the changes queue */
-	takeSnapshot(): void;
+		/** Register aggregate event and mutate aggregate state */
+		protected emitRaw(event: IEvent): void;
 
-	/** Create an aggregate state snapshot */
-	protected makeSnapshot(): object;
+		/** Take an aggregate state snapshot and add it to the changes queue */
+		takeSnapshot(): void;
 
-	/** Restore aggregate state from a snapshot */
-	protected restoreSnapshot(snapshotEvent: IEvent): void;
+		/** Create an aggregate state snapshot */
+		protected makeSnapshot(): object;
 
-	/** Get human-readable aggregate identifier */
-	toString(): string;
+		/** Restore aggregate state from a snapshot */
+		protected restoreSnapshot(snapshotEvent: IEvent): void;
+
+		/** Get human-readable aggregate identifier */
+		toString(): string;
+	}
 }

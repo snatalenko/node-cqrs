@@ -73,12 +73,12 @@ function* describeParams(params) {
 	}
 }
 
-function* describeMethod({ access, scope, name, longname, description, params, returns }) {
+function* describeMethod({ access, scope, name, description, params, returns }, level) {
 
 	if (description)
-		yield formatDescription(description);
+		yield formatDescription(description, level);
 
-	yield formatPrefix(1);
+	yield formatPrefix(level);
 
 	if (scope === 'static')
 		yield 'static ';
@@ -96,20 +96,18 @@ function* describeMethod({ access, scope, name, longname, description, params, r
 
 	if (returns)
 		yield formatType(returns[0].type);
-	else if (name === 'constructor')
-		yield longname;
 	else
 		yield 'void';
 
 	yield ';';
 }
 
-function* describeProperty({ access, name, scope, description, type, readonly }) {
+function* describeProperty({ access, name, scope, description, type, readonly }, level) {
 
 	if (description)
-		yield formatDescription(description);
+		yield formatDescription(description, level);
 
-	yield formatPrefix(1);
+	yield formatPrefix(level);
 
 	if (scope === 'static')
 		yield 'static ';
@@ -131,7 +129,7 @@ function* describeProperty({ access, name, scope, description, type, readonly })
 	yield ';';
 }
 
-function* describeClass(className, definitions) {
+function* describeClass(className, definitions, level = 0) {
 
 	const members = definitions.filter(d =>
 		d.memberof === className &&
@@ -151,8 +149,9 @@ function* describeClass(className, definitions) {
 
 
 	if (def && def.description)
-		yield formatDescription(def.description, 0);
+		yield formatDescription(def.description, level);
 
+	yield formatPrefix(level);
 	yield 'declare ';
 
 	if (className.startsWith('Abstract'))
@@ -168,25 +167,25 @@ function* describeClass(className, definitions) {
 
 	for (const member of members.filter(m => m.kind === 'member')) {
 		yield '\n\n';
-		yield* describeProperty(member);
+		yield* describeProperty(member, level + 1);
 	}
 
 	yield '\n\n';
-	yield* describeMethod({ ...ctor, name: 'constructor' });
+	yield* describeMethod({ ...ctor, name: 'constructor' }, level + 1);
 
 	for (const member of members.filter(m => m.kind === 'function')) {
 		yield '\n\n';
-		yield* describeMethod(member);
+		yield* describeMethod(member, level + 1);
 	}
 
-	yield '\n}\n';
+	yield `\n${formatPrefix(level)}}\n`;
 }
 
 const unique = arr => [...new Set(arr)];
 
 (async function main() {
 
-	const { output = '.' } = getArgs();
+	const { output = '.', namespace } = getArgs();
 
 	const input = await readInput();
 
@@ -198,7 +197,16 @@ const unique = arr => [...new Set(arr)];
 
 	for (const className of classNames) {
 		const fileName = path.join(output, `${className}.d.ts`);
-		const content = Array.from(describeClass(className, definitions)).join('');
-		fs.writeFileSync(fileName, content);
+		const content = [];
+
+		if (namespace)
+			content.push(`namespace ${namespace} {\n\n`);
+
+		content.push(...describeClass(className, definitions, namespace ? 1 : 0));
+
+		if (namespace)
+			content.push('}\n');
+
+		fs.writeFileSync(fileName, content.join(''));
 	}
 }());
