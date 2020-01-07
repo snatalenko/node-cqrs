@@ -23,7 +23,6 @@ const applyUpdate = (view, update) => {
  *
  * @class InMemoryView
  * @template TRecord
- * @implements {IInMemoryView<TRecord>}
  */
 class InMemoryView {
 
@@ -61,6 +60,8 @@ class InMemoryView {
 
 	/**
 	 * Lock the view to prevent concurrent modifications
+	 *
+	 * @returns {Promise<void>}
 	 */
 	async lock() {
 		if (this.ready === false)
@@ -76,7 +77,7 @@ class InMemoryView {
 	/**
 	 * Release the lock
 	 */
-	async unlock() {
+	unlock() {
 		this._ready = true;
 		if (typeof this._unlock === 'function')
 			this._unlock();

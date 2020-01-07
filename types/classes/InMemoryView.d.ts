@@ -1,7 +1,7 @@
 namespace NodeCqrs {
 
 	/** In-memory Projection View, which suspends get()'s until it is ready */
-	declare class InMemoryView<TRecord> implements IInMemoryView<TRecord> {
+	declare class InMemoryView<TRecord> {
 
 		/** Whether the view is restored */
 		ready: boolean;
@@ -13,7 +13,7 @@ namespace NodeCqrs {
 		constructor(): void;
 
 		/** Lock the view to prevent concurrent modifications */
-		lock(): void;
+		lock(): Promise<void>;
 
 		/** Release the lock */
 		unlock(): void;
@@ -47,9 +47,6 @@ namespace NodeCqrs {
 
 		/** Delete all records that match filter criteria */
 		deleteAll(filter?: function): void;
-
-		/** Mark view as 'ready' when it's restored by projection */
-		markAsReady(): void;
 
 		/** Create a Promise which will resolve to a first emitted event of a given type */
 		once(eventType: "ready"): Promise<any>;
