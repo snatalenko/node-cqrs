@@ -3,8 +3,6 @@ declare interface IEventEmitter extends IObservable {
 	off?(messageType: string, handler: IMessageHandler): void;
 }
 
-declare type EventFilter = { afterEvent?: IEvent; beforeEvent?: IEvent; };
-
 declare interface IEventStorage extends IEventEmitter {
 	getNewId(): Identifier | Promise<Identifier>;
 
@@ -14,7 +12,7 @@ declare interface IEventStorage extends IEventEmitter {
 	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }):
 		Promise<IEventStream> | AsyncIterableIterator<IEvent>;
 
-	getSagaEvents(sagaId: Identifier, filter: EventFilter):
+	getSagaEvents(sagaId: Identifier, filter: { beforeEvent: IEvent }):
 		Promise<IEventStream> | AsyncIterableIterator<IEvent>;
 
 	getEvents(eventTypes: string[]):

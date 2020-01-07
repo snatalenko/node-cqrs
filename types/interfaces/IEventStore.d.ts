@@ -3,9 +3,11 @@ declare interface IEventStore extends IObservable {
 
 	commit(events: IEventStream): Promise<IEventStream>;
 
-	getAllEvents(eventTypes: string[], filter?: EventFilter): AsyncIterableIterator<IEvent>;
+	getAllEvents(eventTypes: string[]): AsyncIterableIterator<IEvent>;
+
 	getAggregateEvents(aggregateId: Identifier): Promise<IEventStream>;
-	getSagaEvents(sagaId: Identifier, filter: EventFilter): Promise<IEventStream>;
+
+	getSagaEvents(sagaId: Identifier, filter: { beforeEvent: IEvent }): Promise<IEventStream>;
 
 	registerSagaStarters(eventTypes: string[]): void;
 

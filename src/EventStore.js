@@ -241,7 +241,7 @@ class EventStore {
 	/**
 	 * Retrieve all events of specific Aggregate
 	 *
-	 * @param {string|number} aggregateId
+	 * @param {Identifier} aggregateId
 	 * @returns {Promise<IEventStream>}
 	 */
 	async getAggregateEvents(aggregateId) {
@@ -270,8 +270,9 @@ class EventStore {
 	/**
 	 * Retrieve events of specific Saga
 	 *
-	 * @param {string|number} sagaId
-	 * @param {EventFilter} filter
+	 * @param {Identifier} sagaId
+	 * @param {object} filter
+	 * @param {IEvent} filter.beforeEvent
 	 * @returns {Promise<IEventStream>}
 	 */
 	async getSagaEvents(sagaId, filter) {

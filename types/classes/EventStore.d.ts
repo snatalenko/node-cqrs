@@ -21,10 +21,10 @@ namespace NodeCqrs {
 		getAllEvents(eventTypes: Array<string>): AsyncIterableIterator<IEvent>;
 
 		/** Retrieve all events of specific Aggregate */
-		getAggregateEvents(aggregateId: string | number): Promise<IEventStream>;
+		getAggregateEvents(aggregateId: Identifier): Promise<IEventStream>;
 
 		/** Retrieve events of specific Saga */
-		getSagaEvents(sagaId: string | number, filter: EventFilter): Promise<IEventStream>;
+		getSagaEvents(sagaId: Identifier, filter: { beforeEvent: IEvent }): Promise<IEventStream>;
 
 		/**
 		 * Register event types that start sagas.
