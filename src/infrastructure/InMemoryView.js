@@ -1,6 +1,5 @@
 'use strict';
 
-const EventEmitter = require('events');
 const { sizeOf } = require('../utils');
 
 /**
@@ -10,7 +9,7 @@ const { sizeOf } = require('../utils');
  * @template TObjectValue
  * @param {TObjectValue} view
  * @param {function (TObjectValue): TObjectValue} update
- * @returns TValue
+ * @returns {TObjectValue}
  */
 const applyUpdate = (view, update) => {
 	const valueReturnedByUpdate = update(view);
@@ -23,12 +22,14 @@ const applyUpdate = (view, update) => {
  * In-memory Projection View, which suspends get()'s until it is ready
  *
  * @class InMemoryView
- * @implements {IInMemoryView<any>}
+ * @template TRecord
+ * @implements {IInMemoryView<TRecord>}
  */
 class InMemoryView {
 
 	/**
 	 * Whether the view is restored
+	 *
 	 * @type {boolean}
 	 */
 	get ready() {
@@ -49,12 +50,12 @@ class InMemoryView {
 	 * Creates an instance of InMemoryView
 	 */
 	constructor() {
+		/** @type {Map<Identifier, TRecord>} */
 		this._map = new Map();
-		this._emitter = new EventEmitter();
 
-		// explicitly bind functions to this object for easier using in Promises
-		Object.defineProperties(this, {
-			get: { value: this.get.bind(this) }
+		// explicitly bind the `get` method to this object for easier using in Promises
+		Object.defineProperty(this, this.get.name, {
+			value: this.get.bind(this)
 		});
 	}
 
@@ -65,6 +66,10 @@ class InMemoryView {
 		if (this.ready === false)
 			await this.once('ready');
 
+		this._lockPromise = new Promise(resolve => {
+			this._unlock = resolve;
+		});
+
 		this._ready = false;
 	}
 
@@ -73,7 +78,8 @@ class InMemoryView {
 	 */
 	async unlock() {
 		this._ready = true;
-		this._emitter.emit('ready');
+		if (typeof this._unlock === 'function')
+			this._unlock();
 	}
 
 	/**
@@ -82,7 +88,7 @@ class InMemoryView {
 	 *
 	 * @deprecated Use `async get()` instead
 	 *
-	 * @param {string|number} key
+	 * @param {Identifier} key
 	 * @returns {boolean}
 	 */
 	has(key) {
@@ -92,10 +98,10 @@ class InMemoryView {
 	/**
 	 * Get record with a given key; await until the view is restored
 	 *
-	 * @param {string|number} key
+	 * @param {Identifier} key
 	 * @param {object} [options]
 	 * @param {boolean} [options.nowait] Skip waiting until the view is restored/ready
-	 * @returns {Promise<any>}
+	 * @returns {Promise<TRecord>}
 	 */
 	async get(key, options) {
 		if (!key) throw new TypeError('key argument required');
@@ -109,7 +115,7 @@ class InMemoryView {
 	/**
 	 * Get all records matching an optional filter
 	 *
-	 * @param {function(any, any): boolean} [filter]
+	 * @param {function(TRecord, Identifier): boolean} [filter]
 	 */
 	async getAll(filter) {
 		if (filter && typeof filter !== 'function')
@@ -130,9 +136,8 @@ class InMemoryView {
 	/**
 	 * Create record with a given key and value
 	 *
-	 * @param {string|number} key
-	 * @param {object} [value]
-	 * @memberof InMemoryView
+	 * @param {Identifier} key
+	 * @param {TRecord} [value]
 	 */
 	create(key, value = {}) {
 		if (!key) throw new TypeError('key argument required');
@@ -147,9 +152,8 @@ class InMemoryView {
 	/**
 	 * Update existing view record
 	 *
-	 * @param {string|number} key
-	 * @param {function(any):any} update
-	 * @memberof InMemoryView
+	 * @param {Identifier} key
+	 * @param {function(TRecord): TRecord} update
 	 */
 	update(key, update) {
 		if (!key) throw new TypeError('key argument required');
@@ -164,9 +168,8 @@ class InMemoryView {
 	/**
 	 * Update existing view record or create new
 	 *
-	 * @param {string|number} key
-	 * @param {function(any):any} update
-	 * @memberof InMemoryView
+	 * @param {Identifier} key
+	 * @param {function(TRecord): TRecord} update
 	 */
 	updateEnforcingNew(key, update) {
 		if (!key) throw new TypeError('key argument required');
@@ -181,9 +184,8 @@ class InMemoryView {
 	/**
 	 * Update all records that match filter criteria
 	 *
-	 * @param {function(any):boolean} [filter]
-	 * @param {function(any):any} update
-	 * @memberof InMemoryView
+	 * @param {function(TRecord): boolean} [filter]
+	 * @param {function(TRecord): TRecord} update
 	 */
 	updateAll(filter, update) {
 		if (filter && typeof filter !== 'function') throw new TypeError('filter argument, when specified, must be a Function');
@@ -197,9 +199,10 @@ class InMemoryView {
 
 	/**
 	 * Update existing record
+	 *
 	 * @private
-	 * @param {string|number} key
-	 * @param {function(any):any} update
+	 * @param {Identifier} key
+	 * @param {function(TRecord): TRecord} update
 	 */
 	_update(key, update) {
 		const value = this._map.get(key);
@@ -209,8 +212,7 @@ class InMemoryView {
 	/**
 	 * Delete record
 	 *
-	 * @param {string|number} key
-	 * @memberof InMemoryView
+	 * @param {Identifier} key
 	 */
 	delete(key) {
 		if (!key) throw new TypeError('key argument required');
@@ -221,8 +223,7 @@ class InMemoryView {
 	/**
 	 * Delete all records that match filter criteria
 	 *
-	 * @param {function(any):boolean} [filter]
-	 * @memberof InMemoryView
+	 * @param {function(TRecord): boolean} [filter]
 	 */
 	deleteAll(filter) {
 		if (filter && typeof filter !== 'function') throw new TypeError('filter argument, when specified, must be a Function');
@@ -235,8 +236,8 @@ class InMemoryView {
 
 	/**
 	 * Mark view as 'ready' when it's restored by projection
+	 *
 	 * @deprecated Use `unlock()`
-	 * @memberof InMemoryView
 	 */
 	markAsReady() {
 		this.unlock();
@@ -245,16 +246,14 @@ class InMemoryView {
 	/**
 	 * Create a Promise which will resolve to a first emitted event of a given type
 	 *
-	 * @param {string} eventType
+	 * @param {"ready"} eventType
 	 * @returns {Promise<any>}
 	 */
 	once(eventType) {
-		if (typeof eventType !== 'string' || !eventType.length)
-			throw new TypeError('eventType argument must be a non-empty String');
+		if (eventType !== 'ready')
+			throw new TypeError(`Unexpected event type: ${eventType}`);
 
-		return new Promise(rs => {
-			this._emitter.once(eventType, rs);
-		});
+		return this._lockPromise;
 	}
 
 	/**
