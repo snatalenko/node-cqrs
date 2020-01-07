@@ -39,6 +39,20 @@ function formatDescription(description, level = 1) {
 	return `${prefix}/** ${description} */\n`;
 }
 
+function* describeTemplates(def) {
+	const rxTemplate = /@template (\w+)/g;
+	let templateMatch = def && def.comment && rxTemplate.exec(def.comment);
+	if (!templateMatch)
+		return;
+
+	const templates = [];
+	while (templateMatch) {
+		templates.push(templateMatch[1]);
+		templateMatch = rxTemplate.exec(def.comment);
+	}
+	yield `<${templates.join(', ')}>`;
+}
+
 function* describeParams(params) {
 	let idx = 0;
 	for (const p of params.filter(pp => !pp.name.includes('.'))) {
@@ -73,7 +87,7 @@ function* describeParams(params) {
 	}
 }
 
-function* describeMethod({ access, scope, name, description, params, returns }, level) {
+function* describeMethod({ access, scope, name, description, comment, params, returns }, level) {
 
 	if (description)
 		yield formatDescription(description, level);
@@ -87,6 +101,8 @@ function* describeMethod({ access, scope, name, description, params, returns }, 
 		yield `${access} `;
 
 	yield name;
+
+	yield* describeTemplates({ comment });
 
 	yield '(';
 	if (params)
@@ -141,6 +157,11 @@ function* describeClass(className, definitions, level = 0) {
 		d.meta.code &&
 		d.meta.code.type === undefined);
 
+	const declaration = definitions.find(d => d.name === className &&
+		d.meta &&
+		d.meta.code &&
+		d.meta.code.type === 'ClassDeclaration');
+
 	const ctor = definitions.find(d =>
 		d.name === className &&
 		d.meta &&
@@ -158,6 +179,12 @@ function* describeClass(className, definitions, level = 0) {
 		yield 'abstract ';
 
 	yield `class ${className}`;
+
+	yield* describeTemplates(def);
+
+	const augments = (declaration && declaration.augments) || (def && def.augments);
+	if (augments)
+		yield ` extends ${augments.join(', ')}`;
 
 	if (def && def.implements)
 		yield ` implements ${def.implements.join(', ')}`;

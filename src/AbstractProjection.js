@@ -15,7 +15,6 @@ const isConcurrentView = view =>
 	typeof view.once === 'function';
 
 /**
- * @template TRecord
  * @param {any} view
  * @returns {IConcurrentView}
  */

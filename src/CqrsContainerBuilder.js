@@ -13,6 +13,9 @@ function isClass(func) {
 		&& Function.prototype.toString.call(func).startsWith('class');
 }
 
+/**
+ * @extends {DI6.ContainerBuilder}
+ */
 class CqrsContainerBuilder extends ContainerBuilder {
 
 	/**

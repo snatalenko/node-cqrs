@@ -1,7 +1,7 @@
 namespace NodeCqrs {
 
 	/** In-memory Projection View, which suspends get()'s until it is ready */
-	declare class InMemoryView implements IInMemoryView<any> {
+	declare class InMemoryView<TRecord> implements IInMemoryView<TRecord> {
 
 		/** Whether the view is restored */
 		ready: boolean;
@@ -22,28 +22,28 @@ namespace NodeCqrs {
 		 * Check if view contains a record with a given key.
 		 * This is the only synchronous method, so make sure to check the `ready` flag, if necessary
 		 */
-		has(key: string | number): boolean;
+		has(key: Identifier): boolean;
 
 		/** Get record with a given key; await until the view is restored */
-		get(key: string | number, options?: { nowait?: boolean }): Promise<any>;
+		get(key: Identifier, options?: { nowait?: boolean }): Promise<TRecord>;
 
 		/** Get all records matching an optional filter */
 		getAll(filter?: function): void;
 
 		/** Create record with a given key and value */
-		create(key: string | number, value?: object): void;
+		create(key: Identifier, value?: TRecord): void;
 
 		/** Update existing view record */
-		update(key: string | number, update: function): void;
+		update(key: Identifier, update: function): void;
 
 		/** Update existing view record or create new */
-		updateEnforcingNew(key: string | number, update: function): void;
+		updateEnforcingNew(key: Identifier, update: function): void;
 
 		/** Update all records that match filter criteria */
 		updateAll(filter?: function, update: function): void;
 
 		/** Delete record */
-		delete(key: string | number): void;
+		delete(key: Identifier): void;
 
 		/** Delete all records that match filter criteria */
 		deleteAll(filter?: function): void;
@@ -52,7 +52,7 @@ namespace NodeCqrs {
 		markAsReady(): void;
 
 		/** Create a Promise which will resolve to a first emitted event of a given type */
-		once(eventType: string): Promise<any>;
+		once(eventType: "ready"): Promise<any>;
 
 		/** Get view summary as string */
 		toString(): string;
