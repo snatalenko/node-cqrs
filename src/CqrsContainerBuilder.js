@@ -20,9 +20,13 @@ class CqrsContainerBuilder extends ContainerBuilder {
 
 	/**
 	 * Creates an instance of CqrsContainerBuilder
+	 *
+	 * @param {object} [options]
+	 * @param {Readonly<DI6.TypeConfig[]>} options.types
+	 * @param {object} options.singletones
 	 */
-	constructor() {
-		super();
+	constructor(options) {
+		super(options);
 		this.register(EventStore).as('eventStore');
 		this.register(CommandBus).as('commandBus');
 	}
