@@ -62,7 +62,7 @@ class CqrsContainerBuilder extends ContainerBuilder {
 	 * to eventStore and will restore its state upon instance creation
 	 *
 	 * @param {IProjectionConstructor} ProjectionType
-	 * @param {string} exposedViewAlias
+	 * @param {string} [exposedViewAlias]
 	 */
 	registerProjection(ProjectionType, exposedViewAlias) {
 		if (!isClass(ProjectionType))
@@ -71,12 +71,19 @@ class CqrsContainerBuilder extends ContainerBuilder {
 		const projectionFactory = container => {
 			const projection = container.createInstance(ProjectionType);
 			projection.subscribe(container.eventStore);
-			return projection.view;
+
+			if (exposedViewAlias)
+				return projection.view;
+
+			return projection;
 		};
 
-		return super.register(projectionFactory)
-			.as(exposedViewAlias)
-			.asSingleInstance();
+		const t = super.register(projectionFactory).asSingleInstance();
+
+		if (exposedViewAlias)
+			t.as(exposedViewAlias);
+
+		return t;
 	}
 
 	/**

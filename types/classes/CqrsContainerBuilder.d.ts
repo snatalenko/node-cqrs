@@ -15,7 +15,7 @@ namespace NodeCqrs {
 		 * Register projection, which will expose view and will be subscribed
 		 * to eventStore and will restore its state upon instance creation
 		 */
-		registerProjection(ProjectionType: IProjectionConstructor, exposedViewAlias: string): void;
+		registerProjection(ProjectionType: IProjectionConstructor, exposedViewAlias?: string): void;
 
 		/** Register aggregate type in the container */
 		registerAggregate(AggregateType: IAggregateConstructor): void;
