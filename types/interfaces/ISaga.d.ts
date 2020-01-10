@@ -1,10 +1,4 @@
 declare interface ISaga {
-	/** List of event types that trigger new saga start */
-	static readonly startsWith: string[];
-
-	/** List of events being handled by Saga */
-	static readonly handles?: string[];
-
 	/** List of commands emitted by Saga */
 	readonly uncommittedMessages: ICommand[];
 
@@ -24,6 +18,10 @@ declare type ISagaFactory = (options: TSagaConstructorParams) => ISaga;
 
 declare interface ISagaConstructor {
 	new(options: TSagaConstructorParams): ISaga;
+
+	/** List of event types that trigger new saga start */
 	readonly startsWith: string[];
+
+	/** List of events being handled by Saga */
 	readonly handles: string[];
 }
