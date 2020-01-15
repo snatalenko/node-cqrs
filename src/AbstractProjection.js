@@ -148,7 +148,9 @@ class AbstractProjection {
 	 * @return {Promise<void>}
 	 */
 	async _restore(eventStore) {
+		/* istanbul ignore if */
 		if (!eventStore) throw new TypeError('eventStore argument required');
+		/* istanbul ignore if */
 		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
 
 		const service = getClassName(this);
@@ -162,16 +164,27 @@ class AbstractProjection {
 				await this._project(event);
 			}
 			catch (err) {
-				this._logger.log('error', `view restoring has failed: ${err.message}`, {
-					service,
-					event,
-					stack: err.stack
-				});
-				throw err;
+				this._onRestoringError(err, event);
 			}
 		}
 
 		this._logger.log('info', `view restored (${this.view})`, { service });
+	}
+
+	/**
+	 * Handle error on restoring
+	 *
+	 * @protected
+	 * @param {Error} error
+	 * @param {IEvent} event
+	 */
+	_onRestoringError(error, event) {
+		this._logger.log('error', `view restoring has failed: ${error.message}`, {
+			service: getClassName(this),
+			event,
+			stack: error.stack
+		});
+		throw error;
 	}
 }
 
