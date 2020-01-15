@@ -3,7 +3,7 @@ namespace NodeCqrs {
 	declare class CqrsContainerBuilder extends DI6.ContainerBuilder {
 
 		/** Creates an instance of CqrsContainerBuilder */
-		constructor(): void;
+		constructor(options?: { types: Readonly<Array<DI6.TypeConfig>>, singletones: object }): void;
 
 		/** Register command handler, which will be subscribed to commandBus upon instance creation */
 		registerCommandHandler(typeOrFactory: function): void;

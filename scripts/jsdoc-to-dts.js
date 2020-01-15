@@ -150,7 +150,7 @@ function* describeClass(className, definitions, level = 0) {
 	const members = definitions.filter(d =>
 		d.memberof === className &&
 		d.name !== '[undefined]' &&
-		!d.name.startsWith('_'));
+		(!d.name.startsWith('_') || d.access === 'protected'));
 
 	const def = definitions.find(d => d.name === className &&
 		d.meta &&

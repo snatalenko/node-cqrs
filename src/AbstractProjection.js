@@ -111,6 +111,7 @@ class AbstractProjection {
 	 * Pass event to projection event handler, without awaiting for restore operation to complete
 	 * @protected
 	 * @param {IEvent} event
+	 * @returns {Promise<void>}
 	 */
 	async _project(event) {
 		const handler = getHandler(this, event.type);

@@ -31,7 +31,16 @@ namespace NodeCqrs {
 		/** Pass event to projection event handler */
 		project(event: IEvent): Promise<void>;
 
+		/** Pass event to projection event handler, without awaiting for restore operation to complete */
+		protected _project(event: IEvent): Promise<void>;
+
 		/** Restore projection view from event store */
 		restore(eventStore: IEventStore): Promise<void>;
+
+		/** Restore projection view from event store */
+		protected _restore(eventStore: IEventStore): Promise<void>;
+
+		/** Handle error on restoring */
+		protected _onRestoringError(error: Error, event: IEvent): void;
 	}
 }
