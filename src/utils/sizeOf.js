@@ -40,6 +40,12 @@ module.exports = function sizeOf(object) {
 					queue.push(innerObj);
 			}
 		}
+		else if (obj instanceof Set) {
+			for (const innerObj of obj) {
+				if (typeof innerObj !== 'object' || !queue.includes(innerObj))
+					queue.push(innerObj);
+			}
+		}
 		else if (obj) {
 			if (!Array.isArray(obj)) {
 				for (const key of Object.keys(obj))

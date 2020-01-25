@@ -1,6 +1,6 @@
 'use strict';
 
-require('./utilsTests');
+require('./sizeOfTests');
 
 require('./InMemoryMessageBusTests');
 require('./InMemoryViewTests');
