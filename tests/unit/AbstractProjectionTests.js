@@ -2,7 +2,7 @@
 
 const { expect, assert, AssertionError } = require('chai');
 const sinon = require('sinon');
-const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore } = require('../src');
+const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore } = require('../../src');
 
 class MyProjection extends AbstractProjection {
 	static get handles() {

@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const { EventStream } = require('../src');
+const { EventStream } = require('../../src');
 
 describe('EventStream', function () {
 

@@ -1,6 +1,6 @@
 'use strict';
 
-const { InMemoryMessageBus } = require('..');
+const { InMemoryMessageBus } = require('../..');
 const { expect, assert, AssertionError } = require('chai');
 const { spy } = require('sinon');
 

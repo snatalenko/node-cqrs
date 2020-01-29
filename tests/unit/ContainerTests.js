@@ -9,7 +9,7 @@ const {
 	AbstractAggregate,
 	AbstractSaga,
 	AbstractProjection
-} = require('../src');
+} = require('../../src');
 
 describe('CqrsContainerBuilder', function () {
 

@@ -9,7 +9,7 @@ const {
 	InMemoryEventStorage,
 	EventStore,
 	InMemorySnapshotStorage
-} = require('../src/');
+} = require('../../src');
 
 function delay(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));

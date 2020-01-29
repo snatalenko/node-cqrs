@@ -2,7 +2,7 @@
 
 const { expect, assert, AssertionError } = require('chai');
 const sinon = require('sinon');
-const { AbstractAggregate, EventStream } = require('../src');
+const { AbstractAggregate, EventStream } = require('../../src');
 const blankContext = require('./mocks/blankContext');
 const delay = ms => new Promise(rs => setTimeout(rs, ms));
 

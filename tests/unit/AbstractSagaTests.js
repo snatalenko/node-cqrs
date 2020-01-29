@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const { AbstractSaga } = require('../src');
+const { AbstractSaga } = require('../../src');
 
 class Saga extends AbstractSaga {
 	static get startsWith() {

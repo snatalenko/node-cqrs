@@ -18,4 +18,4 @@ require('./SagaEventHandlerTests');
 
 require('./AbstractProjectionTests');
 
-require('../examples/user-domain-tests');
+require('../../examples/user-domain-tests');

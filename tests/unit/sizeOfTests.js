@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const sizeOf = require('../src/utils/sizeOf');
+const sizeOf = require('../../src/utils/sizeOf');
 
 describe('sizeOf(obj)', function sizeOfTest() {
 

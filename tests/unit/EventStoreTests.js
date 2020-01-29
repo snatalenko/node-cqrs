@@ -7,7 +7,7 @@ const {
 	EventStore,
 	InMemoryEventStorage,
 	InMemorySnapshotStorage
-} = require('../src');
+} = require('../../src');
 
 const goodContext = {
 	uid: '1',
