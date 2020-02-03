@@ -1,7 +1,8 @@
-.vscode/
 .nyc_output/
-docs/
+.vscode/
 coverage/
+docs/
+examples/
 scripts/
 tests/
 .editorconfig
