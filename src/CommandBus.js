@@ -46,18 +46,22 @@ class CommandBus {
 	 * @returns {Promise<IEventStream>} - produced events
 	 */
 	send(type, aggregateId, options, ...otherArgs) {
-		if (typeof type !== 'string' || !type.length) throw new TypeError('type argument must be a non-empty String');
-		if (typeof options !== 'object' || !options) throw new TypeError('options argument must be an Object');
-		if (otherArgs.length > 1) throw new TypeError('more than expected arguments supplied');
+		if (typeof type !== 'string' || !type.length)
+			throw new TypeError('type argument must be a non-empty String');
+		if (options && typeof options !== 'object')
+			throw new TypeError('options argument, when defined, must be an Object');
+		if (otherArgs.length > 1)
+			throw new TypeError('more than expected arguments supplied');
 
 		// obsolete. left for backward compatibility
-		if (otherArgs.length || (!('context' in options) && !('payload' in options))) {
+		const optionsContainContext = options && !('context' in options) && !('payload' in options);
+		if (otherArgs.length || optionsContainContext) {
 			const context = options;
 			const payload = otherArgs.length ? otherArgs[0] : undefined;
 			return this.sendRaw({ type, aggregateId, context, payload });
 		}
 
-		return this.sendRaw(Object.assign({ type, aggregateId }, options));
+		return this.sendRaw({ type, aggregateId, ...options });
 	}
 
 	/**
