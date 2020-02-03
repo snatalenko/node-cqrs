@@ -28,6 +28,7 @@ class InMemoryEventStorage {
 	 * @param {Identifier} aggregateId
 	 * @param {object} [options]
 	 * @param {IEvent} [options.snapshot]
+	 * @returns {Promise<IEventStream>}
 	 */
 	async getAggregateEvents(aggregateId, { snapshot } = {}) {
 		const events = await this._events;
@@ -42,6 +43,7 @@ class InMemoryEventStorage {
 	 * @param {Identifier} sagaId
 	 * @param {object} [options]
 	 * @param {IEvent} [options.beforeEvent]
+	 * @returns {Promise<IEventStream>}
 	 */
 	getSagaEvents(sagaId, { beforeEvent }) {
 		return this._events.then(events =>
@@ -52,6 +54,7 @@ class InMemoryEventStorage {
 
 	/**
 	 * @param {string[]} eventTypes
+	 * @returns {Promise<IEventStream>}
 	 */
 	getEvents(eventTypes) {
 		if (!eventTypes)
