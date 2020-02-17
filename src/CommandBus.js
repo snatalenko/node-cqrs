@@ -42,7 +42,7 @@ class CommandBus {
 	 * @param {string} type
 	 * @param {string} aggregateId
 	 * @param {{ payload: object, context: object }} options
-	 * @param {...object} otherArgs
+	 * @param {...object} [otherArgs]
 	 * @returns {Promise<IEventStream>} - produced events
 	 */
 	send(type, aggregateId, options, ...otherArgs) {
