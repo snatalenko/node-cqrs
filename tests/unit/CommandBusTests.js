@@ -72,7 +72,6 @@ describe('CommandBus', function () {
 		it('validates parameters', () => {
 
 			expect(() => bus.send(undefined)).to.throw('type argument must be a non-empty String');
-			expect(() => bus.send('test', 1)).to.throw('options argument must be an Object');
 			expect(() => bus.send('test', 1, {}, {}, {})).to.throw('more than expected arguments supplied');
 		});
 
