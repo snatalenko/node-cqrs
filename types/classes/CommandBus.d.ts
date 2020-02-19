@@ -9,7 +9,7 @@ namespace NodeCqrs {
 		on(commandType: string, handler: IMessageHandler): any;
 
 		/** Format and send a command for execution */
-		send(type: string, aggregateId: string, options: Object, otherArgs?: object): Promise<IEventStream>;
+		send(type: string, aggregateId: string, options?: { payload?: any, context?: object }, otherArgs?: object): Promise<IEventStream>;
 
 		/** Send a command for execution */
 		sendRaw(command: ICommand): Promise<IEventStream>;

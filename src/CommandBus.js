@@ -41,7 +41,9 @@ class CommandBus {
 	 *
 	 * @param {string} type
 	 * @param {string} aggregateId
-	 * @param {{ payload: object, context: object }} options
+	 * @param {object} [options]
+	 * @param {any} [options.payload]
+	 * @param {object} [options.context]
 	 * @param {...object} [otherArgs]
 	 * @returns {Promise<IEventStream>} - produced events
 	 */
