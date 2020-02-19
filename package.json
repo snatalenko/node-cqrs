@@ -26,6 +26,7 @@
   "scripts": {
     "lint": "eslint . --max-warnings=0",
     "test": "mocha ./tests/unit/index.js ./examples/user-domain-tests",
+    "test:integration": "mocha tests/integration",
     "test:coverage": "nyc --reporter=lcov --reporter=text-summary node_modules/.bin/_mocha ./tests/unit/index.js",
     "pretest:coveralls": "npm run test:coverage",
     "test:coveralls": "cat ./coverage/lcov.info | coveralls",

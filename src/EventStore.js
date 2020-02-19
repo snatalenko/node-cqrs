@@ -48,6 +48,13 @@ function isEmitter(storage) {
 }
 
 /**
+ * @template TStorage
+ * @param {TStorage} storage
+ * @returns {TStorage & IEventEmitter}
+ */
+const asEmitter = storage => (isEmitter(storage) ? storage : undefined);
+
+/**
  * Ensure snapshotStorage matches the expected format
  * @param {IAggregateSnapshotStorage} snapshotStorage
  */
@@ -126,6 +133,68 @@ function setupOneTimeEmitterSubscription(emitter, messageTypes, filter, handler,
 	});
 }
 
+
+/**
+ * Combine storage and bus into a single event storage interface, which allows querying and subscription
+ *
+ * @param {IEventStorage} storage
+ * @param {IMessageBus} messageBus
+ * @param {{ publishAsync?: boolean, logger?: ILogger }} [options]
+ * @returns {IEventEmitter & IEventStorage}
+ */
+function combineStorageAndBus(storage, messageBus, options = {}) {
+	validateEventStorage(storage);
+	validateMessageBus(messageBus);
+
+	if (isEmitter(storage))
+		throw new TypeError('storage already implements IEventEmitter interface');
+
+	return {
+		getNewId() {
+			return storage.getNewId();
+		},
+		async commitEvents(events) {
+			await storage.commitEvents(events);
+
+			const publishEvents = () =>
+				Promise.all(events.map(event => messageBus.publish(event)))
+					.then(() => {
+						if (options.logger)
+							options.logger.log('debug', `${events} published`, { service });
+					}, error => {
+						if (options.logger)
+							options.logger.log('error', `${events} publishing failed: ${error.message}`, { service, stack: error.stack });
+						throw error;
+					});
+
+			if (options && options.publishAsync)
+				setImmediate(publishEvents);
+			else
+				await publishEvents();
+		},
+		getAggregateEvents(...args) {
+			return storage.getAggregateEvents(...args);
+		},
+		getSagaEvents(...args) {
+			return storage.getSagaEvents(...args);
+		},
+		getEvents(...args) {
+			return storage.getEvents(...args);
+		},
+		on(messageType, handler) {
+			return messageBus.on(messageType, handler);
+		},
+		off(messageType, handler) {
+			if ('off' in messageBus)
+				messageBus.off(messageType, handler);
+		},
+		queue(name) {
+			return messageBus.queue(name);
+		}
+	};
+}
+
+
 /**
  * @typedef {object} EventStoreConfig
  * @property {boolean} [publishAsync]
@@ -188,7 +257,6 @@ class EventStore {
 			throw new TypeError('eventValidator, when provided, must be a function');
 
 		this._config = Object.freeze(Object.assign({}, EventStore.defaults, options.eventStoreConfig));
-		this._storage = options.storage;
 		this._snapshotStorage = options.snapshotStorage;
 		this._validator = options.eventValidator || validateEvent;
 		this._logger = options.logger || nullLogger;
@@ -196,19 +264,12 @@ class EventStore {
 		/** @type {string[]} */
 		this._sagaStarters = [];
 
-		if (options.messageBus) {
-			this._publishTo = options.messageBus;
-			this._eventEmitter = options.messageBus;
-		}
-		else if (isEmitter(options.storage)) {
-			/** @type {IEventEmitter} */
-			this._eventEmitter = options.storage;
-		}
-		else {
-			const internalMessageBus = new InMemoryBus();
-			this._publishTo = internalMessageBus;
-			this._eventEmitter = internalMessageBus;
-		}
+		if (isEmitter(options.storage))
+			this._storage = asEmitter(options.storage);
+		else if (options.messageBus)
+			this._storage = combineStorageAndBus(options.storage, options.messageBus);
+		else
+			this._storage = combineStorageAndBus(options.storage, new InMemoryBus());
 	}
 
 	/**
@@ -320,14 +381,7 @@ class EventStore {
 			await this._attachSagaIdToSagaStarterEvents(events) :
 			events;
 
-		const eventStreamWithoutSnapshots = await this.save(augmentedEvents);
-
-		// after events are saved to the persistent storage,
-		// publish them to the event bus (i.e. RabbitMq)
-		if (this._publishTo)
-			await this.publish(eventStreamWithoutSnapshots);
-
-		return eventStreamWithoutSnapshots;
+		return this.save(augmentedEvents);
 	}
 
 	/**
@@ -390,30 +444,6 @@ class EventStore {
 	}
 
 	/**
-	 * After events are
-	 * @param {IEventStream} eventStream
-	 */
-	async publish(eventStream) {
-		const publishEvents = () =>
-			Promise.all(eventStream.map(event => this._publishTo.publish(event)))
-				.then(() => {
-					this._logger.log('debug', `${eventStream} published`, { service });
-				}, error => {
-					this._logger.log('error', `${eventStream} publishing failed: ${error.message}`, { service, stack: error.stack });
-					throw error;
-				});
-
-		if (this.config.publishAsync) {
-			this._logger.log('debug', `publishing ${eventStream} asynchronously...`, { service });
-			setImmediate(publishEvents);
-		}
-		else {
-			this._logger.log('debug', `publishing ${eventStream} synchronously...`, { service });
-			await publishEvents();
-		}
-	}
-
-	/**
 	 * Setup a listener for a specific event type
 	 *
 	 * @param {string} messageType
@@ -424,7 +454,7 @@ class EventStore {
 		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
 		if (arguments.length !== 2) throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
 
-		this._eventEmitter.on(messageType, handler);
+		this._storage.on(messageType, handler);
 	}
 
 	/**
@@ -433,10 +463,10 @@ class EventStore {
 	 * @param {string} name
 	 */
 	queue(name) {
-		if (typeof this._eventEmitter.queue !== 'function')
+		if (typeof this._storage.queue !== 'function')
 			throw new Error('Named queues are not supported by the underlying message bus');
 
-		return this._eventEmitter.queue(name);
+		return this._storage.queue(name);
 	}
 
 	/**
@@ -450,7 +480,7 @@ class EventStore {
 	once(messageTypes, handler, filter) {
 		const subscribeTo = Array.isArray(messageTypes) ? messageTypes : [messageTypes];
 
-		return setupOneTimeEmitterSubscription(this._eventEmitter, subscribeTo, filter, handler, this._logger);
+		return setupOneTimeEmitterSubscription(this._storage, subscribeTo, filter, handler, this._logger);
 	}
 }
 

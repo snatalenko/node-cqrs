@@ -38,9 +38,6 @@ namespace NodeCqrs {
 		/** Save events to the persistent storage(s) */
 		save(events: IEventStream): Promise<IEventStream>;
 
-		/** After events are */
-		publish(eventStream: IEventStream): void;
-
 		/** Setup a listener for a specific event type */
 		on(messageType: string, handler: function): void;
 
