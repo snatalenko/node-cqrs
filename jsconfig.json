@@ -3,6 +3,7 @@
         "target": "es6",
         "module": "commonjs",
         "allowSyntheticDefaultImports": true,
+        "strictNullChecks": true,
         "checkJs": true,
         "resolveJsonModule": true,
         "lib": [
