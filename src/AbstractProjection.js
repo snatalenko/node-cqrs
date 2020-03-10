@@ -152,13 +152,13 @@ class AbstractProjection {
 		/* istanbul ignore if */
 		if (!eventStore) throw new TypeError('eventStore argument required');
 		/* istanbul ignore if */
-		if (typeof eventStore.getAllEvents !== 'function') throw new TypeError('eventStore.getAllEvents must be a Function');
+		if (typeof eventStore.getEventsByTypes !== 'function') throw new TypeError('eventStore.getEventsByTypes must be a Function');
 
 		const service = getClassName(this);
 		this._logger.log('debug', 'retrieving events and restoring projection...', { service });
 
 		const messageTypes = getHandledMessageTypes(this);
-		const eventsIterable = eventStore.getAllEvents(messageTypes);
+		const eventsIterable = eventStore.getEventsByTypes(messageTypes);
 
 		for await (const event of eventsIterable) {
 			try {

@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const sinon = require('sinon');
-const { SagaEventHandler, InMemoryEventStorage, EventStore, CommandBus, AbstractSaga } = require('../..');
+const { SagaEventHandler, InMemoryEventStorage, EventStore, CommandBus, AbstractSaga, InMemoryMessageBus } = require('../..');
 
 class Saga extends AbstractSaga {
 	static get startsWith() {
@@ -30,8 +30,11 @@ describe('SagaEventHandler', function () {
 	let sagaEventHandler;
 
 	beforeEach(() => {
-		commandBus = new CommandBus();
-		eventStore = new EventStore({ storage: new InMemoryEventStorage() });
+		const storage = new InMemoryEventStorage();
+		const messageBus = new InMemoryMessageBus();
+
+		commandBus = new CommandBus({ messageBus });
+		eventStore = new EventStore({ storage, messageBus });
 		sagaEventHandler = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus });
 	});
 
@@ -46,15 +49,15 @@ describe('SagaEventHandler', function () {
 		});
 
 		sinon.spy(sagaEventHandler, '_restoreSaga');
-		sinon.spy(eventStore, 'getSagaEvents');
+		sinon.spy(eventStore, 'getStream');
 
 		expect(sagaEventHandler._restoreSaga).to.have.property('callCount', 0);
-		expect(eventStore.getSagaEvents).to.have.property('callCount', 0);
+		expect(eventStore.getStream).to.have.property('callCount', 0);
 
 		await sagaEventHandler.handle(triggeringEvent);
 
 		expect(sagaEventHandler._restoreSaga).to.have.property('callCount', 1);
-		expect(eventStore.getSagaEvents).to.have.property('callCount', 1);
+		expect(eventStore.getStream).to.have.property('callCount', 1);
 
 		await doSomethingCommandHandler;
 	});

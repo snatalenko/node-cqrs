@@ -1,12 +1,12 @@
 'use strict';
 
 const { expect } = require('chai');
-const sinon = require('sinon');
+const { spy } = require('sinon');
 
 const {
 	EventStore,
 	InMemoryEventStorage,
-	InMemorySnapshotStorage
+	InMemoryMessageBus
 } = require('../../src');
 
 const goodContext = {
@@ -30,322 +30,286 @@ const goodEvent2 = {
 	context: goodContext
 };
 
-const snapshotEvent = {
-	aggregateId: '2',
-	aggregateVersion: 1,
-	type: 'snapshot',
-	payload: { foo: 'bar' }
-};
+const getPublicMethods = Type =>
+	Object.keys(Object.getOwnPropertyDescriptors(Type.prototype))
+		.filter(k => k !== 'constructor' && k[0] !== '_');
 
+/** @type {NodeCqrs.EventStore} */
 let es;
+
+/** @type {IEventStorage} */
 let storage;
-let snapshotStorage;
+
+/** @type {IMessageBus} */
+let messageBus;
 
 describe('EventStore', function () {
 
 	beforeEach(() => {
 		storage = new InMemoryEventStorage();
-		snapshotStorage = new InMemorySnapshotStorage();
-		es = new EventStore({ storage, snapshotStorage });
+		messageBus = new InMemoryMessageBus();
+		es = new EventStore({ storage, messageBus });
 	});
 
-	describe('validator', () => {
+	describe('constructor({ storage, messageBus })', () => {
 
-		it('allows to validate events before they are committed', () => {
+		it('validates that storage implements IEventStorage', () => {
 
-			const events = [
-				{ type: 'somethingHappened', aggregateId: 1 }
-			];
+			for (const publicMethod of getPublicMethods(InMemoryEventStorage)) {
 
-			return es.commit(events).then(() => {
+				storage = new InMemoryEventStorage();
+				storage[publicMethod] = undefined;
 
-				es = new EventStore({
-					storage,
-					eventValidator: event => {
-						throw new Error('test validation error');
-					}
-				});
+				expect(() => {
+					es = new EventStore({ storage, messageBus });
+				}).to.throw(TypeError);
+			}
+		});
 
-				return es.commit(events).then(() => {
-					throw new Error('must fail');
-				}, err => {
-					expect(err).to.have.property('message', 'test validation error');
-				});
-			});
+		it('validates that messageBus implements IObservable', () => {
+
+			for (const publicMethod of getPublicMethods(InMemoryMessageBus).filter(m => m !== 'queue')) {
+
+				messageBus = new InMemoryMessageBus();
+				messageBus[publicMethod] = undefined;
+
+				expect(() => {
+					es = new EventStore({ storage, messageBus });
+				}).to.throw(TypeError);
+			}
+		});
+
+		it('validates that storage does not implement IObservable', () => {
+
+			storage.on = () => null;
+			storage.off = () => null;
+
+			expect(() => {
+				es = new EventStore({ storage, messageBus });
+			}).to.throw(TypeError);
 		});
 	});
 
-	describe('commit', () => {
+	describe('getNewId()', () => {
 
-		it('validates event format', () => {
+		it('retrieves unique identifier from storage', async () => {
 
-			const badEvent = {
+			spy(storage, 'getNewId');
+
+			const r = await es.getNewId();
+
+			expect(storage).to.have.nested.property('getNewId.calledOnce', true);
+			expect(storage).to.have.nested.property('getNewId.lastCall.returnValue', r);
+		});
+	});
+
+	describe('commit(streamId, events)', () => {
+
+		it('passes events to storage', async () => {
+
+			const aggregateId = 1;
+			const events = [{
 				type: 'somethingHappened',
-				context: goodContext
+				aggregateId
+			}];
+
+			spy(storage, 'commit');
+
+			await es.commit(aggregateId, events);
+
+			expect(storage).to.have.nested.property('commit.calledOnce', true);
+		});
+
+		it('publishes events to messageBus', async () => {
+
+			const aggregateId = 1;
+			const events = [{
+				type: 'somethingHappened',
+				aggregateId
+			}];
+
+			spy(messageBus, 'publish');
+
+			await Promise.all([
+				es.commit(aggregateId, events),
+				es.once('somethingHappened')
+			]);
+
+			expect(messageBus).to.have.nested.property('publish.calledOnce', true);
+			expect(messageBus.publish.firstCall.args[0]).to.eql(events[0]);
+		});
+
+		it('can publish events to messageBus synchronously (await result)', async () => {
+
+			es = new EventStore({ storage, messageBus, eventStoreConfig: { publishAsync: false } });
+
+			const aggregateId = 1;
+			const events = [{
+				type: 'somethingHappened',
+				aggregateId
+			}];
+
+			spy(messageBus, 'publish');
+
+			await es.commit(aggregateId, events);
+
+			expect(messageBus).to.have.nested.property('publish.calledOnce', true);
+			expect(messageBus.publish.firstCall.args[0]).to.eql(events[0]);
+		});
+
+		it('logs results and errors', async () => {
+
+			const logs = [];
+			const logger = { log: (...args) => logs.push(args) };
+
+			es = new EventStore({ storage, messageBus, logger, eventStoreConfig: { publishAsync: false } });
+
+			await es.commit(goodEvent.aggregateId, [goodEvent]);
+
+			expect(logs).to.have.length(1);
+			expect(logs[0][0]).to.eql('debug');
+
+
+			// error flow
+
+			messageBus.publish = () => {
+				throw new Error('test');
 			};
 
-			return es.commit([badEvent]).then(() => {
-				throw new Error('must fail');
-			}, err => {
-				expect(err).exist;
-				expect(err).to.be.an.instanceof(TypeError);
-				expect(err.message).to.equal('either event.aggregateId or event.sagaId is required');
-			});
-		});
-
-		it('сommits events to storage', async () => {
-
-			await es.commit([goodEvent]);
-
-			const events = [];
-			for await (const e of es.getAllEvents())
-				events.push(e);
-
-			expect(events[0]).to.have.property('type', 'somethingHappened');
-			expect(events[0]).to.have.property('context');
-			expect(events[0].context).to.have.property('ip', goodContext.ip);
-		});
-
-		it('submits aggregate snapshot to storage.saveAggregateSnapshot, when provided', async () => {
-
-			snapshotStorage.getAggregateSnapshot = () => snapshotEvent;
-
-			// storage.saveAggregateSnapshot = () => { };
-			sinon.spy(snapshotStorage, 'saveAggregateSnapshot');
-			sinon.spy(storage, 'commitEvents');
-
-			expect(es).to.have.property('snapshotsSupported', true);
-
-			es.commit([goodEvent]);
-			expect(snapshotStorage).to.have.nested.property('saveAggregateSnapshot.called', false);
-
-			es.commit([goodEvent2, snapshotEvent]);
-			expect(snapshotStorage).to.have.nested.property('saveAggregateSnapshot.calledOnce', true);
-
-			{
-				const { args } = snapshotStorage.saveAggregateSnapshot.lastCall;
-				expect(args).to.have.length(1);
-				expect(args[0]).to.eq(snapshotEvent);
+			try {
+				await es.commit(goodEvent2.aggregateId, [goodEvent2]);
 			}
+			catch (err) { }
 
-			{
-				const { args } = storage.commitEvents.lastCall;
-				expect(args).to.have.length(1);
-				expect(args[0]).to.have.length(1);
-				expect(args[0][0]).to.have.property('type', goodEvent2.type);
-			}
-		});
-
-		it('returns a promise that resolves to events committed', () => es.commit([goodEvent, goodEvent2]).then(events => {
-
-			expect(events).to.be.an('Array');
-			expect(events).to.have.length(2);
-			expect(events).to.have.nested.property('[0].type', 'somethingHappened');
-		}));
-
-		it('returns a promise that rejects, when commit doesn\'t succeed', () => {
-
-			const storage = Object.create(InMemoryEventStorage.prototype, {
-				commitEvents: {
-					value: () => {
-						throw new Error('storage commit failure');
-					}
-				}
-			});
-
-			es = new EventStore({ storage });
-
-			return es.commit([goodEvent, goodEvent2]).then(() => {
-				throw new Error('should fail');
-			}, err => {
-				expect(err).to.be.an('Error');
-				expect(err).to.have.property('message', 'storage commit failure');
-			});
-		});
-
-		it('emits events asynchronously after processing is done', function (done) {
-
-			let committed = 0;
-			let emitted = 0;
-
-			es.on('somethingHappened', function (event) {
-
-				expect(committed).to.not.equal(0);
-				expect(emitted).to.equal(0);
-				emitted++;
-
-				expect(event).to.have.property('type', 'somethingHappened');
-				expect(event).to.have.property('context');
-				expect(event.context).to.have.property('ip', goodContext.ip);
-
-				done();
-			});
-
-			es.commit([goodEvent]).then(() => committed++).catch(done);
+			expect(logs).to.have.length(2);
+			expect(logs[1][0]).to.eql('error');
 		});
 	});
 
-	describe('getNewId', () => {
+	describe('getStream(streamId, filter)', () => {
 
-		it('retrieves a unique ID for new aggregate from storage', () => es.getNewId().then(id => {
-			expect(id).to.equal(1);
-		}));
-	});
+		it('retrieves iterable event stream from storage', async () => {
 
-	describe('getAggregateEvents(aggregateId)', () => {
+			spy(storage, 'getStream');
 
-		it('returns all events committed for a specific aggregate', async () => {
+			const streamId = 1;
+			const afterEvent = { type: 'somethingHappened' };
+			const result = es.getStream(streamId, { afterEvent });
 
-			await es.commit([goodEvent, goodEvent2]);
+			expect(storage).to.have.nested.property('getStream.calledOnce', true);
+			expect(storage).to.have.nested.property('getStream.firstCall.args').to.eql([streamId, { afterEvent }]);
 
-			const events = await es.getAggregateEvents(goodEvent.aggregateId);
-
-			expect(events).to.be.an('Array');
-			expect(events).to.have.length(1);
-			expect(events).to.have.nested.property('[0].type', 'somethingHappened');
-		});
-
-		it('tries to retrieve aggregate snapshot', async () => {
-
-			snapshotStorage.getAggregateSnapshot = () => snapshotEvent;
-			snapshotStorage.saveAggregateSnapshot = () => { };
-			sinon.spy(snapshotStorage, 'getAggregateSnapshot');
-			sinon.spy(storage, 'getAggregateEvents');
-
-			expect(es).to.have.property('snapshotsSupported', true);
-
-			const events = await es.getAggregateEvents(goodEvent2.aggregateId);
-
-			expect(snapshotStorage).to.have.nested.property('getAggregateSnapshot.calledOnce', true);
-			expect(storage).to.have.nested.property('getAggregateEvents.calledOnce', true);
-
-			const [, eventFilter] = storage.getAggregateEvents.lastCall.args;
-
-			expect(eventFilter).to.have.property('snapshot');
-			expect(eventFilter).to.have.nested.property('snapshot.type');
-			expect(eventFilter).to.have.nested.property('snapshot.aggregateId');
-			expect(eventFilter).to.have.nested.property('snapshot.aggregateVersion');
+			expect(result).to.have.property(Symbol.asyncIterator);
 		});
 	});
 
-	describe('getSagaEvents(sagaId, options)', () => {
+	describe('getEventsByTypes(eventTypes, filter)', () => {
 
-		it('returns events committed by saga prior to event that triggered saga execution', () => {
+		it('retrieves iterable event stream from storage', async () => {
 
-			const events = [
-				{ sagaId: 1, sagaVersion: 1, type: 'somethingHappened' },
-				{ sagaId: 1, sagaVersion: 2, type: 'anotherHappened' },
-				{ sagaId: 2, sagaVersion: 1, type: 'somethingHappened' }
-			];
+			spy(storage, 'getEventsByTypes');
 
-			const triggeredBy = events[1];
+			const streamId = 1;
+			const afterEvent = { type: 'somethingHappened' };
+			const result = es.getEventsByTypes(['somethingHappened'], { afterEvent });
 
-			return es.commit(events).then(() => es.getSagaEvents(1, { beforeEvent: triggeredBy }).then(events => {
+			expect(storage).to.have.nested.property('getEventsByTypes.calledOnce', true);
+			expect(storage).to.have.nested.property('getEventsByTypes.firstCall.args').to.eql([['somethingHappened'], { afterEvent }]);
 
-				expect(events).to.be.an('Array');
-				expect(events).to.have.length(1);
-				expect(events).to.have.nested.property('[0].type', 'somethingHappened');
-			}));
+			expect(result).to.have.property(Symbol.asyncIterator);
 		});
 	});
 
-	describe('getAllEvents(eventTypes)', () => {
+	describe('queue(queueName)', () => {
 
-		it('returns a promise that resolves to all committed events of specific types', async () => {
-			await es.commit([goodEvent, goodEvent2]);
+		it('gets observable queue from messageBus', () => {
 
-			const events = [];
-			for await (const e of es.getAllEvents(['somethingHappened']))
-				events.push(e);
+			const method = spy(messageBus, 'queue');
 
-			expect(events).to.have.length(2);
-			expect(events).to.have.nested.property('[0].aggregateId', '1');
-			expect(events).to.have.nested.property('[1].aggregateId', '2');
+			const result = es.queue('new-queue');
+
+			expect(method).to.have.nested.property('calledOnce', true);
+			expect(method).to.have.nested.property('firstCall.args').to.eql(['new-queue']);
+			expect(method).to.have.nested.property('firstCall.returnValue', result);
+		});
+
+		it('throws error if queues are not supported', () => {
+
+			messageBus.queue = undefined;
+			es = new EventStore({ storage, messageBus });
+
+			expect(() => {
+				es.queue('new-queue');
+			}).to.throw('Named queues are not supported by the underlying messageBus');
 		});
 	});
 
 	describe('on(eventType, handler)', () => {
 
-		it('exists', () => {
-			expect(es).to.respondTo('on');
+		it('sets up subscription in messageBus', () => {
+
+			const method = spy(messageBus, 'on');
+
+			const handler = () => null;
+			const result = es.on('somethingHappened', handler);
+
+			expect(method).to.have.nested.property('calledOnce', true);
+			expect(method).to.have.nested.property('firstCall.args').to.eql(['somethingHappened', handler]);
+			expect(method).to.have.nested.property('firstCall.returnValue', result);
 		});
+	});
 
-		it('fails, when trying to set up second messageType handler within the same node and named queue (Receptors)', () => {
+	describe('off(eventType, handler)', () => {
 
-			es = new EventStore({ storage });
+		it('removes subscription from messageBus', () => {
 
-			expect(() => {
-				es.queue('namedQueue').on('somethingHappened', () => { });
-			}).to.not.throw();
+			const method = spy(messageBus, 'off');
 
-			expect(() => {
-				es.queue('anotherNamedQueue').on('somethingHappened', () => { });
-			}).to.not.throw();
+			const handler = () => null;
+			es.on('somethingHappened', handler);
 
-			expect(() => {
-				es.queue('namedQueue').on('somethingHappened', () => { });
-			}).to.throw('"somethingHappened" handler is already set up on the "namedQueue" queue');
-		});
+			const result = es.off('somethingHappened', handler);
 
-		it('sets up multiple handlers for same messageType, when queue name is not defined (Projections)', () => {
-
-			es = new EventStore({ storage, eventStoreConfig: { publishAsync: false } });
-
-			const projection1Handler = sinon.spy();
-			const projection2Handler = sinon.spy();
-
-			es.on('somethingHappened', projection1Handler);
-			es.on('somethingHappened', projection2Handler);
-
-			return es.commit([
-				{ type: 'somethingHappened', aggregateId: 1, aggregateVersion: 0 }
-			]).then(() => {
-				expect(projection1Handler).to.have.property('calledOnce', true);
-				expect(projection2Handler).to.have.property('calledOnce', true);
-			});
+			expect(method).to.have.nested.property('calledOnce', true);
+			expect(method).to.have.nested.property('firstCall.args').to.eql(['somethingHappened', handler]);
+			expect(method).to.have.nested.property('firstCall.returnValue', result);
 		});
 	});
 
 	describe('once(eventType, handler, filter)', () => {
 
-		it('executes handler only once, when event matches filter', done => {
-			let firstAggregateCounter = 0;
-			let secondAggregateCounter = 0;
+		it('sets up handler that will be invoked only once', async () => {
 
-			es.once('somethingHappened',
-				event => ++firstAggregateCounter,
-				event => event.aggregateId === '1');
+			const onMethod = spy(messageBus, 'on');
+			const offMethod = spy(messageBus, 'off');
 
-			es.once('somethingHappened',
-				event => ++secondAggregateCounter,
-				event => event.aggregateId === '2');
+			let handlerCallCount = 0;
+			const eventReceivedPromise = es.once('somethingHappened',
+				e => handlerCallCount += 1,
+				e => e.aggregateId === goodEvent2.aggregateId);
 
-			es.commit([goodEvent, goodEvent, goodEvent, goodEvent2]);
-			es.commit([goodEvent2, goodEvent2]);
+			expect(eventReceivedPromise).to.be.a('Promise');
+			expect(onMethod).to.have.nested.property('callCount', 1);
+			expect(onMethod).to.have.nested.property('lastCall.args.0').to.eql('somethingHappened');
+			expect(offMethod).to.have.nested.property('callCount', 0);
 
-			setTimeout(() => {
-				try {
-					expect(firstAggregateCounter).to.equal(1);
-					expect(secondAggregateCounter).to.equal(1);
+			es.commit(1, [goodEvent, goodEvent2, goodEvent2]);
 
-					done();
-				}
-				catch (err) {
-					done(err);
-				}
-			}, 100);
+			await eventReceivedPromise;
+
+			expect(handlerCallCount).to.eq(1);
+			expect(onMethod).to.have.nested.property('callCount', 1);
+			expect(offMethod).to.have.nested.property('callCount', 1);
+			expect(offMethod).to.have.nested.property('lastCall.args.0').to.eql('somethingHappened');
 		});
 
-		it('returns a promise', () => {
+		it('accepts multiple message types as 1st argument', async () => {
 
-			setImmediate(() => {
-				es.commit([goodEvent]);
-			});
+			const eventReceivedPromise = es.once(['unexpectedEvent', 'somethingHappened']);
 
-			return es.once('somethingHappened').then(e => {
-				expect(e).to.exist;
-				expect(e).to.have.property('type', goodEvent.type);
-			});
+			es.commit(1, [goodEvent]);
+
+			await eventReceivedPromise;
 		});
 	});
 });

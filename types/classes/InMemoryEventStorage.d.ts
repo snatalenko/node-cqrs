@@ -6,16 +6,19 @@ namespace NodeCqrs {
 	 */
 	declare class InMemoryEventStorage implements IEventStorage {
 
-		constructor(): void;
+		/** Creates instance of InMemoryEventStorage */
+		constructor(options?: { logger?: ILogger }): void;
 
-		commitEvents(events: Array<IEvent>): Promise<void>;
-
-		getAggregateEvents(aggregateId: Identifier, options?: { snapshot?: IEvent }): Promise<IEventStream>;
-
-		getSagaEvents(sagaId: Identifier, options?: { beforeEvent?: IEvent }): Promise<IEventStream>;
-
-		getEvents(eventTypes: Array<string>): Promise<IEventStream>;
-
+		/** Generate unique identifier */
 		getNewId(): number;
+
+		/** Save events to a stream with given ID */
+		commit(streamId: Identifier, events: IEventStream): Promise<IEventStream>;
+
+		/** Get event stream with a given ID */
+		getStream(streamId: Identifier, filter?: { afterEvent?: IEvent, beforeEvent?: IEvent }): AsyncIterableIterator<IEvent>;
+
+		/** Get events by given event types */
+		getEventsByTypes(eventTypes: Array<string>, filter?: { afterEvent?: IEvent, beforeEvent?: IEvent }): AsyncIterableIterator<IEvent>;
 	}
 }

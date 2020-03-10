@@ -2,7 +2,7 @@
 
 const { expect, assert, AssertionError } = require('chai');
 const sinon = require('sinon');
-const { AbstractAggregate, EventStream } = require('../../src');
+const { AbstractAggregate } = require('../../src');
 const blankContext = require('./mocks/blankContext');
 const delay = ms => new Promise(rs => setTimeout(rs, ms));
 
@@ -45,6 +45,7 @@ class StatelessAggregate extends AbstractAggregate {
 
 describe('AbstractAggregate', function () {
 
+	/** @type {Aggregate} */
 	let agg;
 	beforeEach(() => {
 		agg = new Aggregate({ id: 1 });
@@ -83,7 +84,6 @@ describe('AbstractAggregate', function () {
 
 			const { changes } = agg;
 
-			expect(changes).to.be.instanceof(EventStream);
 			expect(changes).to.be.an('Array');
 			expect(changes).to.be.empty;
 			expect(changes).to.not.equal(agg.changes);
@@ -230,95 +230,52 @@ describe('AbstractAggregate', function () {
 
 			expect(() => agg.mutate({ type: 'somethingStatelessHappened' })).to.not.throw();
 		});
-
-
-		const snapshotEvent = { aggregateVersion: 1, type: 'snapshot', payload: { somethingDone: 1 } };
-
-		it('invokes aggregate.restoreSnapshot, when snapshot event provided', () => {
-			sinon.spy(agg, 'restoreSnapshot');
-
-			expect(agg).to.have.nested.property('restoreSnapshot.called', false);
-
-			agg.mutate(snapshotEvent);
-
-			expect(agg).to.have.nested.property('restoreSnapshot.calledOnce', true);
-		});
-
-		it('restores aggregate version and snapshotVersion, when snapshot event provided', () => {
-
-			expect(agg).to.have.property('snapshotVersion', 0);
-			expect(agg).to.have.property('version', 0);
-
-			agg.mutate(snapshotEvent);
-
-			expect(agg).to.have.property('snapshotVersion', snapshotEvent.aggregateVersion);
-			expect(agg).to.have.property('version', snapshotEvent.aggregateVersion + 1);
-		});
 	});
 
-	describe('takeSnapshot()', () => {
+	describe('makeSnapshot()', () => {
 
-		it('exists', () => {
-			expect(agg).to.respondTo('takeSnapshot');
-		});
-
-		it('adds aggregate state snapshot to the changes queue', async () => {
+		it('creates a snapshot object with aggregate state', async () => {
 
 			await agg.handle({ type: 'doSomething' });
 
-			agg.takeSnapshot();
+			const snapshot = agg.makeSnapshot();
 
-			const { changes } = agg;
-
-			expect(changes).to.have.length(2);
-
-			expect(changes[0]).to.have.property('type', 'somethingDone');
-			expect(changes[1]).to.have.property('type', 'snapshot');
-			expect(changes[1]).to.have.property('payload').that.deep.equals(agg.state);
+			expect(snapshot).to.be.an('object');
+			expect(snapshot).to.have.property('lastEvent').that.eqls(agg.changes[agg.changes.length - 1]);
+			expect(snapshot).to.have.property('schemaVersion', 0);
+			expect(snapshot).to.have.property('data').that.eqls(agg.state);
 		});
 	});
 
 	describe('restoreSnapshot(snapshotEvent)', () => {
 
-		const snapshotEvent = { type: 'snapshot', payload: { somethingDone: 1 } };
-
-		it('exists', () => {
-			expect(agg).to.respondTo('restoreSnapshot');
-		});
-
-		it('validates arguments', () => {
-
-			expect(() => agg.restoreSnapshot()).to.throw(TypeError);
-
-			for (const keyToMiss of Object.keys(snapshotEvent)) {
-				const keysToCopy = Object.keys(snapshotEvent).filter(k => k !== keyToMiss);
-				const brokenEvent = JSON.parse(JSON.stringify(snapshotEvent, keysToCopy));
-
-				expect(() => agg.restoreSnapshot(brokenEvent)).to.throw(TypeError);
-			}
-
-			expect(() => agg.restoreSnapshot({ aggregateVersion: 1, type: 'somethingHappened', payload: {} })).to.throw('snapshot event type expected');
-
-			expect(() => agg.restoreSnapshot(snapshotEvent)).to.not.throw();
-		});
-
-		it('being invoked by mutate(event)', () => {
-			sinon.spy(agg, 'restoreSnapshot');
-
-			agg.mutate({ type: 'somethingDone' });
-
-			expect(agg).to.have.nested.property('restoreSnapshot.called', false);
-
-			agg.mutate(snapshotEvent);
-
-			expect(agg).to.have.nested.property('restoreSnapshot.calledOnce', true);
-		});
+		/** @type {TSnapshot} */
+		const snapshot = {
+			lastEvent: { type: 'somethingHappened', aggregateVersion: 0 },
+			schemaVersion: 0,
+			data: { somethingDone: 1 }
+		};
 
 		it('restores aggregate state from a snapshot', () => {
 
-			agg.restoreSnapshot(snapshotEvent);
+			agg.restoreSnapshot(snapshot);
 
-			expect(agg).to.have.property('state').that.deep.equals(snapshotEvent.payload);
+			expect(agg).to.have.property('state').that.deep.equals(snapshot.data);
+		});
+
+
+		it('validates arguments', () => {
+
+			expect(() => agg.restoreSnapshot(undefined)).to.throw(TypeError);
+
+			for (const keyToMiss of Object.keys(snapshot)) {
+				const keysToCopy = Object.keys(snapshot).filter(k => k !== keyToMiss);
+				const brokenSnapshot = JSON.parse(JSON.stringify(snapshot, keysToCopy));
+
+				expect(() => agg.restoreSnapshot(brokenSnapshot)).to.throw(TypeError);
+			}
+
+			expect(() => agg.restoreSnapshot(snapshot)).to.not.throw();
 		});
 	});
 });

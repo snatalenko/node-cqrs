@@ -2,7 +2,7 @@
 
 const { expect, assert, AssertionError } = require('chai');
 const sinon = require('sinon');
-const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore } = require('../../src');
+const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore, InMemoryMessageBus } = require('../../src');
 
 class MyProjection extends AbstractProjection {
 	static get handles() {
@@ -46,7 +46,7 @@ describe('AbstractProjection', function () {
 
 		beforeEach(() => {
 			observable = {
-				getAllEvents() {
+				getEventsByTypes() {
 					return [];
 				},
 				on() { }
@@ -108,22 +108,22 @@ describe('AbstractProjection', function () {
 
 		beforeEach(() => {
 			es = {
-				async* getAllEvents() {
+				async* getEventsByTypes() {
 					yield { type: 'somethingHappened', aggregateId: 1, aggregateVersion: 1 };
 					yield { type: 'somethingHappened', aggregateId: 1, aggregateVersion: 2 };
 					yield { type: 'somethingHappened', aggregateId: 2, aggregateVersion: 1 };
 				}
 			};
-			sinon.spy(es, 'getAllEvents');
+			sinon.spy(es, 'getEventsByTypes');
 
 			return projection.restore(es);
 		});
 
 		it('queries events of specific types from event store', () => {
 
-			assert(es.getAllEvents.calledOnce, 'es.getAllEvents was not called');
+			assert(es.getEventsByTypes.calledOnce, 'es.getEventsByTypes was not called');
 
-			const { args } = es.getAllEvents.lastCall;
+			const { args } = es.getEventsByTypes.lastCall;
 
 			expect(args).to.have.length(1);
 			expect(args[0]).to.deep.eq(MyProjection.handles);
@@ -148,7 +148,7 @@ describe('AbstractProjection', function () {
 		it('throws, if projection error encountered', () => {
 
 			es = {
-				async* getAllEvents() {
+				async* getEventsByTypes() {
 					yield { type: 'unexpectedEvent' };
 				}
 			};
@@ -168,7 +168,8 @@ describe('AbstractProjection', function () {
 		it('waits until the restoring process is done', async () => {
 
 			const storage = new InMemoryEventStorage();
-			const es = new EventStore({ storage });
+			const messageBus = new InMemoryMessageBus();
+			const es = new EventStore({ storage, messageBus });
 
 			let restored = false;
 			let projected = false;

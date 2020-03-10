@@ -83,7 +83,7 @@ describe('CqrsContainerBuilder', function () {
 				{ type: 'somethingHappened', aggregateId: 1 }
 			];
 
-			container.eventStore.commit(events).catch(done);
+			container.eventStore.commit(1, events).catch(done);
 		});
 	});
 

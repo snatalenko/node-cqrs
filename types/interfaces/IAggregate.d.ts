@@ -2,6 +2,10 @@
  * Minimum aggregate interface, as it's used by default `AggregateCommandHandler`
  */
 declare interface IAggregate {
+
+	/** Unique aggregate identifier */
+	readonly id: Identifier;
+
 	/** Main entry point for aggregate commands */
 	handle(command: ICommand): void | Promise<void>;
 
@@ -11,13 +15,21 @@ declare interface IAggregate {
 	/** An indicator if aggregate snapshot should be taken */
 	readonly shouldTakeSnapshot?: boolean;
 
-	/** Make a snapshot event and append it to `changes` */
-	takeSnapshot?(): void;
+	/** Create aggregate snapshot */
+	makeSnapshot?(): TSnapshot;
 }
 
 declare type TAggregateConstructorParams = {
+	/** Unique aggregate identifier */
 	id: Identifier,
+
+	/** Aggregate state snapshot, if any */
+	snapshot?: TSnapshot,
+
+	/** Aggregate events, logged after latest snapshot */
 	events?: IEventStream,
+
+	/** Aggregate state instance */
 	state?: any
 };
 

@@ -7,7 +7,7 @@ namespace NodeCqrs {
 		 * Optional list of commands handled by Aggregate.
 		 * Can be overridden in the aggregate implementation
 		 */
-		static readonly handles: Array<string>;
+		static readonly handles: Array<string> | undefined;
 
 		/** Aggregate ID */
 		readonly id: string | number;
@@ -49,14 +49,11 @@ namespace NodeCqrs {
 		/** Register aggregate event and mutate aggregate state */
 		protected emitRaw(event: IEvent): void;
 
-		/** Take an aggregate state snapshot and add it to the changes queue */
-		takeSnapshot(): void;
-
 		/** Create an aggregate state snapshot */
-		protected makeSnapshot(): object;
+		protected makeSnapshot(): TSnapshot;
 
 		/** Restore aggregate state from a snapshot */
-		protected restoreSnapshot(snapshotEvent: IEvent): void;
+		protected restoreSnapshot<TState>(snapshot: TSnapshot<TState>): void;
 
 		/** Get human-readable aggregate identifier */
 		toString(): string;

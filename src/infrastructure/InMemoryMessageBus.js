@@ -9,17 +9,6 @@
 class InMemoryMessageBus {
 
 	/**
-	 * Indicates that message bus supports named queue subscriptions
-	 *
-	 * @type {boolean}
-	 * @readonly
-	 * @static
-	 */
-	static get supportsQueues() {
-		return true;
-	}
-
-	/**
 	 * Creates an instance of InMemoryMessageBus
 	 * @param {object} [options]
 	 * @param {string} [options.name]
@@ -43,9 +32,15 @@ class InMemoryMessageBus {
 	 * @param {IMessageHandler} handler
 	 */
 	on(messageType, handler) {
-		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
-		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
-		if (arguments.length !== 2) throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
+		/* istanbul ignore if */
+		if (typeof messageType !== 'string' || !messageType.length)
+			throw new TypeError('messageType argument must be a non-empty String');
+		/* istanbul ignore if */
+		if (typeof handler !== 'function')
+			throw new TypeError('handler argument must be a Function');
+		/* istanbul ignore if */
+		if (arguments.length !== 2)
+			throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
 
 		// Events published to a named queue must be consumed only once.
 		// For example, for sending a welcome email, NotificationReceptor will subscribe to "notifications:userCreated".
@@ -80,10 +75,18 @@ class InMemoryMessageBus {
 	 * @param {IMessageHandler} handler
 	 */
 	off(messageType, handler) {
-		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
-		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
-		if (arguments.length !== 2) throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
-		if (!this._handlers.has(messageType)) throw new Error(`No ${messageType} subscribers found`);
+		/* istanbul ignore if */
+		if (typeof messageType !== 'string' || !messageType.length)
+			throw new TypeError('messageType argument must be a non-empty String');
+		/* istanbul ignore if */
+		if (typeof handler !== 'function')
+			throw new TypeError('handler argument must be a Function');
+		/* istanbul ignore if */
+		if (arguments.length !== 2)
+			throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
+		/* istanbul ignore if */
+		if (!this._handlers.has(messageType))
+			throw new Error(`No ${messageType} subscribers found`);
 
 		this._handlers.get(messageType).delete(handler);
 	}
@@ -95,8 +98,12 @@ class InMemoryMessageBus {
 	 * @returns {Promise<any>}
 	 */
 	async send(command) {
-		if (typeof command !== 'object' || !command) throw new TypeError('command argument must be an Object');
-		if (typeof command.type !== 'string' || !command.type.length) throw new TypeError('command.type argument must be a non-empty String');
+		/* istanbul ignore if */
+		if (typeof command !== 'object' || !command)
+			throw new TypeError('command argument must be an Object');
+		/* istanbul ignore if */
+		if (typeof command.type !== 'string' || !command.type.length)
+			throw new TypeError('command.type argument must be a non-empty String');
 
 		const handlers = this._handlers.get(command.type);
 		if (!handlers || !handlers.size)
@@ -116,8 +123,12 @@ class InMemoryMessageBus {
 	 * @returns {Promise<any>}
 	 */
 	async publish(event) {
-		if (typeof event !== 'object' || !event) throw new TypeError('event argument must be an Object');
-		if (typeof event.type !== 'string' || !event.type.length) throw new TypeError('event.type argument must be a non-empty String');
+		/* istanbul ignore if */
+		if (typeof event !== 'object' || !event)
+			throw new TypeError('event argument must be an Object');
+		/* istanbul ignore if */
+		if (typeof event.type !== 'string' || !event.type.length)
+			throw new TypeError('event.type argument must be a non-empty String');
 
 		const handlers = [
 			...this._handlers.get(event.type) || [],

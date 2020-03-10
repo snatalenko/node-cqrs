@@ -1,6 +1,5 @@
 'use strict';
 
-const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
 const nullLogger = require('./utils/nullLogger');
 const service = 'CommandBus';
 
@@ -13,13 +12,15 @@ class CommandBus {
 	/**
 	 * Creates an instance of CommandBus.
 	 *
-	 * @param {object} [options]
-	 * @param {IMessageBus} [options.messageBus]
+	 * @param {object} options
+	 * @param {IMessageBus} options.messageBus
 	 * @param {ILogger} [options.logger]
 	 */
-	constructor(options) {
-		this._bus = (options && options.messageBus) || new InMemoryBus();
-		this._logger = (options && options.logger) || nullLogger;
+	constructor({ messageBus, logger = nullLogger }) {
+		if (!messageBus) throw new TypeError('messageBus argument required');
+
+		this._bus = messageBus;
+		this._logger = logger;
 	}
 
 	/**
@@ -37,19 +38,35 @@ class CommandBus {
 	}
 
 	/**
+	 * Remove previously installed command handler
+	 *
+	 * @param {string} commandType
+	 * @param {IMessageHandler} handler
+	 */
+	off(commandType, handler) {
+		if (typeof commandType !== 'string' || !commandType.length) throw new TypeError('commandType argument must be a non-empty String');
+		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
+
+		return this._bus.off(commandType, handler);
+	}
+
+	/**
 	 * Format and send a command for execution
 	 *
 	 * @param {string} type
 	 * @param {string} aggregateId
 	 * @param {{ payload: object, context: object }} options
-	 * @param {...object} [otherArgs]
+	 * @param {...object} otherArgs
 	 * @returns {Promise<IEventStream>} - produced events
 	 */
 	send(type, aggregateId, options, ...otherArgs) {
+		/* istanbul ignore if */
 		if (typeof type !== 'string' || !type.length)
 			throw new TypeError('type argument must be a non-empty String');
+		/* istanbul ignore if */
 		if (options && typeof options !== 'object')
 			throw new TypeError('options argument, when defined, must be an Object');
+		/* istanbul ignore if */
 		if (otherArgs.length > 1)
 			throw new TypeError('more than expected arguments supplied');
 

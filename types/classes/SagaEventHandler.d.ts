@@ -12,7 +12,7 @@ namespace NodeCqrs {
 		constructor(options: { sagaType: ISagaConstructor | ISagaFactory, eventStore: IEventStore, commandBus: ICommandBus, logger?: ILogger, queueName?: string, startsWith?: Array<string>, handles?: Array<string> }): void;
 
 		/** Overrides observer subscribe method */
-		subscribe(): void;
+		subscribe(eventStore: IObservable): void;
 
 		/** Handle saga event */
 		handle(event: IEvent): Promise<void>;

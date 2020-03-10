@@ -4,6 +4,7 @@
 const subscribe = require('./subscribe');
 const { isClass, getClassName } = require('./utils');
 const nullLogger = require('./utils/nullLogger');
+const readEventsFromIterator = require('./utils/readEventsFromIterator');
 
 /**
  * Listens to Saga events,
@@ -56,12 +57,12 @@ class SagaEventHandler {
 			this._startsWith = options.startsWith;
 			this._handles = options.handles;
 		}
-
-		this._eventStore.registerSagaStarters(options.startsWith);
 	}
 
 	/**
 	 * Overrides observer subscribe method
+	 *
+	 * @param {IObservable} eventStore
 	 */
 	subscribe(eventStore) {
 		subscribe(eventStore, this, {
@@ -80,9 +81,10 @@ class SagaEventHandler {
 	async handle(event) {
 		if (!event) throw new TypeError('event argument required');
 		if (!event.type) throw new TypeError('event.type argument required');
-		if (!event.sagaId) throw new TypeError('event.sagaId argument required');
 
-		const saga = await this._restoreSaga(event);
+		const saga = event.sagaId ?
+			await this._restoreSaga(event) :
+			await this._startSaga();
 
 		const r = saga.apply(event);
 		if (r instanceof Promise)
@@ -119,16 +121,29 @@ class SagaEventHandler {
 	}
 
 	/**
+	 * Start new saga
+	 *
+	 * @private
+	 * @returns {Promise<ISaga>}
+	 */
+	async _startSaga() {
+		const id = await this._eventStore.getNewId();
+		return this._sagaFactory.call(null, { id });
+	}
+
+	/**
 	 * Restore saga from event store
 	 *
+	 * @private
 	 * @param {IEvent} event Event that triggered saga execution
 	 * @returns {Promise<ISaga>}
-	 * @private
 	 */
 	async _restoreSaga(event) {
-		if (!event.sagaId) throw new TypeError('event.sagaId argument required');
+		/* istanbul ignore if */
+		if (!event.sagaId)
+			throw new TypeError('event.sagaId argument required');
 
-		const events = await this._eventStore.getSagaEvents(event.sagaId, { beforeEvent: event });
+		const events = await readEventsFromIterator(await this._eventStore.getStream(event.sagaId, { beforeEvent: event }));
 
 		/** @type {ISaga} */
 		const saga = this._sagaFactory.call(null, { id: event.sagaId, events });

@@ -72,7 +72,9 @@ class AbstractSaga {
 	 * @param {TSagaConstructorParams} options
 	 */
 	constructor(options) {
+		/* istanbul ignore if */
 		if (!options) throw new TypeError('options argument required');
+		/* istanbul ignore if */
 		if (!options.id) throw new TypeError('options.id argument required');
 
 		this[_id] = options.id;
@@ -97,7 +99,9 @@ class AbstractSaga {
 	 * @returns {void|Promise<void>}
 	 */
 	apply(event) {
+		/* istanbul ignore if */
 		if (!event) throw new TypeError('event argument required');
+		/* istanbul ignore if */
 		if (!event.type) throw new TypeError('event.type argument required');
 
 		const handler = getHandler(this, event.type);
@@ -124,8 +128,10 @@ class AbstractSaga {
 	 * @param {object} payload
 	 */
 	enqueue(commandType, aggregateId, payload) {
+		/* istanbul ignore if */
 		if (typeof commandType !== 'string' || !commandType.length)
 			throw new TypeError('commandType argument must be a non-empty String');
+		/* istanbul ignore if */
 		if (!['string', 'number', 'undefined'].includes(typeof aggregateId))
 			throw new TypeError('aggregateId argument must be either string, number or undefined');
 
@@ -145,8 +151,12 @@ class AbstractSaga {
 	 * @param {ICommand} command
 	 */
 	enqueueRaw(command) {
-		if (typeof command !== 'object' || !command) throw new TypeError('command argument must be an Object');
-		if (typeof command.type !== 'string' || !command.type.length) throw new TypeError('command.type argument must be a non-empty String');
+		/* istanbul ignore if */
+		if (typeof command !== 'object' || !command)
+			throw new TypeError('command argument must be an Object');
+		/* istanbul ignore if */
+		if (typeof command.type !== 'string' || !command.type.length)
+			throw new TypeError('command.type argument must be a non-empty String');
 
 		this[_messages].push(command);
 	}

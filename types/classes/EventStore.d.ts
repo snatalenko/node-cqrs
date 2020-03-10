@@ -1,50 +1,37 @@
 namespace NodeCqrs {
 
-	declare class EventStore implements IEventStore {
-
-		/** Default configuration */
-		static defaults: EventStoreConfig;
-
-		/** Configuration */
-		readonly config: EventStoreConfig;
-
-		/** Whether storage supports aggregate snapshots */
-		readonly snapshotsSupported: boolean;
+	/**
+	 * Facade that combines functionality of IEventStorage and IObservable into single IEventStore interface.
+	 * 
+	 * If storage instance implements the IObservable interface, it can be used directly without this facade.
+	 */
+	declare class EventStore implements IEventStorage, IObservable {
 
 		/** Creates an instance of EventStore. */
-		constructor(options: { storage: IEventStorage, snapshotStorage?: IAggregateSnapshotStorage, messageBus?: IMessageBus, eventValidator?: function, eventStoreConfig?: EventStoreConfig, logger?: ILogger }): void;
+		constructor(options: { storage: IEventStorage, messageBus: IMessageBus, eventValidator?: IMessageHandler, eventStoreConfig?: { publishAsync?: boolean }, logger?: ILogger }): void;
 
 		/** Retrieve new ID from the storage */
 		getNewId(): Promise<Identifier>;
 
-		/** Retrieve all events of specific types */
-		getAllEvents(eventTypes: Array<string>): AsyncIterableIterator<IEvent>;
+		/** Save and publish a set of events */
+		commit(streamId: Identifier, events: IEventStream): Promise<IEventStream>;
 
-		/** Retrieve all events of specific Aggregate */
-		getAggregateEvents(aggregateId: Identifier): Promise<IEventStream>;
+		/** Get a stream of events by identifier */
+		getStream(streamId: Identifier, filter?: IEventQueryFilter): AsyncIterableIterator<IEvent>;
 
-		/** Retrieve events of specific Saga */
-		getSagaEvents(sagaId: Identifier, filter: { beforeEvent: IEvent }): Promise<IEventStream>;
+		/** Get events by their types */
+		getEventsByTypes(eventTypes: Array<string>, filter: IEventQueryFilter): AsyncIterableIterator<IEvent>;
 
-		/**
-		 * Register event types that start sagas.
-		 * Upon such event commit a new sagaId will be assigned
-		 */
-		registerSagaStarters(eventTypes: Array<string>): void;
+		/** Setup listener for specific event type */
+		on(messageType: string, handler: IMessageHandler): void;
 
-		/** Validate events, commit to storage and publish to messageBus, if needed */
-		commit(events: IEventStream): Promise<IEventStream>;
-
-		/** Save events to the persistent storage(s) */
-		save(events: IEventStream): Promise<IEventStream>;
-
-		/** Setup a listener for a specific event type */
-		on(messageType: string, handler: function): void;
+		/** Remove previously installed listener */
+		off(messageType: string, handler: IMessageHandler): void;
 
 		/** Get or create a named queue, which delivers events to a single handler only */
-		queue(name: string): void;
+		queue(name: string): IObservable;
 
 		/** Creates one-time subscription for one or multiple events that match a filter */
-		once(messageTypes: string | Array<string>, handler?: function, filter?: function): Promise<IEvent>;
+		once(messageTypes: string | Array<string>, handler?: IMessageHandler, filter?: function): Promise<IEvent>;
 	}
 }

@@ -1,7 +1,6 @@
 'use strict';
 
 const { validateHandlers, getHandler, getClassName } = require('./utils');
-const EventStream = require('./EventStream');
 
 /**
  * Deep-clone simple JS object
@@ -11,12 +10,19 @@ const EventStream = require('./EventStream');
  */
 const clone = obj => JSON.parse(JSON.stringify(obj));
 
-const SNAPSHOT_EVENT_TYPE = 'snapshot';
-
 const _id = Symbol('id');
 const _changes = Symbol('changes');
 const _version = Symbol('version');
 const _snapshotVersion = Symbol('snapshotVersion');
+
+/**
+ * @param {object} state
+ * @returns {string|number}
+ */
+const getSchemaVersionFromState = state =>
+	(state && state.schemaVersion) ||
+	(state && state.constructor && state.constructor.schemaVersion) ||
+	0;
 
 /**
  * Base class for Aggregate definition
@@ -30,7 +36,7 @@ class AbstractAggregate {
 	 * Optional list of commands handled by Aggregate.
 	 * Can be overridden in the aggregate implementation
 	 *
-	 * @type {string[]}
+	 * @type {string[] | undefined}
 	 * @readonly
 	 * @static
 	 * @example
@@ -77,7 +83,7 @@ class AbstractAggregate {
 	 * @readonly
 	 */
 	get changes() {
-		return new EventStream(this[_changes]);
+		return [...this[_changes]];
 	}
 
 	/**
@@ -99,7 +105,7 @@ class AbstractAggregate {
 	 * @param {TAggregateConstructorParams} options
 	 */
 	constructor(options) {
-		const { id, state, events } = options;
+		const { id, state, snapshot, events } = options;
 		if (!id) throw new TypeError('id argument required');
 		if (state && typeof state !== 'object') throw new TypeError('state argument, when provided, must be an Object');
 		if (events && !Array.isArray(events)) throw new TypeError('events argument, when provided, must be an Array');
@@ -107,12 +113,14 @@ class AbstractAggregate {
 		this[_id] = id;
 		this[_changes] = [];
 		this[_version] = 0;
-		this[_snapshotVersion] = 0;
 
 		validateHandlers(this);
 
 		if (state)
 			this.state = state;
+
+		if (snapshot)
+			this.restoreSnapshot(snapshot);
 
 		if (events)
 			events.forEach(event => this.mutate(event));
@@ -144,14 +152,10 @@ class AbstractAggregate {
 	 * @param {IEvent} event
 	 */
 	mutate(event) {
-		if ('aggregateVersion' in event)
+		if (event.aggregateVersion !== undefined)
 			this[_version] = event.aggregateVersion;
 
-		if (event.type === SNAPSHOT_EVENT_TYPE) {
-			this[_snapshotVersion] = event.aggregateVersion;
-			this.restoreSnapshot(event);
-		}
-		else if (this.state) {
+		if (this.state) {
 			const handler = this.state.mutate || getHandler(this.state, event.type);
 			if (handler)
 				handler.call(this.state, event);
@@ -226,42 +230,50 @@ class AbstractAggregate {
 	}
 
 	/**
-	 * Take an aggregate state snapshot and add it to the changes queue
-	 */
-	takeSnapshot() {
-		this.emit(SNAPSHOT_EVENT_TYPE, this.makeSnapshot());
-	}
-
-	/**
 	 * Create an aggregate state snapshot
 	 *
 	 * @protected
-	 * @returns {object}
+	 * @returns {TSnapshot}
 	  */
 	makeSnapshot() {
 		if (!this.state)
 			throw new Error('state property is empty, either define state or override makeSnapshot method');
 
-		return clone(this.state);
+		const events = this.changes;
+
+		return {
+			lastEvent: events[events.length - 1],
+			schemaVersion: getSchemaVersionFromState(this.state),
+			data: clone(this.state)
+		};
 	}
 
 	/**
 	 * Restore aggregate state from a snapshot
 	 *
 	 * @protected
-	 * @param {IEvent} snapshotEvent
+	 * @template TState
+	 * @param {TSnapshot<TState>} snapshot
 	 */
-	restoreSnapshot(snapshotEvent) {
-		if (!snapshotEvent) throw new TypeError('snapshotEvent argument required');
-		if (!snapshotEvent.type) throw new TypeError('snapshotEvent.type argument required');
-		if (!snapshotEvent.payload) throw new TypeError('snapshotEvent.payload argument required');
-
-		if (snapshotEvent.type !== SNAPSHOT_EVENT_TYPE)
-			throw new Error(`${SNAPSHOT_EVENT_TYPE} event type expected`);
+	restoreSnapshot(snapshot) {
+		if (typeof snapshot !== 'object' || !snapshot)
+			throw new TypeError('snapshot argument must be an Object');
+		if (!snapshot.data)
+			throw new TypeError('snapshot.data argument required');
+		if (!snapshot.lastEvent)
+			throw new TypeError('snapshot.lastEvent argument required');
+		if (snapshot.schemaVersion === undefined)
+			throw new TypeError('snapshot.schemaVersion argument required');
 		if (!this.state)
 			throw new Error('state property is empty, either defined state or override restoreSnapshot method');
 
-		Object.assign(this.state, clone(snapshotEvent.payload));
+		const stateSchemaVersion = getSchemaVersionFromState(this.state);
+		if (snapshot.schemaVersion !== stateSchemaVersion)
+			throw new Error(`Snapshot version ${snapshot.schemaVersion} does not match aggregate state schema version ${stateSchemaVersion}`);
+
+		Object.assign(this.state, clone(snapshot.data));
+
+		this[_snapshotVersion] = snapshot.lastEvent.aggregateVersion;
 	}
 
 	/**

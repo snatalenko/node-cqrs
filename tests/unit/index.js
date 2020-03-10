@@ -4,13 +4,13 @@ require('./sizeOfTests');
 
 require('./InMemoryMessageBusTests');
 require('./InMemoryViewTests');
+require('./InMemoryEventStorageTests');
 
-require('./EventStream');
 require('./EventStoreTests');
 require('./CommandBusTests');
 require('./ContainerTests');
 
-require('./AbstractAggregate');
+require('./AbstractAggregateTests');
 require('./AggregateCommandHandlerTests');
 
 require('./AbstractSagaTests');

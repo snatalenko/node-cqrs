@@ -1,20 +1,36 @@
-declare interface IEventEmitter extends IObservable {
-	on?(messageType: string, handler: IMessageHandler): void;
-	off?(messageType: string, handler: IMessageHandler): void;
+declare type IEventQueryFilter = {
+	/** Get events emitted after this specific event */
+	afterEvent?: IEvent;
+
+	/** Get events emitted before this specific event */
+	beforeEvent?: IEvent;
 }
 
-declare interface IEventStorage extends IEventEmitter {
+declare interface IEventStorage {
+	/**
+	 * Create unique identifier 
+	 */
 	getNewId(): Identifier | Promise<Identifier>;
 
-	commitEvents(events: ReadonlyArray<IEvent>):
-		Promise<any>;
+	/**
+	 * Save events to a stream with a given ID
+	 * @param streamId
+	 * @param events
+	 * @returns {Promise<IEventStream>} Stream of events that were committed to the store for the first time
+	 */
+	commit(streamId: Identifier, events: IEventStream): Promise<IEventStream>;
 
-	getAggregateEvents(aggregateId: Identifier, options: { snapshot: IEvent }):
-		Promise<IEventStream> | AsyncIterableIterator<IEvent>;
+	/**
+	 * Get event stream by a given ID
+	 * @param streamId
+	 * @param filter
+	 */
+	getStream(streamId: Identifier, filter?: IEventQueryFilter): AsyncIterableIterator<IEvent>;
 
-	getSagaEvents(sagaId: Identifier, filter: { beforeEvent: IEvent }):
-		Promise<IEventStream> | AsyncIterableIterator<IEvent>;
-
-	getEvents(eventTypes: string[]):
-		Promise<IEventStream> | AsyncIterableIterator<IEvent>;
+	/**
+	 * Get events by given event types
+	 * @param eventTypes
+	 * @param filter
+	 */
+	getEventsByTypes(eventTypes: Readonly<string[]>, filter?: IEventQueryFilter): AsyncIterableIterator<IEvent>;
 }

@@ -1,199 +1,59 @@
 'use strict';
 
-const InMemoryBus = require('./infrastructure/InMemoryMessageBus');
 const nullLogger = require('./utils/nullLogger');
-const EventStream = require('./EventStream');
+const setupOneTimeEmitterSubscription = require('./utils/setupOneTimeEmitterSubscription');
 
-const SNAPSHOT_EVENT_TYPE = 'snapshot';
-const service = 'EventStore';
+/**
+ * @param {IEventStream} events
+ * @returns {string}
+ */
+const formatEventType = events => (events.length === 1 ? `'${events[0].type}'` : `${events.length} events`);
 
-const _defaults = {
-	publishAsync: true
-};
+/**
+ * @param {IEventStorage} storage
+ */
+const isIEventStorage = storage => storage
+	&& typeof storage.getNewId === 'function'
+	&& typeof storage.commit === 'function'
+	&& typeof storage.getStream === 'function'
+	&& typeof storage.getEventsByTypes === 'function';
+
+/**
+ * @param {IObservable | any} obj
+ */
+const isIObservable = obj => obj
+	&& typeof obj.on === 'function'
+	&& typeof obj.off === 'function';
+
+/**
+ * @param {IMessageBus} bus
+ * @returns {boolean}
+ */
+const isIMessageBus = bus => bus
+	&& isIObservable(bus)
+	&& typeof bus.send === 'function'
+	&& typeof bus.publish === 'function';
 
 /**
  * Validate event structure
  *
  * @param {IEvent} event
+ * @throws {TypeError}
  */
-function validateEvent(event) {
-	if (typeof event !== 'object' || !event) throw new TypeError('event must be an Object');
-	if (typeof event.type !== 'string' || !event.type.length) throw new TypeError('event.type must be a non-empty String');
-	if (!event.aggregateId && !event.sagaId) throw new TypeError('either event.aggregateId or event.sagaId is required');
-	if (event.sagaId && typeof event.sagaVersion === 'undefined') throw new TypeError('event.sagaVersion is required, when event.sagaId is defined');
+function defaultValidator(event) {
+	/* istanbul ignore if */
+	if (typeof event !== 'object' || !event)
+		throw new TypeError('event must be an Object');
+	/* istanbul ignore if */
+	if (typeof event.type !== 'string' || !event.type.length)
+		throw new TypeError('event.type must be a non-empty String');
+	/* istanbul ignore if */
+	if (!event.aggregateId && !event.sagaId)
+		throw new TypeError('either event.aggregateId or event.sagaId is required');
+	/* istanbul ignore if */
+	if (event.sagaId && typeof event.sagaVersion === 'undefined')
+		throw new TypeError('event.sagaVersion is required, when event.sagaId is defined');
 }
-
-/**
- * Ensure provided eventStorage matches the expected format
- * @param {IEventStorage} storage
- */
-function validateEventStorage(storage) {
-	if (!storage) throw new TypeError('storage argument required');
-	if (typeof storage !== 'object') throw new TypeError('storage argument must be an Object');
-	if (typeof storage.commitEvents !== 'function') throw new TypeError('storage.commitEvents must be a Function');
-	if (typeof storage.getEvents !== 'function') throw new TypeError('storage.getEvents must be a Function');
-	if (typeof storage.getAggregateEvents !== 'function') throw new TypeError('storage.getAggregateEvents must be a Function');
-	if (typeof storage.getSagaEvents !== 'function') throw new TypeError('storage.getSagaEvents must be a Function');
-	if (typeof storage.getNewId !== 'function') throw new TypeError('storage.getNewId must be a Function');
-}
-
-/**
- * Check if storage emits events
- *
- * @param {object} storage
- * @returns {boolean}
- */
-function isEmitter(storage) {
-	return typeof storage.on === 'function';
-}
-
-/**
- * @template TStorage
- * @param {TStorage} storage
- * @returns {TStorage & IEventEmitter}
- */
-const asEmitter = storage => (isEmitter(storage) ? storage : undefined);
-
-/**
- * Ensure snapshotStorage matches the expected format
- * @param {IAggregateSnapshotStorage} snapshotStorage
- */
-function validateSnapshotStorage(snapshotStorage) {
-	if (typeof snapshotStorage !== 'object' || !snapshotStorage)
-		throw new TypeError('snapshotStorage argument must be an Object');
-	if (typeof snapshotStorage.getAggregateSnapshot !== 'function')
-		throw new TypeError('snapshotStorage.getAggregateSnapshot argument must be a Function');
-	if (typeof snapshotStorage.saveAggregateSnapshot !== 'function')
-		throw new TypeError('snapshotStorage.saveAggregateSnapshot argument must be a Function');
-}
-
-/**
- * Ensure messageBus matches the expected format
- * @param {IMessageBus} messageBus
- */
-function validateMessageBus(messageBus) {
-	if (typeof messageBus !== 'object' || !messageBus)
-		throw new TypeError('messageBus argument must be an Object');
-	if (typeof messageBus.on !== 'function')
-		throw new TypeError('messageBus.on argument must be a Function');
-	if (typeof messageBus.publish !== 'function')
-		throw new TypeError('messageBus.publish argument must be a Function');
-}
-
-
-/**
- * Create one-time eventEmitter subscription for one or multiple events that match a filter
- *
- * @param {IEventEmitter} emitter
- * @param {string[]} messageTypes Array of event type to subscribe to
- * @param {function(IEvent):any} [handler] Optional handler to execute for a first event received
- * @param {function(IEvent):boolean} [filter] Optional filter to apply before executing a handler
- * @param {ILogger} logger
- * @return {Promise<IEvent>} Resolves to first event that passes filter
- */
-function setupOneTimeEmitterSubscription(emitter, messageTypes, filter, handler, logger) {
-	if (typeof emitter !== 'object' || !emitter)
-		throw new TypeError('emitter argument must be an Object');
-	if (!Array.isArray(messageTypes) || messageTypes.some(m => !m || typeof m !== 'string'))
-		throw new TypeError('messageTypes argument must be an Array of non-empty Strings');
-	if (handler && typeof handler !== 'function')
-		throw new TypeError('handler argument, when specified, must be a Function');
-	if (filter && typeof filter !== 'function')
-		throw new TypeError('filter argument, when specified, must be a Function');
-
-	return new Promise(resolve => {
-
-		// handler will be invoked only once,
-		// even if multiple events have been emitted before subscription was destroyed
-		// https://nodejs.org/api/events.html#events_emitter_removelistener_eventname_listener
-		let handled = false;
-
-		function filteredHandler(event) {
-			if (filter && !filter(event)) return;
-			if (handled) return;
-			handled = true;
-
-			for (const messageType of messageTypes)
-				emitter.off(messageType, filteredHandler);
-
-			if (logger)
-				logger.log('debug', `'${event.type}' received, one-time subscription to '${messageTypes.join(',')}' removed`, { service });
-
-			if (handler)
-				handler(event);
-
-			resolve(event);
-		}
-
-		for (const messageType of messageTypes)
-			emitter.on(messageType, filteredHandler);
-
-		if (logger)
-			logger.log('debug', `set up one-time ${filter ? 'filtered subscription' : 'subscription'} to '${messageTypes.join(',')}'`, { service });
-	});
-}
-
-
-/**
- * Combine storage and bus into a single event storage interface, which allows querying and subscription
- *
- * @param {IEventStorage} storage
- * @param {IMessageBus} messageBus
- * @param {{ publishAsync?: boolean, logger?: ILogger }} [options]
- * @returns {IEventEmitter & IEventStorage}
- */
-function combineStorageAndBus(storage, messageBus, options = {}) {
-	validateEventStorage(storage);
-	validateMessageBus(messageBus);
-
-	if (isEmitter(storage))
-		throw new TypeError('storage already implements IEventEmitter interface');
-
-	return {
-		getNewId() {
-			return storage.getNewId();
-		},
-		async commitEvents(events) {
-			await storage.commitEvents(events);
-
-			const publishEvents = () =>
-				Promise.all(events.map(event => messageBus.publish(event)))
-					.then(() => {
-						if (options.logger)
-							options.logger.log('debug', `${events} published`, { service });
-					}, error => {
-						if (options.logger)
-							options.logger.log('error', `${events} publishing failed: ${error.message}`, { service, stack: error.stack });
-						throw error;
-					});
-
-			if (options && options.publishAsync)
-				setImmediate(publishEvents);
-			else
-				await publishEvents();
-		},
-		getAggregateEvents(...args) {
-			return storage.getAggregateEvents(...args);
-		},
-		getSagaEvents(...args) {
-			return storage.getSagaEvents(...args);
-		},
-		getEvents(...args) {
-			return storage.getEvents(...args);
-		},
-		on(messageType, handler) {
-			return messageBus.on(messageType, handler);
-		},
-		off(messageType, handler) {
-			if ('off' in messageBus)
-				messageBus.off(messageType, handler);
-		},
-		queue(name) {
-			return messageBus.queue(name);
-		}
-	};
-}
-
 
 /**
  * @typedef {object} EventStoreConfig
@@ -201,75 +61,40 @@ function combineStorageAndBus(storage, messageBus, options = {}) {
  */
 
 /**
+ * Facade that combines functionality of IEventStorage and IObservable into single IEventStore interface.
+ *
+ * If storage instance implements the IObservable interface, it can be used directly without this facade.
+ *
  * @class EventStore
- * @implements {IEventStore}
+ * @implements {IEventStorage}
+ * @implements {IObservable}
  */
 class EventStore {
-
-	/**
-	 * Default configuration
-	 *
-	 * @type {EventStoreConfig}
-	 * @static
-	 */
-	static get defaults() {
-		return _defaults;
-	}
-
-	/**
-	 * Configuration
-	 *
-	 * @type {EventStoreConfig}
-	 * @readonly
-	 */
-	get config() {
-		return this._config;
-	}
-
-	/**
-	 * Whether storage supports aggregate snapshots
-	 *
-	 * @type {boolean}
-	 * @readonly
-	 */
-	get snapshotsSupported() {
-		return Boolean(this._snapshotStorage);
-	}
 
 	/**
 	 * Creates an instance of EventStore.
 	 *
 	 * @param {object} options
 	 * @param {IEventStorage} options.storage
-	 * @param {IAggregateSnapshotStorage} [options.snapshotStorage]
-	 * @param {IMessageBus} [options.messageBus]
-	 * @param {function(IEvent):void} [options.eventValidator]
-	 * @param {EventStoreConfig} [options.eventStoreConfig]
+	 * @param {IMessageBus} options.messageBus
+	 * @param {IMessageHandler} [options.eventValidator]
+	 * @param {object} [options.eventStoreConfig]
+	 * @param {boolean} [options.eventStoreConfig.publishAsync]
 	 * @param {ILogger} [options.logger]
 	 */
-	constructor(options) {
-		validateEventStorage(options.storage);
-		if (options.snapshotStorage)
-			validateSnapshotStorage(options.snapshotStorage);
-		if (options.messageBus)
-			validateMessageBus(options.messageBus);
-		if (options.eventValidator !== undefined && typeof options.eventValidator !== 'function')
-			throw new TypeError('eventValidator, when provided, must be a function');
+	constructor({ storage, messageBus, eventValidator = defaultValidator, eventStoreConfig, logger = nullLogger }) {
+		if (!isIEventStorage(storage))
+			throw new TypeError('storage does not implement IEventStorage interface');
+		if (isIObservable(storage))
+			throw new TypeError('storage already implements IObservable interface and can be used without EventStore wrapper');
+		if (!isIMessageBus(messageBus))
+			throw new TypeError('messageBus does not implement IMessageBus interface');
 
-		this._config = Object.freeze(Object.assign({}, EventStore.defaults, options.eventStoreConfig));
-		this._snapshotStorage = options.snapshotStorage;
-		this._validator = options.eventValidator || validateEvent;
-		this._logger = options.logger || nullLogger;
-
-		/** @type {string[]} */
-		this._sagaStarters = [];
-
-		if (isEmitter(options.storage))
-			this._storage = asEmitter(options.storage);
-		else if (options.messageBus)
-			this._storage = combineStorageAndBus(options.storage, options.messageBus);
-		else
-			this._storage = combineStorageAndBus(options.storage, new InMemoryBus());
+		this._config = { publishAsync: true, ...eventStoreConfig };
+		this._validator = eventValidator;
+		this._logger = logger;
+		this._storage = storage;
+		this._messageBus = messageBus;
 	}
 
 	/**
@@ -282,205 +107,120 @@ class EventStore {
 	}
 
 	/**
-	 * Retrieve all events of specific types
+	 * Save and publish a set of events
 	 *
-	 * @param {string[]} eventTypes
-	 * @returns {AsyncIterableIterator<IEvent>}
-	 */
-	async* getAllEvents(eventTypes) {
-		if (eventTypes && !Array.isArray(eventTypes)) throw new TypeError('eventTypes, if specified, must be an Array');
-
-		this._logger.log('debug', `retrieving ${eventTypes ? eventTypes.join(', ') : 'all'} events...`, { service });
-
-		const eventsIterable = await this._storage.getEvents(eventTypes);
-
-		yield* eventsIterable;
-
-		this._logger.log('debug', `${eventTypes ? eventTypes.join(', ') : 'all'} events retrieved`, { service });
-	}
-
-	/**
-	 * Retrieve all events of specific Aggregate
-	 *
-	 * @param {Identifier} aggregateId
-	 * @returns {Promise<IEventStream>}
-	 */
-	async getAggregateEvents(aggregateId) {
-		if (!aggregateId) throw new TypeError('aggregateId argument required');
-
-		this._logger.log('debug', `retrieving event stream for aggregate ${aggregateId}...`, { service });
-
-		const snapshot = this.snapshotsSupported ?
-			await this._snapshotStorage.getAggregateSnapshot(aggregateId) :
-			undefined;
-
-		const events = [];
-		if (snapshot)
-			events.push(snapshot);
-
-		const eventsIterable = await this._storage.getAggregateEvents(aggregateId, { snapshot });
-		for await (const event of eventsIterable)
-			events.push(event);
-
-		const eventStream = new EventStream(events);
-		this._logger.log('debug', `${eventStream} retrieved`, { service });
-
-		return eventStream;
-	}
-
-	/**
-	 * Retrieve events of specific Saga
-	 *
-	 * @param {Identifier} sagaId
-	 * @param {object} filter
-	 * @param {IEvent} filter.beforeEvent
-	 * @returns {Promise<IEventStream>}
-	 */
-	async getSagaEvents(sagaId, filter) {
-		if (!sagaId) throw new TypeError('sagaId argument required');
-		if (!filter) throw new TypeError('filter argument required');
-		if (!filter.beforeEvent) throw new TypeError('filter.beforeEvent argument required');
-		if (filter.beforeEvent.sagaVersion === undefined) throw new TypeError('filter.beforeEvent.sagaVersion argument required');
-
-		this._logger.log('debug', `retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`, { service });
-
-		const events = [];
-		const eventsIterable = await this._storage.getSagaEvents(sagaId, filter);
-		for await (const event of eventsIterable)
-			events.push(event);
-
-		const eventStream = new EventStream(events);
-		this._logger.log('debug', `${eventStream.toString()} retrieved`, { service });
-
-		return eventStream;
-	}
-
-	/**
-	 * Register event types that start sagas.
-	 * Upon such event commit a new sagaId will be assigned
-	 *
-	 * @param {string[]} eventTypes
-	 * @memberof EventStore
-	 */
-	registerSagaStarters(eventTypes = []) {
-		const uniqueEventTypes = eventTypes.filter(e => !this._sagaStarters.includes(e));
-		this._sagaStarters.push(...uniqueEventTypes);
-	}
-
-	/**
-	 * Validate events, commit to storage and publish to messageBus, if needed
-	 *
-	 * @param {IEventStream} events - a set of events to commit
-	 * @returns {Promise<IEventStream>} - resolves to signed and committed events
-	 */
-	async commit(events) {
-		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
-
-		const containsSagaStarters = this._sagaStarters.length && events.some(e => this._sagaStarters.includes(e.type));
-		const augmentedEvents = containsSagaStarters ?
-			await this._attachSagaIdToSagaStarterEvents(events) :
-			events;
-
-		return this.save(augmentedEvents);
-	}
-
-	/**
-	 * Generate and attach sagaId to events that start new sagas
-	 *
+	 * @param {Identifier} streamId
 	 * @param {IEventStream} events
 	 * @returns {Promise<IEventStream>}
-	 * @memberof EventStore
+	 */
+	async commit(streamId, events) {
+		events.forEach(this._validator);
+
+		const newEvents = await this._storage.commit(streamId, events);
+
+		if (this._config.publishAsync)
+			setImmediate(() => this._publishEvents(newEvents));
+		else
+			await this._publishEvents(newEvents);
+
+		return newEvents;
+	}
+
+	/**
 	 * @private
+	 * @param {IEventStream} events
 	 */
-	async _attachSagaIdToSagaStarterEvents(events) {
-		const r = [];
-		for (const event of events) {
-			if (this._sagaStarters.includes(event.type)) {
-				if (event.sagaId)
-					throw new Error(`Event "${event.type}" already contains sagaId. Multiple sagas with same event type are not supported`);
+	async _publishEvents(events) {
+		try {
+			await Promise.all(events.map(event =>
+				this._messageBus.publish(event)));
 
-				r.push(Object.assign({
-					sagaId: await this.getNewId(),
-					sagaVersion: 0
-				}, event));
-			}
-			else {
-				r.push(event);
-			}
+			this._log(`${formatEventType(events)} published`);
 		}
-		return new EventStream(r);
+		catch (error) {
+			this._logger.log('error', `${formatEventType(events)} publishing failed: ${error.message}`, { service: 'EventStore', stack: error.stack });
+
+			throw error;
+		}
 	}
 
 	/**
-	 * Save events to the persistent storage(s)
+	 * Get a stream of events by identifier
 	 *
-	 * @param {IEventStream} events Event stream that may include snapshot events
-	 * @returns {Promise<IEventStream>} Event stream without snapshot events
+	 * @param {Identifier} streamId
+	 * @param {IEventQueryFilter} [filter]
+	 * @returns {AsyncIterableIterator<IEvent>}
 	 */
-	async save(events) {
-		if (!Array.isArray(events)) throw new TypeError('events argument must be an Array');
-
-		const snapshotEvents = events.filter(e => e.type === SNAPSHOT_EVENT_TYPE);
-		if (snapshotEvents.length > 1)
-			throw new Error(`cannot commit a stream with more than 1 ${SNAPSHOT_EVENT_TYPE} event`);
-		if (snapshotEvents.length && !this.snapshotsSupported)
-			throw new Error(`${SNAPSHOT_EVENT_TYPE} event type is not supported by the storage`);
-
-		const snapshot = snapshotEvents[0];
-		const eventStream = new EventStream(events.filter(e => e !== snapshot));
-
-		this._logger.log('debug', `validating ${eventStream}...`, { service });
-		eventStream.forEach(this._validator);
-
-		this._logger.log('debug', `saving ${eventStream}...`, { service });
-		await Promise.all([
-			this._storage.commitEvents(eventStream),
-			snapshot ?
-				this._snapshotStorage.saveAggregateSnapshot(snapshot) :
-				undefined
-		]);
-
-		return eventStream;
+	getStream(streamId, filter) {
+		this._log(`Retrieving stream ${streamId}`);
+		return this._storage.getStream(streamId, filter);
 	}
 
 	/**
-	 * Setup a listener for a specific event type
+	 * Get events by their types
+	 *
+	 * @param {string[]} eventTypes
+	 * @param {IEventQueryFilter} filter
+	 * @returns {AsyncIterableIterator<IEvent>}
+	 */
+	getEventsByTypes(eventTypes, filter) {
+		this._log(`Retrieving events ${eventTypes.join(', ')}`);
+		return this._storage.getEventsByTypes(eventTypes, filter);
+	}
+
+	/**
+	 * Setup listener for specific event type
 	 *
 	 * @param {string} messageType
-	 * @param {function(IEvent): any} handler
+	 * @param {IMessageHandler} handler
 	 */
 	on(messageType, handler) {
-		if (typeof messageType !== 'string' || !messageType.length) throw new TypeError('messageType argument must be a non-empty String');
-		if (typeof handler !== 'function') throw new TypeError('handler argument must be a Function');
-		if (arguments.length !== 2) throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
+		this._messageBus.on(messageType, handler);
+	}
 
-		this._storage.on(messageType, handler);
+	/**
+	 * Remove previously installed listener
+	 *
+	 * @param {string} messageType
+	 * @param {IMessageHandler} handler
+	 */
+	off(messageType, handler) {
+		this._messageBus.off(messageType, handler);
 	}
 
 	/**
 	 * Get or create a named queue, which delivers events to a single handler only
 	 *
 	 * @param {string} name
+	 * @returns {IObservable}
 	 */
 	queue(name) {
-		if (typeof this._storage.queue !== 'function')
-			throw new Error('Named queues are not supported by the underlying message bus');
+		if (typeof this._messageBus.queue !== 'function')
+			throw new Error('Named queues are not supported by the underlying messageBus');
 
-		return this._storage.queue(name);
+		return this._messageBus.queue(name);
 	}
 
 	/**
 	 * Creates one-time subscription for one or multiple events that match a filter
 	 *
 	 * @param {string|string[]} messageTypes - Array of event type to subscribe to
-	 * @param {function(IEvent):any} [handler] - Optional handler to execute for a first event received
+	 * @param {IMessageHandler} [handler] - Optional handler to execute for a first event received
 	 * @param {function(IEvent):boolean} [filter] - Optional filter to apply before executing a handler
 	 * @return {Promise<IEvent>} Resolves to first event that passes filter
 	 */
 	once(messageTypes, handler, filter) {
 		const subscribeTo = Array.isArray(messageTypes) ? messageTypes : [messageTypes];
 
-		return setupOneTimeEmitterSubscription(this._storage, subscribeTo, filter, handler, this._logger);
+		return setupOneTimeEmitterSubscription(this._messageBus, subscribeTo, filter, handler, this._logger);
+	}
+
+	/**
+	 * @private
+	 * @param {string} message
+	 */
+	_log(message) {
+		this._logger.log('debug', message, { service: 'EventStore' });
 	}
 }
 

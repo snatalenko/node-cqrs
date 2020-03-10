@@ -10,7 +10,7 @@ namespace NodeCqrs {
 	declare class AggregateCommandHandler implements ICommandHandler {
 
 		/** Creates an instance of AggregateCommandHandler. */
-		constructor(options: { eventStore: IEventStore, aggregateType: IAggregateConstructor | IAggregateFactory, handles?: Array<string>, logger?: ILogger }): void;
+		constructor(options: { eventStore: IEventStore, snapshotStorage?: ISnapshotStorage, aggregateType: IAggregateConstructor | IAggregateFactory, handles?: Array<string>, logger?: ILogger }): void;
 
 		/** Subscribe to all command types handled by aggregateType */
 		subscribe(commandBus: ICommandBus): any;

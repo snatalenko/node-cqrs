@@ -3,9 +3,6 @@ namespace NodeCqrs {
 	/** Default implementation of the message bus. Keeps all subscriptions and messages in memory. */
 	declare class InMemoryMessageBus implements IMessageBus {
 
-		/** Indicates that message bus supports named queue subscriptions */
-		static readonly supportsQueues: boolean;
-
 		/** Creates an instance of InMemoryMessageBus */
 		constructor(options?: { name?: string, uniqueEventHandlers?: boolean }): void;
 

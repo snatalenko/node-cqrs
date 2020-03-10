@@ -3,6 +3,7 @@
 const {
 	ContainerBuilder,
 	InMemoryEventStorage,
+	InMemoryMessageBus,
 	CommandBus,
 	EventStore,
 	AggregateCommandHandler
@@ -18,6 +19,7 @@ exports.createContainer = () => {
 
 	// register infrastructure services
 	builder.register(InMemoryEventStorage).as('storage');
+	builder.register(InMemoryMessageBus).as('messageBus');
 
 	// register domain entities
 	builder.registerAggregate(UserAggregate);
@@ -33,8 +35,9 @@ exports.createContainer = () => {
 exports.createBaseInstances = () => {
 	// create infrastructure services
 	const storage = new InMemoryEventStorage();
-	const eventStore = new EventStore({ storage });
-	const commandBus = new CommandBus();
+	const messageBus = new InMemoryMessageBus();
+	const eventStore = new EventStore({ storage, messageBus });
+	const commandBus = new CommandBus({ messageBus });
 
 	/** @type {IAggregateConstructor} */
 	const aggregateType = UserAggregate;

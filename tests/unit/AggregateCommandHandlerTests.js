@@ -8,7 +8,7 @@ const {
 	AbstractAggregate,
 	InMemoryEventStorage,
 	EventStore,
-	InMemorySnapshotStorage
+	InMemoryMessageBus
 } = require('../../src');
 
 function delay(ms) {
@@ -45,17 +45,16 @@ describe('AggregateCommandHandler', function () {
 	this.slow(300);
 
 	let storage;
-	let snapshotStorage;
 	let eventStore;
 	let commandBus;
 
 	beforeEach(() => {
 		storage = new InMemoryEventStorage();
-		snapshotStorage = new InMemorySnapshotStorage();
+		const messageBus = new InMemoryMessageBus();
 
-		eventStore = new EventStore({ storage, snapshotStorage });
+		eventStore = new EventStore({ storage, messageBus });
 		sinon.spy(eventStore, 'getNewId');
-		sinon.spy(eventStore, 'getAggregateEvents');
+		sinon.spy(eventStore, 'getStream');
 		sinon.spy(eventStore, 'commit');
 
 		commandBus = new CommandBus();
@@ -97,16 +96,18 @@ describe('AggregateCommandHandler', function () {
 		assert(eventStore.getNewId.calledOnce, 'getNewId was not called once');
 	});
 
-	it('restores aggregate from event store events', async () => {
+	it('pulls aggregate event stream', async () => {
+
+		const aggregateId = 1;
 
 		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
 
-		await handler.execute({ type: 'doSomething', aggregateId: 1 });
+		await handler.execute({ type: 'doSomething', aggregateId });
 
-		assert(eventStore.getAggregateEvents.calledOnce, 'getAggregateEvents was not called');
+		assert(eventStore.getStream.calledOnce, 'getStream was not called');
 
-		const { args } = eventStore.getAggregateEvents.lastCall;
-		expect(args).to.have.length(1);
+		const { args } = eventStore.getStream.lastCall;
+		expect(args[0]).to.eql(aggregateId);
 	});
 
 	it('passes commands to aggregate.handle(cmd)', async () => {
@@ -116,7 +117,8 @@ describe('AggregateCommandHandler', function () {
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
-			aggregateType: () => aggregate
+			aggregateType: () => aggregate,
+			handles: ['somethingHappened']
 		});
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
@@ -132,7 +134,8 @@ describe('AggregateCommandHandler', function () {
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
-			aggregateType: () => aggregate
+			aggregateType: () => aggregate,
+			handles: ['somethingHappened']
 		});
 
 		const sagaId = 'saga-1';
@@ -158,55 +161,44 @@ describe('AggregateCommandHandler', function () {
 
 	it('commits produced events to eventStore', async () => {
 
+		const aggregateId = 1;
 		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
 
-		await handler.execute({ type: 'doSomething', aggregateId: 1 });
+		await handler.execute({ type: 'doSomething', aggregateId });
 
 		assert(eventStore.commit.calledOnce, 'commit was not called');
 
 		const { args } = eventStore.commit.lastCall;
-		expect(args[0]).to.be.an('Array');
+		expect(args[0]).to.eq(aggregateId);
+		expect(args[1]).to.be.an('Array');
 	});
 
-	it('invokes aggregate.takeSnapshot before committing event stream, when get shouldTakeSnapshot equals true', async () => {
+	it('invokes aggregate.makeSnapshot when get shouldTakeSnapshot equals true', async () => {
 
 		// setup
 
 		const aggregate = new MyAggregate({ id: 1 });
-		Object.defineProperty(aggregate, 'shouldTakeSnapshot', {
-			// take snapshot every other event
-			get() {
-				return this.version !== 0 && this.version % 2 === 0;
-			}
-		});
-		sinon.spy(aggregate, 'takeSnapshot');
+		Object.defineProperty(aggregate, 'shouldTakeSnapshot', { configurable: true, value: false });
+		sinon.spy(aggregate, 'makeSnapshot');
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
-			aggregateType: () => aggregate
+			snapshotStorage: { saveSnapshot() { }, getSnapshot() { } },
+			aggregateType: () => aggregate,
+			handles: ['somethingHappened']
 		});
 
 		// test
 
-		expect(aggregate).to.have.nested.property('takeSnapshot.called', false);
-		expect(aggregate).to.have.property('version', 0);
+		await handler.execute({ type: 'doSomething', payload: 'test' });
+
+		expect(aggregate).to.have.nested.property('makeSnapshot.called', false);
+
+		Object.defineProperty(aggregate, 'shouldTakeSnapshot', { configurable: true, value: true });
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.nested.property('takeSnapshot.called', false);
-		expect(aggregate).to.have.property('version', 1); // 1st event
-
-		await handler.execute({ type: 'doSomething', payload: 'test' });
-
-		expect(aggregate).to.have.nested.property('takeSnapshot.called', true);
-		expect(aggregate).to.have.property('version', 3); // 2nd event and snapshot
-
-		const [eventStream] = eventStore.commit.lastCall.args;
-
-		expect(eventStream).to.have.length(3);
-		expect(eventStream[2]).to.have.property('type', 'snapshot');
-		expect(eventStream[2]).to.have.property('aggregateVersion', 2);
-		expect(eventStream[2]).to.have.property('payload');
+		expect(aggregate).to.have.nested.property('makeSnapshot.called', true);
 	});
 
 	it.skip('executes concurrent commands on same aggregate instance', async () => {

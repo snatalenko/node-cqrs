@@ -590,7 +590,7 @@
                         "instanceof"
                     ]
                 ],
-                "allowSamePrecedence": false
+                "allowSamePrecedence": true
             }
         ],
         "no-mixed-spaces-and-tabs": "warn",
