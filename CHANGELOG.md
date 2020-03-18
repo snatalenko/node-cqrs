@@ -1,3 +1,11 @@
+# [0.16.0](https://github.com/snatalenko/node-cqrs/compare/v0.16.0-5...v0.16.0) (2020-03-18)
+
+
+### Fixes
+
+* Moderate security issue in "minimist" dev dependency ([579d523](https://github.com/snatalenko/node-cqrs/commit/579d523745a6d33902a5245bc7e9f3fe843abc2b))
+
+
 # [0.16.0-5](https://github.com/snatalenko/node-cqrs/compare/v0.16.0-4...v0.16.0-5) (2020-02-19)
 
 
