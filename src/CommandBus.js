@@ -40,7 +40,7 @@ class CommandBus {
 	 * Format and send a command for execution
 	 *
 	 * @param {string} type
-	 * @param {string} aggregateId
+	 * @param {string} [aggregateId]
 	 * @param {object} [options]
 	 * @param {any} [options.payload]
 	 * @param {object} [options.context]
