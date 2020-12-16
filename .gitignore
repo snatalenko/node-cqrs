@@ -1,32 +1,18 @@
+# Project
+/dist/
+/types/
+
 # Node and related ecosystem
 # ==========================
-.nodemonignore
-.node-xmlhttprequest-*
-.sass-cache/
 npm-debug.log
 node_modules/
-app/tests/coverage/
-.bower-*/
 coverage/
 .nyc_output/
+*.tgz
 
 # IDE's
 # =====
-.project
-.settings/
-.*.md.html
-.metadata
-*~.nib
-local.properties
-*.iml
-.c9/
-.vs/
-.idea/
 .vscode/
-data/
-mongod
-*.sublime-project
-*.sublime-workspace
 
 # OS-specific
 # ===========
@@ -35,14 +21,3 @@ ehthumbs.db
 Icon?
 Thumbs.db
 
-# General
-# =======
-*.log
-*.csv
-*.dat
-*.out
-*.pid
-*.gz
-*.tmp
-*.bak
-*.swp

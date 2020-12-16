@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const sinon = require('sinon');
-const { CommandBus, InMemoryMessageBus } = require('../../src');
+const { CommandBus, InMemoryMessageBus } = require('../..');
 
 describe('CommandBus', function () {
 

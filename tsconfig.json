@@ -1,0 +1,28 @@
+{
+    "compileOnSave": true,
+    "compilerOptions": {
+        "module": "CommonJS",
+        "removeComments": false,
+        "sourceMap": true,
+        "strict": true,
+        "alwaysStrict": false,
+        "outDir": "./dist",
+        "lib": [
+            "ES2018"
+        ],
+        "target": "ES2018",
+        "declaration": true,
+        "declarationDir": "./types",
+        "strictNullChecks": true,
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true,
+        "allowJs": false
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "**/*.spec.ts"
+    ]
+}

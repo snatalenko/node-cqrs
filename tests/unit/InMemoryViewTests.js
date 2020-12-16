@@ -1,6 +1,6 @@
 'use strict';
 
-const InMemoryView = require('../../src/infrastructure/InMemoryView');
+const { InMemoryView } = require('../..');
 const { expect, assert } = require('chai');
 
 describe('InMemoryView', function () {

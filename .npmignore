@@ -11,3 +11,5 @@ tests/
 .gitignore
 .travis.yml
 book.json
+*.tgz
+src/

@@ -1,7 +1,7 @@
 // @ts-check
 'use strict';
 
-const { AbstractAggregate } = require('../../src'); // node-cqrs
+const { AbstractAggregate } = require('../..'); // node-cqrs
 
 const crypto = require('crypto');
 

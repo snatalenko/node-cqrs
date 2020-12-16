@@ -2,7 +2,7 @@
 
 const { InMemoryEventStorage } = require('../..');
 const { expect } = require('chai');
-const readEventsFromIterator = require('../../src/utils/readEventsFromIterator');
+const readEventsFromIterator = require('../../dist/utils/readEventsFromIterator').default;
 
 describe('InMemoryEventStorage', () => {
 

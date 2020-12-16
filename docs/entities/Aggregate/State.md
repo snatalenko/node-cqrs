@@ -25,7 +25,7 @@ class UserAggregateState {
 }
 ```
 
-Each event handler is defined as a separate method, which modifies the state. Alternatively, a common `mutate(event)` handler can be defined, which will handle all aggregate events instead. 
+Each event handler is defined as a separate method, which modifies the state.
 
 Aggregate state **should NOT throw any exceptions**, all type and business logic validations should be performed in the [aggregate command handlers](CommandHandlers.md).
 

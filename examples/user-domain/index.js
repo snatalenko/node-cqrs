@@ -7,7 +7,7 @@ const {
 	CommandBus,
 	EventStore,
 	AggregateCommandHandler
-} = require('../../src'); // node-cqrs
+} = require('../..'); // node-cqrs
 const UserAggregate = require('./UserAggregate');
 const UsersProjection = require('./UsersProjection');
 

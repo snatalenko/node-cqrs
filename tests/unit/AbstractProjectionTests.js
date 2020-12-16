@@ -2,7 +2,7 @@
 
 const { expect, assert, AssertionError } = require('chai');
 const sinon = require('sinon');
-const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore, InMemoryMessageBus } = require('../../src');
+const { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore, InMemoryMessageBus } = require('../..');
 
 class MyProjection extends AbstractProjection {
 	static get handles() {
@@ -140,6 +140,7 @@ describe('AbstractProjection', function () {
 		it('assigns "ready=true" property to InMemoryView view', () => {
 
 			const blankProjection = new MyProjection();
+			blankProjection.restore(es);
 			expect(blankProjection.view).to.have.property('ready').that.is.not.ok;
 
 			expect(projection.view).to.have.property('ready', true);
@@ -174,20 +175,17 @@ describe('AbstractProjection', function () {
 			let restored = false;
 			let projected = false;
 			const restoreProcess = projection.restore(es).then(() => {
+				expect(restored).to.eq(false);
+				expect(projected).to.eq(false);
 				restored = true;
 			});
 			const projectProcess = projection.project(event).then(() => {
+				expect(restored).to.eq(true);
+				expect(projected).to.eq(false);
 				projected = true;
 			});
 
-			expect(restored).to.eq(false);
-			expect(projected).to.eq(false);
-
 			await restoreProcess;
-
-			expect(restored).to.eq(true);
-			expect(projected).to.eq(false);
-
 			await projectProcess;
 
 			expect(restored).to.eq(true);

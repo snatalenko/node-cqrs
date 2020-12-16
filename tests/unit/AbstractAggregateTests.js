@@ -2,12 +2,16 @@
 
 const { expect, assert, AssertionError } = require('chai');
 const sinon = require('sinon');
-const { AbstractAggregate } = require('../../src');
+const { AbstractAggregate } = require('../..');
 const blankContext = require('./mocks/blankContext');
 const delay = ms => new Promise(rs => setTimeout(rs, ms));
 
 class AggregateState {
-	mutate(event) {
+	somethingDone(event) {
+		this[event.type] = (this[event.type] || 0) + 1;
+	}
+
+	somethingStatelessHappened(event) {
 		this[event.type] = (this[event.type] || 0) + 1;
 	}
 }
@@ -206,14 +210,6 @@ describe('AbstractAggregate', function () {
 			agg.mutate({ type: 'doSomething' });
 
 			expect(agg.version).to.eq(initialVersion + 1);
-		});
-
-		it('invokes aggregate.state.mutate', () => {
-			sinon.spy(agg.state, 'mutate');
-
-			agg.mutate(event);
-
-			assert(agg.state.mutate.calledOnce, 'state.mutate was not called once');
 		});
 
 		it('does not mutate state if state event handler is not defined', () => {

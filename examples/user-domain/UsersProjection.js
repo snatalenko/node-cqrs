@@ -1,7 +1,7 @@
 // @ts-check
 'use strict';
 
-const { AbstractProjection } = require('../../src'); // node-cqrs
+const { AbstractProjection } = require('../..'); // node-cqrs
 
 /**
  * Users projection listens to events and updates associated view (read model)
