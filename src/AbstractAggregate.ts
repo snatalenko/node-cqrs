@@ -79,13 +79,11 @@ export default abstract class AbstractAggregate<TState extends IAggregateState> 
 	/**
 	 * Override to define whether an aggregate state snapshot should be taken
 	 *
-	 * @type {boolean}
-	 * @readonly
 	 * @example
 	 * 	// create snapshot every 50 events
 	 * 	return this.version % 50 === 0;
 	 */
-	get shouldTakeSnapshot() {	// eslint-disable-line class-methods-use-this
+	get shouldTakeSnapshot(): boolean {
 		return false;
 	}
 
@@ -151,13 +149,10 @@ export default abstract class AbstractAggregate<TState extends IAggregateState> 
 
 	/**
 	 * Format and register aggregate event and mutate aggregate state
-	 *
-	 * @protected
-	 * @param {string} type - event type
-	 * @param {object} [payload] - event data
 	 */
-	emit<TPayload>(type: string, payload: TPayload) {
-		if (typeof type !== 'string' || !type.length) throw new TypeError('type argument must be a non-empty string');
+	protected emit<TPayload>(type: string, payload?: TPayload) {
+		if (typeof type !== 'string' || !type.length)
+			throw new TypeError('type argument must be a non-empty string');
 
 		const event = this.makeEvent<TPayload>(type, payload, this.command);
 
@@ -220,7 +215,9 @@ export default abstract class AbstractAggregate<TState extends IAggregateState> 
 		};
 	}
 
-	/** Restore aggregate state from a snapshot */
+	/**
+	 * Restore aggregate state from a snapshot 
+	 */
 	protected restoreSnapshot(snapshot: TSnapshot<TState>) {
 		if (typeof snapshot !== 'object' || !snapshot)
 			throw new TypeError('snapshot argument must be an Object');
@@ -242,7 +239,9 @@ export default abstract class AbstractAggregate<TState extends IAggregateState> 
 		this.#snapshotVersion = snapshot.lastEvent.aggregateVersion;
 	}
 
-	/** Get human-readable aggregate identifier */
+	/**
+	 * Get human-readable aggregate identifier
+	 */
 	toString(): string {
 		return `${getClassName(this)} ${this.id} (v${this.version})`;
 	}

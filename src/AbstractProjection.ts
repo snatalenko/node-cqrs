@@ -18,7 +18,7 @@ const asConcurrentView = (view: any): IConcurrentView | undefined =>
 /**
  * Base class for Projection definition
  */
-export default class AbstractProjection<TView extends object> implements IProjection<TView> {
+export default abstract class AbstractProjection<TView extends object> implements IProjection<TView> {
 
 	/**
 	 * Optional list of event types being handled by projection.
@@ -33,18 +33,15 @@ export default class AbstractProjection<TView extends object> implements IProjec
 	 * Default view associated with projection.
 	 * If not defined, an instance of `NodeCqrs.InMemoryView` is created on first access.
 	 */
-	get view() {
+	get view(): TView {
 		return this.#view || (this.#view = new InMemoryView() as TView);
 	}
 
 	/**
 	 * Indicates if view should be restored from EventStore on start.
 	 * Override for custom behavior.
-	 *
-	 * @type {boolean | Promise<boolean>}
-	 * @readonly
 	 */
-	get shouldRestoreView() {
+	get shouldRestoreView(): boolean | Promise<boolean> {
 		return (this.view instanceof Map)
 			|| (this.view instanceof InMemoryView);
 	}
@@ -119,9 +116,11 @@ export default class AbstractProjection<TView extends object> implements IProjec
 	 */
 	protected async _restore(eventStore: IEventStore): Promise<void> {
 		/* istanbul ignore if */
-		if (!eventStore) throw new TypeError('eventStore argument required');
+		if (!eventStore)
+			throw new TypeError('eventStore argument required');
 		/* istanbul ignore if */
-		if (typeof eventStore.getEventsByTypes !== 'function') throw new TypeError('eventStore.getEventsByTypes must be a Function');
+		if (typeof eventStore.getEventsByTypes !== 'function')
+			throw new TypeError('eventStore.getEventsByTypes must be a Function');
 
 		const service = getClassName(this);
 		this.#logger?.log('debug', 'retrieving events and restoring projection...', { service });

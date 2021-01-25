@@ -55,7 +55,7 @@ export interface IAggregateStateConstructor extends Function {
 	new(): IAggregateState;
 }
 
-type TAggregateConstructorParams<TState extends IAggregateState> = {
+export type TAggregateConstructorParams<TState extends IAggregateState> = {
 	/** Unique aggregate identifier */
 	id: Identifier,
 
@@ -77,6 +77,9 @@ export interface IAggregateConstructor<TState extends IAggregateState> {
 export type IAggregateFactory<TState extends IAggregateState> = (options: TAggregateConstructorParams<TState>) => IAggregate;
 
 export interface ISaga {
+	/** Unique Saga ID */
+	readonly id: Identifier;
+
 	/** List of commands emitted by Saga */
 	readonly uncommittedMessages: ICommand[];
 
@@ -86,10 +89,10 @@ export interface ISaga {
 	/** Reset emitted commands when they are not longer needed */
 	resetUncommittedMessages(): void;
 
-	onError?(error: Error, options?: { event: IEvent, command: ICommand }): void;
+	onError?(error: Error, options: { event: IEvent, command: ICommand }): void;
 }
 
-type TSagaConstructorParams = {
+export type TSagaConstructorParams = {
 	id: Identifier,
 	events?: IEventStream
 };
@@ -106,10 +109,11 @@ export interface ISagaConstructor {
 	readonly handles: string[];
 }
 
+export interface IMessageHandler {
+	(...args: any[]): any | Promise<any>
+};
 
-type IMessageHandler = (...args: any[]) => any | Promise<any>;
-
-interface IObservable {
+export interface IObservable {
 	on(type: string, handler: IMessageHandler): void;
 
 	off(type: string, handler: IMessageHandler): void;
@@ -117,7 +121,7 @@ interface IObservable {
 	queue?(name: string): IObservable;
 }
 
-interface IObserver {
+export interface IObserver {
 	subscribe(observable: IObservable): void;
 }
 
@@ -129,6 +133,8 @@ export interface ICommandBus extends IObservable {
 
 	sendRaw(command: ICommand):
 		Promise<IEventStream>;
+
+	on(type: string, handler: IMessageHandler): void;
 }
 
 export interface ICommandHandler extends IObserver {
@@ -137,7 +143,7 @@ export interface ICommandHandler extends IObserver {
 
 /** Events */
 
-type IEventQueryFilter = {
+export type IEventQueryFilter = {
 	/** Get events emitted after this specific event */
 	afterEvent?: IEvent;
 

@@ -36,11 +36,11 @@
     "preversion": "npm run lint && npm test",
     "version": "npm run changelog && git add CHANGELOG.md"
   },
-  "author": "@stas_natalenko",
+  "author": "@snatalenko",
   "license": "MIT",
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
   "dependencies": {
-    "di6": "github:snatalenko/di6#v1.0.0-2"
+    "di6": "github:snatalenko/di6#v1.0.0-3"
   },
   "devDependencies": {
     "@types/node": "^14.14.14",

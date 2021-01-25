@@ -7,27 +7,19 @@ import { getClassName, validateHandlers, getHandler } from './utils';
 /**
  * Base class for Saga definition
  */
-export default class AbstractSaga implements ISaga {
+export default abstract class AbstractSaga implements ISaga {
 
 	/**
 	 * List of events that start new saga, must be overridden in Saga implementation
-	 *
-	 * @type {string[]}
-	 * @readonly
-	 * @static
 	 */
-	static get startsWith() {
+	static get startsWith(): string[] {
 		throw new Error('startsWith must be overridden to return a list of event types that start saga');
 	}
 
 	/**
 	 * List of event types being handled by Saga, must be overridden in Saga implementation
-	 *
-	 * @type {string[]}
-	 * @readonly
-	 * @static
 	 */
-	static get handles() {
+	static get handles(): string[] {
 		return [];
 	}
 
@@ -66,8 +58,6 @@ export default class AbstractSaga implements ISaga {
 		if (!options.id) throw new TypeError('options.id argument required');
 
 		this.#id = options.id;
-		this.#version = 0;
-		this.#messages = [];
 
 		validateHandlers(this, 'startsWith');
 		validateHandlers(this, 'handles');
@@ -147,10 +137,8 @@ export default class AbstractSaga implements ISaga {
 
 	/**
 	 * Get human-readable Saga name
-	 *
-	 * @returns {string}
 	 */
-	toString() {
+	toString(): string {
 		return `${getClassName(this)} ${this.id} (v${this.version})`;
 	}
 }
