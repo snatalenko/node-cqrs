@@ -1,0 +1,42 @@
+name: Build and Test
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_n_test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [14.x]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: NPM Install
+      run: npm ci --no-optional
+      env:
+        CI: true
+
+    - name: NPM Audit
+      run: npm audit --parseable --production --audit-level=moderate
+
+    - name: NPM Build
+      run: npm run build
+
+    - name: NPM Test
+      run: npm run test:coverage
+
+    - name: Coveralls
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
