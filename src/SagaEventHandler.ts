@@ -89,7 +89,7 @@ export default class SagaEventHandler implements IEventReceptor {
 			await this._restoreSaga(event);
 
 		// append event to the saga stream
-		this.#eventStore.commit(saga.id, [event]);
+		await this.#eventStore.commit(saga.id, [event]);
 
 		const r = saga.apply(event);
 		if (r instanceof Promise)
