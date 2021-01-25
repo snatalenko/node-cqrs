@@ -1,17 +1,13 @@
-name: Build and Test
+name: Test Coverage
 
-on:
-  push:
-    tags:
-      - 'v*'
+on: [push, pull_request]
 
 jobs:
-  build_n_test:
-    name: Build and Test
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [14.x]
+        node-version: [12.x]
 
     steps:
     - name: Checkout
@@ -27,8 +23,13 @@ jobs:
       env:
         CI: true
 
-    - name: NPM Audit
-      run: npm audit --parseable --production --audit-level=moderate
-
     - name: NPM Build
       run: npm run build
+
+    - name: NPM Test Coverage
+      run: npm run test:coverage
+
+    - name: Coveralls
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
