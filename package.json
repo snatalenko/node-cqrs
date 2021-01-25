@@ -33,7 +33,7 @@
     "changelog": "conventional-changelog -n ./scripts/changelog -i CHANGELOG.md -s",
     "build": "tsc",
     "prepack": "npm run build",
-    "preversion": "npm run lint && npm test",
+    "preversion": "npm test",
     "version": "npm run changelog && git add CHANGELOG.md"
   },
   "author": "@snatalenko",
