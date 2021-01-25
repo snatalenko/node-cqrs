@@ -114,11 +114,10 @@ export default class EventStore implements IObservable, IEventStorage {
 			await Promise.all(events.map(event =>
 				this.#messageBus.publish(event)));
 
-			this._log(`${formatEventType(events)} published`);
+			this._debug(`${formatEventType(events)} published`);
 		}
 		catch (error) {
-			this.#logger?.log('error', `${formatEventType(events)} publishing failed: ${error.message}`, { service: 'EventStore', stack: error.stack });
-
+			this._error(`${formatEventType(events)} publishing failed: ${error.message}`, error);
 			throw error;
 		}
 	}
@@ -127,7 +126,7 @@ export default class EventStore implements IObservable, IEventStorage {
 	 * Get a stream of events by identifier
 	 */
 	getStream(streamId: Identifier, filter?: IEventQueryFilter): AsyncIterableIterator<IEvent> {
-		this._log(`Retrieving stream ${streamId}`);
+		this._debug(`Retrieving stream ${streamId}`);
 		return this.#storage.getStream(streamId, filter);
 	}
 
@@ -135,7 +134,7 @@ export default class EventStore implements IObservable, IEventStorage {
 	 * Get events by their types
 	 */
 	getEventsByTypes(eventTypes: string[], filter?: IEventQueryFilter): AsyncIterableIterator<IEvent> {
-		this._log(`Retrieving events ${eventTypes.join(', ')}`);
+		this._debug(`Retrieving events ${eventTypes.join(', ')}`);
 		return this.#storage.getEventsByTypes(eventTypes, filter);
 	}
 
@@ -172,7 +171,11 @@ export default class EventStore implements IObservable, IEventStorage {
 		return setupOneTimeEmitterSubscription(this.#messageBus, subscribeTo, filter, handler, this.#logger);
 	}
 
-	private _log(message: string) {
+	private _debug(message: string) {
 		this.#logger?.log('debug', message, { service: 'EventStore' });
+	}
+
+	private _error(message: string, error: Error) {
+		this.#logger?.log('error', message, { service: 'EventStore', stack: error.stack });
 	}
 }
