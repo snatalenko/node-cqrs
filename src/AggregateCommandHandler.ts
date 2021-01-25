@@ -15,11 +15,8 @@ import {
 } from "./interfaces";
 
 
-import { getClassName, isClass, getHandledMessageTypes, readEventsFromIterator } from './utils';
+import { getClassName, getHandledMessageTypes, readEventsFromIterator } from './utils';
 import subscribe from './subscribe';
-
-const asAggregateConstructor = (type: any): IAggregateConstructor<any> | undefined =>
-	(isClass(type) ? type : undefined);
 
 /**
  * Aggregate command handler.
@@ -39,45 +36,43 @@ export default class AggregateCommandHandler implements ICommandHandler {
 
 	/**
 	 * Creates an instance of AggregateCommandHandler.
-	 *
-	 * @param {object} options
-	 * @param {IEventStore} options.eventStore
-	 * @param {ISnapshotStorage} [options.snapshotStorage]
-	 * @param {IAggregateConstructor | IAggregateFactory} options.aggregateType
-	 * @param {string[]} [options.handles]
-	 * @param {ILogger} [options.logger]
 	 */
 	constructor({
 		eventStore,
 		snapshotStorage,
 		aggregateType,
+		aggregateFactory,
 		handles,
 		logger
 	}: {
 		eventStore: IEventStore,
 		snapshotStorage?: ISnapshotStorage,
-		aggregateType: IAggregateConstructor<any> | IAggregateFactory<any>,
+		aggregateType?: IAggregateConstructor<any>,
+		aggregateFactory?: IAggregateFactory<any>,
 		handles?: string[],
 		logger?: ILogger
 	}) {
-		if (!eventStore) throw new TypeError('eventStore argument required');
-		if (!aggregateType) throw new TypeError('aggregateType argument required');
+		if (!eventStore)
+			throw new TypeError('eventStore argument required');
 
 		this.#eventStore = eventStore;
 		this.#logger = logger;
 		this.#snapshotStorage = snapshotStorage;
 
-		const AggregateType = asAggregateConstructor(aggregateType);
-		if (AggregateType) {
+		if (aggregateType) {
+			const AggregateType = aggregateType;
 			this.#aggregateFactory = params => new AggregateType(params);
 			this.#handles = getHandledMessageTypes(AggregateType);
 		}
-		else {
+		else if (aggregateFactory) {
 			if (!Array.isArray(handles) || !handles.length)
 				throw new TypeError('handles argument must be an non-empty Array');
 
-			this.#aggregateFactory = aggregateType as IAggregateFactory<any>;
+			this.#aggregateFactory = aggregateFactory;
 			this.#handles = handles;
+		}
+		else {
+			throw new TypeError('either aggregateType or aggregateFactory is required');
 		}
 	}
 

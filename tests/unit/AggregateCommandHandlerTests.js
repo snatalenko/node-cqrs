@@ -117,7 +117,7 @@ describe('AggregateCommandHandler', function () {
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
-			aggregateType: () => aggregate,
+			aggregateFactory: () => aggregate,
 			handles: ['somethingHappened']
 		});
 
@@ -134,7 +134,7 @@ describe('AggregateCommandHandler', function () {
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
-			aggregateType: () => aggregate,
+			aggregateFactory: () => aggregate,
 			handles: ['somethingHappened']
 		});
 
@@ -184,7 +184,7 @@ describe('AggregateCommandHandler', function () {
 		const handler = new AggregateCommandHandler({
 			eventStore,
 			snapshotStorage: { saveSnapshot() { }, getSnapshot() { } },
-			aggregateType: () => aggregate,
+			aggregateFactory: () => aggregate,
 			handles: ['somethingHappened']
 		});
 

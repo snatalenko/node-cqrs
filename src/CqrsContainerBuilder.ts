@@ -93,7 +93,7 @@ export default class CqrsContainerBuilder extends ContainerBuilder {
 
 		const commandHandlerFactory = (container: CqrsContainer) =>
 			container.createInstance(AggregateCommandHandler, {
-				aggregateType: (options: any) =>
+				aggregateFactory: (options: any) =>
 					container.createInstance(AggregateType, options),
 				handles: getHandledMessageTypes(AggregateType)
 			});
@@ -111,7 +111,7 @@ export default class CqrsContainerBuilder extends ContainerBuilder {
 
 		const eventReceptorFactory = (container: CqrsContainer) =>
 			container.createInstance(SagaEventHandler, {
-				sagaType: (options: any) => container.createInstance(SagaType, options),
+				sagaFactory: (options: any) => container.createInstance(SagaType, options),
 				handles: SagaType.handles,
 				startsWith: SagaType.startsWith,
 				queueName: SagaType.name
