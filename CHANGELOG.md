@@ -1,3 +1,11 @@
+# [0.17.0-0](https://github.com/snatalenko/node-cqrs/compare/v0.16.0-3...v0.17.0-0) (2021-01-25)
+
+
+### Refactoring
+
+* Rewrite using TypeScript ([92ab9fb](https://github.com/snatalenko/node-cqrs/commit/92ab9fb7d056dda9d6cb54663a303ca549f302fc))
+
+
 # [0.16.0-3](https://github.com/snatalenko/node-cqrs/compare/v0.16.0-2...v0.16.0-3) (2020-01-28)
 
 
