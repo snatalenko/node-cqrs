@@ -70,6 +70,8 @@ export default class EventStore implements IObservable, IEventStorage {
 		},
 		logger: ILogger
 	}) {
+		if (!storage)
+			throw new TypeError('storage argument required');
 		if (!isIEventStorage(storage))
 			throw new TypeError('storage does not implement IEventStorage interface');
 		if (isIObservable(storage))
