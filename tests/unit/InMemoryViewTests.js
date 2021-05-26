@@ -9,7 +9,6 @@ describe('InMemoryView', function () {
 
 	beforeEach(() => {
 		v = new InMemoryView();
-		v.unlock();
 	});
 
 	describe('create', () => {
@@ -66,10 +65,13 @@ describe('InMemoryView', function () {
 
 			expect(delayedResult).to.equal(undefined);
 
+			await new Promise(setImmediate);
+
+			expect(delayedResult).to.equal(undefined);
+
 			v.unlock();
 
-			// 2-promise loop delay
-			await Promise.resolve().then().then();
+			await new Promise(setImmediate);
 
 			expect(delayedResult).to.equal('bar');
 		});
@@ -127,10 +129,13 @@ describe('InMemoryView', function () {
 
 			expect(delayedResult).to.equal(undefined);
 
+			await new Promise(setImmediate);
+
+			expect(delayedResult).to.equal(undefined);
+
 			v.unlock();
 
-			// 2-promise loop delay
-			await Promise.resolve().then().then();
+			await new Promise(setImmediate);
 
 			expect(delayedResult).to.eql([['foo', 'bar']]);
 		});

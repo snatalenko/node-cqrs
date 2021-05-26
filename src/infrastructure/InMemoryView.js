@@ -2,6 +2,8 @@
 
 const { sizeOf } = require('../utils');
 
+const nextCycle = () => new Promise(setImmediate);
+
 /**
  * Update given value with an update Cb and return updated value.
  * Wrapper is needed for backward compatibility with update methods that were modifying the passed in objects directly
@@ -110,6 +112,8 @@ class InMemoryView {
 		if (!this._ready && !(options && options.nowait))
 			await this.once('ready');
 
+		await nextCycle();
+
 		return this._map.get(key);
 	}
 
@@ -124,6 +128,8 @@ class InMemoryView {
 
 		if (!this._ready)
 			await this.once('ready');
+
+		await nextCycle();
 
 		const r = [];
 		for (const entry of this._map.entries()) {
