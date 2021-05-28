@@ -1,3 +1,15 @@
+## [0.16.1](https://github.com/snatalenko/node-cqrs/compare/v0.16.0...v0.16.1) (2021-05-28)
+
+
+### Fixes
+
+* Mark aggregateId optional on command send ([f496ecf](https://github.com/snatalenko/node-cqrs/commit/f496ecfbd5413e8e2a4c69af7848ecc3f1a5365a))
+
+### Changes
+
+* Postpone view.get responses to next loop iteration ([950c2e4](https://github.com/snatalenko/node-cqrs/commit/950c2e42f62d7388b0cc668e81fb4f6718656fca))
+
+
 # [0.16.0](https://github.com/snatalenko/node-cqrs/compare/v0.16.0-5...v0.16.0) (2020-03-18)
 
 
