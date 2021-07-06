@@ -134,15 +134,20 @@ export default class AggregateCommandHandler implements ICommandHandler {
 
 		await this.#eventStore.commit(aggregate.id, events);
 
-		if (this.#snapshotStorage && aggregate.shouldTakeSnapshot) {
-			if (typeof aggregate.makeSnapshot !== 'function')
-				throw new TypeError('aggregate.makeSnapshot must be a Function');
-
-			const snapshot = aggregate.makeSnapshot();
-
-			this.#snapshotStorage.saveSnapshot(aggregate.id, snapshot);
-		}
+		if (this.#snapshotStorage && aggregate.shouldTakeSnapshot)
+			this._saveAggregateSnapshot(aggregate);
 
 		return events;
+	}
+
+	protected _saveAggregateSnapshot(aggregate: IAggregate): void {
+		if (!this.#snapshotStorage)
+			throw new TypeError('snapshotStorage dependency is not set up');
+		if (typeof aggregate.makeSnapshot !== 'function')
+			throw new TypeError('aggregate.makeSnapshot must be a Function');
+
+		const snapshot = aggregate.makeSnapshot();
+
+		this.#snapshotStorage.saveSnapshot(aggregate.id, snapshot);
 	}
 }
