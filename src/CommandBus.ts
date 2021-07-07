@@ -1,8 +1,14 @@
 'use strict';
 
-import { ICommand, ICommandBus, IEventStream, ILogger, IMessageBus, IMessageHandler } from "./interfaces";
-
-const service = 'CommandBus';
+import {
+	ICommand,
+	ICommandBus,
+	IEventStream,
+	IExtendableLogger,
+	ILogger,
+	IMessageBus,
+	IMessageHandler
+} from "./interfaces";
 
 export default class CommandBus implements ICommandBus {
 
@@ -14,13 +20,15 @@ export default class CommandBus implements ICommandBus {
 	 */
 	constructor({ messageBus, logger }: {
 		messageBus: IMessageBus,
-		logger?: ILogger
+		logger?: ILogger | IExtendableLogger
 	}) {
 		if (!messageBus)
 			throw new TypeError('messageBus argument required');
 
 		this.#bus = messageBus;
-		this.#logger = logger;
+		this.#logger = logger && 'child' in logger ?
+			logger.child({ service: 'CommandBus' }) :
+			logger;
 	}
 
 	/**
@@ -81,13 +89,13 @@ export default class CommandBus implements ICommandBus {
 		if (!command.type)
 			throw new TypeError('command.type argument required');
 
-		this.#logger?.log('debug', `sending '${command.type}' command...`, { service });
+		this.#logger?.debug(`sending '${command.type}' command...`);
 
 		return this.#bus.send(command).then(r => {
-			this.#logger?.log('debug', `'${command.type}' processed`, { service });
+			this.#logger?.debug(`'${command.type}' processed`);
 			return r;
 		}, error => {
-			this.#logger?.log('error', `'${command.type}' processing has failed: ${error.message}`, { service, stack: error.stack });
+			this.#logger?.error(`'${command.type}' processing has failed: ${error.message}`, { stack: error.stack });
 			throw error;
 		});
 	}

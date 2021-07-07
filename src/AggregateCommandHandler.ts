@@ -10,6 +10,7 @@ import {
 	Identifier,
 	IEventStore,
 	IEventStream,
+	IExtendableLogger,
 	ILogger,
 	ISnapshotStorage
 } from "./interfaces";
@@ -50,13 +51,15 @@ export default class AggregateCommandHandler implements ICommandHandler {
 		aggregateType?: IAggregateConstructor<any>,
 		aggregateFactory?: IAggregateFactory<any>,
 		handles?: string[],
-		logger?: ILogger
+		logger?: ILogger | IExtendableLogger
 	}) {
 		if (!eventStore)
 			throw new TypeError('eventStore argument required');
 
 		this.#eventStore = eventStore;
-		this.#logger = logger;
+		this.#logger = logger && 'child' in logger ?
+			logger.child({ service: getClassName(this) }) :
+			logger;
 		this.#snapshotStorage = snapshotStorage;
 
 		if (aggregateType) {
@@ -96,7 +99,7 @@ export default class AggregateCommandHandler implements ICommandHandler {
 
 		const aggregate = this.#aggregateFactory({ id, snapshot, events });
 
-		this.#logger?.log('info', `${aggregate} state restored from ${events}`, { service: getClassName(aggregate) });
+		this.#logger?.info(`${aggregate} state restored from ${events.length} event(s)`);
 
 		return aggregate;
 	}
@@ -107,7 +110,7 @@ export default class AggregateCommandHandler implements ICommandHandler {
 	private async _createAggregate(): Promise<IAggregate> {
 		const id = await this.#eventStore.getNewId();
 		const aggregate = this.#aggregateFactory({ id });
-		this.#logger?.log('info', `${aggregate} created`, { service: getClassName(aggregate) });
+		this.#logger?.info(`${aggregate} created`);
 
 		return aggregate;
 	}
@@ -128,7 +131,7 @@ export default class AggregateCommandHandler implements ICommandHandler {
 			await handlerResponse;
 
 		const events = aggregate.changes;
-		this.#logger?.log('info', `${aggregate} "${cmd.type}" command processed, ${events} produced`, { service: getClassName(aggregate) });
+		this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
 		if (!events.length)
 			return events;
 

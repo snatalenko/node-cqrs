@@ -160,7 +160,10 @@ describe('EventStore', function () {
 		it('logs results and errors', async () => {
 
 			const logs = [];
-			const logger = { log: (...args) => logs.push(args) };
+			const logger = {
+				debug: (...args) => logs.push(['debug', ...args]),
+				error: (...args) => logs.push(['error', ...args])
+			};
 
 			es = new EventStore({ storage, messageBus, logger, eventStoreConfig: { publishAsync: false } });
 

@@ -1,7 +1,8 @@
 'use strict';
 
-import { Identifier, IEvent, IEventStorage, IEventStream, ILogger } from "../interfaces";
+import { Identifier, IEvent, IEventStorage, IEventStream, IExtendableLogger, ILogger } from "../interfaces";
 import * as crypto from 'crypto';
+import { getClassName } from "../utils";
 
 const md5 = (data: object): string => crypto
 	.createHash('md5')
@@ -53,8 +54,10 @@ export default class InMemoryEventStorage implements IEventStorage {
 	/**
 	 * Creates instance of InMemoryEventStorage
 	 */
-	constructor(options?: { logger?: ILogger }) {
-		this.#logger = options?.logger;
+	constructor(options?: { logger?: ILogger | IExtendableLogger }) {
+		this.#logger = options?.logger && 'child' in options.logger ?
+			options.logger.child({ service: getClassName(this) }) :
+			options?.logger;
 	}
 
 	/**
@@ -86,7 +89,7 @@ export default class InMemoryEventStorage implements IEventStorage {
 				this.#sequence.push(eventId);
 				newEvents.push(event);
 
-				this.#logger?.log('debug', `${eventId} (${event.type}) added to the store`, { service: this.constructor.name });
+				this.#logger?.debug(`${eventId} (${event.type}) added to the store`);
 			}
 
 			this._attachEventToStream(streamId, eventId);
@@ -107,7 +110,7 @@ export default class InMemoryEventStorage implements IEventStorage {
 
 		stream.push(eventId);
 
-		this.#logger?.log('debug', `${eventId} added to stream ${streamId}`, { service: this.constructor.name });
+		this.#logger?.debug(`${eventId} added to stream ${streamId}`);
 	}
 
 	/**

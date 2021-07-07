@@ -1,7 +1,7 @@
 /* eslint new-cap: "off" */
 'use strict';
 
-import { ICommandBus, IEvent, IEventReceptor, IEventStore, ILogger, IObservable, ISaga, ISagaConstructor, ISagaFactory } from "./interfaces";
+import { ICommandBus, IEvent, IEventReceptor, IEventStore, IExtendableLogger, ILogger, IObservable, ISaga, ISagaConstructor, ISagaFactory } from "./interfaces";
 import { getClassName, readEventsFromIterator } from './utils';
 import subscribe from './subscribe';
 
@@ -26,7 +26,7 @@ export default class SagaEventHandler implements IEventReceptor {
 		sagaFactory?: ISagaFactory,
 		eventStore: IEventStore,
 		commandBus: ICommandBus,
-		logger?: ILogger,
+		logger?: ILogger | IExtendableLogger,
 		queueName?: string,
 		startsWith?: string[],
 		handles?: string[]
@@ -41,7 +41,9 @@ export default class SagaEventHandler implements IEventReceptor {
 		this.#eventStore = options.eventStore;
 		this.#commandBus = options.commandBus;
 		this.#queueName = options.queueName;
-		this.#logger = options.logger;
+		this.#logger = options.logger && 'child' in options.logger ?
+			options.logger.child({ service: getClassName(this) }) :
+			options.logger;
 
 		if (options.sagaType) {
 			const SagaType = options.sagaType as ISagaConstructor;
@@ -106,9 +108,7 @@ export default class SagaEventHandler implements IEventReceptor {
 		const commands = saga.uncommittedMessages;
 		saga.resetUncommittedMessages();
 
-		this.#logger?.log('debug', `"${event.type}" event processed, ${commands.map(c => c.type).join(',') || 'no commands'} produced`, {
-			service: getClassName(saga)
-		});
+		this.#logger?.debug(`"${event.type}" event processed, ${commands.map(c => c.type).join(',') || 'no commands'} produced`);
 
 		for (const command of commands) {
 
@@ -151,7 +151,7 @@ export default class SagaEventHandler implements IEventReceptor {
 		const events = await readEventsFromIterator(eventsIterator);
 
 		const saga = this.#sagaFactory.call(null, { id: event.sagaId, events });
-		this.#logger?.log('info', `Saga state restored from ${events}`, { service: getClassName(saga) });
+		this.#logger?.info(`Saga state restored from ${events.length} event(s)`);
 
 		return saga;
 	}

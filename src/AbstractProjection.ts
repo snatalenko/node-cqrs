@@ -1,6 +1,13 @@
 'use strict';
 
-import { IConcurrentView, IEvent, IEventStore, ILogger, IProjection } from "./interfaces";
+import {
+	IConcurrentView,
+	IEvent,
+	IEventStore,
+	IExtendableLogger,
+	ILogger,
+	IProjection
+} from "./interfaces";
 
 import { getClassName, validateHandlers, getHandler, getHandledMessageTypes } from './utils';
 
@@ -53,11 +60,13 @@ export default abstract class AbstractProjection<TView extends object> implement
 	/**
 	 * Creates an instance of AbstractProjection
 	 */
-	constructor(options?: { view?: TView, logger?: ILogger }) {
+	constructor(options?: { view?: TView, logger?: ILogger | IExtendableLogger }) {
 		validateHandlers(this);
 
 		this.#view = options?.view;
-		this.#logger = options?.logger;
+		this.#logger = options?.logger && 'child' in options.logger ?
+			options.logger.child({ service: getClassName(this) }) :
+			options?.logger;
 	}
 
 	/**
@@ -122,8 +131,7 @@ export default abstract class AbstractProjection<TView extends object> implement
 		if (typeof eventStore.getEventsByTypes !== 'function')
 			throw new TypeError('eventStore.getEventsByTypes must be a Function');
 
-		const service = getClassName(this);
-		this.#logger?.log('debug', 'retrieving events and restoring projection...', { service });
+		this.#logger?.debug('retrieving events and restoring projection...');
 
 		const messageTypes = getHandledMessageTypes(this);
 		const eventsIterable = eventStore.getEventsByTypes(messageTypes);
@@ -137,15 +145,14 @@ export default abstract class AbstractProjection<TView extends object> implement
 			}
 		}
 
-		this.#logger?.log('info', `view restored (${this.view})`, { service });
+		this.#logger?.info(`view restored (${this.view})`);
 	}
 
 	/**
 	 * Handle error on restoring
 	 */
 	protected _onRestoringError(error: Error, event: IEvent) {
-		this.#logger?.log('error', `view restoring has failed: ${error.message}`, {
-			service: getClassName(this),
+		this.#logger?.error(`view restoring has failed: ${error.message}`, {
 			event,
 			stack: error.stack
 		});

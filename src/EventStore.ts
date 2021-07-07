@@ -1,7 +1,7 @@
 'use strict';
 
-import { Identifier, IEvent, IEventQueryFilter, IEventStorage, IEventStream, ILogger, IMessageBus, IMessageHandler, IObservable } from "./interfaces";
-import { setupOneTimeEmitterSubscription } from "./utils";
+import { Identifier, IEvent, IEventQueryFilter, IEventStorage, IEventStream, IExtendableLogger, ILogger, IMessageBus, IMessageHandler, IObservable } from "./interfaces";
+import { getClassName, setupOneTimeEmitterSubscription } from "./utils";
 
 const formatEventType = (events: IEventStream): string =>
 	(events.length === 1 ? `'${events[0].type}'` : `${events.length} events`);
@@ -68,7 +68,7 @@ export default class EventStore implements IObservable, IEventStorage {
 		eventStoreConfig?: {
 			publishAsync?: boolean
 		},
-		logger: ILogger
+		logger: ILogger | IExtendableLogger
 	}) {
 		if (!storage)
 			throw new TypeError('storage argument required');
@@ -81,7 +81,9 @@ export default class EventStore implements IObservable, IEventStorage {
 
 		this.#config = { publishAsync: true, ...eventStoreConfig };
 		this.#validator = eventValidator;
-		this.#logger = logger;
+		this.#logger = logger && 'child' in logger ?
+			logger.child({ service: getClassName(this) }) :
+			logger;
 		this.#storage = storage;
 		this.#messageBus = messageBus;
 	}
@@ -114,10 +116,12 @@ export default class EventStore implements IObservable, IEventStorage {
 			await Promise.all(events.map(event =>
 				this.#messageBus.publish(event)));
 
-			this._debug(`${formatEventType(events)} published`);
+			this.#logger?.debug(`${formatEventType(events)} published`);
 		}
 		catch (error) {
-			this._error(`${formatEventType(events)} publishing failed: ${error.message}`, error);
+			this.#logger?.error(`${formatEventType(events)} publishing failed: ${error.message}`, {
+				stack: error.stack
+			});
 			throw error;
 		}
 	}
@@ -126,7 +130,7 @@ export default class EventStore implements IObservable, IEventStorage {
 	 * Get a stream of events by identifier
 	 */
 	getStream(streamId: Identifier, filter?: IEventQueryFilter): AsyncIterableIterator<IEvent> {
-		this._debug(`Retrieving stream ${streamId}`);
+		this.#logger?.debug(`Retrieving stream ${streamId}`);
 		return this.#storage.getStream(streamId, filter);
 	}
 
@@ -134,7 +138,7 @@ export default class EventStore implements IObservable, IEventStorage {
 	 * Get events by their types
 	 */
 	getEventsByTypes(eventTypes: string[], filter?: IEventQueryFilter): AsyncIterableIterator<IEvent> {
-		this._debug(`Retrieving events ${eventTypes.join(', ')}`);
+		this.#logger?.debug(`Retrieving events ${eventTypes.join(', ')}`);
 		return this.#storage.getEventsByTypes(eventTypes, filter);
 	}
 
@@ -169,13 +173,5 @@ export default class EventStore implements IObservable, IEventStorage {
 		const subscribeTo = Array.isArray(messageTypes) ? messageTypes : [messageTypes];
 
 		return setupOneTimeEmitterSubscription(this.#messageBus, subscribeTo, filter, handler, this.#logger);
-	}
-
-	private _debug(message: string) {
-		this.#logger?.log('debug', message, { service: 'EventStore' });
-	}
-
-	private _error(message: string, error: Error) {
-		this.#logger?.log('error', message, { service: 'EventStore', stack: error.stack });
 	}
 }
