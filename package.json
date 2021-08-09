@@ -19,7 +19,7 @@
     "eventstore"
   ],
   "main": "./dist/index.js",
-  "types": "./types/index.d.ts",
+  "types": "./src/index.ts",
   "engines": {
     "node": ">=10.3.0"
   },
