@@ -21,10 +21,16 @@ describe('InMemoryView', function () {
 			expect(await v.get('foo')).to.eq('bar');
 		});
 
-		it('fails if record already exists', () => {
+		it('fails if record already exists', async () => {
 
-			v.create('foo', 'bar');
-			expect(() => v.create('foo', 'bar')).to.throw('Key \'foo\' already exists');
+			await v.create('foo', 'bar');
+			try {
+				await v.create('foo', 'bar');
+				assert(false, 'did not fail');
+			}
+			catch (err) {
+				expect(err).to.have.property('message', 'Key \'foo\' already exists');
+			}
 		});
 	});
 
@@ -54,7 +60,7 @@ describe('InMemoryView', function () {
 
 		it('waits until view is marked as ready', async () => {
 
-			v.create('foo', 'bar');
+			await v.create('foo', 'bar');
 
 			const response = v.get('foo');
 			expect(response).to.be.instanceof(Promise);
@@ -68,8 +74,7 @@ describe('InMemoryView', function () {
 
 			v.unlock();
 
-			// 2-promise loop delay
-			await Promise.resolve().then().then();
+			await new Promise(setImmediate);
 
 			expect(delayedResult).to.equal('bar');
 		});
@@ -129,8 +134,7 @@ describe('InMemoryView', function () {
 
 			v.unlock();
 
-			// 2-promise loop delay
-			await Promise.resolve().then().then();
+			await new Promise(setImmediate);
 
 			expect(delayedResult).to.eql([['foo', 'bar']]);
 		});
@@ -142,13 +146,13 @@ describe('InMemoryView', function () {
 
 		it('creates new record, as passed in value', async () => {
 
-			v.create('foo', 'bar');
+			await v.create('foo', 'bar');
 			expect(await v.get('foo')).to.eq('bar');
 		});
 
 		it('fails, when trying to pass a function as a value', async () => {
 			try {
-				v.create('foo', () => 'bar');
+				await v.create('foo', () => 'bar');
 				assert(false, 'did not fail');
 			}
 			catch (err) {
@@ -162,29 +166,36 @@ describe('InMemoryView', function () {
 
 		beforeEach(() => v.unlock());
 
-		it('fails, if record does not exist', () => {
+		it('fails, if record does not exist', async () => {
 
-			expect(() => v.update('foo', () => null)).to.throw('Key \'foo\' does not exist');
+
+			try {
+				await v.update('foo', () => null);
+				assert(false, 'did not fail');
+			}
+			catch (err) {
+				expect(err).to.have.property('message', 'Key \'foo\' does not exist');
+			}
 		});
 
 		it('updates existing record by update fn result', async () => {
 
-			v.create('foo', 'bar');
+			await v.create('foo', 'bar');
 
 			expect(await v.get('foo')).to.eq('bar');
 
-			v.updateEnforcingNew('foo', v => `${v}-upd`);
+			await v.updateEnforcingNew('foo', v => `${v}-upd`);
 
 			expect(await v.get('foo')).to.eq('bar-upd');
 		});
 
 		it('updates existing record by operating on argument', async () => {
 
-			v.create('foo', { x: 'bar' });
+			await v.create('foo', { x: 'bar' });
 
 			expect(await v.get('foo')).to.deep.eq({ x: 'bar' });
 
-			v.updateEnforcingNew('foo', v => {
+			await v.updateEnforcingNew('foo', v => {
 				v.x += '-upd';
 			});
 
@@ -200,18 +211,18 @@ describe('InMemoryView', function () {
 
 			expect(await v.get('foo')).to.eq(undefined);
 
-			v.updateEnforcingNew('foo', () => 'bar');
+			await v.updateEnforcingNew('foo', () => 'bar');
 
 			expect(await v.get('foo')).to.eq('bar');
 		});
 
 		it('updates existing record', async () => {
 
-			v.create('foo', 'bar');
+			await v.create('foo', 'bar');
 
 			expect(await v.get('foo')).to.eq('bar');
 
-			v.updateEnforcingNew('foo', v => `${v}-upd`);
+			await v.updateEnforcingNew('foo', v => `${v}-upd`);
 
 			expect(await v.get('foo')).to.eq('bar-upd');
 		});
@@ -221,11 +232,11 @@ describe('InMemoryView', function () {
 
 		it('updates all records that match criteria', async () => {
 
-			v.create('foo', 'bar');
-			v.create('x', { v: 'y' });
+			await v.create('foo', 'bar');
+			await v.create('x', { v: 'y' });
 			v.unlock();
 
-			v.updateAll(v => typeof v === 'string', v => `${v}-updated`);
+			await v.updateAll(v => typeof v === 'string', v => `${v}-updated`);
 
 			expect(await v.get('foo')).to.eq('bar-updated');
 			expect(await v.get('x')).to.eql({ v: 'y' });
@@ -236,18 +247,18 @@ describe('InMemoryView', function () {
 
 		beforeEach(() => v.unlock());
 
-		it('does nothing, if record does not exist', () => {
+		it('does nothing, if record does not exist', async () => {
 
-			expect(() => v.delete('foo', v => null)).to.not.throw();
+			await v.delete('foo', v => null);
 		});
 
 		it('deletes existing record', async () => {
 
-			v.create('foo', 'bar');
+			await v.create('foo', 'bar');
 
 			expect(await v.get('foo')).to.eq('bar');
 
-			v.delete('foo');
+			await v.delete('foo');
 
 			expect(await v.get('foo')).to.eq(undefined);
 		});
@@ -257,11 +268,11 @@ describe('InMemoryView', function () {
 
 		it('deletes all records that match criteria', async () => {
 
-			v.create('foo', 'bar');
-			v.create('x', { v: 'y' });
+			await v.create('foo', 'bar');
+			await v.create('x', { v: 'y' });
 			v.unlock();
 
-			v.deleteAll(v => typeof v === 'object');
+			await v.deleteAll(v => typeof v === 'object');
 
 			expect(await v.get('foo')).to.eq('bar');
 			expect(await v.get('x')).to.eq(undefined);
@@ -270,10 +281,10 @@ describe('InMemoryView', function () {
 
 	describe('toString', () => {
 
-		it('returns view summary', () => {
+		it('returns view summary', async () => {
 
 			expect(`${v}`).to.eq('0 records, 0 bytes');
-			v.create('foo', 'bar');
+			await v.create('foo', 'bar');
 			expect(`${v}`).to.eq('1 record, 6 bytes');
 		});
 	});

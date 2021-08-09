@@ -213,14 +213,16 @@ export interface IProjectionConstructor {
 export interface IConcurrentView {
 
 	/**
-	 * Indicates if concurrent view is ready for external operations
+	 * Indicates if view is ready for new events projecting
 	 */
 	ready: boolean;
 
 	/**
 	 * Lock the view for external reads/writes
+	 * 
+	 * @returns Indicator if view was successfully locked for restoring
 	 */
-	lock(): Promise<void>;
+	lock(): Promise<boolean>;
 
 	/**
 	 * Unlock external read/write operations
@@ -228,9 +230,29 @@ export interface IConcurrentView {
 	unlock(): Promise<void>;
 
 	/**
-	 * Wait until the view is unlocked
+	 * Wait till the view is ready to accept new events
 	 */
 	once(eventType: "ready"): Promise<void>;
+
+	/**
+	 * Get last projected event
+	 */
+	getLastEvent(): Promise<IEvent | undefined>;
+
+	/**
+	 * Save last projected event
+	 */
+	saveLastEvent(event: IEvent): Promise<void>;
+
+	/**
+	 * Schema version of the data being projected to the view
+	 */
+	getSchemaVersion(): Promise<string>;
+
+	/**
+	 * Update data schema version, reset the view and lastEvent
+	 */
+	changeSchemaVersion(version: string): Promise<void>;
 }
 
 

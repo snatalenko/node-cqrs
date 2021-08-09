@@ -1,7 +1,9 @@
 'use strict';
 
-import { Identifier } from "../interfaces";
+import { IConcurrentView, Identifier, IEvent, TSnapshot } from "../interfaces";
 import { sizeOf } from '../utils';
+
+const nextCycle = () => new Promise(setImmediate);
 
 /**
  * Update given value with an update Cb and return updated value.
@@ -17,13 +19,17 @@ function applyUpdate<T>(view: T | undefined, update: (r?: T) => T | undefined): 
 /**
  * In-memory Projection View, which suspends get()'s until it is ready
  */
-export default class InMemoryView<TRecord> {
+export default class InMemoryView<TRecord> implements IConcurrentView {
 
 	#map: Map<Identifier, TRecord | undefined> = new Map();
 
 	#ready: boolean = true;
 	#lockPromise: Promise<void> = Promise.resolve();
 	#unlock?: (value?: void) => void;
+
+	#lastEvent: IEvent | undefined;
+	#schemaVersion: string = '';
+	#asyncWrites: boolean;
 
 	/**
 	 * Whether the view is restored
@@ -40,36 +46,94 @@ export default class InMemoryView<TRecord> {
 	/**
 	 * Creates an instance of InMemoryView
 	 */
-	constructor() {
+	constructor({ asyncWrites = false, snapshot }: {
+		/** Indicates if writes should be submitted asynchronously */
+		asyncWrites?: boolean,
+		snapshot?: TSnapshot<Array<[Identifier, TRecord | undefined]>>
+	} = {}) {
+		this.#asyncWrites = asyncWrites;
+
+		if (snapshot)
+			this.loadSnapshot(snapshot);
+
 		// explicitly bind the `get` method to this object for easier using in Promises
 		Object.defineProperty(this, this.get.name, {
 			value: this.get.bind(this)
 		});
 	}
 
+	async getLastEvent(): Promise<IEvent<any> | undefined> {
+		return this.#lastEvent;
+	}
+
+	async saveLastEvent(event: IEvent<any>): Promise<void> {
+		this.#lastEvent = event;
+	}
+
+	async getSchemaVersion(): Promise<string> {
+		return this.#schemaVersion;
+	}
+
+	async changeSchemaVersion(version: string): Promise<void> {
+		if (this.#schemaVersion === version)
+			return;
+
+		this.#schemaVersion = version;
+		this.#lastEvent = undefined;
+		this.#map = new Map();
+	}
+
+	makeSnapshot(): TSnapshot<Array<[Identifier, TRecord | undefined]>> | undefined {
+		if (!this.#lastEvent)
+			return undefined;
+
+		return {
+			schemaVersion: this.#schemaVersion,
+			lastEvent: this.#lastEvent,
+			data: Array.from(this.#map.entries())
+		};
+	}
+
+	loadSnapshot(snapshot: TSnapshot<Array<[Identifier, TRecord | undefined]>>) {
+		this.#schemaVersion = String(snapshot.schemaVersion);
+		this.#lastEvent = snapshot.lastEvent;
+		this.#map = new Map(snapshot.data);
+	}
+
 	/**
 	 * Lock the view to prevent concurrent modifications
-	 *
-	 * @returns {Promise<void>}
 	 */
 	async lock() {
 		if (this.ready === false)
 			await this.once('ready');
 
 		this.#lockPromise = new Promise(resolve => {
-			this.#unlock = resolve;
+			this.#unlock = () => {
+				resolve();
+			};
 		});
 
 		this.#ready = false;
+		return true;
 	}
 
 	/**
 	 * Release the lock
 	 */
-	unlock() {
+	async unlock() {
 		this.#ready = true;
 		if (typeof this.#unlock === 'function')
-			this.#unlock();
+			return this.#unlock();
+	}
+
+	/**
+	 * Create a Promise which will resolve to a first emitted event of a given type
+	 */
+	once(eventType: 'ready'): Promise<any> {
+		if (eventType !== 'ready')
+			throw new TypeError(`Unexpected event type: ${eventType}`);
+
+		return this.#lockPromise;
 	}
 
 	/**
@@ -86,10 +150,13 @@ export default class InMemoryView<TRecord> {
 	 * Get record with a given key; await until the view is restored
 	 */
 	async get(key: Identifier, options?: { nowait?: boolean }): Promise<TRecord | undefined> {
-		if (!key) throw new TypeError('key argument required');
+		if (!key)
+			throw new TypeError('key argument required');
 
 		if (!this.#ready && !(options && options.nowait))
 			await this.once('ready');
+
+		await nextCycle();
 
 		return this.#map.get(key);
 	}
@@ -97,14 +164,17 @@ export default class InMemoryView<TRecord> {
 	/**
 	 * Get all records matching an optional filter
 	 */
-	async getAll(filter?: (r: TRecord | undefined, i: Identifier) => boolean) {
+	async getAll(filter?: (r: TRecord | undefined, i: Identifier) => boolean):
+		Promise<Array<[Identifier, TRecord | undefined]>> {
 		if (filter && typeof filter !== 'function')
 			throw new TypeError('filter argument, when defined, must be a Function');
 
 		if (!this.#ready)
 			await this.once('ready');
 
-		const r = [];
+		await nextCycle();
+
+		const r: Array<[Identifier, TRecord | undefined]> = [];
 		for (const entry of this.#map.entries()) {
 			if (!filter || filter(entry[1], entry[0]))
 				r.push(entry);
@@ -116,9 +186,14 @@ export default class InMemoryView<TRecord> {
 	/**
 	 * Create record with a given key and value
 	 */
-	create(key: Identifier, value: TRecord = {} as TRecord) {
-		if (!key) throw new TypeError('key argument required');
-		if (typeof value === 'function') throw new TypeError('value argument must be an instance of an Object');
+	async create(key: Identifier, value: TRecord = {} as TRecord) {
+		if (!key)
+			throw new TypeError('key argument required');
+		if (typeof value === 'function')
+			throw new TypeError('value argument must be an instance of an Object');
+
+		if (this.#asyncWrites)
+			await nextCycle();
 
 		if (this.#map.has(key))
 			throw new Error(`Key '${key}' already exists`);
@@ -129,22 +204,26 @@ export default class InMemoryView<TRecord> {
 	/**
 	 * Update existing view record
 	 */
-	update(key: Identifier, update: (r?: TRecord) => TRecord) {
-		if (!key) throw new TypeError('key argument required');
-		if (typeof update !== 'function') throw new TypeError('update argument must be a Function');
+	async update(key: Identifier, update: (r?: TRecord) => TRecord) {
+		if (!key)
+			throw new TypeError('key argument required');
+		if (typeof update !== 'function')
+			throw new TypeError('update argument must be a Function');
 
 		if (!this.#map.has(key))
 			throw new Error(`Key '${key}' does not exist`);
 
-		this._update(key, update);
+		return this._update(key, update);
 	}
 
 	/**
 	 * Update existing view record or create new
 	 */
-	updateEnforcingNew(key: Identifier, update: (r?: TRecord) => TRecord) {
-		if (!key) throw new TypeError('key argument required');
-		if (typeof update !== 'function') throw new TypeError('update argument must be a Function');
+	async updateEnforcingNew(key: Identifier, update: (r?: TRecord) => TRecord) {
+		if (!key)
+			throw new TypeError('key argument required');
+		if (typeof update !== 'function')
+			throw new TypeError('update argument must be a Function');
 
 		if (!this.#map.has(key))
 			return this.create(key, applyUpdate(undefined, update));
@@ -155,30 +234,40 @@ export default class InMemoryView<TRecord> {
 	/**
 	 * Update all records that match filter criteria
 	 */
-	updateAll(filter: (r?: TRecord) => boolean, update: (r?: TRecord) => TRecord) {
-		if (filter && typeof filter !== 'function') throw new TypeError('filter argument, when specified, must be a Function');
-		if (typeof update !== 'function') throw new TypeError('update argument must be a Function');
+	async updateAll(filter: (r?: TRecord) => boolean, update: (r?: TRecord) => TRecord) {
+		if (filter && typeof filter !== 'function')
+			throw new TypeError('filter argument, when specified, must be a Function');
+		if (typeof update !== 'function')
+			throw new TypeError('update argument must be a Function');
 
 		for (const [key, value] of this.#map) {
 			if (!filter || filter(value))
-				this._update(key, update);
+				await this._update(key, update);
 		}
 	}
 
 	/**
 	 * Update existing record
 	 */
-	private _update(key: Identifier, update: (r?: TRecord) => TRecord) {
+	private async _update(key: Identifier, update: (r?: TRecord) => TRecord) {
 		const value = this.#map.get(key);
 		const updatedValue = applyUpdate(value, update);
+
+		if (this.#asyncWrites)
+			await nextCycle();
+
 		this.#map.set(key, updatedValue);
 	}
 
 	/**
 	 * Delete record
 	 */
-	delete(key: Identifier) {
-		if (!key) throw new TypeError('key argument required');
+	async delete(key: Identifier) {
+		if (!key)
+			throw new TypeError('key argument required');
+
+		if (this.#asyncWrites)
+			await nextCycle();
 
 		this.#map.delete(key);
 	}
@@ -186,23 +275,14 @@ export default class InMemoryView<TRecord> {
 	/**
 	 * Delete all records that match filter criteria
 	 */
-	deleteAll(filter: (r?: TRecord) => boolean) {
-		if (filter && typeof filter !== 'function') throw new TypeError('filter argument, when specified, must be a Function');
+	async deleteAll(filter: (r?: TRecord) => boolean) {
+		if (filter && typeof filter !== 'function')
+			throw new TypeError('filter argument, when specified, must be a Function');
 
 		for (const [key, value] of this.#map) {
 			if (!filter || filter(value))
-				this.#map.delete(key);
+				await this.delete(key);
 		}
-	}
-
-	/**
-	 * Create a Promise which will resolve to a first emitted event of a given type
-	 */
-	once(eventType: 'ready'): Promise<any> {
-		if (eventType !== 'ready')
-			throw new TypeError(`Unexpected event type: ${eventType}`);
-
-		return this.#lockPromise;
 	}
 
 	/**

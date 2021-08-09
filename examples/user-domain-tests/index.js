@@ -3,7 +3,7 @@
 const { expect } = require('chai');
 const { createContainer, createBaseInstances } = require('../../examples/user-domain');
 
-describe('user-domain example', () => {
+describe.skip('user-domain example', () => {
 
 	const testEventFlow = async container => {
 
