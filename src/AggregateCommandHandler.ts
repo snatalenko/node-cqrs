@@ -95,7 +95,7 @@ export default class AggregateCommandHandler implements ICommandHandler {
 	private async _restoreAggregate(id: Identifier): Promise<IAggregate> {
 		const snapshot = this.#snapshotStorage ? await this.#snapshotStorage.getSnapshot(id) : undefined;
 		const eventsFilter = snapshot && { afterEvent: snapshot.lastEvent };
-		const events = await readEventsFromIterator(await this.#eventStore.getStream(id, eventsFilter));
+		const events = await readEventsFromIterator(this.#eventStore.getStream(id, eventsFilter));
 
 		const aggregate = this.#aggregateFactory({ id, snapshot, events });
 
@@ -126,9 +126,7 @@ export default class AggregateCommandHandler implements ICommandHandler {
 			await this._restoreAggregate(cmd.aggregateId) :
 			await this._createAggregate();
 
-		const handlerResponse = aggregate.handle(cmd);
-		if (handlerResponse instanceof Promise)
-			await handlerResponse;
+		await aggregate.handle(cmd);
 
 		const events = aggregate.changes;
 		this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
@@ -143,7 +141,7 @@ export default class AggregateCommandHandler implements ICommandHandler {
 		return events;
 	}
 
-	protected _saveAggregateSnapshot(aggregate: IAggregate): void {
+	protected async _saveAggregateSnapshot(aggregate: IAggregate): Promise<void> {
 		if (!this.#snapshotStorage)
 			throw new TypeError('snapshotStorage dependency is not set up');
 		if (typeof aggregate.makeSnapshot !== 'function')
@@ -151,6 +149,6 @@ export default class AggregateCommandHandler implements ICommandHandler {
 
 		const snapshot = aggregate.makeSnapshot();
 
-		this.#snapshotStorage.saveSnapshot(aggregate.id, snapshot);
+		await this.#snapshotStorage.saveSnapshot(aggregate.id, snapshot);
 	}
 }
