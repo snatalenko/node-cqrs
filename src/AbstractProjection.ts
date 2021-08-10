@@ -81,7 +81,7 @@ export default abstract class AbstractProjection<TView extends IConcurrentView> 
 		this.#projectionSequence = this.#projectionSequence.then(op);
 		return this.#projectionSequence;
 	}
-	
+
 	/**
 	 * Pass event to projection event handler
 	 */

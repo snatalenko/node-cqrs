@@ -182,7 +182,9 @@ describe('EventStore', function () {
 			try {
 				await es.commit(goodEvent2.aggregateId, [goodEvent2]);
 			}
-			catch (err) { }
+			catch (err) {
+				// ignore err
+			}
 
 			expect(logs).to.have.length(2);
 			expect(logs[1][0]).to.eql('error');

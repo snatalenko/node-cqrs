@@ -26,10 +26,21 @@ class UsersProjection extends AbstractProjection {
 	}
 
 	/**
+	 * @param {{
+	 *   view?: any;
+	 *   logger?: import("../../src/interfaces").ILogger | import("../../src/interfaces").IExtendableLogger;
+	 * }} [args]
+	 */
+	constructor(args) {
+		super(args);
+		this.schemaVersion = '0';
+	}
+
+	/**
 	 * userCreated event handler
 	 *
 	 * @param {object} event
-	 * @param {Identifier} event.aggregateId
+	 * @param {import('../../src/interfaces').Identifier} event.aggregateId
 	 * @param {object} event.payload
 	 * @param {string} event.payload.username
 	 * @param {string} event.payload.passwordHash
