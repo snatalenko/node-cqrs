@@ -142,6 +142,8 @@ export default abstract class AbstractProjection<TView extends IConcurrentView> 
 		const messageTypes = getHandledMessageTypes(this);
 		const eventsIterable = eventStore.getEventsByTypes(messageTypes, { afterEvent });
 
+		// TODO: start accepting new events thru `project` method
+
 		for await (const event of eventsIterable) {
 			try {
 				await this._project(event);

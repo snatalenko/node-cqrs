@@ -32,23 +32,19 @@ exports.createContainer = () => {
 /**
  * Same as above, but without the DI container
  */
-exports.createBaseInstances = () => {
+exports.createBaseInstances = async () => {
 	// create infrastructure services
 	const storage = new InMemoryEventStorage();
 	const messageBus = new InMemoryMessageBus();
 	const eventStore = new EventStore({ storage, messageBus });
 	const commandBus = new CommandBus({ messageBus });
 
-	/** @type {IAggregateConstructor} */
 	const aggregateType = UserAggregate;
-
-	/** @type {ICommandHandler} */
 	const userCommandHandler = new AggregateCommandHandler({ eventStore, aggregateType });
 	userCommandHandler.subscribe(commandBus);
 
-	/** @type {IProjection} */
 	const usersProjection = new UsersProjection();
-	usersProjection.subscribe(eventStore);
+	await usersProjection.subscribe(eventStore);
 
 	return {
 		eventStore,

@@ -3,7 +3,7 @@
 const { expect } = require('chai');
 const { createContainer, createBaseInstances } = require('../../examples/user-domain');
 
-describe.skip('user-domain example', () => {
+describe('user-domain example', () => {
 
 	const testEventFlow = async container => {
 
@@ -51,6 +51,8 @@ describe.skip('user-domain example', () => {
 
 		const { commandBus, eventStore, users } = container;
 
+		await Promise.resolve();
+
 		commandBus.send('createUser', undefined, {
 			payload: {
 				username: 'sherlock',
@@ -77,10 +79,10 @@ describe.skip('user-domain example', () => {
 
 	describe('with manual instantiation', () => {
 
-		it('handles user aggregate commands, emits events', () =>
-			testEventFlow(createBaseInstances()));
+		it('handles user aggregate commands, emits events', async () =>
+			testEventFlow(await createBaseInstances()));
 
-		it('updates Users projection view', () =>
-			testProjection(createBaseInstances()));
+		it('updates Users projection view', async () =>
+			testProjection(await createBaseInstances()));
 	});
 });
