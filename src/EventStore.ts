@@ -46,7 +46,7 @@ function defaultValidator(event: IEvent) {
  */
 export default class EventStore implements IObservable, IEventStorage {
 
-	#config: { publishAsync: boolean };
+	#publishAsync: boolean;
 	#validator: (event: IEvent<any>) => void;
 	#logger?: ILogger;
 	#storage: IEventStorage;
@@ -79,7 +79,7 @@ export default class EventStore implements IObservable, IEventStorage {
 		if (!isIMessageBus(messageBus))
 			throw new TypeError('messageBus does not implement IMessageBus interface');
 
-		this.#config = { publishAsync: true, ...eventStoreConfig };
+		this.#publishAsync = eventStoreConfig?.publishAsync ?? true;
 		this.#validator = eventValidator;
 		this.#logger = logger && 'child' in logger ?
 			logger.child({ service: getClassName(this) }) :
@@ -103,7 +103,7 @@ export default class EventStore implements IObservable, IEventStorage {
 
 		const newEvents = await this.#storage.commit(streamId, events);
 
-		if (this.#config.publishAsync)
+		if (this.#publishAsync)
 			setImmediate(() => this._publishEvents(newEvents));
 		else
 			await this._publishEvents(newEvents);
