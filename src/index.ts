@@ -15,6 +15,8 @@ export { default as InMemoryMessageBus } from './infrastructure/InMemoryMessageB
 export { default as InMemoryEventStorage } from './infrastructure/InMemoryEventStorage';
 export { default as InMemorySnapshotStorage } from './infrastructure/InMemorySnapshotStorage';
 export { default as InMemoryView } from './infrastructure/InMemoryView';
+export * from './infrastructure/InMemoryLock';
+export { default as Deferred } from './infrastructure/Deferred';
 
 export { default as getMessageHandlerNames } from './utils/getMessageHandlerNames';
 export { default as subscribe } from './subscribe';
