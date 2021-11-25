@@ -5,7 +5,12 @@ export interface ILockable {
 	unlock(): Promise<any>;
 }
 
-export class InMemoryLock implements ILockable {
+export interface ILockableWithState extends ILockable {
+	locked: Readonly<boolean>;
+	once(event: 'unlocked'): Promise<void>;
+}
+
+export class InMemoryLock implements ILockableWithState {
 
 	#lockMarker: Deferred<void> | undefined;
 	#innerLock: ILockable | undefined;

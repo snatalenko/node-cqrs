@@ -1,7 +1,7 @@
 import { assert, expect } from "chai";
 import { spy, stub } from "sinon";
 import { promisify } from "util";
-import { InMemoryLock, IPersistentLock } from "../../src";
+import { InMemoryLock, ILockable } from "../../src";
 import isResolved from './utils/isResolved';
 const delay = promisify(setTimeout);
 
@@ -78,7 +78,7 @@ describe('InMemoryLock', () => {
 
 	describe('work with persistent lock', () => {
 
-		class PersistentLockMock implements IPersistentLock {
+		class PersistentLockMock implements ILockable {
 
 			locked: boolean = false;
 
@@ -102,7 +102,7 @@ describe('InMemoryLock', () => {
 			}
 		}
 
-		let persistentLock: IPersistentLock;
+		let persistentLock: ILockable;
 
 		beforeEach(() => {
 			persistentLock = new PersistentLockMock();
