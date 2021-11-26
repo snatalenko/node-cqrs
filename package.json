@@ -24,7 +24,7 @@
     "node": ">=10.3.0"
   },
   "scripts": {
-    "test": "mocha ./tests/unit/index.js ./examples/user-domain-tests",
+    "test": "mocha ./tests/unit/index.js ./examples/user-domain-tests && npm run test:ts",
     "test:ts": "mocha -r ts-node/register --extension test.ts tests/unit/",
     "test:integration": "mocha tests/integration",
     "test:coverage": "nyc --reporter=lcov --reporter=text-summary node_modules/.bin/_mocha ./tests/unit/index.js",
