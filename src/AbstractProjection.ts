@@ -1,12 +1,14 @@
 'use strict';
 
 import {
-	IConcurrentView,
+	IProjectionView,
 	IEvent,
+	IPersistentView,
 	IEventStore,
 	IExtendableLogger,
 	ILogger,
-	IProjection
+	IProjection,
+	IViewFactory
 } from "./interfaces";
 
 import { getClassName, validateHandlers, getHandler, getHandledMessageTypes } from './utils';
@@ -14,10 +16,15 @@ import { getClassName, validateHandlers, getHandler, getHandledMessageTypes } fr
 import subscribe from './subscribe';
 import InMemoryView from './infrastructure/InMemoryView';
 
+const asPersistentView = <T extends IProjectionView | IPersistentView>(view: T): IPersistentView | undefined =>
+	('tryMarkAsProjecting' in view && 'markAsProjected' in view && 'getLastEvent' in view) ?
+		view :
+		undefined;
+
 /**
  * Base class for Projection definition
  */
-export default abstract class AbstractProjection<TView extends IConcurrentView> implements IProjection<TView> {
+export default abstract class AbstractProjection<TView extends IProjectionView | IPersistentView> implements IProjection<TView> {
 
 	/**
 	 * Optional list of event types being handled by projection.
@@ -29,36 +36,55 @@ export default abstract class AbstractProjection<TView extends IConcurrentView> 
 	}
 
 	/**
-	 * Default view associated with projection.
-	 * If not defined, an instance of `NodeCqrs.InMemoryView` is created on first access.
+	 * Default view associated with projection
 	 */
 	get view(): TView {
-		return this.#view || (this.#view = (new InMemoryView() as unknown) as TView);
+		if (!this.#view) {
+			this.#view = this.#viewFactory({
+				schemaVersion: this.schemaVersion,
+				collectionName: this.collectionName
+			});
+			this.#persistentView = asPersistentView(this.#view);
+		}
+
+		return this.#view;
 	}
 
-	#view: TView | undefined;
+	#viewFactory: IViewFactory<TView>;
+	#view?: TView;
+	#persistentView: IPersistentView | undefined;
 
-	#logger?: ILogger;
-
-	#projectionSequence = Promise.resolve();
+	protected _logger?: ILogger;
 
 	/** 
 	 * Contains data schema version for the projection.
 	 * Used to resolve schema compatibility with the view data
 	 */
-	abstract schemaVersion: string;
+	abstract get schemaVersion(): string;
+
+	get collectionName(): string {
+		return getClassName(this);
+	}
 
 	/**
 	 * Creates an instance of AbstractProjection
 	 */
-	constructor({ view, logger }: {
+	constructor({
+		view,
+		viewFactory = InMemoryView.factory,
+		logger
+	}: {
 		view?: TView,
+		viewFactory?: IViewFactory<TView>,
 		logger?: ILogger | IExtendableLogger
 	} = {}) {
 		validateHandlers(this);
 
-		this.#view = view;
-		this.#logger = logger && 'child' in logger ?
+		this.#viewFactory = view ?
+			() => view :
+			viewFactory;
+
+		this._logger = logger && 'child' in logger ?
 			logger.child({ service: getClassName(this) }) :
 			logger;
 	}
@@ -68,29 +94,27 @@ export default abstract class AbstractProjection<TView extends IConcurrentView> 
 	 */
 	async subscribe(eventStore: IEventStore): Promise<void> {
 		subscribe(eventStore, this, {
-			masterHandler: (e: IEvent) => this.project(e)
+			masterHandler: (e: IEvent) => this.project(e),
+			queueName: this.collectionName
 		});
 
 		await this.restore(eventStore);
 	}
 
 	/**
-	 * Add operation to projection sequence
-	 */
-	private _enqueue(op: () => Promise<any>): Promise<any> {
-		this.#projectionSequence = this.#projectionSequence.then(op);
-		return this.#projectionSequence;
-	}
-
-	/**
 	 * Pass event to projection event handler
 	 */
 	async project(event: IEvent): Promise<void> {
-		// If underlying view expects writes from multiple projection instances
-		// 1) view should be locked on each write
-		// 2) write operation must be canceled if view version differs from projection version
+		try {
+			const locked = await this.view.lock();
+			if (!locked)
+				throw new Error('View lock could have not been acquired for current state restoring');
 
-		return this._enqueue(() => this._project(event));
+			await this._project(event);
+		}
+		finally {
+			await this.view.unlock();
+		}
 	}
 
 	/**
@@ -101,44 +125,39 @@ export default abstract class AbstractProjection<TView extends IConcurrentView> 
 		if (!handler)
 			throw new Error(`'${event.type}' handler is not defined or not a function`);
 
+		const projecting = await this.#persistentView?.tryMarkAsProjecting(event) ?? true;
+		if (!projecting)
+			return;
+
 		await handler.call(this, event);
-		await this.view.saveLastEvent(event);
+
+		await this.#persistentView?.markAsProjected(event);
 	}
 
 	/**
 	 * Restore projection view from event store
 	 */
 	async restore(eventStore: IEventStore): Promise<void> {
-		return this._enqueue(async () => {
-			try {
-				const locked = await this.view.lock();
-				if (!locked)
-					throw new Error('View lock could have not been acquired for current state restoring');
+		try {
+			const locked = await this.view.lock();
+			if (!locked)
+				throw new Error('View lock could have not been acquired for current state restoring');
 
-				const viewSchemaVersion = await this.view.getSchemaVersion();
-				const versionMatches = viewSchemaVersion === this.schemaVersion;
-				if (!versionMatches) {
-					this.#logger?.info(`View version (${viewSchemaVersion}) does not match projection version (${this.schemaVersion}), view data is obsolete`);
-					await this.view.changeSchemaVersion(this.schemaVersion);
-				}
-
-				const lastEvent = versionMatches ? await this.view.getLastEvent() : undefined;
-
-				await this._restore(eventStore, lastEvent);
-			}
-			finally {
-				await this.view.unlock();
-			}
-		});
+			await this._restore(eventStore);
+		}
+		finally {
+			await this.view.unlock();
+		}
 	}
 
 	/**
 	 * Restore projection view from event store
 	 */
-	protected async _restore(eventStore: IEventStore, afterEvent?: IEvent): Promise<void> {
+	protected async _restore(eventStore: IEventStore): Promise<void> {
 		const started = Date.now();
-		this.#logger?.debug('Retrieving events and restoring projection view...');
+		this._logger?.debug('Retrieving events and restoring projection view...');
 
+		const afterEvent = await this.#persistentView?.getLastEvent();
 		const messageTypes = getHandledMessageTypes(this);
 		const eventsIterable = eventStore.getEventsByTypes(messageTypes, { afterEvent });
 
@@ -146,8 +165,8 @@ export default abstract class AbstractProjection<TView extends IConcurrentView> 
 			try {
 				await this._project(event);
 			}
-			catch (error) {
-				this.#logger?.error(`View restoring has failed: ${error?.message}`, {
+			catch (error: any) {
+				this._logger?.error(`View restoring has failed: ${error?.message}`, {
 					event,
 					stack: error?.stack
 				});
@@ -155,6 +174,6 @@ export default abstract class AbstractProjection<TView extends IConcurrentView> 
 			}
 		}
 
-		this.#logger?.info(`View restored in ${Date.now() - started} ms`);
+		this._logger?.info(`View restored in ${Date.now() - started} ms`);
 	}
 }

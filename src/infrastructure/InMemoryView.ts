@@ -1,6 +1,7 @@
 'use strict';
 
-import { IConcurrentView, Identifier, IEvent, TSnapshot } from "../interfaces";
+import { InMemoryLock, ProjectionViewFactoryParams } from "..";
+import { IProjectionView, Identifier } from "../interfaces";
 import { sizeOf } from '../utils';
 
 const nextCycle = () => new Promise(setImmediate);
@@ -19,23 +20,23 @@ function applyUpdate<T>(view: T | undefined, update: (r?: T) => T | undefined): 
 /**
  * In-memory Projection View, which suspends get()'s until it is ready
  */
-export default class InMemoryView<TRecord> implements IConcurrentView {
+export default class InMemoryView<TRecord> implements IProjectionView {
+
+	static factory<TView>(params: ProjectionViewFactoryParams): TView {
+		return (new InMemoryView(params) as unknown) as TView;
+	}
 
 	#map: Map<Identifier, TRecord | undefined> = new Map();
 
-	#ready: boolean = true;
-	#lockPromise: Promise<void> = Promise.resolve();
-	#unlock?: (value?: void) => void;
+	#lock: InMemoryLock;
 
-	#lastEvent: IEvent | undefined;
-	#schemaVersion: string = '';
 	#asyncWrites: boolean;
 
 	/**
 	 * Whether the view is restored
 	 */
 	get ready(): boolean {
-		return this.#ready;
+		return !this.#lock.locked;
 	}
 
 	/** Number of records in the View */
@@ -46,15 +47,13 @@ export default class InMemoryView<TRecord> implements IConcurrentView {
 	/**
 	 * Creates an instance of InMemoryView
 	 */
-	constructor({ asyncWrites = false, snapshot }: {
+	constructor(options?: ProjectionViewFactoryParams & {
 		/** Indicates if writes should be submitted asynchronously */
-		asyncWrites?: boolean,
-		snapshot?: TSnapshot<Array<[Identifier, TRecord | undefined]>>
-	} = {}) {
-		this.#asyncWrites = asyncWrites;
+		asyncWrites?: boolean
+	}) {
+		this.#asyncWrites = options?.asyncWrites ?? false;
 
-		if (snapshot)
-			this.loadSnapshot(snapshot);
+		this.#lock = new InMemoryLock();
 
 		// explicitly bind the `get` method to this object for easier using in Promises
 		Object.defineProperty(this, this.get.name, {
@@ -62,68 +61,19 @@ export default class InMemoryView<TRecord> implements IConcurrentView {
 		});
 	}
 
-	async getLastEvent(): Promise<IEvent<any> | undefined> {
-		return this.#lastEvent;
-	}
-
-	async saveLastEvent(event: IEvent<any>): Promise<void> {
-		this.#lastEvent = event;
-	}
-
-	async getSchemaVersion(): Promise<string> {
-		return this.#schemaVersion;
-	}
-
-	async changeSchemaVersion(version: string): Promise<void> {
-		if (this.#schemaVersion === version)
-			return;
-
-		this.#schemaVersion = version;
-		this.#lastEvent = undefined;
-		this.#map = new Map();
-	}
-
-	makeSnapshot(): TSnapshot<Array<[Identifier, TRecord | undefined]>> | undefined {
-		if (!this.#lastEvent)
-			return undefined;
-
-		return {
-			schemaVersion: this.#schemaVersion,
-			lastEvent: this.#lastEvent,
-			data: Array.from(this.#map.entries())
-		};
-	}
-
-	loadSnapshot(snapshot: TSnapshot<Array<[Identifier, TRecord | undefined]>>) {
-		this.#schemaVersion = String(snapshot.schemaVersion);
-		this.#lastEvent = snapshot.lastEvent;
-		this.#map = new Map(snapshot.data);
-	}
-
 	/**
 	 * Lock the view to prevent concurrent modifications
 	 */
 	async lock() {
-		if (this.ready === false)
-			await this.once('ready');
-
-		this.#lockPromise = new Promise(resolve => {
-			this.#unlock = () => {
-				resolve();
-			};
-		});
-
-		this.#ready = false;
-		return true;
+		await this.#lock.lock();
+		return this.#lock.locked;
 	}
 
 	/**
 	 * Release the lock
 	 */
 	async unlock() {
-		this.#ready = true;
-		if (typeof this.#unlock === 'function')
-			return this.#unlock();
+		return this.#lock.unlock();
 	}
 
 	/**
@@ -133,7 +83,7 @@ export default class InMemoryView<TRecord> implements IConcurrentView {
 		if (eventType !== 'ready')
 			throw new TypeError(`Unexpected event type: ${eventType}`);
 
-		return this.#lockPromise;
+		return this.#lock.once('unlocked');
 	}
 
 	/**
@@ -153,7 +103,7 @@ export default class InMemoryView<TRecord> implements IConcurrentView {
 		if (!key)
 			throw new TypeError('key argument required');
 
-		if (!this.#ready && !(options && options.nowait))
+		if (!this.ready && !(options && options.nowait))
 			await this.once('ready');
 
 		await nextCycle();
@@ -169,7 +119,7 @@ export default class InMemoryView<TRecord> implements IConcurrentView {
 		if (filter && typeof filter !== 'function')
 			throw new TypeError('filter argument, when defined, must be a Function');
 
-		if (!this.#ready)
+		if (!this.ready)
 			await this.once('ready');
 
 		await nextCycle();

@@ -199,14 +199,23 @@ export interface IMessageBus extends IObservable {
 export interface IProjection<TView extends object> extends IObserver {
 	readonly view: TView;
 
-	subscribe(eventStore: IEventStore): void;
+	subscribe(eventStore: IEventStore): Promise<void>;
 
-	project(event: IEvent, options?: { nowait: boolean }): Promise<void>;
+	project(event: IEvent): Promise<void>;
 }
 
 export interface IProjectionConstructor {
 	new(c?: any): IProjection<any>;
 	readonly handles?: string[];
+}
+
+export type ProjectionViewFactoryParams = {
+	schemaVersion: string,
+	collectionName: string
+}
+
+export interface IViewFactory<TView> {
+	(params: ProjectionViewFactoryParams): TView;
 }
 
 export interface ILockable {
@@ -240,26 +249,27 @@ export interface IProjectionView extends ILockable {
 	 * Wait till the view is ready to accept new events
 	 */
 	once(eventType: "ready"): Promise<void>;
+}
+
+export interface IPersistentView extends IProjectionView {
 
 	/**
 	 * Get last projected event
 	 */
-	getLastEvent(): Promise<IEvent | undefined>;
+	 getLastEvent(): Promise<IEvent | undefined>;
 
 	/**
-	 * Save last projected event
+	 * Mark event as projecting to prevent its handling by another
+	 * projection instance working with the same storage.
+	 *
+	 * @returns False value if event is already processing or processed
 	 */
-	saveLastEvent(event: IEvent): Promise<void>;
+	tryMarkAsProjecting(event: IEvent<any>): Promise<boolean>;
 
 	/**
-	 * Schema version of the data being projected to the view
+	 * Mark event as projected
 	 */
-	getSchemaVersion(): Promise<string>;
-
-	/**
-	 * Update data schema version, reset the view and lastEvent
-	 */
-	changeSchemaVersion(version: string): Promise<void>;
+	markAsProjected(event: IEvent<any>): Promise<void>;
 }
 
 

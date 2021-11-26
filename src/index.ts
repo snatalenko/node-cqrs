@@ -20,3 +20,5 @@ export { default as Deferred } from './infrastructure/Deferred';
 
 export { default as getMessageHandlerNames } from './utils/getMessageHandlerNames';
 export { default as subscribe } from './subscribe';
+
+export * from './interfaces';
