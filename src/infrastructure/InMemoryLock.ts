@@ -1,35 +1,39 @@
+import { ILockable, ILockableWithIndication } from "../interfaces";
 import Deferred from "./Deferred";
 
-export interface ILockable {
-	lock(): Promise<any>;
-	unlock(): Promise<any>;
-}
-
-export interface ILockableWithState extends ILockable {
-	locked: Readonly<boolean>;
-	once(event: 'unlocked'): Promise<void>;
-}
-
-export class InMemoryLock implements ILockableWithState {
+export class InMemoryLock implements ILockableWithIndication {
 
 	#lockMarker: Deferred<void> | undefined;
 	#innerLock: ILockable | undefined;
 
+	/**
+	 * Indicates if lock is acquired
+	 */
 	get locked(): boolean {
 		return !!this.#lockMarker;
 	}
 
+	/**
+	 * Creates an instance of InMemoryLock
+	 *
+	 * @param innerLock ILockable instance that can persist lock state outside of the current process
+	 */
 	constructor(innerLock?: ILockable) {
 		this.#innerLock = innerLock;
 	}
 
-	async lock() {
+	/**
+	 * Acquire the lock on the current instance.
+	 * Resolves when the lock is successfully acquired
+	 */
+	async lock(): Promise<void> {
 		while (this.locked)
 			await this.once('unlocked');
 
 		try {
 			this.#lockMarker = new Deferred();
-			this.#innerLock?.lock();
+			if (this.#innerLock)
+				await this.#innerLock.lock();
 		}
 		catch (err: any) {
 			try {
@@ -42,9 +46,13 @@ export class InMemoryLock implements ILockableWithState {
 		}
 	}
 
-	async unlock() {
+	/**
+	 * Release the lock acquired earlier
+	 */
+	async unlock(): Promise<void> {
 		try {
-			await this.#innerLock?.unlock();
+			if (this.#innerLock)
+				await this.#innerLock.unlock();
 		}
 		finally {
 			this.#lockMarker?.resolve();
@@ -52,7 +60,11 @@ export class InMemoryLock implements ILockableWithState {
 		}
 	}
 
-	once(event: 'unlocked') {
+	/**
+	 * Wait until the lock is released.
+	 * Resolves immediately if the lock is not acquired
+	 */
+	once(event: 'unlocked'): Promise<void> {
 		if (event !== 'unlocked')
 			throw new TypeError(`Unexpected event type: ${event}`);
 

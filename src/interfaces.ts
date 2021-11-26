@@ -209,8 +209,17 @@ export interface IProjectionConstructor {
 	readonly handles?: string[];
 }
 
+export interface ILockable {
+	lock(): Promise<any>;
+	unlock(): Promise<any>;
+}
 
-export interface IConcurrentView {
+export interface ILockableWithIndication extends ILockable {
+	locked: Readonly<boolean>;
+	once(event: 'unlocked'): Promise<void>;
+}
+
+export interface IProjectionView extends ILockable {
 
 	/**
 	 * Indicates if view is ready for new events projecting
@@ -219,8 +228,6 @@ export interface IConcurrentView {
 
 	/**
 	 * Lock the view for external reads/writes
-	 * 
-	 * @returns Indicator if view was successfully locked for restoring
 	 */
 	lock(): Promise<boolean>;
 

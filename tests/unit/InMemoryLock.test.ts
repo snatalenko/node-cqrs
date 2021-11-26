@@ -45,6 +45,8 @@ describe('InMemoryLock', () => {
 			const p2 = instance.lock();
 			const p3 = instance.lock();
 
+			await p1;
+
 			expect(await isResolved(p1)).to.eq(true);
 			expect(await isResolved(p2)).to.eq(false);
 			expect(await isResolved(p3)).to.eq(false);
