@@ -4,6 +4,7 @@
 import { ICommandBus, IEvent, IEventReceptor, IEventStore, IExtendableLogger, ILogger, IObservable, ISaga, ISagaConstructor, ISagaFactory } from "./interfaces";
 import { getClassName, readEventsFromIterator } from './utils';
 import subscribe from './subscribe';
+import Event from "./Event";
 
 /**
  * Listens to Saga events,
@@ -108,7 +109,7 @@ export default class SagaEventHandler implements IEventReceptor {
 		const commands = saga.uncommittedMessages;
 		saga.resetUncommittedMessages();
 
-		this.#logger?.debug(`"${event.type}" event processed, ${commands.map(c => c.type).join(',') || 'no commands'} produced`);
+		this.#logger?.debug(`"${Event.describe(event)}" processed, ${commands.map(c => c.type).join(',') || 'no commands'} produced`);
 
 		for (const command of commands) {
 
@@ -119,7 +120,7 @@ export default class SagaEventHandler implements IEventReceptor {
 			try {
 				await this.#commandBus.sendRaw(command);
 			}
-			catch (err) {
+			catch (err: any) {
 				if (typeof saga.onError === 'function') {
 					// let saga to handle the error
 					saga.onError(err, { event, command });
@@ -145,7 +146,7 @@ export default class SagaEventHandler implements IEventReceptor {
 	private async _restoreSaga(event: IEvent): Promise<ISaga> {
 		/* istanbul ignore if */
 		if (!event.sagaId)
-			throw new TypeError(`Event "${event.type}" of aggregate "${event.aggregateId}" does not contain sagaId`);
+			throw new TypeError(`${Event.describe(event)} does not contain sagaId`);
 
 		const eventsIterator = await this.#eventStore.getStream(event.sagaId, { beforeEvent: event });
 		const events = await readEventsFromIterator(eventsIterator);

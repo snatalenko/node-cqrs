@@ -2,9 +2,7 @@
 
 import { Identifier, IEvent, IEventQueryFilter, IEventStorage, IEventStream, IExtendableLogger, ILogger, IMessageBus, IMessageHandler, IObservable } from "./interfaces";
 import { getClassName, setupOneTimeEmitterSubscription } from "./utils";
-
-const formatEventType = (events: IEventStream): string =>
-	(events.length === 1 ? `'${events[0].type}'` : `${events.length} events`);
+import Event from './Event';
 
 const isIEventStorage = (storage: IEventStorage) => storage
 	&& typeof storage.getNewId === 'function'
@@ -20,24 +18,6 @@ const isIMessageBus = (bus: IMessageBus | any): boolean => bus
 	&& isIObservable(bus)
 	&& typeof bus.send === 'function'
 	&& typeof bus.publish === 'function';
-
-/**
- * Validate event structure
- */
-function defaultValidator(event: IEvent) {
-	/* istanbul ignore if */
-	if (typeof event !== 'object' || !event)
-		throw new TypeError('event must be an Object');
-	/* istanbul ignore if */
-	if (typeof event.type !== 'string' || !event.type.length)
-		throw new TypeError('event.type must be a non-empty String');
-	/* istanbul ignore if */
-	if (!event.aggregateId && !event.sagaId)
-		throw new TypeError('either event.aggregateId or event.sagaId is required');
-	/* istanbul ignore if */
-	if (event.sagaId && typeof event.sagaVersion === 'undefined')
-		throw new TypeError('event.sagaVersion is required, when event.sagaId is defined');
-}
 
 /**
  * Facade that combines functionality of IEventStorage and IObservable into single IEventStore interface.
@@ -58,7 +38,7 @@ export default class EventStore implements IObservable, IEventStorage {
 	constructor({
 		storage,
 		messageBus,
-		eventValidator = defaultValidator,
+		eventValidator = Event.validate,
 		eventStoreConfig,
 		logger
 	}: {
@@ -68,7 +48,7 @@ export default class EventStore implements IObservable, IEventStorage {
 		eventStoreConfig?: {
 			publishAsync?: boolean
 		},
-		logger: ILogger | IExtendableLogger
+		logger?: ILogger | IExtendableLogger
 	}) {
 		if (!storage)
 			throw new TypeError('storage argument required');
@@ -116,10 +96,10 @@ export default class EventStore implements IObservable, IEventStorage {
 			await Promise.all(events.map(event =>
 				this.#messageBus.publish(event)));
 
-			this.#logger?.debug(`${formatEventType(events)} published`);
+			this.#logger?.debug(`${Event.describeMultiple(events)} published`);
 		}
-		catch (error) {
-			this.#logger?.error(`${formatEventType(events)} publishing failed: ${error.message}`, {
+		catch (error: any) {
+			this.#logger?.error(`${Event.describeMultiple(events)} publishing failed: ${error.message}`, {
 				stack: error.stack
 			});
 			throw error;

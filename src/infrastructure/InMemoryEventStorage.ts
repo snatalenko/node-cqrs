@@ -1,14 +1,8 @@
 'use strict';
 
+import Event from "../Event";
 import { Identifier, IEvent, IEventStorage, IEventStream, IExtendableLogger, ILogger } from "../interfaces";
-import * as crypto from 'crypto';
 import { getClassName } from "../utils";
-
-const md5 = (data: object): string => crypto
-	.createHash('md5')
-	.update(JSON.stringify(data))
-	.digest('base64')
-	.replace(/==$/, '');
 
 type TEventFilter = {
 	afterEvent?: IEvent,
@@ -24,13 +18,13 @@ function applyEventsFilter(eventIds: string[], filter?: TEventFilter): string[] 
 
 	const { afterEvent, beforeEvent } = filter;
 	if (afterEvent) {
-		const eventId = afterEvent.id || md5(afterEvent);
+		const eventId = Event.getId(afterEvent);
 		const eventIndex = eventIds.indexOf(eventId);
 		if (eventIndex !== -1)
 			start = eventIndex + 1;
 	}
 	if (beforeEvent) {
-		const eventId = beforeEvent.id || md5(beforeEvent);
+		const eventId = Event.getId(beforeEvent);
 		const eventIndex = eventIds.indexOf(eventId);
 		if (eventIndex !== -1)
 			end = eventIndex;
@@ -82,7 +76,7 @@ export default class InMemoryEventStorage implements IEventStorage {
 		const newEvents = [];
 
 		for (const event of events) {
-			const eventId = event.id || md5(event);
+			const eventId = Event.getId(event);
 			const isNewEvent = !this.#events.has(eventId);
 			if (isNewEvent) {
 				this.#events.set(eventId, event);
