@@ -77,6 +77,35 @@ describe('InMemoryLock', () => {
 		});
 	});
 
+	describe('once', () => {
+
+		it('resolves immediately if no lock acquired', async () => {
+
+			const oncePromise = l.once('unlocked');
+			expect(await isResolved(oncePromise)).to.eq(true);
+		});
+
+		it('returns promise that resolves when lock is released', async () => {
+
+			await l.lock();
+
+			const oncePromise = l.once('unlocked');
+			expect(await isResolved(oncePromise)).to.eq(false);
+
+			await l.unlock();
+			expect(await isResolved(oncePromise)).to.eq(true);
+		});
+
+		it('fails when unexpected event type requested', async () => {
+			try {
+				await l.once('something' as any);
+				assert(true, 'did not fail');
+			}
+			catch (err) {
+				expect(err).to.be.instanceOf(TypeError);
+			}
+		});
+	});
 
 	describe('work with persistent lock', () => {
 
