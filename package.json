@@ -42,12 +42,12 @@
     "di6": "github:snatalenko/di6#v0.5.0"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "coveralls": "^3.0.9",
-    "eslint": "^6.8.0",
-    "jsdoc": "^3.6.7",
-    "mocha": "^7.1.1",
-    "nyc": "^15.0.0",
-    "sinon": "^9.0.1"
+    "chai": "^4.3.6",
+    "coveralls": "^3.1.1",
+    "eslint": "^8.7.0",
+    "jsdoc": "^3.6.10",
+    "mocha": "^9.2.0",
+    "nyc": "^15.1.0",
+    "sinon": "^12.0.1"
   }
 }
