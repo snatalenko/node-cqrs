@@ -277,9 +277,9 @@ describe('InMemoryView', function () {
 
 		it('returns view summary', () => {
 
-			expect(`${v}`).to.eq('0 records, 0 bytes');
+			expect(`${v}`).to.eq('0 records');
 			v.create('foo', 'bar');
-			expect(`${v}`).to.eq('1 record, 6 bytes');
+			expect(`${v}`).to.eq('1 record');
 		});
 	});
 });

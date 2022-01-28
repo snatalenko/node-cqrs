@@ -1,7 +1,5 @@
 'use strict';
 
-const { sizeOf } = require('../utils');
-
 const nextCycle = () => new Promise(setImmediate);
 
 /**
@@ -260,7 +258,7 @@ class InMemoryView {
 	 * @returns {string}
 	 */
 	toString() {
-		return `${this.size} record${this.size !== 1 ? 's' : ''}, ${sizeOf(this._map)} bytes`;
+		return `${this.size} record${this.size !== 1 ? 's' : ''}`;
 	}
 }
 
