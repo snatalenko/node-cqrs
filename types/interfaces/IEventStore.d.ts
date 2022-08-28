@@ -16,4 +16,3 @@ declare interface IEventStore extends IObservable {
 
 	snapshotsSupported?: boolean;
 }
-

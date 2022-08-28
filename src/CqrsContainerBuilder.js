@@ -1,6 +1,6 @@
 'use strict';
 
-const { ContainerBuilder } = require('di6');
+const { ContainerBuilder } = require('di0');
 
 const AggregateCommandHandler = require('./AggregateCommandHandler');
 const SagaEventHandler = require('./SagaEventHandler');
@@ -13,16 +13,13 @@ function isClass(func) {
 		&& Function.prototype.toString.call(func).startsWith('class');
 }
 
-/**
- * @extends {DI6.ContainerBuilder}
- */
 class CqrsContainerBuilder extends ContainerBuilder {
 
 	/**
 	 * Creates an instance of CqrsContainerBuilder
 	 *
 	 * @param {object} [options]
-	 * @param {Readonly<DI6.TypeConfig[]>} options.types
+	 * @param {Readonly<import('di0').TypeConfig[]>} options.types
 	 * @param {object} options.singletones
 	 */
 	constructor(options) {
