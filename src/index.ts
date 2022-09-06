@@ -17,6 +17,10 @@ export * from './infrastructure/InMemoryLock';
 export * from './infrastructure/Deferred';
 
 export * as Event from './Event';
-export { getMessageHandlerNames, subscribe } from './utils';
+export {
+	getMessageHandlerNames,
+	getHandledMessageTypes,
+	subscribe
+} from './utils';
 
 export * from './interfaces';

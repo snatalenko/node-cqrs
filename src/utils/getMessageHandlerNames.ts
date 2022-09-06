@@ -20,7 +20,7 @@ function getInheritedPropertyNames(prototype: object): string[] {
  * Get message handler names from a command/event handler class.
  * Assumes all private method names start from underscore ("_").
  */
-export function getMessageHandlerNames(observerInstanceOrClass: any): string[] {
+export function getMessageHandlerNames(observerInstanceOrClass: (object | Function)): string[] {
 	if (!observerInstanceOrClass)
 		throw new TypeError('observerInstanceOrClass argument required');
 
