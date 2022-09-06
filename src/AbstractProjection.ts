@@ -139,27 +139,29 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 		if (typeof eventStore.getAllEvents !== 'function')
 			throw new TypeError('eventStore.getAllEvents must be a Function');
 
-		const service = getClassName(this);
 		this._logger?.debug('retrieving events and restoring projection...');
 
 		const messageTypes = getHandledMessageTypes(this);
 		const eventsIterable = eventStore.getAllEvents(messageTypes);
+		let eventsCount = 0;
+		const startTs = Date.now();
 
 		for await (const event of eventsIterable) {
 			try {
 				await this._project(event);
+				eventsCount += 1;
 			}
 			catch (err) {
 				this._onRestoringError(err, event);
 			}
 		}
 
-		this._logger?.info(`view restored (${this.view})`);
+		this._logger?.info(`view restored (${this.view}) from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}
 
 	/** Handle error on restoring. Logs and throws error by default */
 	protected _onRestoringError(error: Error, event: IEvent) {
-		this._logger?.error(`view restoring failed: ${error.message}`, {
+		this._logger?.error(`view restoring has failed (view will remain locked): ${error.message}`, {
 			service: getClassName(this),
 			event,
 			stack: error.stack
