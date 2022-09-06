@@ -84,13 +84,15 @@ export class CommandBus implements ICommandBus {
 		if (!command.type)
 			throw new TypeError('command.type argument required');
 
-		this.#logger?.debug(`sending '${command.type}' command...`);
+		this.#logger?.debug(`sending '${command.type}' command${command.aggregateId ? ` to ${command.aggregateId}` : ''}...`);
 
 		return this.#bus.send(command).then(r => {
-			this.#logger?.debug(`'${command.type}' processed`);
+			this.#logger?.debug(`'${command.type}' ${command.aggregateId ? `on ${command.aggregateId}` : ''} processed`);
 			return r;
 		}, error => {
-			this.#logger?.error(`'${command.type}' processing has failed: ${error.message}`, { stack: error.stack });
+			this.#logger?.warn(`'${command.type}' ${command.aggregateId ? `on ${command.aggregateId}` : ''} processing has failed: ${error.message}`, {
+				stack: error.stack
+			});
 			throw error;
 		});
 	}
