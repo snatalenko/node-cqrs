@@ -4,6 +4,7 @@ import { AggregateCommandHandler } from './AggregateCommandHandler';
 import { CommandBus } from './CommandBus';
 import { EventStore } from './EventStore';
 import { SagaEventHandler } from './SagaEventHandler';
+import { InMemoryMessageBus } from './infrastructure/InMemoryMessageBus';
 
 import {
 	getHandledMessageTypes,
@@ -33,6 +34,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		singletones: object
 	}) {
 		super(options);
+		super.register(InMemoryMessageBus).as('messageBus');
 		super.register(EventStore).as('eventStore');
 		super.register(CommandBus).as('commandBus');
 	}
