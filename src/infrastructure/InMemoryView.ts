@@ -23,7 +23,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		return (new InMemoryView() as unknown) as TView;
 	}
 
-	#map: Map<Identifier, TRecord | undefined> = new Map();
+	protected _map: Map<Identifier, TRecord | undefined> = new Map();
 
 	#lock: InMemoryLock;
 
@@ -36,7 +36,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 
 	/** Number of records in the View */
 	get size(): number {
-		return this.#map.size;
+		return this._map.size;
 	}
 
 	constructor(options?: {
@@ -79,7 +79,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	 * @deprecated Use `async get()` instead
 	 */
 	has(key: Identifier): boolean {
-		return this.#map.has(key);
+		return this._map.has(key);
 	}
 
 	/** Get record with a given key; await until the view is restored */
@@ -92,7 +92,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 
 		await nextCycle();
 
-		return this.#map.get(key);
+		return this._map.get(key);
 	}
 
 	/** Get all records matching an optional filter */
@@ -107,7 +107,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		await nextCycle();
 
 		const r: Array<[Identifier, TRecord | undefined]> = [];
-		for (const entry of this.#map.entries()) {
+		for (const entry of this._map.entries()) {
 			if (!filter || filter(entry[1], entry[0]))
 				r.push(entry);
 		}
@@ -125,10 +125,10 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		if (this.#asyncWrites)
 			await nextCycle();
 
-		if (this.#map.has(key))
+		if (this._map.has(key))
 			throw new Error(`Key '${key}' already exists`);
 
-		this.#map.set(key, value);
+		this._map.set(key, value);
 	}
 
 	/** Update existing view record */
@@ -138,7 +138,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		if (typeof update !== 'function')
 			throw new TypeError('update argument must be a Function');
 
-		if (!this.#map.has(key))
+		if (!this._map.has(key))
 			throw new Error(`Key '${key}' does not exist`);
 
 		return this._update(key, update);
@@ -151,7 +151,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		if (typeof update !== 'function')
 			throw new TypeError('update argument must be a Function');
 
-		if (!this.#map.has(key))
+		if (!this._map.has(key))
 			return this.create(key, applyUpdate(undefined, update));
 
 		return this._update(key, update);
@@ -164,7 +164,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		if (typeof update !== 'function')
 			throw new TypeError('update argument must be a Function');
 
-		for (const [key, value] of this.#map) {
+		for (const [key, value] of this._map) {
 			if (!filter || filter(value))
 				await this._update(key, update);
 		}
@@ -172,13 +172,13 @@ export class InMemoryView<TRecord> implements IProjectionView {
 
 	/** Update existing record */
 	private async _update(key: Identifier, update: (r?: TRecord) => TRecord) {
-		const value = this.#map.get(key);
+		const value = this._map.get(key);
 		const updatedValue = applyUpdate(value, update);
 
 		if (this.#asyncWrites)
 			await nextCycle();
 
-		this.#map.set(key, updatedValue);
+		this._map.set(key, updatedValue);
 	}
 
 	/** Delete record */
@@ -189,7 +189,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		if (this.#asyncWrites)
 			await nextCycle();
 
-		this.#map.delete(key);
+		this._map.delete(key);
 	}
 
 	/** Delete all records that match filter criteria */
@@ -197,7 +197,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		if (filter && typeof filter !== 'function')
 			throw new TypeError('filter argument, when specified, must be a Function');
 
-		for (const [key, value] of this.#map) {
+		for (const [key, value] of this._map) {
 			if (!filter || filter(value))
 				await this.delete(key);
 		}
