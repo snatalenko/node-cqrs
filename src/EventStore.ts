@@ -33,7 +33,6 @@ const isIMessageBus = (bus: IMessageBus | any): boolean => bus
 	&& typeof bus.publish === 'function';
 
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
-const service = 'EventStore';
 
 export class EventStore implements IEventStore {
 
@@ -71,8 +70,6 @@ export class EventStore implements IEventStore {
 			throw new TypeError('storage argument required');
 		if (!isIEventStorage(storage))
 			throw new TypeError('storage does not implement IEventStorage interface');
-		if (isIObservable(storage))
-			throw new TypeError('storage already implements IObservable interface and can be used without EventStore wrapper');
 		if (!isIMessageBus(messageBus))
 			throw new TypeError('messageBus does not implement IMessageBus interface');
 
