@@ -24,9 +24,9 @@
     "node": ">=10.3.0"
   },
   "scripts": {
-    "test": "jest",
-    "test:coverage": "jest --collect-coverage",
-    "test:integration": "mocha tests/integration",
+    "test": "jest --verbose tests/unit",
+    "test:coverage": "jest --collect-coverage tests/unit",
+    "test:integration": "jest --verbose examples/user-domain-tests",
     "pretest:coveralls": "npm run test:coverage",
     "test:coveralls": "cat ./coverage/lcov.info | coveralls",
     "posttest:coveralls": "rm -rf ./coverage",

@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const { createContainer, createBaseInstances } = require('../../examples/user-domain');
+const { createContainer, createBaseInstances } = require('../user-domain');
 
 describe('user-domain example', () => {
 
@@ -51,7 +51,7 @@ describe('user-domain example', () => {
 
 		const { commandBus, eventStore, users } = container;
 
-		commandBus.send('createUser', undefined, {
+		await commandBus.send('createUser', undefined, {
 			payload: {
 				username: 'sherlock',
 				password: 'test'
