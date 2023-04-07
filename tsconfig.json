@@ -6,10 +6,7 @@
         "sourceMap": true,
         "alwaysStrict": false,
         "outDir": "./dist",
-        "lib": [
-            "ES2018"
-        ],
-        "target": "ES2018",
+        "target": "ESNext",
         "declaration": false,
         "strictNullChecks": true,
         "allowSyntheticDefaultImports": true,
