@@ -11,3 +11,7 @@ tests/
 .gitignore
 .travis.yml
 book.json
+tsconfig.json
+jsconfig.json
+jest.config.ts
+*.tgz

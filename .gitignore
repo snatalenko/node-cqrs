@@ -9,6 +9,8 @@ app/tests/coverage/
 .bower-*/
 coverage/
 .nyc_output/
+dist/
+*.tgz
 
 # IDE's
 # =====

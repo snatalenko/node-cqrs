@@ -5,8 +5,9 @@ const {
 	InMemoryEventStorage,
 	CommandBus,
 	EventStore,
-	AggregateCommandHandler
-} = require('../../src'); // node-cqrs
+	AggregateCommandHandler,
+	InMemoryMessageBus
+} = require('../..'); // node-cqrs
 const UserAggregate = require('./UserAggregate');
 const UsersProjection = require('./UsersProjection');
 
@@ -32,9 +33,10 @@ exports.createContainer = () => {
  */
 exports.createBaseInstances = () => {
 	// create infrastructure services
+	const messageBus = new InMemoryMessageBus();
 	const storage = new InMemoryEventStorage();
-	const eventStore = new EventStore({ storage });
-	const commandBus = new CommandBus();
+	const eventStore = new EventStore({ storage, messageBus });
+	const commandBus = new CommandBus({ messageBus });
 
 	/** @type {IAggregateConstructor} */
 	const aggregateType = UserAggregate;
