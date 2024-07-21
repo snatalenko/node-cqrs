@@ -89,7 +89,7 @@ export class EventStore implements IEventStore {
 	}
 
 	/** Retrieve all events of specific types */
-	async* getAllEvents(eventTypes: string[]): IEventStream {
+	async* getAllEvents(eventTypes?: string[]): IEventStream {
 		if (eventTypes && !Array.isArray(eventTypes))
 			throw new TypeError('eventTypes, if specified, must be an Array');
 

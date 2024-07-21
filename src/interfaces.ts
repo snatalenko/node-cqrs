@@ -162,7 +162,7 @@ export interface IEventStorage {
 
 	commitEvents(events: IEventSet): Promise<IEventSet>;
 
-	getEvents(eventTypes: Readonly<string[]>): IEventStream;
+	getEvents(eventTypes?: Readonly<string[]>): IEventStream;
 
 	getAggregateEvents(aggregateId: Identifier, options?: { snapshot?: IEvent }): Promise<IEventSet>;
 
