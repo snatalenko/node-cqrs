@@ -1,5 +1,5 @@
 import { ILockable, ILockableWithIndication } from "../interfaces";
-import { Deferred } from "./Deferred";
+import { Deferred } from "./utils";
 
 export class InMemoryLock implements ILockableWithIndication {
 

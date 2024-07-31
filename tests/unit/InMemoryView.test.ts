@@ -1,8 +1,6 @@
 import { InMemoryView } from '../../src/infrastructure/InMemoryView';
 import { expect, assert } from 'chai';
-
-/** Create promise that waits for the next node loop cycle */
-const nextCycle = () => new Promise(setImmediate);
+import { nextCycle } from '../../src/infrastructure/utils';
 
 describe('InMemoryView', function () {
 

@@ -14,7 +14,7 @@ export * from './infrastructure/InMemoryEventStorage';
 export * from './infrastructure/InMemorySnapshotStorage';
 export * from './infrastructure/InMemoryView';
 export * from './infrastructure/InMemoryLock';
-export * from './infrastructure/Deferred';
+export * from './infrastructure/utils/Deferred';
 
 export * as Event from './Event';
 export {

@@ -1,7 +1,6 @@
 import { InMemoryLock } from './InMemoryLock';
 import { IProjectionView, Identifier } from "../interfaces";
-
-const nextCycle = () => new Promise(setImmediate);
+import { nextCycle } from './utils';
 
 /**
  * Update given value with an update Cb and return updated value.
