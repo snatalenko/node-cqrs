@@ -24,14 +24,17 @@
     "node": ">=10.3.0"
   },
   "scripts": {
+    "pretest": "npm run build",
     "test": "jest --verbose tests/unit",
     "test:coverage": "jest --collect-coverage tests/unit",
+    "pretest:integration": "npm run build",
     "test:integration": "jest --verbose examples/user-domain-tests",
     "pretest:coveralls": "npm run test:coverage",
     "test:coveralls": "cat ./coverage/lcov.info | coveralls",
     "posttest:coveralls": "rm -rf ./coverage",
     "changelog": "conventional-changelog -n ./scripts/changelog -i CHANGELOG.md -s",
-    "build": "tsc",
+    "clean": "tsc --build --clean",
+    "build": "tsc --build",
     "prepare": "npm run build",
     "preversion": "npm test",
     "version": "npm run changelog && git add CHANGELOG.md"
