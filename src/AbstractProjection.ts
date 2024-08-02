@@ -30,7 +30,7 @@ const asProjectionView = (view: any): IProjectionView => (isProjectionView(view)
 /**
  * Base class for Projection definition
  */
-export abstract class AbstractProjection<TView extends IProjectionView | IPersistentView = InMemoryView<any>> implements IProjection<TView> {
+export abstract class AbstractProjection<TView extends IProjectionView | IPersistentView> implements IProjection<TView> {
 
 	/**
 	 * Optional list of event types being handled by projection.
