@@ -1,7 +1,7 @@
 // @ts-check
 'use strict';
 
-const { AbstractAggregate } = require('../../src'); // node-cqrs
+const { AbstractAggregate } = require('../..'); // node-cqrs
 
 const crypto = require('crypto');
 
@@ -68,12 +68,10 @@ class UserAggregate extends AbstractAggregate {
 	}
 
 	/**
-	 * Aggregate state
-	 *
-	 * @readonly
+	 * Creates an instance of UserAggregate
 	 */
-	get state() {
-		return this._state || (this._state = new UserAggregateState());
+	constructor({ id, events }) {
+		super({ id, events, state: new UserAggregateState() });
 	}
 
 	/**
