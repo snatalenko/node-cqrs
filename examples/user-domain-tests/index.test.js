@@ -2,12 +2,16 @@
 
 const { expect } = require('chai');
 const { createContainer, createBaseInstances } = require('../user-domain');
+const { nextCycle } = require('../../src/infrastructure/utils');
 
 describe('user-domain example', () => {
 
 	const testEventFlow = async container => {
 
 		const { commandBus, eventStore } = container;
+
+		// HACK: let projection restoring to start before emitting new events
+		await nextCycle();
 
 		// we send a command to an aggregate that does not exist yet (userAggregateId = undefined),
 		// a new instance will be created automatically
@@ -50,6 +54,9 @@ describe('user-domain example', () => {
 	const testProjection = async container => {
 
 		const { commandBus, eventStore, users } = container;
+
+		// HACK: let projection restoring to start before emitting new events
+		await nextCycle();
 
 		await commandBus.send('createUser', undefined, {
 			payload: {
