@@ -1,3 +1,15 @@
+# [1.0.0-rc.0](https://github.com/snatalenko/node-cqrs/compare/v0.16.4...v1.0.0-rc.0) (2024-08-02)
+
+
+### Fixes
+
+* Vulnerability in minimist dependency ([07b8c68](https://github.com/snatalenko/node-cqrs/commit/07b8c682fae4278965aa13a06caa994c037934e9))
+
+### Refactoring
+
+* Migrate to TS and Jest ([6737d55](https://github.com/snatalenko/node-cqrs/commit/6737d5566a9dc6314df0b20a65d32414fc503e54))
+
+
 ## [0.16.4](https://github.com/snatalenko/node-cqrs/compare/v0.16.3...v0.16.4) (2022-08-28)
 
 
