@@ -1,21 +1,17 @@
-name: Test
+name: Audit
 
 on: ["push", "pull_request"]
 
 jobs:
-  test:
+  audit:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        node-version: [20.x]
     steps:
     - uses: actions/checkout@v3
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
-    - run: npm ci --no-optional
-      env:
-        CI: true
-    - run: npm run test
-    - run: npm run test:integration
+    - run: npm audit --parseable --production --audit-level=moderate
