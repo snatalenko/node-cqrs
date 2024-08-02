@@ -9,7 +9,6 @@ tests/
 .eslintrc.json
 .eslintignore
 .gitignore
-.travis.yml
 book.json
 tsconfig.json
 jsconfig.json
