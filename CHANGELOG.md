@@ -1,3 +1,12 @@
+# [1.0.0-rc.1](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.0...v1.0.0-rc.1) (2024-08-03)
+
+
+### Build System
+
+* Add NPM publishing script ([3372990](https://github.com/snatalenko/node-cqrs/commit/3372990ba2549695398e0949e35009396e660005))
+* Suppress audit and test for tags ([574a00c](https://github.com/snatalenko/node-cqrs/commit/574a00cc53af009994ca4dd3278cb764743b4ad6))
+
+
 # [1.0.0-rc.0](https://github.com/snatalenko/node-cqrs/compare/v0.16.4...v1.0.0-rc.0) (2024-08-02)
 
 
