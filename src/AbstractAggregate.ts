@@ -1,6 +1,6 @@
 import {
 	IAggregate,
-	IAggregateState,
+	IMutableAggregateState,
 	ICommand,
 	Identifier,
 	IEvent,
@@ -22,7 +22,7 @@ const SNAPSHOT_EVENT_TYPE = 'snapshot';
 /**
  * Base class for Aggregate definition
  */
-export abstract class AbstractAggregate<TState extends IAggregateState|void> implements IAggregate {
+export abstract class AbstractAggregate<TState extends IMutableAggregateState | object | void> implements IAggregate {
 
 	/**
 	 * Optional list of commands handled by Aggregate.
@@ -43,7 +43,7 @@ export abstract class AbstractAggregate<TState extends IAggregateState|void> imp
 	#snapshotVersion: number | undefined;
 
 	/** Internal aggregate state */
-	protected state?: TState;
+	protected state: TState;
 
 	/** Command being handled by aggregate */
 	protected command?: ICommand;
@@ -125,7 +125,9 @@ export abstract class AbstractAggregate<TState extends IAggregateState|void> imp
 			this.restoreSnapshot(event);
 		}
 		else if (this.state) {
-			const handler = this.state.mutate || getHandler(this.state, event.type);
+			const handler = 'mutate' in this.state ?
+				this.state.mutate :
+				getHandler(this.state, event.type);
 			if (handler)
 				handler.call(this.state, event);
 		}

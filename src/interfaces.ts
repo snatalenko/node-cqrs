@@ -50,10 +50,10 @@ export interface IAggregate {
 	takeSnapshot(): void;
 }
 
-export interface IAggregateState {
+export interface IMutableAggregateState {
 	// schemaVersion?: number;
 	// constructor: IAggregateStateConstructor;
-	mutate?(event: IEvent): void;
+	mutate(event: IEvent): void;
 }
 
 // export interface IAggregateStateConstructor extends Function {
@@ -61,7 +61,7 @@ export interface IAggregateState {
 // 	new(): IAggregateState;
 // }
 
-export type IAggregateConstructorParams<TState extends IAggregateState | void> = {
+export type IAggregateConstructorParams<TState extends IMutableAggregateState | object | void> = {
 	/** Unique aggregate identifier */
 	id: Identifier,
 
@@ -72,12 +72,13 @@ export type IAggregateConstructorParams<TState extends IAggregateState | void> =
 	state?: TState
 };
 
-export interface IAggregateConstructor<TState extends IAggregateState | void> {
+export interface IAggregateConstructor<TState extends IMutableAggregateState | object | void> {
 	readonly handles?: string[];
 	new(options: IAggregateConstructorParams<TState>): IAggregate;
 }
 
-export type IAggregateFactory<TState extends IAggregateState | void> = (options: IAggregateConstructorParams<TState>) => IAggregate;
+export type IAggregateFactory<TState extends IMutableAggregateState | object | void> =
+	(options: IAggregateConstructorParams<TState>) => IAggregate;
 
 export interface ISaga {
 	/** Unique Saga ID */
