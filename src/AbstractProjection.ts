@@ -19,13 +19,14 @@ import {
 	subscribe
 } from './utils';
 
-const isProjectionView = (view: IProjectionView) =>
+const isProjectionView = (view: IProjectionView): view is IProjectionView =>
 	'ready' in view &&
 	'lock' in view &&
 	'unlock' in view &&
 	'once' in view;
 
-const asProjectionView = (view: any): IProjectionView => (isProjectionView(view) ? view : undefined);
+const asProjectionView = (view: any): IProjectionView | undefined =>
+	(isProjectionView(view) ? view : undefined);
 
 /**
  * Base class for Projection definition
