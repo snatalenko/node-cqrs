@@ -2,9 +2,13 @@ import { expect, assert, AssertionError } from 'chai';
 import * as sinon from 'sinon';
 import { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore, InMemoryMessageBus } from '../../src';
 
-class MyProjection extends AbstractProjection {
+class MyProjection extends AbstractProjection<InMemoryView<{ somethingHappenedCnt?: number }>> {
 	static get handles() {
 		return ['somethingHappened'];
+	}
+
+	get schemaVersion(): string {
+		return 'v1';
 	}
 
 	async _somethingHappened({ aggregateId, payload, context }) {
@@ -31,7 +35,7 @@ describe('AbstractProjection', function () {
 
 		it('returns a view storage associated with projection', () => {
 
-			const view = new InMemoryView();
+			const view = new InMemoryView<any>();
 			const proj = new MyProjection({ view });
 
 			expect(proj.view).to.equal(view);
@@ -54,7 +58,10 @@ describe('AbstractProjection', function () {
 
 		it('subscribes to all handlers defined', () => {
 
-			class ProjectionWithoutHandles extends AbstractProjection {
+			class ProjectionWithoutHandles extends AbstractProjection<any> {
+				get schemaVersion(): string {
+					return 'v1';
+				}
 				somethingHappened() { }
 				somethingHappened2() { }
 			}
@@ -68,7 +75,11 @@ describe('AbstractProjection', function () {
 
 		it('ignores overridden projection methods', () => {
 
-			class ProjectionWithoutHandles extends AbstractProjection {
+			class ProjectionWithoutHandles extends AbstractProjection<any> {
+				get schemaVersion(): string {
+					return 'v1';
+				}
+
 				somethingHappened() { }
 
 				/** overridden projection method */

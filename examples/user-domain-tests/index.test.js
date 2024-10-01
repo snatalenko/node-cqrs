@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const { createContainer, createBaseInstances } = require('../user-domain');
-const { nextCycle } = require('../../src/infrastructure/utils');
+const { nextCycle } = require('../../src/infrastructure/memory/utils');
 
 describe('user-domain example', () => {
 

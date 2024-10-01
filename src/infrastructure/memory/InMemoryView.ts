@@ -1,6 +1,7 @@
 import { InMemoryLock } from './InMemoryLock';
-import { IProjectionView, Identifier } from "../interfaces";
 import { nextCycle } from './utils';
+import { IObjectView } from '../../interfaces/IObjectView';
+import { IProjectionView } from '../../interfaces/IProjectionView';
 
 /**
  * Update given value with an update Cb and return updated value.
@@ -16,13 +17,13 @@ function applyUpdate<T>(view: T | undefined, update: (r?: T) => T | undefined): 
 /**
  * In-memory Projection View, which suspends get()'s until it is ready
  */
-export class InMemoryView<TRecord> implements IProjectionView {
+export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TRecord> {
 
 	static factory<TView>(): TView {
 		return (new InMemoryView() as unknown) as TView;
 	}
 
-	protected _map: Map<Identifier, TRecord | undefined> = new Map();
+	protected _map: Map<string, TRecord | undefined> = new Map();
 
 	#lock: InMemoryLock;
 
@@ -77,12 +78,12 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	 *
 	 * @deprecated Use `async get()` instead
 	 */
-	has(key: Identifier): boolean {
+	has(key: string): boolean {
 		return this._map.has(key);
 	}
 
 	/** Get record with a given key; await until the view is restored */
-	async get(key: Identifier, options?: { nowait?: boolean }): Promise<TRecord | undefined> {
+	async get(key: string, options?: { nowait?: boolean }): Promise<TRecord | undefined> {
 		if (!key)
 			throw new TypeError('key argument required');
 
@@ -95,8 +96,8 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	}
 
 	/** Get all records matching an optional filter */
-	async getAll(filter?: (r: TRecord | undefined, i: Identifier) => boolean):
-		Promise<Array<[Identifier, TRecord | undefined]>> {
+	async getAll(filter?: (r: TRecord | undefined, i: string) => boolean):
+		Promise<Array<[string, TRecord | undefined]>> {
 		if (filter && typeof filter !== 'function')
 			throw new TypeError('filter argument, when defined, must be a Function');
 
@@ -105,7 +106,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 
 		await nextCycle();
 
-		const r: Array<[Identifier, TRecord | undefined]> = [];
+		const r: Array<[string, TRecord | undefined]> = [];
 		for (const entry of this._map.entries()) {
 			if (!filter || filter(entry[1], entry[0]))
 				r.push(entry);
@@ -115,7 +116,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	}
 
 	/** Create record with a given key and value */
-	async create(key: Identifier, value: TRecord = {} as TRecord) {
+	async create(key: string, value: TRecord = {} as TRecord) {
 		if (!key)
 			throw new TypeError('key argument required');
 		if (typeof value === 'function')
@@ -131,7 +132,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	}
 
 	/** Update existing view record */
-	async update(key: Identifier, update: (r?: TRecord) => TRecord) {
+	async update(key: string, update: (r: TRecord) => TRecord) {
 		if (!key)
 			throw new TypeError('key argument required');
 		if (typeof update !== 'function')
@@ -144,7 +145,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	}
 
 	/** Update existing view record or create new */
-	async updateEnforcingNew(key: Identifier, update: (r?: TRecord) => TRecord) {
+	async updateEnforcingNew(key: string, update: (r?: TRecord) => TRecord) {
 		if (!key)
 			throw new TypeError('key argument required');
 		if (typeof update !== 'function')
@@ -170,7 +171,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	}
 
 	/** Update existing record */
-	private async _update(key: Identifier, update: (r?: TRecord) => TRecord) {
+	private async _update(key: string, update: (r?: TRecord) => TRecord) {
 		const value = this._map.get(key);
 		const updatedValue = applyUpdate(value, update);
 
@@ -181,7 +182,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	}
 
 	/** Delete record */
-	async delete(key: Identifier) {
+	async delete(key: string) {
 		if (!key)
 			throw new TypeError('key argument required');
 

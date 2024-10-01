@@ -1,4 +1,7 @@
-import { IEvent, IEventStorage, IEventSet, IEventStream } from "../interfaces";
+import { IEvent } from "../../interfaces/IEvent";
+import { IEventSet } from "../../interfaces/IEventSet";
+import { EventQueryAfter, IEventStorage } from "../../interfaces/IEventStorage";
+import { IEventStream } from "../../interfaces/IEventStream";
 import { nextCycle } from "./utils";
 
 /**
@@ -9,7 +12,6 @@ import { nextCycle } from "./utils";
  * @implements {IEventStorage}
  */
 export class InMemoryEventStorage implements IEventStorage {
-
 	#nextId: number = 0;
 	#events: IEventSet = [];
 
@@ -61,8 +63,33 @@ export class InMemoryEventStorage implements IEventStorage {
 		}
 	}
 
-	getNewId(): number {
+	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
+		await nextCycle();
+
+		let newEvents: IEventSet;
+		if (options?.afterEvent) {
+			const lastEventId = options.afterEvent.id;
+			if (!lastEventId)
+				throw new TypeError('options.afterEvent.id is required');
+
+			const lastEventIndex = this.#events.findIndex(e => e.id === lastEventId);
+			if (!lastEventIndex)
+				throw new TypeError(`Event "${lastEventId}" could not be found`);
+
+			newEvents = this.#events.slice(lastEventIndex + 1);
+		}
+		else {
+			newEvents = this.#events;
+		}
+
+		for await (const event of newEvents) {
+			if (!eventTypes || eventTypes.includes(event.type))
+				yield event;
+		}
+	}
+
+	getNewId(): string {
 		this.#nextId += 1;
-		return this.#nextId;
+		return String(this.#nextId);
 	}
 }

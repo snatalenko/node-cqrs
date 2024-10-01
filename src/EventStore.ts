@@ -1,8 +1,6 @@
 import {
 	IAggregateSnapshotStorage,
-	Identifier,
 	IEvent,
-	IEventQueryFilter,
 	IEventStorage,
 	IEventSet,
 	IExtendableLogger,
@@ -11,7 +9,9 @@ import {
 	IMessageHandler,
 	IObservable,
 	IEventStream,
-	IEventStore
+	IEventStore,
+	EventQueryAfter,
+	EventQueryBefore
 } from "./interfaces";
 import { getClassName, setupOneTimeEmitterSubscription } from "./utils";
 import * as Event from './Event';
@@ -83,8 +83,9 @@ export class EventStore implements IEventStore {
 		this.#messageBus = messageBus;
 	}
 
+
 	/** Retrieve new ID from the storage */
-	async getNewId(): Promise<Identifier> {
+	async getNewId(): Promise<string> {
 		return this.#storage.getNewId();
 	}
 
@@ -102,8 +103,14 @@ export class EventStore implements IEventStore {
 		this.#logger?.debug(`${eventTypes ? eventTypes.join(', ') : 'all'} events retrieved`);
 	}
 
+	async* getEventsByTypes(eventTypes: Readonly<string[]>, options: EventQueryAfter): IEventStream {
+		const eventsIterable = await this.#storage.getEventsByTypes(eventTypes, options);
+
+		yield* eventsIterable;
+	}
+
 	/** Retrieve all events of specific Aggregate */
-	async getAggregateEvents(aggregateId: Identifier): Promise<IEventSet> {
+	async getAggregateEvents(aggregateId: string): Promise<IEventSet> {
 		if (!aggregateId)
 			throw new TypeError('aggregateId argument required');
 
@@ -127,7 +134,7 @@ export class EventStore implements IEventStore {
 	}
 
 	/** Retrieve events of specific Saga */
-	async getSagaEvents(sagaId: Identifier, filter: Pick<IEventQueryFilter, "beforeEvent">) {
+	async getSagaEvents(sagaId: string, filter: EventQueryBefore) {
 		if (!sagaId)
 			throw new TypeError('sagaId argument required');
 		if (!filter)

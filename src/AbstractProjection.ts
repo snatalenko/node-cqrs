@@ -1,15 +1,15 @@
-import { InMemoryView } from './infrastructure/InMemoryView';
-
+import { describe } from './Event';
+import { InMemoryView } from './infrastructure/memory/InMemoryView';
 import {
 	IProjectionView,
-	IEvent,
 	IPersistentView,
-	IEventStore,
-	IExtendableLogger,
-	ILogger,
 	IProjection,
-	IViewFactory
-} from "./interfaces";
+	IViewFactory,
+	ILogger,
+	IExtendableLogger,
+	IEventStore,
+	IEvent
+} from './interfaces';
 
 import {
 	getClassName,
@@ -28,6 +28,11 @@ const isProjectionView = (view: IProjectionView): view is IProjectionView =>
 const asProjectionView = (view: any): IProjectionView | undefined =>
 	(isProjectionView(view) ? view : undefined);
 
+const isPersistentView = (view: any): view is IPersistentView =>
+	'getLastEvent' in view &&
+	'tryMarkAsProjecting' in view &&
+	'markAsProjected' in view;
+
 /**
  * Base class for Projection definition
  */
@@ -42,12 +47,14 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 		return undefined;
 	}
 
+	abstract get schemaVersion(): string;
+
 	/**
 	 * Default view associated with projection
 	 */
 	get view(): TView {
 		if (!this.#view)
-			this.#view = this.#viewFactory();
+			this.#view = this.#viewFactory({ schemaVersion: this.schemaVersion });
 
 		return this.#view;
 	}
@@ -64,10 +71,11 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 	/**
 	 * Indicates if view should be restored from EventStore on start.
 	 * Override for custom behavior.
+	 * 
+	 * @deprecated View must implement `getLastEvent()` instead
 	 */
 	get shouldRestoreView(): boolean | Promise<boolean> {
-		return (this.view instanceof Map)
-			|| (this.view instanceof InMemoryView);
+		throw new Error('shouldRestoreView is deprecated');
 	}
 
 	constructor({
@@ -81,9 +89,8 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 	} = {}) {
 		validateHandlers(this);
 
-		this.#viewFactory = view ?
-			() => view :
-			viewFactory;
+		this.#view = view;
+		this.#viewFactory = viewFactory;
 
 		this._logger = logger && 'child' in logger ?
 			logger.child({ service: getClassName(this) }) :
@@ -114,7 +121,17 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 		if (!handler)
 			throw new Error(`'${event.type}' handler is not defined or not a function`);
 
-		return handler.call(this, event);
+		const persistentView = isPersistentView(this.view) ? this.view : undefined;
+		if (persistentView) {
+			const eventLockObtained = await persistentView.tryMarkAsProjecting(event);
+			if (!eventLockObtained)
+				return;
+		}
+
+		await handler.call(this, event);
+
+		if (persistentView)
+			await persistentView.markAsProjected(event);
 	}
 
 	/** Restore projection view from event store */
@@ -125,9 +142,7 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 		if (concurrentView)
 			await concurrentView.lock();
 
-		const shouldRestore = await this.shouldRestoreView;
-		if (shouldRestore)
-			await this._restore(eventStore);
+		await this._restore(eventStore);
 
 		if (concurrentView)
 			concurrentView.unlock();
@@ -140,10 +155,19 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 		if (typeof eventStore.getAllEvents !== 'function')
 			throw new TypeError('eventStore.getAllEvents must be a Function');
 
-		this._logger?.debug('retrieving events and restoring projection...');
+		this._logger?.debug('retrieving last event projected');
+
+		const lastEvent = isPersistentView(this.view) ?
+			await this.view.getLastEvent() :
+			undefined;
+
+		this._logger?.debug(`retrieving ${lastEvent ? `events after ${describe(lastEvent)}` : 'all events'}...`);
 
 		const messageTypes = getHandledMessageTypes(this);
-		const eventsIterable = eventStore.getAllEvents(messageTypes);
+		const eventsIterable = lastEvent ?
+			eventStore.getEventsByTypes(messageTypes, { afterEvent: lastEvent }) :
+			eventStore.getAllEvents(messageTypes);
+
 		let eventsCount = 0;
 		const startTs = Date.now();
 

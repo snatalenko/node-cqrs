@@ -1,10 +1,8 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
 import { EventStore } from '../../src/EventStore';
-import { InMemoryEventStorage } from '../../src/infrastructure/InMemoryEventStorage';
-import { InMemorySnapshotStorage } from '../../src/infrastructure/InMemorySnapshotStorage';
-import { InMemoryMessageBus } from '../../src/infrastructure/InMemoryMessageBus';
-import { IAggregateSnapshotStorage, IEvent, IEventStorage, IEventStore, IEventSet, IMessageBus } from '../../src/interfaces';
+import { InMemoryEventStorage, InMemorySnapshotStorage, InMemoryMessageBus } from '../../src';
+import { IAggregateSnapshotStorage, IEvent, IEventStorage, IEventStore, IMessageBus } from '../../src/interfaces';
 
 const goodContext = {
 	uid: '1',
@@ -189,7 +187,7 @@ describe('EventStore', function () {
 	describe('getNewId', () => {
 
 		it('retrieves a unique ID for new aggregate from storage', () => Promise.resolve(es.getNewId()).then(id => {
-			expect(id).to.equal(1);
+			expect(id).to.equal('1');
 		}));
 	});
 

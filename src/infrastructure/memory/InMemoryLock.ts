@@ -1,25 +1,14 @@
-import { ILockable, ILockableWithIndication } from "../interfaces";
 import { Deferred } from "./utils";
 
-export class InMemoryLock implements ILockableWithIndication {
+export class InMemoryLock {
 
 	#lockMarker: Deferred<void> | undefined;
-	#innerLock: ILockable | undefined;
 
 	/**
 	 * Indicates if lock is acquired
 	 */
 	get locked(): boolean {
 		return !!this.#lockMarker;
-	}
-
-	/**
-	 * Creates an instance of InMemoryLock
-	 *
-	 * @param innerLock ILockable instance that can persist lock state outside of the current process
-	 */
-	constructor(innerLock?: ILockable) {
-		this.#innerLock = innerLock;
 	}
 
 	/**
@@ -32,8 +21,6 @@ export class InMemoryLock implements ILockableWithIndication {
 
 		try {
 			this.#lockMarker = new Deferred();
-			if (this.#innerLock)
-				await this.#innerLock.lock();
 		}
 		catch (err: any) {
 			try {
@@ -50,14 +37,8 @@ export class InMemoryLock implements ILockableWithIndication {
 	 * Release the lock acquired earlier
 	 */
 	async unlock(): Promise<void> {
-		try {
-			if (this.#innerLock)
-				await this.#innerLock.unlock();
-		}
-		finally {
-			this.#lockMarker?.resolve();
-			this.#lockMarker = undefined;
-		}
+		this.#lockMarker?.resolve();
+		this.#lockMarker = undefined;
 	}
 
 	/**

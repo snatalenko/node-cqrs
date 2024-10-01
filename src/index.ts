@@ -9,12 +9,12 @@ export * from './AbstractSaga';
 export * from './SagaEventHandler';
 export * from './AbstractProjection';
 
-export * from './infrastructure/InMemoryMessageBus';
-export * from './infrastructure/InMemoryEventStorage';
-export * from './infrastructure/InMemorySnapshotStorage';
-export * from './infrastructure/InMemoryView';
-export * from './infrastructure/InMemoryLock';
-export * from './infrastructure/utils/Deferred';
+export * from './infrastructure/memory/InMemoryMessageBus';
+export * from './infrastructure/memory/InMemoryEventStorage';
+export * from './infrastructure/memory/InMemorySnapshotStorage';
+export * from './infrastructure/memory/InMemoryView';
+export * from './infrastructure/memory/InMemoryLock';
+export * from './infrastructure/memory/utils/Deferred';
 
 export * as Event from './Event';
 export {
