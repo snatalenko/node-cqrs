@@ -34,7 +34,6 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		singletones: object
 	}) {
 		super(options);
-		super.register(InMemoryMessageBus).as('messageBus');
 		super.register(EventStore).as('eventStore');
 		super.register(CommandBus).as('commandBus');
 	}
