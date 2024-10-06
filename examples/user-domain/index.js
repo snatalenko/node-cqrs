@@ -19,6 +19,7 @@ exports.createContainer = () => {
 
 	// register infrastructure services
 	builder.register(InMemoryEventStorage).as('storage');
+	builder.register(InMemoryMessageBus).as('messageBus');
 
 	// register domain entities
 	builder.registerAggregate(UserAggregate);
