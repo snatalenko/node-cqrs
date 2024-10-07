@@ -13,7 +13,12 @@ import {
 	EventQueryAfter,
 	EventQueryBefore
 } from "./interfaces";
-import { getClassName, setupOneTimeEmitterSubscription } from "./utils";
+import {
+	getClassName,
+	setupOneTimeEmitterSubscription,
+	isIObservable,
+	CompoundEmitter
+} from "./utils";
 import * as Event from './Event';
 
 const isIEventStorage = (storage: IEventStorage): storage is IEventStorage =>
@@ -23,13 +28,6 @@ const isIEventStorage = (storage: IEventStorage): storage is IEventStorage =>
 	&& typeof storage.getEvents === 'function'
 	&& typeof storage.getAggregateEvents === 'function'
 	&& typeof storage.getSagaEvents === 'function';
-
-const isIObservable = (obj: IObservable | any): obj is IObservable =>
-	obj
-	&& 'on' in obj
-	&& typeof obj.on === 'function'
-	&& 'off' in obj
-	&& typeof obj.off === 'function';
 
 const isIMessageBus = (bus: IMessageBus | any): bus is IMessageBus =>
 	bus
@@ -43,14 +41,13 @@ const SNAPSHOT_EVENT_TYPE = 'snapshot';
 
 export class EventStore implements IEventStore {
 
-	#publishAsync: boolean;
 	#validator: (event: IEvent<any>) => void;
 	#logger?: ILogger;
 	#storage: IEventStorage;
 	#messageBus?: IMessageBus;
 	#snapshotStorage: IAggregateSnapshotStorage | undefined;
 	#sagaStarters: string[] = [];
-	#defaultEventEmitter: IObservable;
+	#compoundEmitter: CompoundEmitter;
 
 	/** Whether storage supports aggregate snapshots */
 	get snapshotsSupported(): boolean {
@@ -62,16 +59,12 @@ export class EventStore implements IEventStore {
 		messageBus,
 		snapshotStorage,
 		eventValidator = Event.validate,
-		eventStoreConfig,
 		logger
 	}: {
 		storage: IEventStorage,
 		messageBus?: IMessageBus,
 		snapshotStorage?: IAggregateSnapshotStorage,
 		eventValidator?: IMessageHandler,
-		eventStoreConfig?: {
-			publishAsync?: boolean
-		},
 		logger?: ILogger | IExtendableLogger
 	}) {
 		if (!storage)
@@ -80,14 +73,7 @@ export class EventStore implements IEventStore {
 			throw new TypeError('storage does not implement IEventStorage interface');
 		if (messageBus && !isIMessageBus(messageBus))
 			throw new TypeError('messageBus does not implement IMessageBus interface');
-		if (messageBus && isIObservable(storage))
-			throw new TypeError('both storage and messageBus implement IObservable interface, it is not yet supported');
 
-		const defaultEventEmitter = isIObservable(storage) ? storage : messageBus;
-		if (!defaultEventEmitter)
-			throw new TypeError('storage must implement IObservable if messageBus is not injected');
-
-		this.#publishAsync = eventStoreConfig?.publishAsync ?? true;
 		this.#validator = eventValidator;
 		this.#logger = logger && 'child' in logger ?
 			logger.child({ service: getClassName(this) }) :
@@ -95,7 +81,7 @@ export class EventStore implements IEventStore {
 		this.#storage = storage;
 		this.#snapshotStorage = snapshotStorage;
 		this.#messageBus = messageBus;
-		this.#defaultEventEmitter = defaultEventEmitter;
+		this.#compoundEmitter = new CompoundEmitter(messageBus, storage);
 	}
 
 
@@ -183,10 +169,10 @@ export class EventStore implements IEventStore {
 	/**
 	 * Validate events, commit to storage and publish to messageBus, if needed
 	 *
-	 * @param {IEventSet} events - a set of events to commit
-	 * @returns {Promise<IEventSet>} - resolves to signed and committed events
+	 * @param events - a set of events to commit
+	 * @returns Signed and committed events
 	 */
-	async commit(events) {
+	async commit(events: IEventSet): Promise<IEventSet> {
 		if (!Array.isArray(events))
 			throw new TypeError('events argument must be an Array');
 
@@ -195,12 +181,12 @@ export class EventStore implements IEventStore {
 			await this.#attachSagaIdToSagaStarterEvents(events) :
 			events;
 
-		const eventStreamWithoutSnapshots = await this.save(augmentedEvents);
+		const eventStreamWithoutSnapshots = await this.persistEventsAndSnapshots(augmentedEvents);
 
 		// after events are saved to the persistent storage,
 		// publish them to the event bus (i.e. RabbitMq)
 		if (this.#messageBus)
-			await this.#publish(eventStreamWithoutSnapshots);
+			await this.publishEvents(eventStreamWithoutSnapshots);
 
 		return eventStreamWithoutSnapshots;
 	}
@@ -225,8 +211,12 @@ export class EventStore implements IEventStore {
 		return augmentedEvents;
 	}
 
-	/** Save events to the persistent storage(s) */
-	async save(events: IEventSet): Promise<IEventSet> {
+	/**
+	 * Save events and snapshots to the persistent storages
+	 * 
+	 * @returns Event set without "snapshot" events
+	 */
+	protected async persistEventsAndSnapshots(events: IEventSet): Promise<IEventSet> {
 		if (!Array.isArray(events))
 			throw new TypeError('events argument must be an Array');
 
@@ -253,20 +243,11 @@ export class EventStore implements IEventStore {
 		return eventsWithoutSnapshot;
 	}
 
-	async #publish(events: IEventSet) {
-		if (this.#publishAsync) {
-			this.#logger?.debug(`publishing ${Event.describeMultiple(events)} asynchronously...`);
-			setImmediate(() => this.#publishEvents(events));
-		}
-		else {
-			this.#logger?.debug(`publishing ${Event.describeMultiple(events)} synchronously...`);
-			await this.#publishEvents(events);
-		}
-	}
-
-	async #publishEvents(events: IEventSet) {
+	protected async publishEvents(events: IEventSet) {
 		if (!this.#messageBus)
-			return;
+			throw new Error('No messageBus injected, events cannot be published');
+
+		this.#logger?.debug(`publishing ${Event.describeMultiple(events)}...`);
 
 		try {
 			await Promise.all(events.map(event =>
@@ -282,41 +263,22 @@ export class EventStore implements IEventStore {
 		}
 	}
 
-	/** Setup a listener for a specific event type */
 	on(messageType: string, handler: IMessageHandler) {
-		if (typeof messageType !== 'string' || !messageType.length)
-			throw new TypeError('messageType argument must be a non-empty String');
-		if (typeof handler !== 'function')
-			throw new TypeError('handler argument must be a Function');
-		if (arguments.length !== 2)
-			throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
-
-		if (isIObservable(this.#storage))
-			this.#storage.on(messageType, handler);
-
-		this.#messageBus?.on(messageType, handler);
+		this.#compoundEmitter.on(messageType, handler);
 	}
 
-	/** Remove previously installed listener */
 	off(messageType: string, handler: IMessageHandler) {
-		if (isIObservable(this.#storage))
-			this.#storage.off(messageType, handler);
-
-		this.#messageBus?.off(messageType, handler);
+		this.#compoundEmitter.off(messageType, handler);
 	}
 
-	/** Get or create a named queue, which delivers events to a single handler only */
 	queue(name: string): IObservable {
-		if (!this.#defaultEventEmitter.queue)
-			throw new Error('Named queues are not supported by the underlying message bus');
-
-		return this.#defaultEventEmitter.queue(name);
+		return this.#compoundEmitter.queue(name);
 	}
 
 	/** Creates one-time subscription for one or multiple events that match a filter */
-	once(messageTypes: string | string[], handler: IMessageHandler, filter: (e: IEvent) => boolean): Promise<IEvent> {
+	once(messageTypes: string | string[], handler?: IMessageHandler, filter?: (e: IEvent) => boolean): Promise<IEvent> {
 		const subscribeTo = Array.isArray(messageTypes) ? messageTypes : [messageTypes];
 
-		return setupOneTimeEmitterSubscription(this.#defaultEventEmitter, subscribeTo, filter, handler, this.#logger);
+		return setupOneTimeEmitterSubscription(this.#compoundEmitter, subscribeTo, filter, handler, this.#logger);
 	}
 }

@@ -161,27 +161,6 @@ describe('EventStore', function () {
 				expect(err).to.have.property('message', 'storage commit failure');
 			});
 		});
-
-		it('emits events asynchronously after processing is done', function (done) {
-
-			let committed = 0;
-			let emitted = 0;
-
-			es.on('somethingHappened', function (event) {
-
-				expect(committed).to.not.equal(0);
-				expect(emitted).to.equal(0);
-				emitted++;
-
-				expect(event).to.have.property('type', 'somethingHappened');
-				expect(event).to.have.property('context');
-				expect(event.context).to.have.property('ip', goodContext.ip);
-
-				done();
-			});
-
-			es.commit([goodEvent]).then(() => committed++).catch(done);
-		});
 	});
 
 	describe('getNewId', () => {
@@ -288,7 +267,7 @@ describe('EventStore', function () {
 
 		it('sets up multiple handlers for same messageType, when queue name is not defined (Projections)', () => {
 
-			es = new EventStore({ storage, eventStoreConfig: { publishAsync: false }, messageBus });
+			es = new EventStore({ storage, messageBus });
 
 			const projection1Handler = sinon.spy();
 			const projection2Handler = sinon.spy();
