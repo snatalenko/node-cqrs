@@ -28,7 +28,7 @@
     "test": "jest --verbose tests/unit",
     "test:coverage": "jest --collect-coverage tests/unit",
     "pretest:integration": "npm run build",
-    "test:integration": "jest --verbose examples/user-domain-tests",
+    "test:integration": "jest --verbose tests/integration examples/user-domain-tests",
     "pretest:coveralls": "npm run test:coverage",
     "test:coveralls": "cat ./coverage/lcov.info | coveralls",
     "posttest:coveralls": "rm -rf ./coverage",
