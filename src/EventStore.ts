@@ -250,8 +250,8 @@ export class EventStore implements IEventStore {
 		this.#logger?.debug(`publishing ${Event.describeMultiple(events)}...`);
 
 		try {
-			await Promise.all(events.map(event =>
-				this.#messageBus?.publish(event)));
+			for (const event of events)
+				this.#messageBus.publish(event);
 
 			this.#logger?.debug(`${Event.describeMultiple(events)} published`);
 		}
