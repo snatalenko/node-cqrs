@@ -22,7 +22,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		return (new InMemoryView() as unknown) as TView;
 	}
 
-	protected _map: Map<Identifier, TRecord | undefined> = new Map();
+	protected _map: Map<Identifier, TRecord> = new Map();
 
 	#lock: InMemoryLock;
 
@@ -94,6 +94,16 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		return this._map.get(key);
 	}
 
+	/**
+	 * Get record with a given key synchronously
+	 */
+	getSync(key: Identifier): TRecord | undefined {
+		if (!key)
+			throw new TypeError('key argument required');
+
+		return this._map.get(key);
+	}
+
 	/** Get all records matching an optional filter */
 	async getAll(filter?: (r: TRecord | undefined, i: Identifier) => boolean):
 		Promise<Array<[Identifier, TRecord | undefined]>> {
@@ -131,7 +141,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	}
 
 	/** Update existing view record */
-	async update(key: Identifier, update: (r?: TRecord) => TRecord) {
+	async update(key: Identifier, update: (r: TRecord) => TRecord) {
 		if (!key)
 			throw new TypeError('key argument required');
 		if (typeof update !== 'function')
@@ -157,7 +167,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	}
 
 	/** Update all records that match filter criteria */
-	async updateAll(filter: (r?: TRecord) => boolean, update: (r?: TRecord) => TRecord) {
+	async updateAll(filter: (r: TRecord) => boolean, update: (r: TRecord) => TRecord) {
 		if (filter && typeof filter !== 'function')
 			throw new TypeError('filter argument, when specified, must be a Function');
 		if (typeof update !== 'function')
@@ -173,6 +183,8 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	private async _update(key: Identifier, update: (r?: TRecord) => TRecord) {
 		const value = this._map.get(key);
 		const updatedValue = applyUpdate(value, update);
+		if (updatedValue === undefined)
+			return;
 
 		if (this.#asyncWrites)
 			await nextCycle();
