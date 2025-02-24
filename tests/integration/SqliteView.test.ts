@@ -70,7 +70,8 @@ describe.only('SqliteView', () => {
 	});
 
 	afterEach(() => {
-		sqliteInMemoryDb.close();
+		if (sqliteInMemoryDb)
+			sqliteInMemoryDb.close();
 		if (existsSync(fileName))
 			unlinkSync(fileName);
 	});
