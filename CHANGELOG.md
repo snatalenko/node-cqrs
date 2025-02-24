@@ -1,3 +1,11 @@
+# [1.0.0-rc.5](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.4...v1.0.0-rc.5) (2024-10-27)
+
+
+### Changes
+
+* Add `InMemoryView.prototype.getSync` method ([5d4adb9](https://github.com/snatalenko/node-cqrs/commit/5d4adb9109c4c85edae2b0f3dfd995e8c51aef06))
+
+
 # [1.0.0-rc.4](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.3...v1.0.0-rc.4) (2024-10-02)
 
 

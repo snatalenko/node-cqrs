@@ -95,6 +95,16 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 		return this._map.get(key);
 	}
 
+	/**
+	 * Get record with a given key synchronously
+	 */
+	getSync(key: Identifier): TRecord | undefined {
+		if (!key)
+			throw new TypeError('key argument required');
+
+		return this._map.get(key);
+	}
+
 	/** Get all records matching an optional filter */
 	async getAll(filter?: (r: TRecord | undefined, i: string) => boolean):
 		Promise<Array<[string, TRecord | undefined]>> {
@@ -158,7 +168,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 	}
 
 	/** Update all records that match filter criteria */
-	async updateAll(filter: (r?: TRecord) => boolean, update: (r?: TRecord) => TRecord) {
+	async updateAll(filter: (r: TRecord) => boolean, update: (r: TRecord) => TRecord) {
 		if (filter && typeof filter !== 'function')
 			throw new TypeError('filter argument, when specified, must be a Function');
 		if (typeof update !== 'function')
@@ -174,6 +184,8 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 	private async _update(key: string, update: (r?: TRecord) => TRecord) {
 		const value = this._map.get(key);
 		const updatedValue = applyUpdate(value, update);
+		if (updatedValue === undefined)
+			return;
 
 		if (this.#asyncWrites)
 			await nextCycle();
