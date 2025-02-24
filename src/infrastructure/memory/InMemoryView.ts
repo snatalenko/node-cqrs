@@ -23,7 +23,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 		return (new InMemoryView() as unknown) as TView;
 	}
 
-	protected _map: Map<string, TRecord | undefined> = new Map();
+	protected _map: Map<string, TRecord> = new Map();
 
 	#lock: InMemoryLock;
 
@@ -98,7 +98,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 	/**
 	 * Get record with a given key synchronously
 	 */
-	getSync(key: Identifier): TRecord | undefined {
+	getSync(key: string): TRecord | undefined {
 		if (!key)
 			throw new TypeError('key argument required');
 
