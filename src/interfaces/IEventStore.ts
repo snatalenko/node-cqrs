@@ -11,13 +11,11 @@ export interface IEventStore extends IObservable {
 
 	commit(events: IEventSet): Promise<IEventSet>;
 
-	getAllEvents(eventTypes?: Readonly<string[]>): IEventStream;
+	getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream;
 
-	getEventsByTypes(eventTypes: Readonly<string[]>, options: EventQueryAfter): IEventStream;
+	getAggregateEvents(aggregateId: string, options?: { snapshot?: IEvent }): IEventStream;
 
-	getAggregateEvents(aggregateId: string, options?: { snapshot?: IEvent }): Promise<IEventSet>;
-
-	getSagaEvents(sagaId: string, options: EventQueryBefore): Promise<IEventSet>;
+	getSagaEvents(sagaId: string, options: EventQueryBefore): IEventStream;
 
 	once(messageTypes: string | string[], handler?: IMessageHandler, filter?: (e: IEvent) => boolean): Promise<IEvent>;
 

@@ -14,7 +14,8 @@ import {
 
 import {
 	subscribe,
-	getClassName
+	getClassName,
+	iteratorToArray
 } from './utils';
 
 /**
@@ -151,7 +152,8 @@ export class SagaEventHandler implements IEventReceptor {
 		if (!event.sagaId)
 			throw new TypeError(`${Event.describe(event)} does not contain sagaId`);
 
-		const events = await this.#eventStore.getSagaEvents(event.sagaId, { beforeEvent: event });
+		const eventsIterable = this.#eventStore.getSagaEvents(event.sagaId, { beforeEvent: event });
+		const events = await iteratorToArray(eventsIterable);
 
 		const saga = this.#sagaFactory.call(null, { id: event.sagaId, events });
 		this.#logger?.info(`Saga state restored from ${events.length} event(s)`);

@@ -20,12 +20,9 @@ export interface IEventStorage {
 
 	commitEvents(events: IEventSet): Promise<IEventSet>;
 
-	getEvents(eventTypes?: Readonly<string[]>): IEventStream;
+	getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream;
 
-	getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter):
-		IEventStream;
+	getAggregateEvents(aggregateId: string, options?: { snapshot?: IEvent }): Promise<IEventSet> | IEventStream;
 
-	getAggregateEvents(aggregateId: string, options?: { snapshot?: IEvent }): Promise<IEventSet>;
-
-	getSagaEvents(sagaId: string, options: EventQueryBefore): Promise<IEventSet>;
+	getSagaEvents(sagaId: string, options: EventQueryBefore): Promise<IEventSet> | IEventStream;
 }

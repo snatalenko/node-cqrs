@@ -7,9 +7,6 @@ import { nextCycle } from "./utils";
 /**
  * A simple event storage implementation intended to use for tests only.
  * Storage content resets on each app restart.
- *
- * @class InMemoryEventStorage
- * @implements {IEventStorage}
  */
 export class InMemoryEventStorage implements IEventStorage {
 	#nextId: number = 0;
@@ -25,11 +22,11 @@ export class InMemoryEventStorage implements IEventStorage {
 		return events;
 	}
 
-	async getAggregateEvents(aggregateId, options?: { snapshot: IEvent }): Promise<IEventSet> {
+	async *getAggregateEvents(aggregateId, options?: { snapshot: IEvent }): IEventStream {
 		await nextCycle();
 
 		const afterVersion = options?.snapshot?.aggregateVersion;
-		const result = !afterVersion ?
+		const results = !afterVersion ?
 			this.#events.filter(e => e.aggregateId == aggregateId) :
 			this.#events.filter(e =>
 				e.aggregateId == aggregateId &&
@@ -38,10 +35,10 @@ export class InMemoryEventStorage implements IEventStorage {
 
 		await nextCycle();
 
-		return result;
+		yield* results;
 	}
 
-	async getSagaEvents(sagaId, { beforeEvent }): Promise<IEventSet> {
+	async *getSagaEvents(sagaId, { beforeEvent }): IEventStream {
 		await nextCycle();
 
 		const results = this.#events.filter(e =>
@@ -51,39 +48,21 @@ export class InMemoryEventStorage implements IEventStorage {
 
 		await nextCycle();
 
-		return results;
-	}
-
-	async* getEvents(eventTypes): IEventStream {
-		await nextCycle();
-
-		for await (const event of this.#events) {
-			if (!eventTypes || eventTypes.includes(event.type))
-				yield event;
-		}
+		yield* results;
 	}
 
 	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
 		await nextCycle();
 
-		let newEvents: IEventSet;
-		if (options?.afterEvent) {
-			const lastEventId = options.afterEvent.id;
-			if (!lastEventId)
-				throw new TypeError('options.afterEvent.id is required');
+		const lastEventId = options?.afterEvent?.id;
+		if (options?.afterEvent && !lastEventId)
+			throw new TypeError('options.afterEvent.id is required');
 
-			const lastEventIndex = this.#events.findIndex(e => e.id === lastEventId);
-			if (!lastEventIndex)
-				throw new TypeError(`Event "${lastEventId}" could not be found`);
-
-			newEvents = this.#events.slice(lastEventIndex + 1);
-		}
-		else {
-			newEvents = this.#events;
-		}
-
-		for await (const event of newEvents) {
-			if (!eventTypes || eventTypes.includes(event.type))
+		let offsetFound = !lastEventId;
+		for (const event of this.#events) {
+			if (!offsetFound)
+				offsetFound = event.id === lastEventId;
+			else if (!eventTypes || eventTypes.includes(event.type))
 				yield event;
 		}
 	}

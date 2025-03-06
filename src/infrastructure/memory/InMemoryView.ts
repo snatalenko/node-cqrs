@@ -27,8 +27,6 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 
 	#lock: InMemoryLock;
 
-	#asyncWrites: boolean;
-
 	/** Whether the view is restored */
 	get ready(): boolean {
 		return !this.#lock.locked;
@@ -39,12 +37,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 		return this._map.size;
 	}
 
-	constructor(options?: {
-		/** Indicates if writes should be submitted asynchronously */
-		asyncWrites?: boolean
-	}) {
-		this.#asyncWrites = options?.asyncWrites ?? false;
-
+	constructor() {
 		this.#lock = new InMemoryLock();
 
 		// explicitly bind the `get` method to this object for easier using in Promises
@@ -132,9 +125,6 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 		if (typeof value === 'function')
 			throw new TypeError('value argument must be an instance of an Object');
 
-		if (this.#asyncWrites)
-			await nextCycle();
-
 		if (this._map.has(key))
 			throw new Error(`Key '${key}' already exists`);
 
@@ -187,9 +177,6 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 		if (updatedValue === undefined)
 			return;
 
-		if (this.#asyncWrites)
-			await nextCycle();
-
 		this._map.set(key, updatedValue);
 	}
 
@@ -197,9 +184,6 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 	async delete(key: string) {
 		if (!key)
 			throw new TypeError('key argument required');
-
-		if (this.#asyncWrites)
-			await nextCycle();
 
 		this._map.delete(key);
 	}

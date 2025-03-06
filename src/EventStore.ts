@@ -16,26 +16,11 @@ import {
 import {
 	getClassName,
 	setupOneTimeEmitterSubscription,
-	isIObservable,
-	CompoundEmitter
+	CompoundEmitter,
+	isIEventStorage,
+	isIMessageBus
 } from "./utils";
 import * as Event from './Event';
-
-const isIEventStorage = (storage: IEventStorage): storage is IEventStorage =>
-	storage
-	&& typeof storage.getNewId === 'function'
-	&& typeof storage.commitEvents === 'function'
-	&& typeof storage.getEvents === 'function'
-	&& typeof storage.getAggregateEvents === 'function'
-	&& typeof storage.getSagaEvents === 'function';
-
-const isIMessageBus = (bus: IMessageBus | any): bus is IMessageBus =>
-	bus
-	&& isIObservable(bus)
-	&& 'send' in bus
-	&& typeof bus.send === 'function'
-	&& 'publish' in bus
-	&& typeof bus.publish === 'function';
 
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
 
@@ -44,7 +29,7 @@ export class EventStore implements IEventStore {
 	#validator: (event: IEvent<any>) => void;
 	#logger?: ILogger;
 	#storage: IEventStorage;
-	#messageBus?: IMessageBus;
+	#supplementaryEventBus?: IMessageBus;
 	#snapshotStorage: IAggregateSnapshotStorage | undefined;
 	#sagaStarters: string[] = [];
 	#compoundEmitter: CompoundEmitter;
@@ -56,13 +41,15 @@ export class EventStore implements IEventStore {
 
 	constructor({
 		storage,
-		messageBus,
+		supplementaryEventBus,
 		snapshotStorage,
 		eventValidator = Event.validate,
 		logger
 	}: {
 		storage: IEventStorage,
-		messageBus?: IMessageBus,
+
+		/** Optional event dispatcher for publishing persisted events externally */
+		supplementaryEventBus?: IMessageBus,
 		snapshotStorage?: IAggregateSnapshotStorage,
 		eventValidator?: IMessageHandler,
 		logger?: ILogger | IExtendableLogger
@@ -71,8 +58,8 @@ export class EventStore implements IEventStore {
 			throw new TypeError('storage argument required');
 		if (!isIEventStorage(storage))
 			throw new TypeError('storage does not implement IEventStorage interface');
-		if (messageBus && !isIMessageBus(messageBus))
-			throw new TypeError('messageBus does not implement IMessageBus interface');
+		if (supplementaryEventBus && !isIMessageBus(supplementaryEventBus))
+			throw new TypeError('supplementaryEventBus does not implement IMessageBus interface');
 
 		this.#validator = eventValidator;
 		this.#logger = logger && 'child' in logger ?
@@ -80,8 +67,8 @@ export class EventStore implements IEventStore {
 			logger;
 		this.#storage = storage;
 		this.#snapshotStorage = snapshotStorage;
-		this.#messageBus = messageBus;
-		this.#compoundEmitter = new CompoundEmitter(messageBus, storage);
+		this.#supplementaryEventBus = supplementaryEventBus;
+		this.#compoundEmitter = new CompoundEmitter(supplementaryEventBus, storage);
 	}
 
 
@@ -90,28 +77,21 @@ export class EventStore implements IEventStore {
 		return this.#storage.getNewId();
 	}
 
-	/** Retrieve all events of specific types */
-	async* getAllEvents(eventTypes?: string[]): IEventStream {
-		if (eventTypes && !Array.isArray(eventTypes))
-			throw new TypeError('eventTypes, if specified, must be an Array');
+	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
+		if (!Array.isArray(eventTypes))
+			throw new TypeError('eventTypes argument must be an Array');
 
-		this.#logger?.debug(`retrieving ${eventTypes ? eventTypes.join(', ') : 'all'} events...`);
+		this.#logger?.debug(`retrieving ${eventTypes.join(', ')} events...`);
 
-		const eventsIterable = await this.#storage.getEvents(eventTypes);
-
-		yield* eventsIterable;
-
-		this.#logger?.debug(`${eventTypes ? eventTypes.join(', ') : 'all'} events retrieved`);
-	}
-
-	async* getEventsByTypes(eventTypes: Readonly<string[]>, options: EventQueryAfter): IEventStream {
 		const eventsIterable = await this.#storage.getEventsByTypes(eventTypes, options);
 
 		yield* eventsIterable;
+
+		this.#logger?.debug(`${eventTypes.join(', ')} events retrieved`);
 	}
 
 	/** Retrieve all events of specific Aggregate */
-	async getAggregateEvents(aggregateId: string): Promise<IEventSet> {
+	async* getAggregateEvents(aggregateId: string): IEventStream {
 		if (!aggregateId)
 			throw new TypeError('aggregateId argument required');
 
@@ -121,21 +101,18 @@ export class EventStore implements IEventStore {
 			await this.#snapshotStorage.getAggregateSnapshot(aggregateId) :
 			undefined;
 
-		const events: IEvent[] = [];
 		if (snapshot)
-			events.push(snapshot);
+			yield snapshot;
 
 		const eventsIterable = await this.#storage.getAggregateEvents(aggregateId, { snapshot });
-		for await (const event of eventsIterable)
-			events.push(event);
 
-		this.#logger?.debug(`${Event.describeMultiple(events)} retrieved`);
+		yield* eventsIterable;
 
-		return events;
+		this.#logger?.debug(`all events for aggregate ${aggregateId} retrieved`);
 	}
 
 	/** Retrieve events of specific Saga */
-	async getSagaEvents(sagaId: string, filter: EventQueryBefore) {
+	async* getSagaEvents(sagaId: string, filter: EventQueryBefore) {
 		if (!sagaId)
 			throw new TypeError('sagaId argument required');
 		if (!filter)
@@ -147,14 +124,11 @@ export class EventStore implements IEventStore {
 
 		this.#logger?.debug(`retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`);
 
-		const events: IEvent[] = [];
 		const eventsIterable = await this.#storage.getSagaEvents(sagaId, filter);
-		for await (const event of eventsIterable)
-			events.push(event);
 
-		this.#logger?.debug(`${Event.describeMultiple(events)} retrieved`);
+		yield* eventsIterable;
 
-		return events;
+		this.#logger?.debug(`all events for saga ${sagaId} retrieved`);
 	}
 
 	/**
@@ -185,7 +159,7 @@ export class EventStore implements IEventStore {
 
 		// after events are saved to the persistent storage,
 		// publish them to the event bus (i.e. RabbitMq)
-		if (this.#messageBus)
+		if (this.#supplementaryEventBus)
 			await this.publishEvents(eventStreamWithoutSnapshots);
 
 		return eventStreamWithoutSnapshots;
@@ -244,14 +218,14 @@ export class EventStore implements IEventStore {
 	}
 
 	protected async publishEvents(events: IEventSet) {
-		if (!this.#messageBus)
-			throw new Error('No messageBus injected, events cannot be published');
+		if (!this.#supplementaryEventBus)
+			throw new Error('No supplementaryEventBus injected, events cannot be published');
 
 		this.#logger?.debug(`publishing ${Event.describeMultiple(events)}...`);
 
 		try {
 			for (const event of events)
-				this.#messageBus.publish(event);
+				this.#supplementaryEventBus.publish(event);
 
 			this.#logger?.debug(`${Event.describeMultiple(events)} published`);
 		}

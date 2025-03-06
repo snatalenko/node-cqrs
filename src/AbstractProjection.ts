@@ -152,8 +152,8 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 	protected async _restore(eventStore: IEventStore): Promise<void> {
 		if (!eventStore)
 			throw new TypeError('eventStore argument required');
-		if (typeof eventStore.getAllEvents !== 'function')
-			throw new TypeError('eventStore.getAllEvents must be a Function');
+		if (typeof eventStore.getEventsByTypes !== 'function')
+			throw new TypeError('eventStore.getEventsByTypes must be a Function');
 
 		this._logger?.debug('retrieving last event projected');
 
@@ -164,9 +164,7 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 		this._logger?.debug(`retrieving ${lastEvent ? `events after ${describe(lastEvent)}` : 'all events'}...`);
 
 		const messageTypes = getHandledMessageTypes(this);
-		const eventsIterable = lastEvent ?
-			eventStore.getEventsByTypes(messageTypes, { afterEvent: lastEvent }) :
-			eventStore.getAllEvents(messageTypes);
+		const eventsIterable = eventStore.getEventsByTypes(messageTypes, { afterEvent: lastEvent });
 
 		let eventsCount = 0;
 		const startTs = Date.now();

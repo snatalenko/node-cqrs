@@ -48,7 +48,7 @@ describe('AbstractProjection', function () {
 
 		beforeEach(() => {
 			observable = {
-				getAllEvents() {
+				getEventsByTypes() {
 					return [];
 				},
 				on() { }
@@ -96,7 +96,7 @@ describe('AbstractProjection', function () {
 
 		it('subscribes projection to all events returned by "handles"', () => {
 
-			class ProjectionWithHandles extends AbstractProjection {
+			class ProjectionWithHandles extends AbstractProjection<any> {
 				static get handles() {
 					return ['somethingHappened2'];
 				}
@@ -117,24 +117,24 @@ describe('AbstractProjection', function () {
 
 		beforeEach(() => {
 			es = {
-				async* getAllEvents() {
+				async* getEventsByTypes() {
 					yield { type: 'somethingHappened', aggregateId: 1, aggregateVersion: 1 };
 					yield { type: 'somethingHappened', aggregateId: 1, aggregateVersion: 2 };
 					yield { type: 'somethingHappened', aggregateId: 2, aggregateVersion: 1 };
 				}
 			};
-			sinon.spy(es, 'getAllEvents');
+			sinon.spy(es, 'getEventsByTypes');
 
 			return projection.restore(es);
 		});
 
 		it('queries events of specific types from event store', () => {
 
-			assert(es.getAllEvents.calledOnce, 'es.getAllEvents was not called');
+			assert(es.getEventsByTypes.calledOnce, 'es.getEventsByTypes was not called');
 
-			const { args } = es.getAllEvents.lastCall;
+			const { args } = es.getEventsByTypes.lastCall;
 
-			expect(args).to.have.length(1);
+			expect(args).to.have.length(2);
 			expect(args[0]).to.deep.eq(MyProjection.handles);
 		});
 
@@ -154,7 +154,7 @@ describe('AbstractProjection', function () {
 		it('throws, if projection error encountered', () => {
 
 			es = {
-				async* getAllEvents() {
+				async* getEventsByTypes() {
 					yield { type: 'unexpectedEvent' };
 				}
 			};
@@ -174,8 +174,8 @@ describe('AbstractProjection', function () {
 		it('waits until the restoring process is done', async () => {
 
 			const storage = new InMemoryEventStorage();
-			const messageBus = new InMemoryMessageBus();
-			const es = new EventStore({ storage, messageBus });
+			const supplementaryEventBus = new InMemoryMessageBus();
+			const es = new EventStore({ storage, supplementaryEventBus });
 
 			let restored = false;
 			let projected = false;
