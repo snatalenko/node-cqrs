@@ -1,3 +1,4 @@
+import { Identifier } from "./Identifier";
 import { IEvent } from "./IEvent";
 import { IEventSet } from "./IEventSet";
 import { IEventStream } from "./IEventStream";
@@ -16,13 +17,13 @@ export interface IEventStorage {
 	/**
 	 * Create unique identifier 
 	 */
-	getNewId(): string | Promise<string>;
+	getNewId(): Identifier | Promise<Identifier>;
 
 	commitEvents(events: IEventSet): Promise<IEventSet>;
 
 	getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream;
 
-	getAggregateEvents(aggregateId: string, options?: { snapshot?: IEvent }): Promise<IEventSet> | IEventStream;
+	getAggregateEvents(aggregateId: Identifier, options?: { snapshot?: IEvent }): Promise<IEventSet> | IEventStream;
 
-	getSagaEvents(sagaId: string, options: EventQueryBefore): Promise<IEventSet> | IEventStream;
+	getSagaEvents(sagaId: Identifier, options: EventQueryBefore): Promise<IEventSet> | IEventStream;
 }

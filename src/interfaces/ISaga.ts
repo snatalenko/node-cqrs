@@ -1,10 +1,11 @@
 import { ICommand } from "./ICommand";
+import { Identifier } from "./Identifier";
 import { IEvent } from "./IEvent";
 import { IEventSet } from "./IEventSet";
 
 export interface ISaga {
 	/** Unique Saga ID */
-	readonly id: string;
+	readonly id: Identifier;
 
 	/** List of commands emitted by Saga */
 	readonly uncommittedMessages: ICommand[];
@@ -19,7 +20,7 @@ export interface ISaga {
 }
 
 export type ISagaConstructorParams = {
-	id: string,
+	id: Identifier,
 	events?: IEventSet
 };
 

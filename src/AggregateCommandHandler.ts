@@ -5,6 +5,7 @@ import {
 	ICommand,
 	ICommandBus,
 	ICommandHandler,
+	Identifier,
 	IEventSet,
 	IEventStore,
 	IExtendableLogger,
@@ -80,7 +81,7 @@ export class AggregateCommandHandler implements ICommandHandler {
 	}
 
 	/** Restore aggregate from event store events */
-	async #restoreAggregate(id: string): Promise<IAggregate> {
+	async #restoreAggregate(id: Identifier): Promise<IAggregate> {
 		if (!id)
 			throw new TypeError('id argument required');
 

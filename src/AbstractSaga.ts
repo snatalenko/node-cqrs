@@ -1,4 +1,4 @@
-import { ICommand, IEvent, ISaga, ISagaConstructorParams } from "./interfaces";
+import { ICommand, Identifier, IEvent, ISaga, ISagaConstructorParams } from "./interfaces";
 
 import { getClassName, validateHandlers, getHandler } from './utils';
 
@@ -18,7 +18,7 @@ export abstract class AbstractSaga implements ISaga {
 	}
 
 	/** Saga ID */
-	get id(): string {
+	get id(): Identifier {
 		return this.#id;
 	}
 
@@ -32,7 +32,7 @@ export abstract class AbstractSaga implements ISaga {
 		return Array.from(this.#messages);
 	}
 
-	#id: string;
+	#id: Identifier;
 	#version = 0;
 	#messages: ICommand[] = [];
 
@@ -81,7 +81,7 @@ export abstract class AbstractSaga implements ISaga {
 	}
 
 	/** Format a command and put it to the execution queue */
-	protected enqueue(commandType: string, aggregateId: string | undefined, payload: object) {
+	protected enqueue(commandType: string, aggregateId: Identifier | undefined, payload: object) {
 		if (typeof commandType !== 'string' || !commandType.length)
 			throw new TypeError('commandType argument must be a non-empty String');
 		if (!['string', 'number', 'undefined'].includes(typeof aggregateId))

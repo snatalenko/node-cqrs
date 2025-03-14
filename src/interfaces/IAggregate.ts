@@ -1,4 +1,5 @@
 import { ICommand } from "./ICommand";
+import { Identifier } from "./Identifier";
 import { IEvent } from "./IEvent";
 import { IEventSet } from "./IEventSet";
 
@@ -8,7 +9,7 @@ import { IEventSet } from "./IEventSet";
 export interface IAggregate {
 
 	/** Unique aggregate identifier */
-	readonly id: string;
+	readonly id: Identifier;
 
 	/** Main entry point for aggregate commands */
 	handle(command: ICommand): void | Promise<void>;
@@ -36,7 +37,7 @@ export interface IMutableAggregateState {
 
 export type IAggregateConstructorParams<TState extends IMutableAggregateState | object | void> = {
 	/** Unique aggregate identifier */
-	id: string,
+	id: Identifier,
 
 	/** Aggregate events, logged after latest snapshot */
 	events?: IEventSet,

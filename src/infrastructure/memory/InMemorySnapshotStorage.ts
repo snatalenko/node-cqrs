@@ -1,5 +1,4 @@
-import { IAggregateSnapshotStorage } from "../../interfaces/IAggregateSnapshotStorage";
-import { IEvent } from "../../interfaces/IEvent";
+import { IAggregateSnapshotStorage, Identifier, IEvent } from "../../interfaces";
 
 /**
  * In-memory storage for aggregate snapshots.
@@ -7,7 +6,7 @@ import { IEvent } from "../../interfaces/IEvent";
  */
 export class InMemorySnapshotStorage implements IAggregateSnapshotStorage {
 
-	#snapshots: Map<string, IEvent> = new Map();
+	#snapshots: Map<Identifier, IEvent> = new Map();
 
 	/**
 	 * Get latest aggregate snapshot

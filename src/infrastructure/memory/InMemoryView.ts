@@ -1,7 +1,7 @@
 import { InMemoryLock } from './InMemoryLock';
+import { IProjectionView, Identifier } from "../../interfaces";
 import { nextCycle } from './utils';
 import { IObjectView } from '../../interfaces/IObjectView';
-import { IProjectionView } from '../../interfaces/IProjectionView';
 
 /**
  * Update given value with an update Cb and return updated value.
@@ -23,7 +23,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 		return (new InMemoryView() as unknown) as TView;
 	}
 
-	protected _map: Map<string, TRecord> = new Map();
+	protected _map: Map<Identifier, TRecord> = new Map();
 
 	#lock: InMemoryLock;
 
@@ -76,7 +76,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 	}
 
 	/** Get record with a given key; await until the view is restored */
-	async get(key: string, options?: { nowait?: boolean }): Promise<TRecord | undefined> {
+	async get(key: Identifier, options?: { nowait?: boolean }): Promise<TRecord | undefined> {
 		if (!key)
 			throw new TypeError('key argument required');
 
@@ -91,7 +91,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 	/**
 	 * Get record with a given key synchronously
 	 */
-	getSync(key: string): TRecord | undefined {
+	getSync(key: Identifier): TRecord | undefined {
 		if (!key)
 			throw new TypeError('key argument required');
 
@@ -99,8 +99,8 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 	}
 
 	/** Get all records matching an optional filter */
-	async getAll(filter?: (r: TRecord | undefined, i: string) => boolean):
-		Promise<Array<[string, TRecord | undefined]>> {
+	async getAll(filter?: (r: TRecord | undefined, i: Identifier) => boolean):
+		Promise<Array<[Identifier, TRecord | undefined]>> {
 		if (filter && typeof filter !== 'function')
 			throw new TypeError('filter argument, when defined, must be a Function');
 
@@ -109,7 +109,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 
 		await nextCycle();
 
-		const r: Array<[string, TRecord | undefined]> = [];
+		const r: Array<[Identifier, TRecord | undefined]> = [];
 		for (const entry of this._map.entries()) {
 			if (!filter || filter(entry[1], entry[0]))
 				r.push(entry);
@@ -171,7 +171,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 	}
 
 	/** Update existing record */
-	private async _update(key: string, update: (r?: TRecord) => TRecord) {
+	private async _update(key: Identifier, update: (r?: TRecord) => TRecord) {
 		const value = this._map.get(key);
 		const updatedValue = applyUpdate(value, update);
 		if (updatedValue === undefined)
@@ -181,7 +181,7 @@ export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TReco
 	}
 
 	/** Delete record */
-	async delete(key: string) {
+	async delete(key: Identifier) {
 		if (!key)
 			throw new TypeError('key argument required');
 

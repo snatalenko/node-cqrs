@@ -2,6 +2,7 @@ import {
 	IAggregate,
 	IMutableAggregateState,
 	ICommand,
+	Identifier,
 	IEvent,
 	IEventSet,
 	IAggregateConstructorParams
@@ -36,7 +37,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		return undefined;
 	}
 
-	#id: string;
+	#id: Identifier;
 	#changes: IEvent[] = [];
 	#version: number = 0;
 	#snapshotVersion: number | undefined;
@@ -48,7 +49,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	protected command?: ICommand;
 
 	/** Unique aggregate instance identifier */
-	get id(): string {
+	get id(): Identifier {
 		return this.#id;
 	}
 

@@ -11,7 +11,8 @@ import {
 	IEventStream,
 	IEventStore,
 	EventQueryAfter,
-	EventQueryBefore
+	EventQueryBefore,
+	Identifier
 } from "./interfaces";
 import {
 	getClassName,
@@ -73,7 +74,7 @@ export class EventStore implements IEventStore {
 
 
 	/** Retrieve new ID from the storage */
-	async getNewId(): Promise<string> {
+	async getNewId(): Promise<Identifier> {
 		return this.#storage.getNewId();
 	}
 
@@ -91,7 +92,7 @@ export class EventStore implements IEventStore {
 	}
 
 	/** Retrieve all events of specific Aggregate */
-	async* getAggregateEvents(aggregateId: string): IEventStream {
+	async* getAggregateEvents(aggregateId: Identifier): IEventStream {
 		if (!aggregateId)
 			throw new TypeError('aggregateId argument required');
 
@@ -112,7 +113,7 @@ export class EventStore implements IEventStore {
 	}
 
 	/** Retrieve events of specific Saga */
-	async* getSagaEvents(sagaId: string, filter: EventQueryBefore) {
+	async* getSagaEvents(sagaId: Identifier, filter: EventQueryBefore) {
 		if (!sagaId)
 			throw new TypeError('sagaId argument required');
 		if (!filter)
