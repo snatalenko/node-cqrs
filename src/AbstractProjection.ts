@@ -155,11 +155,12 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 		if (typeof eventStore.getEventsByTypes !== 'function')
 			throw new TypeError('eventStore.getEventsByTypes must be a Function');
 
-		this._logger?.debug('retrieving last event projected');
+		let lastEvent: IEvent | undefined;
 
-		const lastEvent = isPersistentView(this.view) ?
-			await this.view.getLastEvent() :
-			undefined;
+		if (isPersistentView(this.view)) {
+			this._logger?.debug('retrieving last event projected');
+			lastEvent = await this.view.getLastEvent();
+		}
 
 		this._logger?.debug(`retrieving ${lastEvent ? `events after ${describe(lastEvent)}` : 'all events'}...`);
 

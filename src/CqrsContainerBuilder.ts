@@ -4,7 +4,6 @@ import { AggregateCommandHandler } from './AggregateCommandHandler';
 import { CommandBus } from './CommandBus';
 import { EventStore } from './EventStore';
 import { SagaEventHandler } from './SagaEventHandler';
-import { InMemoryMessageBus } from './infrastructure/memory/InMemoryMessageBus';
 
 import {
 	getHandledMessageTypes,
