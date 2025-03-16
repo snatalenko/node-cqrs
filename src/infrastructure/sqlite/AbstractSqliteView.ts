@@ -1,29 +1,60 @@
 import { IEvent } from '../../interfaces/IEvent';
 import { IExtendableLogger, ILogger } from '../../interfaces/ILogger';
 import { IPersistentView } from '../../interfaces/IPersistentView';
-
-const guid = (str: string) => Buffer.from(str.replaceAll('-', ''), 'hex');
-
-const EVENT_PROCESSING_LOCK_TTL = 15; // sec
+import { getEventId } from './utils';
+import { Database, Statement } from 'better-sqlite3';
 
 export type AbstractSqliteViewOptions = {
-	schemaVersion: string;
-	sqliteDb: import('better-sqlite3').Database;
+	schemaVersion?: string;
+	sqliteDb: Database;
 	viewLockTableName?: string;
 	logger?: IExtendableLogger | ILogger;
+	eventProcessingLockTtl?: number;
+	viewRestoringLockTtl?: number;
 }
 
 export abstract class AbstractSqliteView implements IPersistentView {
 
-	/**
-	 * Version of the the schema representing the structure of the data stored in the view
-	 */
-	readonly schemaVersion: string;
+	#schemaVersion: string | undefined;
+	#viewLockTableName: string | undefined;
+	#getLastEventQuery: Statement<unknown[], { last_event: string }>;
+	#lockEventQuery: Statement<[Buffer], void>;
+	#finalizeEventLockQuery: Statement<[Buffer], void>;
+	#recordLastEventQuery: Statement<[string, string, string], void>;
+	#upsertTableLockQuery: Statement<[string, string], void>;
+	#removeTableLockQuery: Statement<[string, string], void>;
+	#eventProcessingLockTtl: number;
+	#viewRestoringLockTtl: number;
+
+	protected db: Database;
+	protected logger: ILogger | undefined;
 
 	/**
-	 * Shared table where view locks and last projected events are tracked
+	 * Shared table tracking view locks and last projected events.
+	 * Defaults to "tbl_view_lock" if not provided or overridden.
 	 */
-	readonly viewLockTableName: string;
+	get viewLockTableName(): string {
+		return this.#viewLockTableName ?? 'tbl_view_lock';
+	}
+
+	/**
+	 * Version of the schema representing the structure of data stored in the view
+	 */
+	get schemaVersion(): string {
+		if (!this.#schemaVersion)
+			throw new Error(`schemaVersion is not defined. Either pass it to constructor, or override the getter`);
+
+		return this.#schemaVersion;
+	}
+
+	/**
+	 * Table where events are being tracked as projecting/projected
+	 *
+	 * @example `tbl_users_${this.schemaVersion}_event_lock`
+	 */
+	get eventLockTableName(): string {
+		return `${this.tableName}_event_lock`;
+	}
 
 	/**
 	 * Main table where the view data is stored
@@ -32,27 +63,11 @@ export abstract class AbstractSqliteView implements IPersistentView {
 	 */
 	abstract get tableName(): string;
 
-	/**
-	 * Table where events are being tracked as projecting/projected
-	 *
-	 * @example `tbl_users_${this.schemaVersion}_event_lock`
-	 */
-	abstract get eventLockTableName(): string;
-
-	protected db: import('better-sqlite3').Database;
-	protected logger: ILogger | undefined;
-
-	#getLastEventQuery: import('better-sqlite3').Statement<unknown[], { last_event: string }>;
-	#lockEventQuery: import('better-sqlite3').Statement<[Buffer], void>;
-	#finalizeEventLockQuery: import('better-sqlite3').Statement<[Buffer], void>;
-	#recordLastEventQuery: import('better-sqlite3').Statement<[string, string, string], void>;
-	#upsertTableLockQuery: import('better-sqlite3').Statement<[string, string], void>;
-	#removeTableLockQuery: import('better-sqlite3').Statement<[string, string], void>;
-
-
 	constructor(options: AbstractSqliteViewOptions) {
-		this.schemaVersion = options.schemaVersion;
-		this.viewLockTableName = options.viewLockTableName ?? 'tbl_view_lock';
+		this.#schemaVersion = options.schemaVersion;
+		this.#viewLockTableName = options.viewLockTableName;
+		this.#eventProcessingLockTtl = options.eventProcessingLockTtl ?? 15;
+		this.#viewRestoringLockTtl = options.viewRestoringLockTtl ?? 120;
 		this.db = options.sqliteDb;
 		this.logger = options.logger && 'child' in options.logger ?
 			options.logger.child({ service: this.constructor.name }) :
@@ -97,7 +112,7 @@ export abstract class AbstractSqliteView implements IPersistentView {
 				processing_at = strftime('%s', 'now')
 			WHERE
 				processed_at IS NULL
-				AND processing_at <= strftime('%s', 'now') - ${EVENT_PROCESSING_LOCK_TTL}
+				AND processing_at <= strftime('%s', 'now') - ${this.#eventProcessingLockTtl}
 		`);
 
 		this.#finalizeEventLockQuery = this.db.prepare(`
@@ -137,6 +152,8 @@ export abstract class AbstractSqliteView implements IPersistentView {
 				AND schema_version = ?
 				AND locked_at IS NOT NULL
 		`);
+
+		this.logger?.info(`View "${this.constructor.name}" lock tables initialized`);
 	}
 
 	getLastEvent() {
@@ -148,19 +165,17 @@ export abstract class AbstractSqliteView implements IPersistentView {
 	}
 
 	tryMarkAsProjecting(event: IEvent<any>) {
-		if (!event.id)
-			throw new TypeError('event.id is required');
+		const eventId = getEventId(event);
 
-		const r = this.#lockEventQuery.run(guid(event.id));
+		const r = this.#lockEventQuery.run(eventId);
 
 		return r.changes !== 0;
 	}
 
 	markAsProjected(event: IEvent<any>) {
-		if (!event.id)
-			throw new TypeError('event.id is required');
+		const eventId = getEventId(event);
 
-		const updateResult = this.#finalizeEventLockQuery.run(guid(event.id));
+		const updateResult = this.#finalizeEventLockQuery.run(eventId);
 		if (updateResult.changes === 0)
 			throw new Error(`Event ${event.id} could not be marked as processed`);
 
@@ -173,14 +188,18 @@ export abstract class AbstractSqliteView implements IPersistentView {
 		this.ready = false;
 
 		const upsertResult = this.#upsertTableLockQuery.run(this.tableName, this.schemaVersion);
-		if (upsertResult.changes === 1)
+
+		if (upsertResult.changes === 1) {
 			this.logger?.debug(`Table "${this.tableName}" lock obtained`);
-		else
+
+			// TODO: automatic lock prolongation
+
+			return true;
+		}
+		else {
 			this.logger?.debug(`Table "${this.tableName}" is already locked`);
-
-		// TODO: automatic lock prolongation
-
-		return upsertResult.changes === 1;
+			return false;
+		}
 	}
 
 	async unlock(): Promise<void> {

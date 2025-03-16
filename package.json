@@ -63,6 +63,7 @@
     "uuid": "^10.0.0"
   },
   "peerDependencies": {
-    "better-sqlite3": "^11.3.0"
+    "better-sqlite3": "^11.3.0",
+    "md5": "^2.3.0"
   }
 }

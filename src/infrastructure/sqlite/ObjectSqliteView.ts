@@ -1,8 +1,7 @@
 import * as BetterSqlite3 from 'better-sqlite3';
 import { AbstractSqliteView, AbstractSqliteViewOptions } from "./AbstractSqliteView";
 import { IObjectView, IPersistentView } from '../../interfaces';
-
-const guid = (str: string) => Buffer.from(str.replaceAll('-', ''), 'hex');
+import { guid } from './utils';
 
 export class ObjectSqliteView<TRecord> extends AbstractSqliteView implements IObjectView<TRecord>, IPersistentView {
 
@@ -20,7 +19,10 @@ export class ObjectSqliteView<TRecord> extends AbstractSqliteView implements IOb
 		return `${this.#tableNamePrefix}_${this.schemaVersion}_event_lock`;
 	}
 
-	constructor(options: AbstractSqliteViewOptions & { tableNamePrefix: string }) {
+	constructor(options: AbstractSqliteViewOptions & {
+		tableNamePrefix: string,
+		schemaVersion: string
+	}) {
 		if (typeof options.tableNamePrefix !== 'string' || !options.tableNamePrefix.length)
 			throw new TypeError('options.tableNamePrefix argument must be a non-empty String');
 
@@ -65,6 +67,8 @@ export class ObjectSqliteView<TRecord> extends AbstractSqliteView implements IOb
 			DELETE FROM ${this.tableName}
 			WHERE id = ?
 		`);
+
+		this.logger?.info(`Table "${this.tableName}" initialized`);
 	}
 
 	get(id: string): TRecord | undefined {
