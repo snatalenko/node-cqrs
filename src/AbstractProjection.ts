@@ -9,8 +9,7 @@ import {
 	IEventStore,
 	IEvent,
 	isViewLocker,
-	isEventLocker,
-	IViewFactory
+	isEventLocker
 } from './interfaces';
 
 import {

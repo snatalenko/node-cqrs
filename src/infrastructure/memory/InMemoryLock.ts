@@ -19,18 +19,7 @@ export class InMemoryLock {
 		while (this.locked)
 			await this.once('unlocked');
 
-		try {
-			this.#lockMarker = new Deferred();
-		}
-		catch (err: any) {
-			try {
-				await this.unlock();
-			}
-			catch (unlockErr: any) {
-				// unlocking errors are ignored
-			}
-			throw err;
-		}
+		this.#lockMarker = new Deferred();
 	}
 
 	/**
