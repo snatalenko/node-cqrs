@@ -1,5 +1,5 @@
-import { IMessageBus, InMemoryMessageBus } from '../..';
-import { expect, assert, AssertionError } from 'chai';
+import { IMessageBus, InMemoryMessageBus } from '../../../src';
+import { expect, AssertionError } from 'chai';
 import { spy } from 'sinon';
 
 describe('InMemoryMessageBus', function () {

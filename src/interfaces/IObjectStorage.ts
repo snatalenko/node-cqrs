@@ -1,4 +1,4 @@
-export interface IObjectView<TRecord> {
+export interface IObjectStorage<TRecord> {
 	get(id: string): Promise<TRecord | undefined> | TRecord | undefined;
 
 	create(id: string, r: TRecord): Promise<any> | any;

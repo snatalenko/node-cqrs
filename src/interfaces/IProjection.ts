@@ -2,7 +2,7 @@ import { IEvent } from "./IEvent";
 import { IEventStore } from "./IEventStore";
 import { IObserver } from "./IObserver";
 
-export interface IProjection<TView extends object> extends IObserver {
+export interface IProjection<TView> extends IObserver {
 	readonly view: TView;
 
 	subscribe(eventStore: IEventStore): Promise<void>;

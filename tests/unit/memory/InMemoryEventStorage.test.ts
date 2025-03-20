@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { InMemoryEventStorage } from '../../src';
+import { InMemoryEventStorage } from '../../../src';
 
 describe('InMemoryEventStorage', () => {
 	let storage;

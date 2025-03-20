@@ -1,7 +1,6 @@
 import { InMemoryLock } from './InMemoryLock';
-import { IProjectionView, Identifier } from "../../interfaces";
+import { IViewLocker, Identifier, IObjectStorage } from "../../interfaces";
 import { nextCycle } from './utils';
-import { IObjectView } from '../../interfaces/IObjectView';
 
 /**
  * Update given value with an update Cb and return updated value.
@@ -17,7 +16,7 @@ function applyUpdate<T>(view: T | undefined, update: (r?: T) => T | undefined): 
 /**
  * In-memory Projection View, which suspends get()'s until it is ready
  */
-export class InMemoryView<TRecord> implements IProjectionView, IObjectView<TRecord> {
+export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecord> {
 
 	static factory<TView>(): TView {
 		return (new InMemoryView() as unknown) as TView;

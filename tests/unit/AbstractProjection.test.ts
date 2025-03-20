@@ -7,10 +7,6 @@ class MyProjection extends AbstractProjection<InMemoryView<{ somethingHappenedCn
 		return ['somethingHappened'];
 	}
 
-	get schemaVersion(): string {
-		return 'v1';
-	}
-
 	async _somethingHappened({ aggregateId, payload, context }) {
 		return this.view.updateEnforcingNew(aggregateId, (v = {}) => {
 			if (v.somethingHappenedCnt)
@@ -25,20 +21,19 @@ class MyProjection extends AbstractProjection<InMemoryView<{ somethingHappenedCn
 
 describe('AbstractProjection', function () {
 
-	let projection;
+	let projection: MyProjection;
+	let view: InMemoryView<any>;
 
 	beforeEach(() => {
-		projection = new MyProjection();
+		view = new InMemoryView();
+		projection = new MyProjection({ view });
 	});
 
 	describe('view', () => {
 
 		it('returns a view storage associated with projection', () => {
 
-			const view = new InMemoryView<any>();
-			const proj = new MyProjection({ view });
-
-			expect(proj.view).to.equal(view);
+			expect(projection).to.have.property('view').that.is.equal(view);
 		});
 	});
 
@@ -59,9 +54,6 @@ describe('AbstractProjection', function () {
 		it('subscribes to all handlers defined', () => {
 
 			class ProjectionWithoutHandles extends AbstractProjection<any> {
-				get schemaVersion(): string {
-					return 'v1';
-				}
 				somethingHappened() { }
 				somethingHappened2() { }
 			}
@@ -76,10 +68,6 @@ describe('AbstractProjection', function () {
 		it('ignores overridden projection methods', () => {
 
 			class ProjectionWithoutHandles extends AbstractProjection<any> {
-				get schemaVersion(): string {
-					return 'v1';
-				}
-
 				somethingHappened() { }
 
 				/** overridden projection method */

@@ -1,14 +1,16 @@
 import { describe } from './Event';
 import { InMemoryView } from './infrastructure/memory/InMemoryView';
 import {
-	IProjectionView,
-	IPersistentView,
+	IViewLocker,
+	IEventLocker,
 	IProjection,
-	IViewFactory,
 	ILogger,
 	IExtendableLogger,
 	IEventStore,
-	IEvent
+	IEvent,
+	isViewLocker,
+	isEventLocker,
+	IViewFactory
 } from './interfaces';
 
 import {
@@ -19,24 +21,30 @@ import {
 	subscribe
 } from './utils';
 
-const isProjectionView = (view: IProjectionView): view is IProjectionView =>
-	'ready' in view &&
-	'lock' in view &&
-	'unlock' in view &&
-	'once' in view;
+export type AbstractProjectionParams<T> = {
+	/**
+	 * (Optional) Default view associated with the projection
+	 */
+	view?: T,
 
-const asProjectionView = (view: any): IProjectionView | undefined =>
-	(isProjectionView(view) ? view : undefined);
+	/**
+	 * Instance for managing view restoration state to prevent early access to an inconsistent view
+	 * or conflicts caused by concurrent restoration by another process.
+	 */
+	viewLocker?: IViewLocker,
 
-const isPersistentView = (view: any): view is IPersistentView =>
-	'getLastEvent' in view &&
-	'tryMarkAsProjecting' in view &&
-	'markAsProjected' in view;
+	/**
+	 * Instance for tracking event processing state to prevent concurrent processing by multiple processes.
+	 */
+	eventLocker?: IEventLocker,
+
+	logger?: ILogger | IExtendableLogger
+}
 
 /**
  * Base class for Projection definition
  */
-export abstract class AbstractProjection<TView extends IProjectionView | IPersistentView> implements IProjection<TView> {
+export abstract class AbstractProjection<TView = InMemoryView<any>> implements IProjection<TView> {
 
 	/**
 	 * Optional list of event types being handled by projection.
@@ -47,50 +55,38 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 		return undefined;
 	}
 
-	abstract get schemaVersion(): string;
+	#view: TView;
+	#viewLocker?: IViewLocker;
+	#eventLocker?: IEventLocker;
+	protected _logger?: ILogger;
 
-	/**
-	 * Default view associated with projection
-	 */
-	get view(): TView {
-		if (!this.#view)
-			this.#view = this.#viewFactory({ schemaVersion: this.schemaVersion });
-
+	public get view(): TView {
 		return this.#view;
 	}
 
-	#viewFactory: IViewFactory<TView>;
-	#view?: TView;
-
-	protected _logger?: ILogger;
-
-	get collectionName(): string {
-		return getClassName(this);
+	protected set view(value: TView) {
+		this.#view = value;
 	}
 
-	/**
-	 * Indicates if view should be restored from EventStore on start.
-	 * Override for custom behavior.
-	 * 
-	 * @deprecated View must implement `getLastEvent()` instead
-	 */
-	get shouldRestoreView(): boolean | Promise<boolean> {
-		throw new Error('shouldRestoreView is deprecated');
+	protected get _viewLocker(): IViewLocker | undefined {
+		return this.#viewLocker ?? (isViewLocker(this.view) ? this.view : undefined);
+	}
+
+	protected get _eventLocker(): IEventLocker | undefined {
+		return this.#eventLocker ?? (isEventLocker(this.view) ? this.view : undefined);
 	}
 
 	constructor({
 		view,
-		viewFactory = InMemoryView.factory,
+		viewLocker,
+		eventLocker,
 		logger
-	}: {
-		view?: TView,
-		viewFactory?: IViewFactory<TView>,
-		logger?: ILogger | IExtendableLogger
-	} = {}) {
+	}: AbstractProjectionParams<TView> = {}) {
 		validateHandlers(this);
 
-		this.#view = view;
-		this.#viewFactory = viewFactory;
+		this.#view = view ?? new InMemoryView() as any;
+		this.#viewLocker = viewLocker;
+		this.#eventLocker = eventLocker;
 
 		this._logger = logger && 'child' in logger ?
 			logger.child({ service: getClassName(this) }) :
@@ -108,9 +104,10 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 
 	/** Pass event to projection event handler */
 	async project(event: IEvent): Promise<void> {
-		const concurrentView = asProjectionView(this.view);
-		if (concurrentView && !concurrentView.ready)
-			await concurrentView.once('ready');
+		if (this._viewLocker && !this._viewLocker?.ready) {
+			this._logger?.debug('view is locked, awaiting until it is ready');
+			await this._viewLocker.once('ready');
+		}
 
 		return this._project(event);
 	}
@@ -121,31 +118,29 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 		if (!handler)
 			throw new Error(`'${event.type}' handler is not defined or not a function`);
 
-		const persistentView = isPersistentView(this.view) ? this.view : undefined;
-		if (persistentView) {
-			const eventLockObtained = await persistentView.tryMarkAsProjecting(event);
+		if (this._eventLocker) {
+			const eventLockObtained = await this._eventLocker.tryMarkAsProjecting(event);
 			if (!eventLockObtained)
 				return;
 		}
 
 		await handler.call(this, event);
 
-		if (persistentView)
-			await persistentView.markAsProjected(event);
+		if (this._eventLocker)
+			await this._eventLocker.markAsProjected(event);
 	}
 
 	/** Restore projection view from event store */
 	async restore(eventStore: IEventStore): Promise<void> {
 		// lock the view to ensure same restoring procedure
 		// won't be performed by another projection instance
-		const concurrentView = asProjectionView(this.view);
-		if (concurrentView)
-			await concurrentView.lock();
+		if (this._viewLocker)
+			await this._viewLocker.lock();
 
 		await this._restore(eventStore);
 
-		if (concurrentView)
-			concurrentView.unlock();
+		if (this._viewLocker)
+			this._viewLocker.unlock();
 	}
 
 	/** Restore projection view from event store */
@@ -157,9 +152,9 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 
 		let lastEvent: IEvent | undefined;
 
-		if (isPersistentView(this.view)) {
+		if (this._eventLocker) {
 			this._logger?.debug('retrieving last event projected');
-			lastEvent = await this.view.getLastEvent();
+			lastEvent = await this._eventLocker.getLastEvent();
 		}
 
 		this._logger?.debug(`retrieving ${lastEvent ? `events after ${describe(lastEvent)}` : 'all events'}...`);
@@ -180,7 +175,7 @@ export abstract class AbstractProjection<TView extends IProjectionView | IPersis
 			}
 		}
 
-		this._logger?.info(`view restored (${this.view}) from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
+		this._logger?.info(`view restored (${this.#view}) from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}
 
 	/** Handle error on restoring. Logs and throws error by default */

@@ -1,7 +1,7 @@
 
 import { existsSync, unlinkSync } from 'fs';
 import { AbstractProjection, IEvent } from '../../src';
-import { ObjectSqliteView } from '../../src/infrastructure/sqlite/ObjectSqliteView';
+import { SqliteObjectView } from '../../src/infrastructure/sqlite';
 import * as createDb from 'better-sqlite3';
 import { v7 } from 'uuid';
 
@@ -9,15 +9,7 @@ type UserPayload = {
 	name: string;
 }
 
-class MyDumbProjection extends AbstractProjection<ObjectSqliteView<any>> {
-
-	get schemaVersion() {
-		return '1';
-	}
-
-	constructor({ myDumbViewFactory }) {
-		super({ viewFactory: myDumbViewFactory });
-	}
+class MyDumbProjection extends AbstractProjection<SqliteObjectView<any>> {
 
 	async userCreated(e: IEvent<UserPayload>) {
 		if (typeof e.aggregateId !== 'string')
@@ -41,37 +33,37 @@ class MyDumbProjection extends AbstractProjection<ObjectSqliteView<any>> {
 
 describe.only('SqliteView', () => {
 
-	let sqliteInMemoryDb: import('better-sqlite3').Database;
+	let viewModelSqliteDb: import('better-sqlite3').Database;
 
 	const logState = () => {
 		console.log({
-			tbl_view_lock: sqliteInMemoryDb.prepare(`SELECT * FROM tbl_view_lock`).all(),
-			tbl_test_1_event_lock: sqliteInMemoryDb.prepare(`SELECT * FROM tbl_test_1_event_lock`).all(),
-			tbl_test_1: sqliteInMemoryDb.prepare(`SELECT * FROM tbl_test_1`).all()
+			tbl_view_lock: viewModelSqliteDb.prepare(`SELECT * FROM tbl_view_lock`).all(),
+			tbl_test_1_event_lock: viewModelSqliteDb.prepare(`SELECT * FROM tbl_test_1_event_lock`).all(),
+			tbl_test_1: viewModelSqliteDb.prepare(`SELECT * FROM tbl_test_1`).all()
 		});
 	}
 
 	const fileName = './test.sqlite';
 
 	beforeEach(() => {
-		sqliteInMemoryDb = createDb(fileName);
+		viewModelSqliteDb = createDb(fileName);
 
 		// Write-Ahead Logging (WAL) mode allows reads and writes to happen concurrently and reduces contention
 		// on the database. It keeps changes in a separate log file before they are flushed to the main database file
-		sqliteInMemoryDb.pragma('journal_mode = WAL');
+		viewModelSqliteDb.pragma('journal_mode = WAL');
 
 		// The synchronous pragma controls how often SQLite synchronizes writes to the filesystem. Lowering this can
 		// boost performance but increases the risk of data loss in the event of a crash.
-		sqliteInMemoryDb.pragma('synchronous = NORMAL');
+		viewModelSqliteDb.pragma('synchronous = NORMAL');
 
 		// Limit WAL journal size to 5MB to manage disk usage in high-write scenarios.
 		// With WAL mode and NORMAL sync, this helps prevent excessive file growth during transactions.
-		sqliteInMemoryDb.pragma(`journal_size_limit = ${5 * 1024 * 1024}`);
+		viewModelSqliteDb.pragma(`journal_size_limit = ${5 * 1024 * 1024}`);
 	});
 
 	afterEach(() => {
-		if (sqliteInMemoryDb)
-			sqliteInMemoryDb.close();
+		if (viewModelSqliteDb)
+			viewModelSqliteDb.close();
 		if (existsSync(fileName))
 			unlinkSync(fileName);
 	});
@@ -84,9 +76,10 @@ describe.only('SqliteView', () => {
 	it('handles 10_000 events within 0.5 seconds', async () => {
 
 		const p = new MyDumbProjection({
-			myDumbViewFactory: ({ schemaVersion }) => new ObjectSqliteView({
-				schemaVersion,
-				sqliteDb: sqliteInMemoryDb,
+			view: new SqliteObjectView({
+				schemaVersion: '1',
+				viewModelSqliteDb,
+				projectionName: 'tbl_test',
 				tableNamePrefix: 'tbl_test'
 			})
 		});
