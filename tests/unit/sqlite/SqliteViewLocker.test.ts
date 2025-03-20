@@ -44,6 +44,19 @@ describe('SqliteViewLocker', function () {
 		expect(lockResult).to.be.true;
 	});
 
+	it('sets ready flag to `false` when locked', async () => {
+
+		await firstLock.lock();
+		expect(firstLock).to.have.property('ready', false);
+	});
+
+	it('sets ready flag to `true` when unlocked', async () => {
+
+		await firstLock.lock();
+		await firstLock.unlock();
+		expect(firstLock).to.have.property('ready', true);
+	});
+
 	it('waits for the lock to be released if already locked', async function () {
 		await firstLock.lock();
 

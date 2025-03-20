@@ -103,7 +103,7 @@ export class SqliteViewLocker implements IViewLocker {
 	}
 
 	get ready(): boolean {
-		return !!this.#lockMarker;
+		return !this.#lockMarker;
 	}
 
 	async lock() {

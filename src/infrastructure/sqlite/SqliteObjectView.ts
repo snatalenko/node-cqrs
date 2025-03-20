@@ -22,23 +22,52 @@ export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IOb
 		});
 	}
 
-	get(id: string): TRecord | undefined {
+	async get(id: string): Promise<TRecord | undefined> {
+		if (typeof id !== 'string' || !id.length)
+			throw new TypeError('id argument must be a non-empty String');
+
+		if (!this.ready)
+			await this.once('ready');
+
+		return this.#sqliteObjectStorage.get(id);
+	}
+
+	getSync(id: string) {
+		if (typeof id !== 'string' || !id.length)
+			throw new TypeError('id argument must be a non-empty String');
+
 		return this.#sqliteObjectStorage.get(id);
 	}
 
 	create(id: string, data: TRecord) {
+		if (typeof id !== 'string' || !id.length)
+			throw new TypeError('id argument must be a non-empty String');
+
 		this.#sqliteObjectStorage.create(id, data);
 	}
 
 	update(id: string, update: (r: TRecord) => TRecord) {
+		if (typeof id !== 'string' || !id.length)
+			throw new TypeError('id argument must be a non-empty String');
+		if (typeof update !== 'function')
+			throw new TypeError('update argument must be a Function');
+
 		this.#sqliteObjectStorage.update(id, update);
 	}
 
 	updateEnforcingNew(id: string, update: (r?: TRecord) => TRecord) {
+		if (typeof id !== 'string' || !id.length)
+			throw new TypeError('id argument must be a non-empty String');
+		if (typeof update !== 'function')
+			throw new TypeError('update argument must be a Function');
+
 		this.#sqliteObjectStorage.updateEnforcingNew(id, update);
 	}
 
 	delete(id: string): boolean {
+		if (typeof id !== 'string' || !id.length)
+			throw new TypeError('id argument must be a non-empty String');
+
 		return this.#sqliteObjectStorage.delete(id);
 	}
 }
