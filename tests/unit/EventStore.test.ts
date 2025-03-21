@@ -1,10 +1,9 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
 import { EventStore } from '../../src/EventStore';
-import { InMemoryEventStorage } from '../../src/infrastructure/InMemoryEventStorage';
-import { InMemorySnapshotStorage } from '../../src/infrastructure/InMemorySnapshotStorage';
-import { InMemoryMessageBus } from '../../src/infrastructure/InMemoryMessageBus';
-import { IAggregateSnapshotStorage, IEvent, IEventStorage, IEventStore, IEventSet, IMessageBus } from '../../src/interfaces';
+import { InMemoryEventStorage, InMemorySnapshotStorage, InMemoryMessageBus } from '../../src';
+import { IAggregateSnapshotStorage, IEvent, IEventStorage, IEventStore, IMessageBus } from '../../src/interfaces';
+import { iteratorToArray } from '../../src/utils';
 
 const goodContext = {
 	uid: '1',
@@ -40,13 +39,13 @@ describe('EventStore', function () {
 	let es: IEventStore;
 	let storage: IEventStorage;
 	let snapshotStorage: IAggregateSnapshotStorage;
-	let messageBus: IMessageBus;
+	let supplementaryEventBus: IMessageBus;
 
 	beforeEach(() => {
 		storage = new InMemoryEventStorage();
 		snapshotStorage = new InMemorySnapshotStorage();
-		messageBus = new InMemoryMessageBus();
-		es = new EventStore({ storage, snapshotStorage, messageBus });
+		supplementaryEventBus = new InMemoryMessageBus();
+		es = new EventStore({ storage, snapshotStorage, supplementaryEventBus });
 	});
 
 	describe('validator', () => {
@@ -54,7 +53,7 @@ describe('EventStore', function () {
 		it('allows to validate events before they are committed', () => {
 
 			const events = [
-				{ type: 'somethingHappened', aggregateId: 1 }
+				{ type: 'somethingHappened', aggregateId: '1' }
 			];
 
 			return es.commit(events).then(() => {
@@ -64,7 +63,7 @@ describe('EventStore', function () {
 					eventValidator: event => {
 						throw new Error('test validation error');
 					},
-					messageBus
+					supplementaryEventBus
 				});
 
 				return es.commit(events).then(() => {
@@ -99,7 +98,7 @@ describe('EventStore', function () {
 			await es.commit([goodEvent]);
 
 			const events: IEvent[] = [];
-			for await (const e of es.getAllEvents())
+			for await (const e of es.getEventsByTypes(['somethingHappened'], {}))
 				events.push(e);
 
 			expect(events[0]).to.have.property('type', 'somethingHappened');
@@ -154,7 +153,7 @@ describe('EventStore', function () {
 				}
 			});
 
-			es = new EventStore({ storage, messageBus });
+			es = new EventStore({ storage, supplementaryEventBus });
 
 			return es.commit([goodEvent, goodEvent2]).then(() => {
 				throw new Error('should fail');
@@ -163,33 +162,12 @@ describe('EventStore', function () {
 				expect(err).to.have.property('message', 'storage commit failure');
 			});
 		});
-
-		it('emits events asynchronously after processing is done', function (done) {
-
-			let committed = 0;
-			let emitted = 0;
-
-			es.on('somethingHappened', function (event) {
-
-				expect(committed).to.not.equal(0);
-				expect(emitted).to.equal(0);
-				emitted++;
-
-				expect(event).to.have.property('type', 'somethingHappened');
-				expect(event).to.have.property('context');
-				expect(event.context).to.have.property('ip', goodContext.ip);
-
-				done();
-			});
-
-			es.commit([goodEvent]).then(() => committed++).catch(done);
-		});
 	});
 
 	describe('getNewId', () => {
 
 		it('retrieves a unique ID for new aggregate from storage', () => Promise.resolve(es.getNewId()).then(id => {
-			expect(id).to.equal(1);
+			expect(id).to.equal('1');
 		}));
 	});
 
@@ -199,11 +177,12 @@ describe('EventStore', function () {
 
 			await es.commit([goodEvent, goodEvent2]);
 
-			const events = await es.getAggregateEvents(goodEvent.aggregateId);
+			const events = es.getAggregateEvents(goodEvent.aggregateId);
 
-			expect(events).to.be.an('Array');
-			expect(events).to.have.length(1);
-			expect(events).to.have.nested.property('[0].type', 'somethingHappened');
+			expect(events).to.be.have.property(Symbol.asyncIterator);
+
+			const event = (await events.next()).value;
+			expect(event).to.have.nested.property('type', 'somethingHappened');
 		});
 
 		it('tries to retrieve aggregate snapshot', async () => {
@@ -215,7 +194,7 @@ describe('EventStore', function () {
 
 			expect(es).to.have.property('snapshotsSupported', true);
 
-			const events = await es.getAggregateEvents(goodEvent2.aggregateId);
+			const events = await iteratorToArray(es.getAggregateEvents(goodEvent2.aggregateId));
 
 			expect(snapshotStorage).to.have.nested.property('getAggregateSnapshot.calledOnce', true);
 			expect(storage).to.have.nested.property('getAggregateEvents.calledOnce', true);
@@ -231,33 +210,33 @@ describe('EventStore', function () {
 
 	describe('getSagaEvents(sagaId, options)', () => {
 
-		it('returns events committed by saga prior to event that triggered saga execution', () => {
+		it('returns events committed by saga prior to event that triggered saga execution', async () => {
 
 			const events = [
-				{ sagaId: 1, sagaVersion: 1, type: 'somethingHappened' },
-				{ sagaId: 1, sagaVersion: 2, type: 'anotherHappened' },
-				{ sagaId: 2, sagaVersion: 1, type: 'somethingHappened' }
+				{ sagaId: '1', sagaVersion: 1, type: 'somethingHappened' },
+				{ sagaId: '1', sagaVersion: 2, type: 'anotherHappened' },
+				{ sagaId: '2', sagaVersion: 1, type: 'somethingHappened' }
 			];
 
 			const triggeredBy = events[1];
 
-			return es.commit(events).then(() => es.getSagaEvents(1, { beforeEvent: triggeredBy }).then(events => {
+			await es.commit(events);
 
-				expect(events).to.be.an('Array');
-				expect(events).to.have.length(1);
-				expect(events).to.have.nested.property('[0].type', 'somethingHappened');
-			}));
+			const ii = es.getSagaEvents('1', { beforeEvent: triggeredBy });
+			const retrievedEvents = await iteratorToArray(ii);
+
+			expect(retrievedEvents).to.be.an('Array');
+			expect(retrievedEvents).to.have.length(1);
+			expect(retrievedEvents).to.have.nested.property('[0].type', 'somethingHappened');
 		});
 	});
 
-	describe('getAllEvents(eventTypes)', () => {
+	describe('getEventsByTypes(eventTypes)', () => {
 
 		it('returns a promise that resolves to all committed events of specific types', async () => {
 			await es.commit([goodEvent, goodEvent2]);
 
-			const events: IEvent[] = [];
-			for await (const e of es.getAllEvents(['somethingHappened']))
-				events.push(e);
+			const events = await iteratorToArray(es.getEventsByTypes(['somethingHappened'], {}));
 
 			expect(events).to.have.length(2);
 			expect(events).to.have.nested.property('[0].aggregateId', '1');
@@ -273,7 +252,7 @@ describe('EventStore', function () {
 
 		it('fails, when trying to set up second messageType handler within the same node and named queue (Receptors)', () => {
 
-			es = new EventStore({ storage, messageBus });
+			es = new EventStore({ storage, supplementaryEventBus });
 
 			expect(() => {
 				es.queue('namedQueue').on('somethingHappened', () => { });
@@ -290,7 +269,7 @@ describe('EventStore', function () {
 
 		it('sets up multiple handlers for same messageType, when queue name is not defined (Projections)', () => {
 
-			es = new EventStore({ storage, eventStoreConfig: { publishAsync: false }, messageBus });
+			es = new EventStore({ storage, supplementaryEventBus });
 
 			const projection1Handler = sinon.spy();
 			const projection2Handler = sinon.spy();
@@ -299,7 +278,7 @@ describe('EventStore', function () {
 			es.on('somethingHappened', projection2Handler);
 
 			return es.commit([
-				{ type: 'somethingHappened', aggregateId: 1, aggregateVersion: 0 }
+				{ type: 'somethingHappened', aggregateId: '1', aggregateVersion: 0 }
 			]).then(() => {
 				expect(projection1Handler).to.have.property('calledOnce', true);
 				expect(projection2Handler).to.have.property('calledOnce', true);

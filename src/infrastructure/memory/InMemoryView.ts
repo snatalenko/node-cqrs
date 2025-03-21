@@ -1,5 +1,5 @@
 import { InMemoryLock } from './InMemoryLock';
-import { IProjectionView, Identifier } from "../interfaces";
+import { IViewLocker, Identifier, IObjectStorage } from "../../interfaces";
 import { nextCycle } from './utils';
 
 /**
@@ -16,7 +16,7 @@ function applyUpdate<T>(view: T | undefined, update: (r?: T) => T | undefined): 
 /**
  * In-memory Projection View, which suspends get()'s until it is ready
  */
-export class InMemoryView<TRecord> implements IProjectionView {
+export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecord> {
 
 	static factory<TView>(): TView {
 		return (new InMemoryView() as unknown) as TView;
@@ -25,8 +25,6 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	protected _map: Map<Identifier, TRecord> = new Map();
 
 	#lock: InMemoryLock;
-
-	#asyncWrites: boolean;
 
 	/** Whether the view is restored */
 	get ready(): boolean {
@@ -38,12 +36,7 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		return this._map.size;
 	}
 
-	constructor(options?: {
-		/** Indicates if writes should be submitted asynchronously */
-		asyncWrites?: boolean
-	}) {
-		this.#asyncWrites = options?.asyncWrites ?? false;
-
+	constructor() {
 		this.#lock = new InMemoryLock();
 
 		// explicitly bind the `get` method to this object for easier using in Promises
@@ -131,9 +124,6 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		if (typeof value === 'function')
 			throw new TypeError('value argument must be an instance of an Object');
 
-		if (this.#asyncWrites)
-			await nextCycle();
-
 		if (this._map.has(key))
 			throw new Error(`Key '${key}' already exists`);
 
@@ -186,9 +176,6 @@ export class InMemoryView<TRecord> implements IProjectionView {
 		if (updatedValue === undefined)
 			return;
 
-		if (this.#asyncWrites)
-			await nextCycle();
-
 		this._map.set(key, updatedValue);
 	}
 
@@ -196,9 +183,6 @@ export class InMemoryView<TRecord> implements IProjectionView {
 	async delete(key: Identifier) {
 		if (!key)
 			throw new TypeError('key argument required');
-
-		if (this.#asyncWrites)
-			await nextCycle();
 
 		this._map.delete(key);
 	}

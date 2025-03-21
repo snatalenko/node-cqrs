@@ -9,17 +9,12 @@ export * from './AbstractSaga';
 export * from './SagaEventHandler';
 export * from './AbstractProjection';
 
-export * from './infrastructure/InMemoryMessageBus';
-export * from './infrastructure/InMemoryEventStorage';
-export * from './infrastructure/InMemorySnapshotStorage';
-export * from './infrastructure/InMemoryView';
-export * from './infrastructure/InMemoryLock';
-export * from './infrastructure/utils/Deferred';
+export * from './infrastructure/memory';
+export * as SQLite from './infrastructure/sqlite';
 
 export * as Event from './Event';
 export {
 	getMessageHandlerNames,
-	getHandledMessageTypes,
 	subscribe
 } from './utils';
 

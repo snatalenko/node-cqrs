@@ -1,8 +1,22 @@
 import { IMessageHandler, IObservable } from "../interfaces";
 import { getHandler } from './getHandler';
-import { getHandledMessageTypes } from './getHandledMessageTypes';
+import { getMessageHandlerNames } from "./getMessageHandlerNames";
 
 const unique = <T>(arr: T[]): T[] => [...new Set(arr)];
+
+/**
+ * Get a list of message types handled by observer
+ */
+export function getHandledMessageTypes(observerInstanceOrClass: (object | Function)): string[] {
+	if (!observerInstanceOrClass)
+		throw new TypeError('observerInstanceOrClass argument required');
+
+	const prototype = Object.getPrototypeOf(observerInstanceOrClass);
+	if (prototype && prototype.constructor && prototype.constructor.handles)
+		return prototype.constructor.handles;
+
+	return getMessageHandlerNames(observerInstanceOrClass);
+}
 
 /**
  * Subscribe observer to observable
@@ -35,11 +49,11 @@ export function subscribe(
 
 	for (const messageType of unique(subscribeTo)) {
 		const handler = masterHandler || getHandler(observer, messageType);
-			if (!handler)
+		if (!handler)
 			throw new Error(`'${messageType}' handler is not defined or not a function`);
 
 		if (queueName) {
-			if(!observable.queue)
+			if (!observable.queue)
 				throw new TypeError('Observer does not support named queues');
 
 			observable.queue(queueName).on(messageType, handler);

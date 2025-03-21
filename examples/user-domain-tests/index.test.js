@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const { createContainer, createBaseInstances } = require('../user-domain');
-const { nextCycle } = require('../../src/infrastructure/utils');
+const { nextCycle } = require('../../src/infrastructure/memory/utils');
 
 describe('user-domain example', () => {
 
@@ -55,8 +55,7 @@ describe('user-domain example', () => {
 
 		const { commandBus, eventStore, users } = container;
 
-		// HACK: let projection restoring to start before emitting new events
-		await nextCycle();
+		const userCreatedPromise = eventStore.once('userCreated');
 
 		await commandBus.send('createUser', undefined, {
 			payload: {
@@ -65,7 +64,7 @@ describe('user-domain example', () => {
 			}
 		});
 
-		const userCreated = await eventStore.once('userCreated');
+		const userCreated = await userCreatedPromise;
 
 		const viewRecord = await users.get(userCreated.aggregateId);
 

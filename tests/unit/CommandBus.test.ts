@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
-import { InMemoryMessageBus } from '../../src/infrastructure/InMemoryMessageBus';
-import { CommandBus } from '../../src/CommandBus';
+import { InMemoryMessageBus, CommandBus } from '../../src';
 
 describe('CommandBus', function () {
 

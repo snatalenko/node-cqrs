@@ -11,12 +11,12 @@ import {
 
 describe('CqrsContainerBuilder', function () {
 
-	let builder;
+	let builder: ContainerBuilder;
 
 	beforeEach(() => {
 		builder = new ContainerBuilder();
 		builder.register(InMemoryEventStorage).as('storage');
-		builder.register(InMemoryMessageBus).as('messageBus');
+		builder.register(InMemoryMessageBus).as('supplementaryEventBus');
 	});
 
 	describe('registerAggregate(aggregateType) extension', () => {
@@ -87,7 +87,7 @@ describe('CqrsContainerBuilder', function () {
 
 	describe('registerProjection(typeOrFactory, exposedViewName) extension', () => {
 
-		class MyProjection extends AbstractProjection {
+		class MyProjection extends AbstractProjection<any> {
 			static get handles() {
 				return ['somethingHappened'];
 			}

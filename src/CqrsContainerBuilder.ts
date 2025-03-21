@@ -4,10 +4,8 @@ import { AggregateCommandHandler } from './AggregateCommandHandler';
 import { CommandBus } from './CommandBus';
 import { EventStore } from './EventStore';
 import { SagaEventHandler } from './SagaEventHandler';
-import { InMemoryMessageBus } from './infrastructure/InMemoryMessageBus';
 
 import {
-	getHandledMessageTypes,
 	isClass
 } from './utils';
 
@@ -95,7 +93,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 			container.createInstance(AggregateCommandHandler, {
 				aggregateFactory: (options: any) =>
 					container.createInstance(AggregateType, options),
-				handles: getHandledMessageTypes(AggregateType)
+				handles: AggregateType.handles
 			});
 
 		return this.registerCommandHandler(commandHandlerFactory);

@@ -2,7 +2,7 @@ import { expect, assert, AssertionError } from 'chai';
 import * as sinon from 'sinon';
 import { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore, InMemoryMessageBus } from '../../src';
 
-class MyProjection extends AbstractProjection {
+class MyProjection extends AbstractProjection<InMemoryView<{ somethingHappenedCnt?: number }>> {
 	static get handles() {
 		return ['somethingHappened'];
 	}
@@ -21,20 +21,19 @@ class MyProjection extends AbstractProjection {
 
 describe('AbstractProjection', function () {
 
-	let projection;
+	let projection: MyProjection;
+	let view: InMemoryView<any>;
 
 	beforeEach(() => {
-		projection = new MyProjection();
+		view = new InMemoryView();
+		projection = new MyProjection({ view });
 	});
 
 	describe('view', () => {
 
 		it('returns a view storage associated with projection', () => {
 
-			const view = new InMemoryView();
-			const proj = new MyProjection({ view });
-
-			expect(proj.view).to.equal(view);
+			expect(projection).to.have.property('view').that.is.equal(view);
 		});
 	});
 
@@ -44,7 +43,7 @@ describe('AbstractProjection', function () {
 
 		beforeEach(() => {
 			observable = {
-				getAllEvents() {
+				getEventsByTypes() {
 					return [];
 				},
 				on() { }
@@ -54,7 +53,7 @@ describe('AbstractProjection', function () {
 
 		it('subscribes to all handlers defined', () => {
 
-			class ProjectionWithoutHandles extends AbstractProjection {
+			class ProjectionWithoutHandles extends AbstractProjection<any> {
 				somethingHappened() { }
 				somethingHappened2() { }
 			}
@@ -68,7 +67,7 @@ describe('AbstractProjection', function () {
 
 		it('ignores overridden projection methods', () => {
 
-			class ProjectionWithoutHandles extends AbstractProjection {
+			class ProjectionWithoutHandles extends AbstractProjection<any> {
 				somethingHappened() { }
 
 				/** overridden projection method */
@@ -85,7 +84,7 @@ describe('AbstractProjection', function () {
 
 		it('subscribes projection to all events returned by "handles"', () => {
 
-			class ProjectionWithHandles extends AbstractProjection {
+			class ProjectionWithHandles extends AbstractProjection<any> {
 				static get handles() {
 					return ['somethingHappened2'];
 				}
@@ -106,24 +105,24 @@ describe('AbstractProjection', function () {
 
 		beforeEach(() => {
 			es = {
-				async* getAllEvents() {
+				async* getEventsByTypes() {
 					yield { type: 'somethingHappened', aggregateId: 1, aggregateVersion: 1 };
 					yield { type: 'somethingHappened', aggregateId: 1, aggregateVersion: 2 };
 					yield { type: 'somethingHappened', aggregateId: 2, aggregateVersion: 1 };
 				}
 			};
-			sinon.spy(es, 'getAllEvents');
+			sinon.spy(es, 'getEventsByTypes');
 
 			return projection.restore(es);
 		});
 
 		it('queries events of specific types from event store', () => {
 
-			assert(es.getAllEvents.calledOnce, 'es.getAllEvents was not called');
+			assert(es.getEventsByTypes.calledOnce, 'es.getEventsByTypes was not called');
 
-			const { args } = es.getAllEvents.lastCall;
+			const { args } = es.getEventsByTypes.lastCall;
 
-			expect(args).to.have.length(1);
+			expect(args).to.have.length(2);
 			expect(args[0]).to.deep.eq(MyProjection.handles);
 		});
 
@@ -143,7 +142,7 @@ describe('AbstractProjection', function () {
 		it('throws, if projection error encountered', () => {
 
 			es = {
-				async* getAllEvents() {
+				async* getEventsByTypes() {
 					yield { type: 'unexpectedEvent' };
 				}
 			};
@@ -163,8 +162,8 @@ describe('AbstractProjection', function () {
 		it('waits until the restoring process is done', async () => {
 
 			const storage = new InMemoryEventStorage();
-			const messageBus = new InMemoryMessageBus();
-			const es = new EventStore({ storage, messageBus });
+			const supplementaryEventBus = new InMemoryMessageBus();
+			const es = new EventStore({ storage, supplementaryEventBus });
 
 			let restored = false;
 			let projected = false;

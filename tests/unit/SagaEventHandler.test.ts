@@ -22,7 +22,7 @@ class Saga extends AbstractSaga {
 	}
 	followingHappened() {
 		super.enqueue('complete', undefined, { foo: 'bar' });
-	 }
+	}
 	onError(error, { command, event }) {
 		super.enqueue('fixError', undefined, { error, command, event });
 	}
@@ -42,9 +42,9 @@ describe('SagaEventHandler', function () {
 	let sagaEventHandler: SagaEventHandler;
 
 	beforeEach(() => {
-		const messageBus = new InMemoryMessageBus();
-		commandBus = new CommandBus({ messageBus });
-		eventStore = new EventStore({ storage: new InMemoryEventStorage(), messageBus });
+		const supplementaryEventBus = new InMemoryMessageBus();
+		commandBus = new CommandBus({});
+		eventStore = new EventStore({ storage: new InMemoryEventStorage(), supplementaryEventBus });
 		sagaEventHandler = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus });
 	});
 

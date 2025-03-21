@@ -1,4 +1,4 @@
-import { InMemoryMessageBus } from "./infrastructure/InMemoryMessageBus";
+import { InMemoryMessageBus } from "./infrastructure/memory";
 import {
 	ICommand,
 	ICommandBus,

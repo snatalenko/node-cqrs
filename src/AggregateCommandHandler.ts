@@ -13,8 +13,8 @@ import {
 } from "./interfaces";
 
 import {
+	iteratorToArray,
 	getClassName,
-	getHandledMessageTypes,
 	subscribe
 } from './utils';
 
@@ -57,7 +57,7 @@ export class AggregateCommandHandler implements ICommandHandler {
 		if (aggregateType) {
 			const AggregateType = aggregateType;
 			this.#aggregateFactory = params => new AggregateType(params);
-			this.#handles = getHandledMessageTypes(AggregateType);
+			this.#handles = AggregateType.handles;
 		}
 		else if (aggregateFactory) {
 			if (!Array.isArray(handles) || !handles.length)
@@ -84,7 +84,9 @@ export class AggregateCommandHandler implements ICommandHandler {
 		if (!id)
 			throw new TypeError('id argument required');
 
-		const events = await this.#eventStore.getAggregateEvents(id);
+		const eventsIterable = this.#eventStore.getAggregateEvents(id);
+		const events = await iteratorToArray(eventsIterable);
+
 		const aggregate = this.#aggregateFactory({ id, events });
 
 		this.#logger?.info(`${aggregate} state restored from ${events.length} event(s)`);
