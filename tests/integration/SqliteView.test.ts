@@ -3,7 +3,6 @@ import { existsSync, unlinkSync } from 'fs';
 import { AbstractProjection, IEvent } from '../../src';
 import { SqliteObjectView } from '../../src/infrastructure/sqlite';
 import * as createDb from 'better-sqlite3';
-import { v7 } from 'uuid';
 
 type UserPayload = {
 	name: string;
@@ -87,10 +86,10 @@ describe.only('SqliteView', () => {
 		await p.view.lock();
 		await p.view.unlock();
 
-		const aggregateIds = Array.from({ length: 5_000 }, () => ({
-			id1: v7(),
-			id2: v7(),
-			id3: v7()
+		const aggregateIds = Array.from({ length: 5_000 }, (v, i) => ({
+			id1: `${i}A`,
+			id2: `${i}B`,
+			id3: `${i}C`
 		}));
 
 		console.time();

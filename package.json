@@ -28,7 +28,7 @@
     "test": "jest --verbose tests/unit",
     "test:coverage": "jest --collect-coverage tests/unit",
     "pretest:integration": "npm run build",
-    "test:integration": "jest --verbose examples/user-domain-tests",
+    "test:integration": "jest --verbose examples/user-domain-tests tests/integration",
     "changelog": "conventional-changelog -n ./scripts/changelog -i CHANGELOG.md -s",
     "clean": "tsc --build --clean",
     "build": "tsc --build",
@@ -48,15 +48,13 @@
     "@types/jest": "^29.5.13",
     "@types/node": "^20.16.9",
     "@types/sinon": "^17.0.4",
-    "@types/uuid": "^10.0.0",
     "chai": "^4.5.0",
     "conventional-changelog": "^3.1.25",
     "jest": "^29.7.0",
     "sinon": "^19.0.2",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.2",
-    "uuid": "^10.0.0"
+    "typescript": "^5.6.2"
   },
   "peerDependencies": {
     "better-sqlite3": "^11.3.0",
