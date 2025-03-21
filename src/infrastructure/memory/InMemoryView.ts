@@ -70,7 +70,7 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 	 *
 	 * @deprecated Use `async get()` instead
 	 */
-	has(key: string): boolean {
+	has(key: Identifier): boolean {
 		return this._map.has(key);
 	}
 
@@ -118,7 +118,7 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 	}
 
 	/** Create record with a given key and value */
-	async create(key: string, value: TRecord = {} as TRecord) {
+	async create(key: Identifier, value: TRecord = {} as TRecord) {
 		if (!key)
 			throw new TypeError('key argument required');
 		if (typeof value === 'function')
@@ -131,7 +131,7 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 	}
 
 	/** Update existing view record */
-	async update(key: string, update: (r: TRecord) => TRecord) {
+	async update(key: Identifier, update: (r: TRecord) => TRecord) {
 		if (!key)
 			throw new TypeError('key argument required');
 		if (typeof update !== 'function')
@@ -144,7 +144,7 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 	}
 
 	/** Update existing view record or create new */
-	async updateEnforcingNew(key: string, update: (r?: TRecord) => TRecord) {
+	async updateEnforcingNew(key: Identifier, update: (r?: TRecord) => TRecord) {
 		if (!key)
 			throw new TypeError('key argument required');
 		if (typeof update !== 'function')
