@@ -1,3 +1,11 @@
+# [1.0.0-rc.6](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.5...v1.0.0-rc.6) (2025-03-21)
+
+
+### Changes
+
+* Support persistent views; Add SQLite infrastructure ([c235573](https://github.com/snatalenko/node-cqrs/commit/c235573678be349d031d1a696cab3993224979a2))
+
+
 # [1.0.0-rc.5](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.4...v1.0.0-rc.5) (2024-10-27)
 
 

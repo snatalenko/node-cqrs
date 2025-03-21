@@ -1,6 +1,6 @@
 {
   "name": "node-cqrs",
-  "version": "1.0.0-rc.5",
+  "version": "1.0.0-rc.6",
   "description": "Basic ES6 backbone for CQRS app development",
   "repository": {
     "type": "git",
