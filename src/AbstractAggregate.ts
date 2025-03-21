@@ -8,7 +8,7 @@ import {
 	IAggregateConstructorParams
 } from "./interfaces";
 
-import { getClassName, validateHandlers, getHandler } from './utils';
+import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } from './utils';
 
 /**
  * Deep-clone simple JS object
@@ -25,16 +25,15 @@ const SNAPSHOT_EVENT_TYPE = 'snapshot';
 export abstract class AbstractAggregate<TState extends IMutableAggregateState | object | void> implements IAggregate {
 
 	/**
-	 * Optional list of commands handled by Aggregate.
-	 * 
-	 * If not overridden in Aggregate implementation,
-	 * `AggregateCommandHandler` will treat all public methods as command handlers
+	 * List of command names handled by the Aggregate.
 	 *
-	 * @example
-	 * 	return ['createUser', 'changePassword'];
+	 * Can be overridden in the Aggregate implementation to explicitly define supported commands.
+	 * If not overridden, all public methods will be treated as command handlers by default.
+	 *
+	 * @example ['createUser', 'changePassword'];
 	 */
-	static get handles(): string[] | undefined {
-		return undefined;
+	static get handles(): string[] {
+		return getMessageHandlerNames(this);
 	}
 
 	#id: Identifier;

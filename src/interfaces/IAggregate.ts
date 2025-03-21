@@ -47,7 +47,7 @@ export type IAggregateConstructorParams<TState extends IMutableAggregateState | 
 };
 
 export interface IAggregateConstructor<TState extends IMutableAggregateState | object | void> {
-	readonly handles?: string[];
+	readonly handles: string[];
 	new(options: IAggregateConstructorParams<TState>): IAggregate;
 }
 

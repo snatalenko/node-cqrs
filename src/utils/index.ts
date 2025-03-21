@@ -1,6 +1,5 @@
 export * from './CompoundEmitter';
 export * from './getClassName';
-export * from './getHandledMessageTypes';
 export * from './getHandler';
 export * from './getMessageHandlerNames';
 export * from './isClass';

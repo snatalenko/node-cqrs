@@ -16,24 +16,25 @@ import {
 	getClassName,
 	validateHandlers,
 	getHandler,
-	getHandledMessageTypes,
-	subscribe
+	subscribe,
+	getMessageHandlerNames
 } from './utils';
 
 export type AbstractProjectionParams<T> = {
 	/**
-	 * (Optional) Default view associated with the projection
+	 * The default view associated with the projection.
+	 * Can optionally implement IViewLocker and/or IEventLocker.
 	 */
 	view?: T,
 
 	/**
-	 * Instance for managing view restoration state to prevent early access to an inconsistent view
-	 * or conflicts caused by concurrent restoration by another process.
+	 * Manages view restoration state to prevent early access to an inconsistent view
+	 * or conflicts from concurrent restoration by other processes.
 	 */
 	viewLocker?: IViewLocker,
 
 	/**
-	 * Instance for tracking event processing state to prevent concurrent processing by multiple processes.
+	 * Tracks event processing state to prevent concurrent handling by multiple processes.
 	 */
 	eventLocker?: IEventLocker,
 
@@ -46,33 +47,51 @@ export type AbstractProjectionParams<T> = {
 export abstract class AbstractProjection<TView = InMemoryView<any>> implements IProjection<TView> {
 
 	/**
-	 * Optional list of event types being handled by projection.
-	 * Can be overridden in projection implementation.
-	 * If not overridden, will detect event types from event handlers declared on the Projection class
+	 * List of event types handled by the projection. Can be overridden in the projection implementation.
+	 * If not overridden, event types will be inferred from handler methods defined on the Projection class.
 	 */
-	static get handles(): string[] | undefined {
-		return undefined;
+	static get handles(): string[] {
+		return getMessageHandlerNames(this);
 	}
 
-	#view: TView;
+	#view?: TView;
 	#viewLocker?: IViewLocker;
 	#eventLocker?: IEventLocker;
 	protected _logger?: ILogger;
 
+	/**
+	 * The default view associated with the projection.
+	 * Can optionally implement IViewLocker and/or IEventLocker.
+	 */
 	public get view(): TView {
-		return this.#view;
+		return this.#view ?? (this.#view = new InMemoryView() as TView);
 	}
 
 	protected set view(value: TView) {
 		this.#view = value;
 	}
 
+	/**
+	 * Manages view restoration state to prevent early access to an inconsistent view
+	 * or conflicts from concurrent restoration by other processes.
+	 */
 	protected get _viewLocker(): IViewLocker | undefined {
 		return this.#viewLocker ?? (isViewLocker(this.view) ? this.view : undefined);
 	}
 
+	protected set _viewLocker(value: IViewLocker | undefined) {
+		this.#viewLocker = value;
+	}
+
+	/**
+	 * Tracks event processing state to prevent concurrent handling by multiple processes.
+	 */
 	protected get _eventLocker(): IEventLocker | undefined {
 		return this.#eventLocker ?? (isEventLocker(this.view) ? this.view : undefined);
+	}
+
+	protected set _eventLocker(value: IEventLocker | undefined) {
+		this.#eventLocker = value;
 	}
 
 	constructor({
@@ -83,7 +102,7 @@ export abstract class AbstractProjection<TView = InMemoryView<any>> implements I
 	}: AbstractProjectionParams<TView> = {}) {
 		validateHandlers(this);
 
-		this.#view = view ?? new InMemoryView() as any;
+		this.#view = view;
 		this.#viewLocker = viewLocker;
 		this.#eventLocker = eventLocker;
 
@@ -158,7 +177,7 @@ export abstract class AbstractProjection<TView = InMemoryView<any>> implements I
 
 		this._logger?.debug(`retrieving ${lastEvent ? `events after ${describe(lastEvent)}` : 'all events'}...`);
 
-		const messageTypes = getHandledMessageTypes(this);
+		const messageTypes = (this.constructor as typeof AbstractProjection).handles;
 		const eventsIterable = eventStore.getEventsByTypes(messageTypes, { afterEvent: lastEvent });
 
 		let eventsCount = 0;
@@ -174,7 +193,7 @@ export abstract class AbstractProjection<TView = InMemoryView<any>> implements I
 			}
 		}
 
-		this._logger?.info(`view restored (${this.#view}) from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
+		this._logger?.info(`view restored from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}
 
 	/** Handle error on restoring. Logs and throws error by default */

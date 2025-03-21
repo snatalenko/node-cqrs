@@ -11,7 +11,7 @@ import {
 
 describe('CqrsContainerBuilder', function () {
 
-	let builder;
+	let builder: ContainerBuilder;
 
 	beforeEach(() => {
 		builder = new ContainerBuilder();

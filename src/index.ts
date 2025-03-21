@@ -15,7 +15,6 @@ export * as SQLite from './infrastructure/sqlite';
 export * as Event from './Event';
 export {
 	getMessageHandlerNames,
-	getHandledMessageTypes,
 	subscribe
 } from './utils';
 

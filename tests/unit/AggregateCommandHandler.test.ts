@@ -9,7 +9,6 @@ import {
 	EventStore,
 	InMemorySnapshotStorage
 } from '../../src';
-import { getHandledMessageTypes } from '../../src/utils';
 
 function delay(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
@@ -123,7 +122,7 @@ describe('AggregateCommandHandler', function () {
 		const handler = new AggregateCommandHandler({
 			eventStore,
 			aggregateFactory: () => aggregate,
-			handles: getHandledMessageTypes(aggregate)
+			handles: MyAggregate.handles
 		});
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
@@ -191,7 +190,7 @@ describe('AggregateCommandHandler', function () {
 		const handler = new AggregateCommandHandler({
 			eventStore,
 			aggregateFactory: () => aggregate,
-			handles: getHandledMessageTypes(aggregate)
+			handles: MyAggregate.handles
 		});
 
 		// test

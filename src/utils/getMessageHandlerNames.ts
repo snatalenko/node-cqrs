@@ -1,7 +1,3 @@
-const KNOWN_METHOD_NAMES = new Set([
-	'subscribe'
-]);
-
 function getInheritedPropertyNames(prototype: object): string[] {
 	const parentPrototype = prototype && Object.getPrototypeOf(prototype);
 	if (!parentPrototype)
@@ -31,14 +27,12 @@ export function getMessageHandlerNames(observerInstanceOrClass: (object | Functi
 	if (!prototype)
 		throw new TypeError('prototype cannot be resolved');
 
-	const inheritedProperties = new Set(getInheritedPropertyNames(prototype));
-
+	const inheritedProperties = getInheritedPropertyNames(prototype);
 	const propDescriptors = Object.getOwnPropertyDescriptors(prototype);
 	const propNames = Object.keys(propDescriptors);
 
 	return propNames.filter(key =>
 		!key.startsWith('_') &&
-		!inheritedProperties.has(key) &&
-		!KNOWN_METHOD_NAMES.has(key) &&
+		!inheritedProperties.includes(key) &&
 		typeof propDescriptors[key].value === 'function');
 }

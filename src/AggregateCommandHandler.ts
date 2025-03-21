@@ -15,7 +15,6 @@ import {
 import {
 	iteratorToArray,
 	getClassName,
-	getHandledMessageTypes,
 	subscribe
 } from './utils';
 
@@ -58,7 +57,7 @@ export class AggregateCommandHandler implements ICommandHandler {
 		if (aggregateType) {
 			const AggregateType = aggregateType;
 			this.#aggregateFactory = params => new AggregateType(params);
-			this.#handles = getHandledMessageTypes(AggregateType);
+			this.#handles = AggregateType.handles;
 		}
 		else if (aggregateFactory) {
 			if (!Array.isArray(handles) || !handles.length)
