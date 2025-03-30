@@ -1,6 +1,6 @@
 import { Statement, Database } from 'better-sqlite3';
 import { guid } from './utils';
-import { IObjectStorage } from '../../interfaces';
+import { IObjectStorage } from '../interfaces';
 
 export class SqliteObjectStorage<TRecord> implements IObjectStorage<TRecord> {
 

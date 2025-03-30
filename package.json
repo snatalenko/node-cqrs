@@ -20,12 +20,16 @@
   ],
   "main": "./dist/index.js",
   "types": "./src/index.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./sqlite": "./dist/sqlite/index.js"
+  },
   "engines": {
     "node": ">=10.3.0"
   },
   "scripts": {
     "pretest": "npm run build",
-    "test": "jest --verbose tests/unit",
+    "test": "jest tests/unit",
     "test:coverage": "jest --collect-coverage tests/unit",
     "pretest:integration": "npm run build",
     "test:integration": "jest --verbose examples/user-domain-tests tests/integration",
@@ -40,6 +44,8 @@
   "license": "MIT",
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
   "dependencies": {
+    "async-iterable-buffer": "^1.0.0",
+    "async-parallel-pipe": "^1.0.1",
     "di0": "^1.0.0"
   },
   "devDependencies": {

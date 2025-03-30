@@ -2,6 +2,7 @@ import { Identifier } from "./Identifier";
 import { IEvent } from "./IEvent";
 import { IEventSet } from "./IEventSet";
 import { IEventStream } from "./IEventStream";
+import { isObject } from "./isObject";
 
 export type EventQueryAfter = {
 	/** Get events emitted after this specific event */
@@ -13,17 +14,36 @@ export type EventQueryBefore = {
 	beforeEvent?: IEvent;
 }
 
-export interface IEventStorage {
+export interface IEventStoreReader {
 	/**
-	 * Create unique identifier 
+	 * Retrieves events of specified types that were emitted after a given event.
 	 */
-	getNewId(): Identifier | Promise<Identifier>;
-
-	commitEvents(events: IEventSet): Promise<IEventSet>;
-
 	getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream;
 
-	getAggregateEvents(aggregateId: Identifier, options?: { snapshot?: IEvent }): Promise<IEventSet> | IEventStream;
+	/**
+	 * Retrieves all events (and optionally a snapshot) associated with a specific aggregate.
+	 */
+	getAggregateEvents(aggregateId: Identifier, options?: { snapshot?: IEvent }): IEventStream;
 
-	getSagaEvents(sagaId: Identifier, options: EventQueryBefore): Promise<IEventSet> | IEventStream;
+	/**
+	 * Retrieves events associated with a saga, with optional filtering by version or timestamp.
+	 */
+	getSagaEvents(sagaId: Identifier, options: EventQueryBefore): IEventStream;
+}
+
+export const isIEventStoreReader = (storage: unknown): storage is IEventStoreReader =>
+	isObject(storage)
+	&& 'getEventsByTypes' in storage
+	&& typeof storage.getEventsByTypes === 'function'
+	&& 'getAggregateEvents' in storage
+	&& typeof storage.getAggregateEvents === 'function'
+	&& 'getSagaEvents' in storage
+	&& typeof storage.getSagaEvents === 'function';
+
+export interface IEventStoreWriter {
+	/**
+	 * Persists a set of events to the event store.
+	 * Returns the persisted event set (potentially enriched or normalized).
+	 */
+	commitEvents(events: IEventSet): Promise<IEventSet>;
 }

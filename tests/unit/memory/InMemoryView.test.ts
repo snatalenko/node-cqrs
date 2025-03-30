@@ -1,6 +1,6 @@
 import { InMemoryView } from '../../../src';
 import { expect, assert } from 'chai';
-import { nextCycle } from '../../../src/infrastructure/memory/utils';
+import { nextCycle } from '../../../src/in-memory/utils';
 
 describe('InMemoryView', function () {
 

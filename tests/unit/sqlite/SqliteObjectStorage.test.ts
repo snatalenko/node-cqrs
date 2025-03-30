@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as createDb from 'better-sqlite3';
-import { guid, SqliteObjectStorage } from '../../../src/infrastructure/sqlite';
+import { guid, SqliteObjectStorage } from '../../../src/sqlite';
 
 describe('SqliteObjectStorage', function () {
 	let db: import('better-sqlite3').Database;

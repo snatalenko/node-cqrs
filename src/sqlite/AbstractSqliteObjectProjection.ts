@@ -1,5 +1,5 @@
-import { AbstractProjection } from "../../AbstractProjection";
-import { IExtendableLogger } from "../../interfaces";
+import { AbstractProjection } from "../AbstractProjection";
+import { IExtendableLogger } from "../interfaces";
 import { SqliteDbParams } from "./commonParams";
 import { SqliteObjectView } from "./SqliteObjectView";
 

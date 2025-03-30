@@ -1,6 +1,13 @@
 import { expect, assert, AssertionError } from 'chai';
 import * as sinon from 'sinon';
-import { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore, InMemoryMessageBus } from '../../src';
+import {
+	AbstractProjection,
+	InMemoryView,
+	InMemoryEventStorage,
+	EventStore,
+	InMemoryMessageBus,
+	EventDispatcher
+} from '../../src';
 
 class MyProjection extends AbstractProjection<InMemoryView<{ somethingHappenedCnt?: number }>> {
 	static get handles() {
@@ -162,8 +169,9 @@ describe('AbstractProjection', function () {
 		it('waits until the restoring process is done', async () => {
 
 			const storage = new InMemoryEventStorage();
-			const supplementaryEventBus = new InMemoryMessageBus();
-			const es = new EventStore({ storage, supplementaryEventBus });
+			const eventBus = new InMemoryMessageBus();
+			const eventDispatcher = new EventDispatcher({ eventBus });
+			const es = new EventStore({ storage, eventBus, eventDispatcher, identifierProvider: storage });
 
 			let restored = false;
 			let projected = false;

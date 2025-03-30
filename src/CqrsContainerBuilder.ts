@@ -4,6 +4,13 @@ import { AggregateCommandHandler } from './AggregateCommandHandler';
 import { CommandBus } from './CommandBus';
 import { EventStore } from './EventStore';
 import { SagaEventHandler } from './SagaEventHandler';
+import { EventDispatcher } from './EventDispatcher';
+import { InMemoryMessageBus } from './in-memory';
+import {
+	EventValidationProcessor,
+	SnapshotPersistenceProcessor,
+	EventPersistenceProcessor
+} from './dispatch-pipeline';
 
 import {
 	isClass
@@ -32,8 +39,18 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		singletones: object
 	}) {
 		super(options);
+		super.register(InMemoryMessageBus).as('eventBus');
 		super.register(EventStore).as('eventStore');
 		super.register(CommandBus).as('commandBus');
+
+		super.register(container => {
+			const eventDispatcher = new EventDispatcher(container);
+			eventDispatcher.addPipelineProcessor(new EventValidationProcessor(container));
+			eventDispatcher.addPipelineProcessor(new SnapshotPersistenceProcessor(container));
+			eventDispatcher.addPipelineProcessor(new EventPersistenceProcessor(container));
+
+			return eventDispatcher;
+		}).as('eventDispatcher');
 	}
 
 	/** Register command handler, which will be subscribed to commandBus upon instance creation */

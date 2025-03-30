@@ -1,4 +1,4 @@
-import { IAggregateSnapshotStorage, Identifier, IEvent } from "../../interfaces";
+import { IAggregateSnapshotStorage, Identifier, IEvent } from "../interfaces";
 
 /**
  * In-memory storage for aggregate snapshots.
@@ -23,5 +23,15 @@ export class InMemorySnapshotStorage implements IAggregateSnapshotStorage {
 			throw new TypeError('event.aggregateId is required');
 
 		this.#snapshots.set(snapshotEvent.aggregateId, snapshotEvent);
+	}
+
+	/**
+	 * Delete aggregate snapshot
+	 */
+	deleteAggregateSnapshot<TState>(snapshotEvent: IEvent<TState>): Promise<void> | void {
+		if (!snapshotEvent.aggregateId)
+			throw new TypeError('snapshotEvent.aggregateId argument required');
+
+		this.#snapshots.delete(snapshotEvent.aggregateId);
 	}
 }

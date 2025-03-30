@@ -1,5 +1,5 @@
 import { AbstractSqliteView } from "./AbstractSqliteView";
-import { IObjectStorage, IEventLocker } from '../../interfaces';
+import { IObjectStorage, IEventLocker } from '../interfaces';
 import { SqliteObjectStorage } from './SqliteObjectStorage';
 
 export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IObjectStorage<TRecord>, IEventLocker {

@@ -1,7 +1,6 @@
-
 import { existsSync, unlinkSync } from 'fs';
-import { AbstractProjection, IEvent } from '../../src';
-import { SqliteObjectView } from '../../src/infrastructure/sqlite';
+import { AbstractProjection, IEvent } from '../../../src';
+import { SqliteObjectView } from '../../../src/sqlite';
 import * as createDb from 'better-sqlite3';
 
 type UserPayload = {
@@ -34,14 +33,6 @@ describe.only('SqliteView', () => {
 
 	let viewModelSqliteDb: import('better-sqlite3').Database;
 
-	const logState = () => {
-		console.log({
-			tbl_view_lock: viewModelSqliteDb.prepare(`SELECT * FROM tbl_view_lock`).all(),
-			tbl_test_1_event_lock: viewModelSqliteDb.prepare(`SELECT * FROM tbl_test_1_event_lock`).all(),
-			tbl_test_1: viewModelSqliteDb.prepare(`SELECT * FROM tbl_test_1`).all()
-		});
-	}
-
 	const fileName = './test.sqlite';
 
 	beforeEach(() => {
@@ -72,7 +63,7 @@ describe.only('SqliteView', () => {
 	// on file system - 44_396 ms (225 events/second)
 	// on file system with WAL and NORMAL sync - 551 ms (18_148 events/second)
 
-	it('handles 10_000 events within 0.5 seconds', async () => {
+	it('handles 1_000 events within 0.5 seconds', async () => {
 
 		const p = new MyDumbProjection({
 			view: new SqliteObjectView({
@@ -86,18 +77,17 @@ describe.only('SqliteView', () => {
 		await p.view.lock();
 		await p.view.unlock();
 
-		const aggregateIds = Array.from({ length: 5_000 }, (v, i) => ({
-			id1: `${i}A`,
-			id2: `${i}B`,
-			id3: `${i}C`
+		const aggregateIds = Array.from({ length: 1_000 }, (v, i) => ({
+			aggregateId: `${i}A`.padStart(32, '0'),
+			eventId: `${i}B`.padStart(32, '0')
 		}));
 
-		console.time();
+		const startTs = Date.now();
 
-		for (const { id1: aggregateId, id2, id3 } of aggregateIds) {
+		for (const { aggregateId, eventId } of aggregateIds) {
 			await p.project({
 				type: 'userCreated',
-				id: id2,
+				id: eventId,
 				aggregateId,
 				payload: {
 					name: 'Jon'
@@ -106,7 +96,6 @@ describe.only('SqliteView', () => {
 
 			await p.project({
 				type: 'userModified',
-				id: id3,
 				aggregateId,
 				payload: {
 					name: 'Jon Doe'
@@ -114,14 +103,18 @@ describe.only('SqliteView', () => {
 			});
 		}
 
-		console.timeEnd();
+		const totalMs = Date.now() - startTs;
+		expect(totalMs).toBeLessThan(500);
 
-		// logState();
+		const user = await p.view.get('0000000000000000000000000000999A');
+		expect(user).toEqual({
+			name: 'Jon Doe'
+		});
 
-		// const user = await p.view.get(aggregateId);
-
-		// expect(user).toEqual({
-		// 	name: 'Jon Doe'
+		// console.log({
+		// 	tbl_view_lock: viewModelSqliteDb.prepare(`SELECT * FROM tbl_view_lock LIMIT 3`).all(),
+		// 	tbl_test_1_event_lock: viewModelSqliteDb.prepare(`SELECT * FROM tbl_event_lock LIMIT 3`).all(),
+		// 	tbl_test_1: viewModelSqliteDb.prepare(`SELECT * FROM tbl_test_1 LIMIT 3`).all()
 		// });
 	});
 });

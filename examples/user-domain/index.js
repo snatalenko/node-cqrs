@@ -6,8 +6,10 @@ const {
 	CommandBus,
 	EventStore,
 	AggregateCommandHandler,
-	InMemoryMessageBus
+	InMemoryMessageBus,
+	EventDispatcher
 } = require('../..'); // node-cqrs
+const { EventPersistenceProcessor } = require('../../src/dispatch-pipeline');
 const UserAggregate = require('./UserAggregate');
 const UsersProjection = require('./UsersProjection');
 
@@ -19,7 +21,7 @@ exports.createContainer = () => {
 
 	// register infrastructure services
 	builder.register(InMemoryEventStorage).as('storage');
-	builder.register(InMemoryMessageBus).as('supplementaryEventBus');
+	builder.register(InMemoryMessageBus).as('eventBus');
 
 	// register domain entities
 	builder.registerAggregate(UserAggregate);
@@ -34,19 +36,22 @@ exports.createContainer = () => {
  */
 exports.createBaseInstances = () => {
 	// create infrastructure services
-	const messageBus = new InMemoryMessageBus();
+	const eventBus = new InMemoryMessageBus();
 	const storage = new InMemoryEventStorage();
-	const eventStore = new EventStore({ storage, supplementaryEventBus: messageBus });
-	const commandBus = new CommandBus({ messageBus });
+	const eventDispatcher = new EventDispatcher({ eventBus })
+	eventDispatcher.addPipelineProcessor(new EventPersistenceProcessor({ storage }));
 
-	/** @type {IAggregateConstructor} */
+	const eventStore = new EventStore({ storage, eventBus, eventDispatcher });
+	const commandBus = new CommandBus();
+
+	/** @type {import('../..').IAggregateConstructor} */
 	const aggregateType = UserAggregate;
 
-	/** @type {ICommandHandler} */
+	/** @type {import('../..').ICommandHandler} */
 	const userCommandHandler = new AggregateCommandHandler({ eventStore, aggregateType });
 	userCommandHandler.subscribe(commandBus);
 
-	/** @type {IProjection} */
+	/** @type {import('../..').IProjection} */
 	const usersProjection = new UsersProjection();
 	usersProjection.subscribe(eventStore);
 

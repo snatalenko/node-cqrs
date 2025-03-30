@@ -4,7 +4,7 @@ import {
 	IMessageBus,
 	IMessageHandler,
 	IObservable
-} from "../../interfaces";
+} from "../interfaces";
 
 /**
  * Default implementation of the message bus.

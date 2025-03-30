@@ -1,6 +1,6 @@
 import { Database, Statement } from 'better-sqlite3';
-import { IExtendableLogger, ILogger, IViewLocker } from '../../interfaces';
-import { Deferred } from '../memory';
+import { IExtendableLogger, ILogger, IViewLocker } from '../interfaces';
+import { Deferred } from '../in-memory';
 import { promisify } from 'util';
 import { viewLockTableInit } from './queries';
 import { SqliteDbParams, SqliteProjectionDataParams } from './commonParams';

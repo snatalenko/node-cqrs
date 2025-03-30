@@ -1,16 +1,26 @@
-import { IEvent } from "../../interfaces/IEvent";
-import { IEventSet } from "../../interfaces/IEventSet";
-import { EventQueryAfter, IEventStorage } from "../../interfaces/IEventStorage";
-import { IEventStream } from "../../interfaces/IEventStream";
+import {
+	IIdentifierProvider,
+	IEvent,
+	IEventSet,
+	EventQueryAfter,
+	IEventStoreReader,
+	IEventStream,
+	IEventStoreWriter
+} from "../interfaces";
 import { nextCycle } from "./utils";
 
 /**
  * A simple event storage implementation intended to use for tests only.
  * Storage content resets on each app restart.
  */
-export class InMemoryEventStorage implements IEventStorage {
+export class InMemoryEventStorage implements IEventStoreReader, IEventStoreWriter, IIdentifierProvider {
 	#nextId: number = 0;
 	#events: IEventSet = [];
+
+	getNewId(): string {
+		this.#nextId += 1;
+		return String(this.#nextId);
+	}
 
 	async commitEvents(events: IEventSet): Promise<IEventSet> {
 		await nextCycle();
@@ -65,10 +75,5 @@ export class InMemoryEventStorage implements IEventStorage {
 			else if (!eventTypes || eventTypes.includes(event.type))
 				yield event;
 		}
-	}
-
-	getNewId(): string {
-		this.#nextId += 1;
-		return String(this.#nextId);
 	}
 }

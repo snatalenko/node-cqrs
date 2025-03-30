@@ -1,8 +1,8 @@
-import { IEvent, IEventLocker, ILogger } from '../../interfaces';
+import { IEvent, IEventLocker, ILogger } from '../interfaces';
 import { Database } from 'better-sqlite3';
 import { SqliteViewLocker, SqliteViewLockerParams } from './SqliteViewLocker';
 import { SqliteEventLocker, SqliteEventLockerParams } from './SqliteEventLocker';
-import { IViewLocker } from '../../interfaces';
+import { IViewLocker } from '../interfaces';
 
 export abstract class AbstractSqliteView implements IViewLocker, IEventLocker {
 

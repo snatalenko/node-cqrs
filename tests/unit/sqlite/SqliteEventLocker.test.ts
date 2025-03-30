@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import * as createDb from 'better-sqlite3';
-import { SqliteEventLocker } from '../../../src/infrastructure/sqlite/SqliteEventLocker';
+import { SqliteEventLocker } from '../../../src/sqlite/SqliteEventLocker';
 import { IEvent } from '../../../src/interfaces';
-import { guid } from '../../../src/infrastructure/sqlite';
+import { guid } from '../../../src/sqlite';
 import { promisify } from 'util';
 const delay = promisify(setTimeout);
 

@@ -13,7 +13,6 @@ describe('InMemoryMessageBus', function () {
 
 			bus.on('doSomething', cmd => {
 				try {
-					// console.log(cmd);
 					expect(cmd).to.have.nested.property('payload.message', 'test');
 					done();
 				}

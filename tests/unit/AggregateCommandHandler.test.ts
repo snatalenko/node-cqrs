@@ -1,6 +1,6 @@
 import { expect, assert } from 'chai';
 import * as sinon from 'sinon';
-import { ICommandBus, Identifier, IEventSet, IEventStore, IMessageBus, InMemoryMessageBus } from '../../src';
+import { EventDispatcher, ICommandBus, Identifier, IEventBus, IEventSet, IEventStore, InMemoryMessageBus } from '../../src';
 
 import {
 	AggregateCommandHandler,
@@ -47,21 +47,22 @@ describe('AggregateCommandHandler', function () {
 	let snapshotStorage: InMemorySnapshotStorage;
 	let eventStore: IEventStore;
 	let commandBus: ICommandBus;
-	let supplementaryEventBus: IMessageBus;
+	let eventBus: IEventBus;
 	let onSpy;
 	let getNewIdSpy;
 	let getAggregateEventsSpy;
 	let commitSpy;
 
 	beforeEach(() => {
-		supplementaryEventBus = new InMemoryMessageBus();
+		eventBus = new InMemoryMessageBus();
 		storage = new InMemoryEventStorage();
 		snapshotStorage = new InMemorySnapshotStorage();
+		const eventDispatcher = new EventDispatcher({ eventBus });
 
-		eventStore = new EventStore({ storage, snapshotStorage, supplementaryEventBus });
+		eventStore = new EventStore({ storage, snapshotStorage, eventBus, eventDispatcher, identifierProvider: storage });
 		getNewIdSpy = sinon.spy(eventStore, 'getNewId');
 		getAggregateEventsSpy = sinon.spy(eventStore, 'getAggregateEvents');
-		commitSpy = sinon.spy(eventStore, 'commit');
+		commitSpy = sinon.spy(eventStore, 'dispatch');
 
 		commandBus = new CommandBus() as any;
 		onSpy = sinon.spy(commandBus, 'on');

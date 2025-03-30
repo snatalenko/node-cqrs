@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as createDb from 'better-sqlite3';
-import { SqliteViewLocker } from '../../../src/infrastructure/sqlite';
+import { SqliteViewLocker } from '../../../src/sqlite';
 
 describe('SqliteViewLocker', function () {
 

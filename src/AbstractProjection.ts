@@ -1,5 +1,5 @@
 import { describe } from './Event';
-import { InMemoryView } from './infrastructure/memory/InMemoryView';
+import { InMemoryView } from './in-memory/InMemoryView';
 import {
 	IViewLocker,
 	IEventLocker,

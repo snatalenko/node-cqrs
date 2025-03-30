@@ -1,26 +1,13 @@
-import { Identifier } from "./Identifier";
+import { IEventDispatcher } from "./IEventDispatcher";
 import { IEvent } from "./IEvent";
-import { IEventSet } from "./IEventSet";
-import { EventQueryAfter, EventQueryBefore } from "./IEventStorage";
-import { IEventStream } from "./IEventStream";
+import { IEventStoreReader } from "./IEventStorage";
+import { IIdentifierProvider } from "./IIdentifierProvider";
 import { IMessageHandler, IObservable } from "./IObservable";
 
-export interface IEventStore extends IObservable {
-	readonly snapshotsSupported?: boolean;
-
-	getNewId(): Identifier | Promise<Identifier>;
-
-	commit(events: IEventSet): Promise<IEventSet>;
-
-	getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream;
-
-	getAggregateEvents(aggregateId: Identifier, options?: { snapshot?: IEvent }): IEventStream;
-
-	getSagaEvents(sagaId: Identifier, options: EventQueryBefore): IEventStream;
-
-	once(messageTypes: string | string[], handler?: IMessageHandler, filter?: (e: IEvent) => boolean): Promise<IEvent>;
-
-	queue(name: string): IObservable;
+export interface IEventStore
+	extends IObservable, IEventDispatcher, IEventStoreReader, IIdentifierProvider {
 
 	registerSagaStarters(startsWith: string[] | undefined): void;
+
+	once(messageTypes: string | string[], handler?: IMessageHandler, filter?: (e: IEvent) => boolean): Promise<IEvent>;
 }

@@ -1,5 +1,5 @@
 import { InMemoryLock } from './InMemoryLock';
-import { IViewLocker, Identifier, IObjectStorage } from "../../interfaces";
+import { IViewLocker, Identifier, IObjectStorage } from "../interfaces";
 import { nextCycle } from './utils';
 
 /**

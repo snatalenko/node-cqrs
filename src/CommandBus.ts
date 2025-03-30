@@ -1,4 +1,4 @@
-import { InMemoryMessageBus } from "./infrastructure/memory";
+import { InMemoryMessageBus } from "./in-memory";
 import {
 	ICommand,
 	ICommandBus,
@@ -14,18 +14,15 @@ export class CommandBus implements ICommandBus {
 	#logger?: ILogger;
 	#bus: IMessageBus;
 
-	/**
-	 * Creates an instance of CommandBus.
-	 */
-	constructor({ messageBus, logger }: {
+	constructor(o?: {
 		messageBus?: IMessageBus,
 		logger?: ILogger | IExtendableLogger
 	}) {
-		this.#bus = messageBus ?? new InMemoryMessageBus();
+		this.#bus = o?.messageBus ?? new InMemoryMessageBus();
 
-		this.#logger = logger && 'child' in logger ?
-			logger.child({ service: 'CommandBus' }) :
-			logger;
+		this.#logger = o?.logger && 'child' in o.logger ?
+			o.logger.child({ service: 'CommandBus' }) :
+			o?.logger;
 	}
 
 	/**

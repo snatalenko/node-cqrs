@@ -2,16 +2,12 @@
 
 const { expect } = require('chai');
 const { createContainer, createBaseInstances } = require('../user-domain');
-const { nextCycle } = require('../../src/infrastructure/memory/utils');
 
 describe('user-domain example', () => {
 
 	const testEventFlow = async container => {
 
 		const { commandBus, eventStore } = container;
-
-		// HACK: let projection restoring to start before emitting new events
-		await nextCycle();
 
 		// we send a command to an aggregate that does not exist yet (userAggregateId = undefined),
 		// a new instance will be created automatically

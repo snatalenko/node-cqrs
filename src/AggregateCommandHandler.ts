@@ -119,12 +119,12 @@ export class AggregateCommandHandler implements ICommandHandler {
 		if (!events.length)
 			return events;
 
-		if (aggregate.shouldTakeSnapshot && this.#eventStore.snapshotsSupported) {
+		if (aggregate.shouldTakeSnapshot) {
 			aggregate.takeSnapshot();
 			events = aggregate.changes;
 		}
 
-		await this.#eventStore.commit(events);
+		await this.#eventStore.dispatch(events);
 
 		return events;
 	}

@@ -7,7 +7,8 @@ import {
 	CommandBus,
 	AbstractSaga,
 	InMemoryMessageBus,
-	Deferred
+	Deferred,
+	EventDispatcher
 } from '../../src';
 
 class Saga extends AbstractSaga {
@@ -42,9 +43,11 @@ describe('SagaEventHandler', function () {
 	let sagaEventHandler: SagaEventHandler;
 
 	beforeEach(() => {
-		const supplementaryEventBus = new InMemoryMessageBus();
+		const eventBus = new InMemoryMessageBus();
+		const eventDispatcher = new EventDispatcher({ eventBus });
+		const storage = new InMemoryEventStorage();
 		commandBus = new CommandBus({});
-		eventStore = new EventStore({ storage: new InMemoryEventStorage(), supplementaryEventBus });
+		eventStore = new EventStore({ storage, identifierProvider: storage, eventBus, eventDispatcher });
 		sagaEventHandler = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus });
 	});
 

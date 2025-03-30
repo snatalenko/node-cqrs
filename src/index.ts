@@ -8,9 +8,9 @@ export * from './AggregateCommandHandler';
 export * from './AbstractSaga';
 export * from './SagaEventHandler';
 export * from './AbstractProjection';
+export * from './EventDispatcher';
 
-export * from './infrastructure/memory';
-export * as SQLite from './infrastructure/sqlite';
+export * from './in-memory';
 
 export * as Event from './Event';
 export {

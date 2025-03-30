@@ -1,5 +1,5 @@
 import { Database, Statement } from 'better-sqlite3';
-import { IEvent, IEventLocker } from '../../interfaces';
+import { IEvent, IEventLocker } from '../interfaces';
 import { getEventId } from './utils';
 import { viewLockTableInit, eventLockTableInit } from './queries';
 import { SqliteViewLockerParams } from './SqliteViewLocker';
