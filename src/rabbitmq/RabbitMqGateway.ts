@@ -1,4 +1,4 @@
-import amqp, { Channel, ChannelModel, ConfirmChannel, ConsumeMessage, Message } from 'amqplib';
+import { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import {
 	IExtendableLogger,
 	ILogger,
@@ -18,7 +18,8 @@ type Subscription = {
 	queueName?: string,
 	eventType?: string,
 	handler: MessageHandler,
-	ignoreOwn?: boolean
+	ignoreOwn?: boolean,
+	concurrentLimit?: number
 };
 
 const isSystemQueue = (queueName: string) => queueName.startsWith('amq.');
@@ -40,7 +41,7 @@ export class RabbitMqGateway {
 	#connecting = false;
 	#connection: ChannelModel | undefined;
 	#pubChannel: ConfirmChannel | undefined;
-	#exclusiveQueueName: string = '';
+	#exclusiveQueueName: string | undefined;
 	#queueChannels = new Map<string, Channel>();
 	#queueConsumers = new Map<string, string>();
 
@@ -112,7 +113,7 @@ export class RabbitMqGateway {
 		this.#logger?.warn('Connection closed');
 		this.#connection = undefined;
 		this.#pubChannel = undefined;
-		this.#exclusiveQueueName = '';
+		this.#exclusiveQueueName = undefined;
 		this.#queueChannels.clear();
 		this.#queueConsumers.clear();
 	}
@@ -143,40 +144,45 @@ export class RabbitMqGateway {
 	}
 
 	async subscribe(subscription: Subscription) {
-		let { queueName } = subscription;
-		const { exchange, eventType } = subscription;
+		const {
+			exchange,
+			queueName,
+			eventType,
+			concurrentLimit
+		} = subscription;
 
 		const channel = await this.#assertChannel(queueName);
 
-		if (!queueName) {
+		let queueGivenName = queueName;
+		if (!queueGivenName) {
+			// Handle temporary (exclusive) queue case
 			if (!this.#exclusiveQueueName) {
 				// Assert temporary "exclusive" queue that will be destroyed on connection termination
-				const queueGivenName = await this.#assetQueue(channel, exchange, '', eventType, {
+				this.#exclusiveQueueName = await this.#assetQueue(channel, exchange, '', eventType, {
 					exclusive: true,
 					durable: false
 				});
-
-				this.#exclusiveQueueName = queueGivenName;
 			}
 			else {
-				this.#assertBinding(channel, exchange, this.#exclusiveQueueName, eventType);
+				// If exclusive queue already exists, ensure it is bound with the current event type
+				await this.#assertBinding(channel, exchange, this.#exclusiveQueueName, eventType);
 			}
-
-			queueName = this.#exclusiveQueueName;
+			queueGivenName = this.#exclusiveQueueName;
 		}
 		else {
+			// Handle durable queue case
 			const deadLetterExchangeName = `${exchange}.failed`;
 
 			// Assert dead letter queue for rejected or timed out messages
-			await this.#assetQueue(channel, deadLetterExchangeName, `${queueName}.failed`);
+			await this.#assetQueue(channel, deadLetterExchangeName, `${queueGivenName}.failed`);
 
 			// Assert durable queue that will survive broker restart
-			await this.#assetQueue(channel, exchange, queueName, eventType, { deadLetterExchangeName });
+			await this.#assetQueue(channel, exchange, queueGivenName, eventType, { deadLetterExchangeName });
 		}
 
-		await this.#assertConsumer(queueName, channel);
+		await this.#assertConsumer(queueGivenName, channel, concurrentLimit);
 
-		this.#subscriptions.push({ ...subscription, queueGivenName: queueName });
+		this.#subscriptions.push({ ...subscription, queueGivenName });
 	}
 
 	async unsubscribe(d: Subscription) {
@@ -246,9 +252,12 @@ export class RabbitMqGateway {
 		this.#logger?.debug(`${this.#appId}: Queue "${queueGivenName}" bound to exchange "${exchange}" with pattern "${eventType}"`);
 	}
 
-	async #assertConsumer(queueGivenName: string, channel: Channel) {
+	async #assertConsumer(queueGivenName: string, channel: Channel, concurrentLimit?: number) {
 		if (this.#queueConsumers.has(queueGivenName))
 			return;
+
+		if (concurrentLimit)
+			await channel.prefetch(concurrentLimit);
 
 		const c = await channel.consume(queueGivenName, async (msg: ConsumeMessage | null) => {
 			if (!msg)

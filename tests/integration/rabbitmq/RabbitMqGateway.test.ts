@@ -1,5 +1,5 @@
 import { RabbitMqGateway } from '../../../src/rabbitmq/RabbitMqGateway';
-import { IEvent, IMessage } from '../../../src/interfaces';
+import { IMessage } from '../../../src/interfaces';
 import * as amqplib from 'amqplib';
 import { delay } from '../../../src/utils';
 
@@ -206,8 +206,8 @@ describe('RabbitMqGateway', () => {
 
 			await delay(50);
 
-			expect(received1).toEqual([ event1, event2 ]);
-			expect(received2).toEqual([ event2, event3 ]);
+			expect(received1).toEqual([event1, event2]);
+			expect(received2).toEqual([event2, event3]);
 		});
 
 		it('subscribe queue to given event types, when specified', async () => {
@@ -230,8 +230,41 @@ describe('RabbitMqGateway', () => {
 
 			await delay(50);
 
-			expect(received1).toEqual([ event1 ]);
-			expect(received2).toEqual([ event2 ]);
+			expect(received1).toEqual([event1]);
+			expect(received2).toEqual([event2]);
+		});
+
+		it('allows to limit number of concurrently running message processors', async () => {
+
+			// @ts-ignore
+			const { promise: blocker, resolve: releaseBlocker } = Promise.withResolvers<void>();
+
+			const received1: IMessage[] = [];
+			const event1 = { type: 'event1' };
+
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: event1.type,
+				handler: async m => {
+					received1.push(m);
+					await blocker;
+				},
+				concurrentLimit: 2
+			});
+
+			await gateway3.publish(exchange, event1);
+			await gateway3.publish(exchange, event1);
+			await gateway3.publish(exchange, event1);
+
+			await delay(50);
+
+			expect(received1).toEqual([event1, event1]);
+
+			releaseBlocker();
+			await delay(50);
+
+			expect(received1).toEqual([event1, event1, event1]);
 		});
 	});
 
