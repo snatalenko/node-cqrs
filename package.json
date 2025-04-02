@@ -17,6 +17,16 @@
     "./rabbitmq": "./dist/rabbitmq/index.js",
     "./sqlite": "./dist/sqlite/index.js"
   },
+  "typesVersions": {
+    "*": {
+      "rabbitmq": [
+        "src/rabbitmq/index.ts"
+      ],
+      "sqlite": [
+        "src/sqlite/index.ts"
+      ]
+    }
+  },
   "directories": {
     "doc": "docs",
     "example": "examples",

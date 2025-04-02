@@ -1,8 +1,7 @@
 import { EventBatch, IEvent, IEventProcessor, IEventStoreWriter } from '../interfaces';
 
 /**
- * Processor responsible for persisting events using an in-memory event storage.
- * Typically used for testing or ephemeral scenarios where durability isn't required.
+ * Processor responsible for persisting events to IEventStoreWriter.
  */
 export class EventPersistenceProcessor implements IEventProcessor {
 
