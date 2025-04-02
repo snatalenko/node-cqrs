@@ -26,6 +26,7 @@ import {
 	IProjectionConstructor,
 	ISagaConstructor
 } from './interfaces';
+import { ExternalEventPublishingProcessor } from './dispatch-pipeline/ExternalEventPublishingProcessor';
 
 interface CqrsContainer extends Container {
 	eventStore: IEventStore;
@@ -46,8 +47,9 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		super.register(container => {
 			const eventDispatcher = new EventDispatcher(container);
 			eventDispatcher.addPipelineProcessor(new EventValidationProcessor(container));
-			eventDispatcher.addPipelineProcessor(new SnapshotPersistenceProcessor(container));
+			eventDispatcher.addPipelineProcessor(new ExternalEventPublishingProcessor(container));
 			eventDispatcher.addPipelineProcessor(new EventPersistenceProcessor(container));
+			eventDispatcher.addPipelineProcessor(new SnapshotPersistenceProcessor(container));
 
 			return eventDispatcher;
 		}).as('eventDispatcher');
