@@ -44,7 +44,8 @@ export class RabbitMqEventBus implements IEventBus {
 			exchange: this.#exchange,
 			queueName: this.#queueName,
 			eventType,
-			handler
+			handler,
+			ignoreOwn: !this.#queueName
 		});
 	}
 

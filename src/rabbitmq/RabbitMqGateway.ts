@@ -118,13 +118,14 @@ export class RabbitMqGateway {
 	}
 
 	#getHandlers(queueGivenName: string = '', eventType: string = '*') {
-		return this.#subscriptions
-			.filter(s =>
-				s.queueGivenName === queueGivenName && (
-					!s.eventType
-					|| s.eventType === '*'
-					|| s.eventType === eventType))
-			.map(s => s.handler);
+		return this.#subscriptions.filter(s =>
+			s.queueGivenName === queueGivenName
+			&& (
+				!s.eventType
+				|| s.eventType === '*'
+				|| s.eventType === eventType
+			)
+		);
 	}
 
 	async subscribeToQueue(exchange: string, queueName: string, handler: MessageHandler) {
@@ -138,16 +139,12 @@ export class RabbitMqGateway {
 	 * Failed message processing does not result in redelivery or dead-lettering.
 	 */
 	async subscribeToFanout(exchange: string, handler: MessageHandler) {
-		return this.subscribe({ exchange, handler });
+		return this.subscribe({ exchange, handler, ignoreOwn: true });
 	}
 
 	async subscribe(subscription: Subscription) {
 		let { queueName } = subscription;
-		const {
-			exchange,
-			eventType,
-			ignoreOwn = !queueName
-		} = subscription;
+		const { exchange, eventType } = subscription;
 
 		const channel = await this.#assertChannel(queueName);
 
@@ -177,7 +174,7 @@ export class RabbitMqGateway {
 			await this.#assetQueue(channel, exchange, queueName, eventType, { deadLetterExchangeName });
 		}
 
-		await this.#assertConsumer(queueName, ignoreOwn, channel);
+		await this.#assertConsumer(queueName, channel);
 
 		this.#subscriptions.push({ ...subscription, queueGivenName: queueName });
 	}
@@ -249,7 +246,7 @@ export class RabbitMqGateway {
 		this.#logger?.debug(`${this.#appId}: Queue "${queueGivenName}" bound to exchange "${exchange}" with pattern "${eventType}"`);
 	}
 
-	async #assertConsumer(queueGivenName: string, ignoreOwn: boolean, channel: Channel) {
+	async #assertConsumer(queueGivenName: string, channel: Channel) {
 		if (this.#queueConsumers.has(queueGivenName))
 			return;
 
@@ -269,9 +266,6 @@ export class RabbitMqGateway {
 				appId
 			});
 
-			if (ignoreOwn && appId === this.#appId)
-				return;
-
 			try {
 				const jsonContent = msg.content.toString();
 				const message: IMessage = JSON.parse(jsonContent);
@@ -280,8 +274,12 @@ export class RabbitMqGateway {
 				if (!handlers.length && !isSystemQueue(queueGivenName))
 					throw new Error(`Message from queue "${queueGivenName}" was delivered to a consumer that does not handle type "${message.type}"`);
 
-				for (const handler of handlers)
+				for (const { handler, ignoreOwn } of handlers) {
+					if (ignoreOwn && appId === this.#appId)
+						continue;
+
 					await handler(message);
+				}
 
 				channel?.ack(msg);
 			}
