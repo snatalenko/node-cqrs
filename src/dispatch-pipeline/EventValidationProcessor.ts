@@ -12,7 +12,7 @@ export class EventValidationProcessor implements IEventProcessor {
 	#validate: EventValidator;
 
 	constructor(o?: {
-		eventFormatValidator: EventValidator
+		eventFormatValidator?: EventValidator
 	}) {
 		this.#validate = o?.eventFormatValidator ?? defaultValidator;
 	}

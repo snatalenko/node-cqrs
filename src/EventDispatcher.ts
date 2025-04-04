@@ -4,7 +4,8 @@ import {
 	IEventDispatcher,
 	IEventProcessor,
 	IEventSet,
-	IEventBus
+	IEventBus,
+	isEventSet
 } from "./interfaces";
 import { parallelPipe } from 'async-parallel-pipe';
 import { AsyncIterableBuffer } from 'async-iterable-buffer';

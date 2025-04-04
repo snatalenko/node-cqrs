@@ -1,7 +1,7 @@
 import {
 	IAggregateSnapshotStorage,
 	IEvent,
-	IEventStoreReader,
+	IEventStorageReader,
 	IEventSet,
 	IExtendableLogger,
 	ILogger,
@@ -17,7 +17,7 @@ import {
 	IEventDispatcher,
 	IEventBus,
 	isIEventBus,
-	isIEventStoreReader
+	isIEventStorageReader
 } from "./interfaces";
 import {
 	getClassName,
@@ -28,7 +28,7 @@ import { EventDispatcher } from "./EventDispatcher";
 export class EventStore implements IEventStore {
 
 	#identifierProvider: IIdentifierProvider;
-	#storage: IEventStoreReader;
+	#storage: IEventStorageReader;
 	#snapshotStorage: IAggregateSnapshotStorage | undefined;
 	eventBus: IEventBus;
 	#eventDispatcher: IEventDispatcher;
@@ -43,7 +43,7 @@ export class EventStore implements IEventStore {
 		eventDispatcher,
 		logger,
 	}: {
-		storage: IEventStoreReader,
+		storage: IEventStorageReader,
 		identifierProvider?: IIdentifierProvider,
 		snapshotStorage?: IAggregateSnapshotStorage,
 		eventBus?: IEventBus,
@@ -54,7 +54,7 @@ export class EventStore implements IEventStore {
 			throw new TypeError('storage argument required');
 		if (!identifierProvider)
 			throw new TypeError('identifierProvider argument required');
-		if (!isIEventStoreReader(storage))
+		if (!isIEventStorageReader(storage))
 			throw new TypeError('storage does not implement IEventStorage interface');
 		if (eventBus && !isIEventBus(eventBus))
 			throw new TypeError('eventBus does not implement IMessageBus interface');

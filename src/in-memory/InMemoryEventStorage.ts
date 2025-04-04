@@ -3,9 +3,9 @@ import {
 	IEvent,
 	IEventSet,
 	EventQueryAfter,
-	IEventStoreReader,
+	IEventStorageReader,
 	IEventStream,
-	IEventStoreWriter
+	IEventStorageWriter
 } from "../interfaces";
 import { nextCycle } from "./utils";
 
@@ -13,7 +13,7 @@ import { nextCycle } from "./utils";
  * A simple event storage implementation intended to use for tests only.
  * Storage content resets on each app restart.
  */
-export class InMemoryEventStorage implements IEventStoreReader, IEventStoreWriter, IIdentifierProvider {
+export class InMemoryEventStorage implements IEventStorageReader, IEventStorageWriter, IIdentifierProvider {
 	#nextId: number = 0;
 	#events: IEventSet = [];
 

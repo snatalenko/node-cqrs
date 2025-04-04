@@ -14,7 +14,7 @@ export type EventQueryBefore = {
 	beforeEvent?: IEvent;
 }
 
-export interface IEventStoreReader {
+export interface IEventStorageReader {
 	/**
 	 * Retrieves events of specified types that were emitted after a given event.
 	 */
@@ -31,7 +31,15 @@ export interface IEventStoreReader {
 	getSagaEvents(sagaId: Identifier, options: EventQueryBefore): IEventStream;
 }
 
-export const isIEventStoreReader = (storage: unknown): storage is IEventStoreReader =>
+export interface IEventStorageWriter {
+	/**
+	 * Persists a set of events to the event store.
+	 * Returns the persisted event set (potentially enriched or normalized).
+	 */
+	commitEvents(events: IEventSet): Promise<IEventSet>;
+}
+
+export const isIEventStorageReader = (storage: unknown): storage is IEventStorageReader =>
 	isObject(storage)
 	&& 'getEventsByTypes' in storage
 	&& typeof storage.getEventsByTypes === 'function'
@@ -39,11 +47,3 @@ export const isIEventStoreReader = (storage: unknown): storage is IEventStoreRea
 	&& typeof storage.getAggregateEvents === 'function'
 	&& 'getSagaEvents' in storage
 	&& typeof storage.getSagaEvents === 'function';
-
-export interface IEventStoreWriter {
-	/**
-	 * Persists a set of events to the event store.
-	 * Returns the persisted event set (potentially enriched or normalized).
-	 */
-	commitEvents(events: IEventSet): Promise<IEventSet>;
-}

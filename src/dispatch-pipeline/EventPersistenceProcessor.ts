@@ -1,13 +1,13 @@
-import { EventBatch, IEvent, IEventProcessor, IEventStoreWriter } from '../interfaces';
+import { EventBatch, IEvent, IEventProcessor, IEventStorageWriter } from '../interfaces';
 
 /**
  * Processor responsible for persisting events to IEventStoreWriter.
  */
 export class EventPersistenceProcessor implements IEventProcessor {
 
-	#storage: IEventStoreWriter;
+	#storage: IEventStorageWriter;
 
-	constructor(options: { storage: IEventStoreWriter }) {
+	constructor(options: { storage: IEventStorageWriter }) {
 		if (!options.storage)
 			throw new TypeError('storage argument required');
 
@@ -15,12 +15,12 @@ export class EventPersistenceProcessor implements IEventProcessor {
 	}
 
 	async process(batch: EventBatch): Promise<EventBatch> {
-		if(!this.#storage)
+		if (!this.#storage)
 			return batch;
 
 		const events: IEvent[] = [];
-		for(const { event } of batch) {
-			if(!event)
+		for (const { event } of batch) {
+			if (!event)
 				throw new Error('Event batch does not contain event');
 
 			events.push(event);

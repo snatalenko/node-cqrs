@@ -44,7 +44,7 @@ export type AbstractProjectionParams<T> = {
 /**
  * Base class for Projection definition
  */
-export abstract class AbstractProjection<TView = InMemoryView<any>> implements IProjection<TView> {
+export abstract class AbstractProjection<TView = any> implements IProjection<TView> {
 
 	/**
 	 * List of event types handled by the projection. Can be overridden in the projection implementation.

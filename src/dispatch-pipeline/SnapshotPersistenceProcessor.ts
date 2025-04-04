@@ -9,8 +9,10 @@ import {
 import * as Event from '../Event';
 
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
+const isSnapshotEvent = (event?: IEvent): event is IEvent & { type: 'snapshot' } =>
+	(!!event && event.type === SNAPSHOT_EVENT_TYPE);
 
-export class SnapshotPersistenceProcessor implements IEventProcessor {
+export class SnapshotPersistenceProcessor implements IEventProcessor<{ event?: IEvent }> {
 
 	#snapshotStorage?: IAggregateSnapshotStorage;
 	#logger?: ILogger;
@@ -25,42 +27,27 @@ export class SnapshotPersistenceProcessor implements IEventProcessor {
 			options.logger;
 	}
 
-	#extractSnapshotEvent(batch: EventBatch): IEvent | undefined {
-		if (!Array.isArray(batch))
-			throw new TypeError('batch argument must be an Array');
-
-		const snapshotEvents = batch.filter(({ event }) => event?.type === SNAPSHOT_EVENT_TYPE);
-		if (snapshotEvents.length > 1)
-			throw new Error(`Cannot process more than one "${SNAPSHOT_EVENT_TYPE}" event per batch`);
-
-		return snapshotEvents[0].event;
-	}
-
 	async process(batch: EventBatch): Promise<EventBatch> {
 		if (!this.#snapshotStorage)
 			return batch;
 
-		const snapshotEvent = this.#extractSnapshotEvent(batch);
-		if (!snapshotEvent)
-			return batch;
+		const snapshotEvents = batch.map(e => e.event).filter(isSnapshotEvent);
+		for (const event of snapshotEvents) {
+			this.#logger?.debug(`Persisting ${Event.describe(event)}`);
+			await this.#snapshotStorage.saveAggregateSnapshot(event);
+		}
 
-		this.#logger?.debug(`Persisting ${Event.describe(snapshotEvent)}`);
-
-		await this.#snapshotStorage.saveAggregateSnapshot(snapshotEvent);
-
-		return batch.filter(e => e !== snapshotEvent);
+		return batch.filter(e => !isSnapshotEvent(e.event));
 	}
 
 	async revert(batch: EventBatch): Promise<void> {
 		if (!this.#snapshotStorage)
 			return;
 
-		const snapshotEvent = this.#extractSnapshotEvent(batch);
-		if (!snapshotEvent)
-			return;
-
-		this.#logger?.debug(`Removing ${Event.describe(snapshotEvent)}`);
-
-		await this.#snapshotStorage?.deleteAggregateSnapshot(snapshotEvent);
+		const snapshotEvents = batch.map(e => e.event).filter(isSnapshotEvent);
+		for (const snapshotEvent of snapshotEvents) {
+			this.#logger?.debug(`Removing ${Event.describe(snapshotEvent)}`);
+			await this.#snapshotStorage.deleteAggregateSnapshot(snapshotEvent);
+		}
 	}
 }
