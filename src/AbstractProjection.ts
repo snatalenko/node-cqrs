@@ -188,7 +188,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 				await this._project(event);
 				eventsCount += 1;
 			}
-			catch (err) {
+			catch (err: any) {
 				this._onRestoringError(err, event);
 			}
 		}

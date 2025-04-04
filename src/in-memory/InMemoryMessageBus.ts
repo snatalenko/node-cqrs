@@ -95,7 +95,7 @@ export class InMemoryMessageBus implements IMessageBus {
 
 		const commandHandler = handlers.values().next().value;
 
-		return commandHandler(command);
+		return commandHandler!(command);
 	}
 
 	/**

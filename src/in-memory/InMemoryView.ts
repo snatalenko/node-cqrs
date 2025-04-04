@@ -6,7 +6,7 @@ import { nextCycle } from './utils';
  * Update given value with an update Cb and return updated value.
  * Wrapper is needed for backward compatibility with update methods that were modifying the passed in objects directly
  */
-function applyUpdate<T>(view: T | undefined, update: (r?: T) => T | undefined): T | undefined {
+function applyUpdate<T>(view: T, update: (r: T) => T): T {
 	const valueReturnedByUpdate = update(view);
 	return valueReturnedByUpdate === undefined ?
 		view :
@@ -170,8 +170,11 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 	}
 
 	/** Update existing record */
-	private async _update(key: Identifier, update: (r?: TRecord) => TRecord) {
+	private async _update(key: Identifier, update: (r: TRecord) => TRecord) {
 		const value = this._map.get(key);
+		if (!value)
+			throw new Error(`Key '${key}' does not exist`);
+
 		const updatedValue = applyUpdate(value, update);
 		if (updatedValue === undefined)
 			return;

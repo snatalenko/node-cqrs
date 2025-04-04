@@ -88,7 +88,7 @@ export class RabbitMqGateway {
 				for (const subscription of subscriptionsToRestore)
 					await this.subscribe(subscription);
 			}
-			catch (err) {
+			catch (err: any) {
 				this.#logger?.warn(`${this.#appId}: Connection attempt failed: ${err.message}`);
 				await delay(5_000);
 			}
@@ -292,7 +292,7 @@ export class RabbitMqGateway {
 
 				channel?.ack(msg);
 			}
-			catch (err) {
+			catch (err: any) {
 				this.#logger?.error(`${this.#appId}: Message processing failed: ${err.message}`);
 
 				// Redirect message to dead letter queue, if `{ noAck: true }` was not set on consumption

@@ -5,7 +5,8 @@ import {
 	EventQueryAfter,
 	IEventStorageReader,
 	IEventStream,
-	IEventStorageWriter
+	IEventStorageWriter,
+	Identifier
 } from "../interfaces";
 import { nextCycle } from "./utils";
 
@@ -32,7 +33,7 @@ export class InMemoryEventStorage implements IEventStorageReader, IEventStorageW
 		return events;
 	}
 
-	async *getAggregateEvents(aggregateId, options?: { snapshot: IEvent }): IEventStream {
+	async *getAggregateEvents(aggregateId: Identifier, options?: { snapshot: IEvent }): IEventStream {
 		await nextCycle();
 
 		const afterVersion = options?.snapshot?.aggregateVersion;
@@ -48,12 +49,13 @@ export class InMemoryEventStorage implements IEventStorageReader, IEventStorageW
 		yield* results;
 	}
 
-	async *getSagaEvents(sagaId, { beforeEvent }): IEventStream {
+	async *getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
 		await nextCycle();
 
 		const results = this.#events.filter(e =>
 			e.sagaId == sagaId &&
 			e.sagaVersion !== undefined &&
+			beforeEvent.sagaVersion !== undefined &&
 			e.sagaVersion < beforeEvent.sagaVersion);
 
 		await nextCycle();

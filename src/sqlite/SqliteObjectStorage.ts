@@ -23,10 +23,7 @@ export class SqliteObjectStorage<TRecord> implements IObjectStorage<TRecord> {
 		this.#db = o.viewModelSqliteDb;
 		this.#tableName = o.tableName;
 
-		this.#initialize();
-	}
 
-	#initialize(): void {
 		this.#db.exec(`CREATE TABLE IF NOT EXISTS ${this.#tableName} (
 			id BLOB PRIMARY KEY,
 			version INTEGER DEFAULT 1,

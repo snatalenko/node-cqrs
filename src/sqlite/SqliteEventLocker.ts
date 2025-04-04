@@ -52,10 +52,7 @@ export class SqliteEventLocker implements IEventLocker {
 		this.#eventLockTableName = o.eventLockTableName ?? 'tbl_event_lock';
 		this.#eventLockTtl = o.eventLockTtl ?? 15_000;
 
-		this.#initialize();
-	}
 
-	#initialize() {
 		this.#db.exec(viewLockTableInit(this.#viewLockTableName));
 		this.#db.exec(eventLockTableInit(this.#eventLockTableName));
 

@@ -64,10 +64,7 @@ export class SqliteViewLocker implements IViewLocker {
 			o.logger.child({ service: this.constructor.name }) :
 			o.logger;
 
-		this.#initialize();
-	}
 
-	#initialize() {
 		this.#db.exec(viewLockTableInit(this.#viewLockTableName));
 
 		this.#upsertTableLockQuery = this.#db.prepare(`

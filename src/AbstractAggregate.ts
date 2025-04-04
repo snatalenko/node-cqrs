@@ -42,7 +42,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	#snapshotVersion: number | undefined;
 
 	/** Internal aggregate state */
-	protected state: TState;
+	protected state: TState | undefined;
 
 	/** Command being handled by aggregate */
 	protected command?: ICommand;
@@ -115,7 +115,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	}
 
 	/** Mutate aggregate state and increment aggregate version */
-	mutate(event) {
+	mutate(event: IEvent) {
 		if (event.aggregateVersion !== undefined)
 			this.#version = event.aggregateVersion;
 

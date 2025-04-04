@@ -62,7 +62,7 @@
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
   "dependencies": {
     "async-iterable-buffer": "^1.0.0",
-    "async-parallel-pipe": "^1.0.1",
+    "async-parallel-pipe": "^1.0.2",
     "di0": "^1.0.0"
   },
   "devDependencies": {
@@ -70,6 +70,7 @@
     "@types/better-sqlite3": "^7.6.11",
     "@types/chai": "^4.3.20",
     "@types/jest": "^29.5.13",
+    "@types/md5": "^2.3.5",
     "@types/node": "^20.16.9",
     "@types/sinon": "^17.0.4",
     "chai": "^4.5.0",

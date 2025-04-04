@@ -70,8 +70,11 @@ export class EventDispatcher implements IEventDispatcher {
 					data: await preprocessor.process(envelope.data)
 				};
 			}
-			catch (error) {
-				return { ...envelope, error };
+			catch (error: any) {
+				return {
+					...envelope,
+					error
+				};
 			}
 		});
 	}
@@ -102,7 +105,7 @@ export class EventDispatcher implements IEventDispatcher {
 				}
 				resolve(events);
 			}
-			catch (publishError) {
+			catch (publishError: any) {
 				reject(publishError);
 			}
 		}
