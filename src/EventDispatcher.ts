@@ -121,13 +121,16 @@ export class EventDispatcher implements IEventDispatcher {
 	 *
 	 * Returns a promise that resolves after all events are processed and published.
 	 */
-	async dispatch(events: IEventSet) {
-		if (!Array.isArray(events) || events.length === 0)
+	async dispatch(events: IEventSet, meta?: Record<string, any>) {
+		if (!isEventSet(events) || events.length === 0)
 			throw new Error('dispatch requires a non-empty array of events');
 
 		const { promise, resolve, reject } = Promise.withResolvers<IEventSet>();
 		const envelope: EventBatchEnvelope = {
-			data: events.map(event => ({ event })),
+			data: events.map(event => ({
+				event,
+				...meta
+			})),
 			resolve,
 			reject
 		};

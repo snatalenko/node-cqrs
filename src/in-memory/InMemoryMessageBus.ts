@@ -101,7 +101,7 @@ export class InMemoryMessageBus implements IMessageBus {
 	/**
 	 * Publish event to all subscribers (if any)
 	 */
-	async publish(event: IEvent): Promise<any> {
+	async publish(event: IEvent, meta?: Record<string, any>): Promise<any> {
 		if (typeof event !== 'object' || !event)
 			throw new TypeError('event argument must be an Object');
 		if (typeof event.type !== 'string' || !event.type.length)
@@ -110,9 +110,9 @@ export class InMemoryMessageBus implements IMessageBus {
 		const handlers = [
 			...this.#handlers.get(event.type) || [],
 			...Array.from(this.#queues.values()).map(namedQueue =>
-				(e: IEvent) => namedQueue.publish(e))
+				(e: IEvent, m?: Record<string, any>) => namedQueue.publish(e, m))
 		];
 
-		return Promise.all(handlers.map(handler => handler(event)));
+		return Promise.all(handlers.map(handler => handler(event, meta)));
 	}
 }
