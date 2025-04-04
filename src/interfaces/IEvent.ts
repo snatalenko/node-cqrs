@@ -9,8 +9,4 @@ export type IEvent<TPayload = any> = IMessage<TPayload> & {
 export const isEvent = (event: unknown): event is IEvent =>
 	isObject(event)
 	&& 'type' in event
-	&& typeof event.type === 'string'
-	&& (
-		'aggregateId' in event
-		|| 'sagaId' in event
-	);
+	&& typeof event.type === 'string';
