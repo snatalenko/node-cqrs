@@ -12,11 +12,6 @@
   },
   "main": "./dist/index.js",
   "types": "./src/index.ts",
-  "exports": {
-    ".": "./dist/index.js",
-    "./rabbitmq": "./dist/rabbitmq/index.js",
-    "./sqlite": "./dist/sqlite/index.js"
-  },
   "typesVersions": {
     "*": {
       "rabbitmq": [
@@ -25,6 +20,20 @@
       "sqlite": [
         "src/sqlite/index.ts"
       ]
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./src/index.ts"
+    },
+    "./rabbitmq": {
+      "import": "./dist/rabbitmq/index.js",
+      "types": "./src/rabbitmq/index.ts"
+    },
+    "./sqlite": {
+      "import": "./dist/sqlite/index.js",
+      "types": "./src/sqlite/index.ts"
     }
   },
   "directories": {
