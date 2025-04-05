@@ -43,7 +43,7 @@ describe('AggregateCommandHandler', function () {
 	// this.timeout(500);
 	// this.slow(300);
 
-	let storage: InMemoryEventStorage;
+	let eventStorageReader: InMemoryEventStorage;
 	let snapshotStorage: InMemorySnapshotStorage;
 	let eventStore: IEventStore;
 	let commandBus: ICommandBus;
@@ -55,11 +55,17 @@ describe('AggregateCommandHandler', function () {
 
 	beforeEach(() => {
 		eventBus = new InMemoryMessageBus();
-		storage = new InMemoryEventStorage();
+		eventStorageReader = new InMemoryEventStorage();
 		snapshotStorage = new InMemorySnapshotStorage();
 		const eventDispatcher = new EventDispatcher({ eventBus });
 
-		eventStore = new EventStore({ storage, snapshotStorage, eventBus, eventDispatcher, identifierProvider: storage });
+		eventStore = new EventStore({
+			eventStorageReader,
+			snapshotStorage,
+			eventBus,
+			eventDispatcher,
+			identifierProvider: eventStorageReader
+		});
 		getNewIdSpy = sinon.spy(eventStore, 'getNewId');
 		getAggregateEventsSpy = sinon.spy(eventStore, 'getAggregateEvents');
 		commitSpy = sinon.spy(eventStore, 'dispatch');

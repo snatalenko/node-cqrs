@@ -45,9 +45,14 @@ describe('SagaEventHandler', function () {
 	beforeEach(() => {
 		const eventBus = new InMemoryMessageBus();
 		const eventDispatcher = new EventDispatcher({ eventBus });
-		const storage = new InMemoryEventStorage();
+		const eventStorageReader = new InMemoryEventStorage();
 		commandBus = new CommandBus({});
-		eventStore = new EventStore({ storage, identifierProvider: storage, eventBus, eventDispatcher });
+		eventStore = new EventStore({
+			eventStorageReader,
+			identifierProvider: eventStorageReader,
+			eventBus,
+			eventDispatcher
+		});
 		sagaEventHandler = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus });
 	});
 

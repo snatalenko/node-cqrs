@@ -15,7 +15,7 @@ describe('CqrsContainerBuilder', function () {
 
 	beforeEach(() => {
 		builder = new ContainerBuilder();
-		builder.register(InMemoryEventStorage).as('storage').as('identifierProvider');
+		builder.register(InMemoryEventStorage).as('eventStorageWriter').as('eventStorageReader').as('identifierProvider');
 		builder.register(InMemoryMessageBus).as('eventBus');
 	});
 

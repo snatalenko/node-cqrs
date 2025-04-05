@@ -168,10 +168,15 @@ describe('AbstractProjection', function () {
 
 		it('waits until the restoring process is done', async () => {
 
-			const storage = new InMemoryEventStorage();
+			const eventStorageReader = new InMemoryEventStorage();
 			const eventBus = new InMemoryMessageBus();
 			const eventDispatcher = new EventDispatcher({ eventBus });
-			const es = new EventStore({ storage, eventBus, eventDispatcher, identifierProvider: storage });
+			const es = new EventStore({
+				eventStorageReader,
+				eventBus,
+				eventDispatcher,
+				identifierProvider: eventStorageReader
+			});
 
 			let restored = false;
 			let projected = false;

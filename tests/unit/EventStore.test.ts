@@ -4,7 +4,7 @@ import { EventStore } from '../../src/EventStore';
 import {
 	IEvent,
 	IEventBus,
-	IEventStoreReader,
+	IEventStorageReader,
 	IAggregateSnapshotStorage,
 	IIdentifierProvider
 } from '../../src/interfaces';
@@ -14,7 +14,7 @@ describe('EventStore', () => {
 	let store: EventStore;
 	let eventBus: IEventBus;
 	let eventDispatcher: IEventDispatcher;
-	let mockStorage: jest.Mocked<IEventStoreReader>;
+	let mockStorage: jest.Mocked<IEventStorageReader>;
 	let mockSnapshotStorage: jest.Mocked<IAggregateSnapshotStorage>;
 	let mockIdentifierProvider: jest.Mocked<IIdentifierProvider>;
 	const mockId = 'test-id';
@@ -40,7 +40,7 @@ describe('EventStore', () => {
 		store = new EventStore({
 			eventBus,
 			eventDispatcher,
-			storage: mockStorage,
+			eventStorageReader: mockStorage,
 			identifierProvider: mockIdentifierProvider,
 			snapshotStorage: mockSnapshotStorage,
 			logger: undefined

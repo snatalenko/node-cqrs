@@ -28,7 +28,7 @@ import { EventDispatcher } from "./EventDispatcher";
 export class EventStore implements IEventStore {
 
 	#identifierProvider: IIdentifierProvider;
-	#storage: IEventStorageReader;
+	#eventStorageReader: IEventStorageReader;
 	#snapshotStorage: IAggregateSnapshotStorage | undefined;
 	eventBus: IEventBus;
 	#eventDispatcher: IEventDispatcher;
@@ -36,30 +36,30 @@ export class EventStore implements IEventStore {
 	#logger?: ILogger;
 
 	constructor({
-		storage,
-		identifierProvider = isIdentifierProvider(storage) ? storage : undefined,
+		eventStorageReader,
+		identifierProvider = isIdentifierProvider(eventStorageReader) ? eventStorageReader : undefined,
 		snapshotStorage,
 		eventBus,
 		eventDispatcher,
 		logger,
 	}: {
-		storage: IEventStorageReader,
+		eventStorageReader: IEventStorageReader,
 		identifierProvider?: IIdentifierProvider,
 		snapshotStorage?: IAggregateSnapshotStorage,
 		eventBus?: IEventBus,
 		eventDispatcher?: IEventDispatcher,
 		logger?: ILogger | IExtendableLogger,
 	}) {
-		if (!storage)
-			throw new TypeError('storage argument required');
+		if (!eventStorageReader)
+			throw new TypeError('eventStorageReader argument required');
 		if (!identifierProvider)
 			throw new TypeError('identifierProvider argument required');
-		if (!isIEventStorageReader(storage))
+		if (!isIEventStorageReader(eventStorageReader))
 			throw new TypeError('storage does not implement IEventStorage interface');
 		if (eventBus && !isIEventBus(eventBus))
 			throw new TypeError('eventBus does not implement IMessageBus interface');
 
-		this.#storage = storage;
+		this.#eventStorageReader = eventStorageReader;
 		this.#identifierProvider = identifierProvider;
 		this.#snapshotStorage = snapshotStorage;
 		this.#eventDispatcher = eventDispatcher ?? new EventDispatcher({ eventBus });
@@ -84,7 +84,7 @@ export class EventStore implements IEventStore {
 
 		this.#logger?.debug(`retrieving ${eventTypes.join(', ')} events...`);
 
-		const eventsIterable = await this.#storage.getEventsByTypes(eventTypes, options);
+		const eventsIterable = await this.#eventStorageReader.getEventsByTypes(eventTypes, options);
 
 		yield* eventsIterable;
 
@@ -105,7 +105,7 @@ export class EventStore implements IEventStore {
 		if (snapshot)
 			yield snapshot;
 
-		const eventsIterable = await this.#storage.getAggregateEvents(aggregateId, { snapshot });
+		const eventsIterable = await this.#eventStorageReader.getAggregateEvents(aggregateId, { snapshot });
 
 		yield* eventsIterable;
 
@@ -125,7 +125,7 @@ export class EventStore implements IEventStore {
 
 		this.#logger?.debug(`retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`);
 
-		const eventsIterable = await this.#storage.getSagaEvents(sagaId, filter);
+		const eventsIterable = await this.#eventStorageReader.getSagaEvents(sagaId, filter);
 
 		yield* eventsIterable;
 

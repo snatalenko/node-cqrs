@@ -5,17 +5,17 @@ import { EventBatch, IEvent, IEventProcessor, IEventStorageWriter } from '../int
  */
 export class EventPersistenceProcessor implements IEventProcessor {
 
-	#storage: IEventStorageWriter;
+	#storageWriter: IEventStorageWriter;
 
-	constructor(options: { storage: IEventStorageWriter }) {
-		if (!options.storage)
-			throw new TypeError('storage argument required');
+	constructor(options: { eventStorageWriter: IEventStorageWriter }) {
+		if (!options.eventStorageWriter)
+			throw new TypeError('eventStorageWriter argument required');
 
-		this.#storage = options.storage;
+		this.#storageWriter = options.eventStorageWriter;
 	}
 
 	async process(batch: EventBatch): Promise<EventBatch> {
-		if (!this.#storage)
+		if (!this.#storageWriter)
 			return batch;
 
 		const events: IEvent[] = [];
@@ -26,7 +26,7 @@ export class EventPersistenceProcessor implements IEventProcessor {
 			events.push(event);
 		}
 
-		await this.#storage.commitEvents(events);
+		await this.#storageWriter.commitEvents(events);
 
 		return batch;
 	}
