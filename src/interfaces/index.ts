@@ -2,6 +2,7 @@ export * from './IAggregate';
 export * from './IAggregateSnapshotStorage';
 export * from './ICommand';
 export * from './ICommandBus';
+export * from './IContainer';
 export * from './Identifier';
 export * from './IEvent';
 export * from './IEventBus';

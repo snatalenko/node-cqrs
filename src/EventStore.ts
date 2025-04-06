@@ -3,7 +3,6 @@ import {
 	IEvent,
 	IEventStorageReader,
 	IEventSet,
-	IExtendableLogger,
 	ILogger,
 	IMessageHandler,
 	IObservable,
@@ -17,7 +16,8 @@ import {
 	IEventDispatcher,
 	IEventBus,
 	isIEventBus,
-	isIEventStorageReader
+	isIEventStorageReader,
+	IContainer
 } from "./interfaces";
 import {
 	getClassName,
@@ -42,14 +42,14 @@ export class EventStore implements IEventStore {
 		eventBus,
 		eventDispatcher,
 		logger,
-	}: {
-		eventStorageReader: IEventStorageReader,
-		identifierProvider?: IIdentifierProvider,
-		snapshotStorage?: IAggregateSnapshotStorage,
-		eventBus?: IEventBus,
-		eventDispatcher?: IEventDispatcher,
-		logger?: ILogger | IExtendableLogger,
-	}) {
+	}: Pick<IContainer,
+		'identifierProvider' |
+		'eventStorageReader' |
+		'snapshotStorage' |
+		'eventBus' |
+		'eventDispatcher' |
+		'logger'
+	>) {
 		if (!eventStorageReader)
 			throw new TypeError('eventStorageReader argument required');
 		if (!identifierProvider)

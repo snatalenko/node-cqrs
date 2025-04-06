@@ -5,6 +5,7 @@ import {
 	ICommand,
 	ICommandBus,
 	ICommandHandler,
+	IContainer,
 	Identifier,
 	IEventSet,
 	IEventStore,
@@ -39,12 +40,10 @@ export class AggregateCommandHandler implements ICommandHandler {
 		aggregateFactory,
 		handles,
 		logger
-	}: {
-		eventStore: IEventStore,
+	}: Pick<IContainer, 'eventStore' | 'logger'> & {
 		aggregateType?: IAggregateConstructor<any>,
 		aggregateFactory?: IAggregateFactory<any>,
-		handles?: string[],
-		logger?: ILogger | IExtendableLogger
+		handles?: string[]
 	}) {
 		if (!eventStore)
 			throw new TypeError('eventStore argument required');

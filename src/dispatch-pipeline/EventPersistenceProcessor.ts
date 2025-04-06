@@ -1,16 +1,13 @@
-import { EventBatch, IEvent, IEventProcessor, IEventStorageWriter } from '../interfaces';
+import { EventBatch, IContainer, IEvent, IEventProcessor, IEventStorageWriter } from '../interfaces';
 
 /**
  * Processor responsible for persisting events to IEventStoreWriter.
  */
 export class EventPersistenceProcessor implements IEventProcessor {
 
-	#storageWriter: IEventStorageWriter;
+	#storageWriter: IEventStorageWriter | undefined;
 
-	constructor(options: { eventStorageWriter: IEventStorageWriter }) {
-		if (!options.eventStorageWriter)
-			throw new TypeError('eventStorageWriter argument required');
-
+	constructor(options: Pick<IContainer, 'eventStorageWriter'>) {
 		this.#storageWriter = options.eventStorageWriter;
 	}
 

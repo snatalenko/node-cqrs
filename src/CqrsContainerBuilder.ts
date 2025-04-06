@@ -1,4 +1,4 @@
-import { ContainerBuilder, Container, TypeConfig, TClassOrFactory } from 'di0';
+import { ContainerBuilder, TypeConfig, TClassOrFactory } from 'di0';
 
 import { AggregateCommandHandler } from './AggregateCommandHandler';
 import { CommandBus } from './CommandBus';
@@ -18,20 +18,14 @@ import {
 
 import {
 	IAggregateConstructor,
-	ICommandBus,
 	ICommandHandler,
+	IContainer,
 	IEventReceptor,
-	IEventStore,
 	IProjection,
 	IProjectionConstructor,
 	ISagaConstructor
 } from './interfaces';
 import { ExternalEventPublishingProcessor } from './dispatch-pipeline/ExternalEventPublishingProcessor';
-
-interface CqrsContainer extends Container {
-	eventStore: IEventStore;
-	commandBus: ICommandBus;
-}
 
 export class CqrsContainerBuilder extends ContainerBuilder {
 
@@ -43,22 +37,19 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		super.register(InMemoryMessageBus).as('eventBus');
 		super.register(EventStore).as('eventStore');
 		super.register(CommandBus).as('commandBus');
-
-		super.register(container => {
-			const eventDispatcher = new EventDispatcher(container);
-			eventDispatcher.addPipelineProcessor(new EventValidationProcessor(container));
-			eventDispatcher.addPipelineProcessor(new ExternalEventPublishingProcessor(container));
-			eventDispatcher.addPipelineProcessor(new EventPersistenceProcessor(container));
-			eventDispatcher.addPipelineProcessor(new SnapshotPersistenceProcessor(container));
-
-			return eventDispatcher;
-		}).as('eventDispatcher');
+		super.register(EventDispatcher).as('eventDispatcher');
+		super.register(container => [
+			new EventValidationProcessor(container),
+			new ExternalEventPublishingProcessor(container),
+			new EventPersistenceProcessor(container),
+			new SnapshotPersistenceProcessor(container)
+		]).as('eventDispatchProcessors');
 	}
 
 	/** Register command handler, which will be subscribed to commandBus upon instance creation */
 	registerCommandHandler(typeOrFactory: TClassOrFactory<ICommandHandler>) {
 		return super.register(
-			(container: CqrsContainer) => {
+			(container: IContainer) => {
 				const handler = container.createInstance(typeOrFactory);
 				handler.subscribe(container.commandBus);
 				return handler;
@@ -69,7 +60,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 	/** Register event receptor, which will be subscribed to eventStore upon instance creation */
 	registerEventReceptor(typeOrFactory: TClassOrFactory<IEventReceptor>) {
 		return super.register(
-			(container: CqrsContainer) => {
+			(container: IContainer) => {
 				const receptor = container.createInstance(typeOrFactory);
 				receptor.subscribe(container.eventStore);
 				return receptor;
@@ -85,7 +76,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		if (!isClass(ProjectionType))
 			throw new TypeError('ProjectionType argument must be a constructor function');
 
-		const projectionFactory = (container: CqrsContainer): IProjection<any> => {
+		const projectionFactory = (container: IContainer): IProjection<any> => {
 			const projection = container.createInstance(ProjectionType);
 			projection.subscribe(container.eventStore);
 
@@ -108,7 +99,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		if (!isClass(AggregateType))
 			throw new TypeError('AggregateType argument must be a constructor function');
 
-		const commandHandlerFactory = (container: CqrsContainer): ICommandHandler =>
+		const commandHandlerFactory = (container: IContainer): ICommandHandler =>
 			container.createInstance(AggregateCommandHandler, {
 				aggregateFactory: (options: any) =>
 					container.createInstance(AggregateType, options),
@@ -124,7 +115,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		if (!isClass(SagaType))
 			throw new TypeError('SagaType argument must be a constructor function');
 
-		const eventReceptorFactory = (container: CqrsContainer): IEventReceptor =>
+		const eventReceptorFactory = (container: IContainer): IEventReceptor =>
 			container.createInstance(SagaEventHandler, {
 				sagaFactory: (options: any) => container.createInstance(SagaType, options),
 				handles: SagaType.handles,

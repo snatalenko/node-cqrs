@@ -1,6 +1,7 @@
 import * as Event from './Event';
 import {
 	ICommandBus,
+	IContainer,
 	IEvent,
 	IEventReceptor,
 	IEventStore,
@@ -34,12 +35,9 @@ export class SagaEventHandler implements IEventReceptor {
 	#startsWith: string[];
 	#handles: string[];
 
-	constructor(options: {
+	constructor(options: Pick<IContainer, 'eventStore' | 'commandBus' | 'logger'> & {
 		sagaType?: ISagaConstructor,
 		sagaFactory?: ISagaFactory,
-		eventStore: IEventStore,
-		commandBus: ICommandBus,
-		logger?: ILogger | IExtendableLogger,
 		queueName?: string,
 		startsWith?: string[],
 		handles?: string[]

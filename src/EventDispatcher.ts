@@ -5,7 +5,8 @@ import {
 	IEventProcessor,
 	IEventSet,
 	IEventBus,
-	isEventSet
+	isEventSet,
+	IContainer
 } from "./interfaces";
 import { parallelPipe } from 'async-parallel-pipe';
 import { AsyncIterableBuffer } from 'async-iterable-buffer';
@@ -37,14 +38,18 @@ export class EventDispatcher implements IEventDispatcher {
 	 */
 	concurrentLimit: number;
 
-	constructor(o?: {
-		eventBus?: IEventBus,
+	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchProcessors'> & {
 		eventDispatcherConfig?: {
 			concurrentLimit?: number
 		}
 	}) {
 		this.eventBus = o?.eventBus ?? new InMemoryMessageBus();
 		this.concurrentLimit = o?.eventDispatcherConfig?.concurrentLimit ?? 100;
+
+		if (o?.eventDispatchProcessors) {
+			for (const processor of o.eventDispatchProcessors)
+				this.addPipelineProcessor(processor);
+		}
 	}
 
 	/**
