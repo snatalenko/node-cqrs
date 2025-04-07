@@ -1,5 +1,5 @@
-import { RabbitMqEventInjector } from "./RabbitMqEventInjector";
-import { RabbitMqGateway } from "./RabbitMqGateway";
+import { RabbitMqEventInjector } from './RabbitMqEventInjector';
+import { RabbitMqGateway } from './RabbitMqGateway';
 
 declare module '../interfaces/IContainer' {
 	interface IContainer {

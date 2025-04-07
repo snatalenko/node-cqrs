@@ -7,16 +7,17 @@ import { SqliteDbParams, SqliteProjectionDataParams } from './commonParams';
 const delay = promisify(setTimeout);
 
 export type SqliteViewLockerParams = SqliteDbParams & SqliteProjectionDataParams & {
+
 	/**
 	 * (Optional) SQLite table name where event locks along with the latest event are stored
-	 * 
+	 *
 	 * @default "tbl_view_lock"
 	 */
 	viewLockTableName?: string;
 
 	/**
 	 * (Optional) Time-to-live (TTL) duration (in milliseconds) for which a view remains locked
-	 * 
+	 *
 	 * @default 120_000
 	 */
 	viewLockTtl?: number;
@@ -44,6 +45,7 @@ export class SqliteViewLocker implements IViewLocker {
 	#removeTableLockQuery: Statement<[string, string], void>;
 
 	#lockMarker: Deferred<void> | undefined;
+	// eslint-disable-next-line no-undef
 	#lockProlongationTimeout: NodeJS.Timeout | undefined;
 
 	constructor(o: SqliteViewLockerParams) {

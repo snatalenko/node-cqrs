@@ -5,7 +5,9 @@ import { spy } from 'sinon';
 describe('InMemoryMessageBus', function () {
 
 	let bus: IMessageBus;
-	beforeEach(() => bus = new InMemoryMessageBus());
+	beforeEach(() => {
+		bus = new InMemoryMessageBus();
+	});
 
 	describe('send(command)', function () {
 

@@ -1,8 +1,8 @@
-import { IEventDispatcher } from "./IEventDispatcher";
-import { IEvent } from "./IEvent";
-import { IEventStorageReader } from "./IEventStorage";
-import { IIdentifierProvider } from "./IIdentifierProvider";
-import { IMessageHandler, IObservable } from "./IObservable";
+import { IEventDispatcher } from './IEventDispatcher';
+import { IEvent } from './IEvent';
+import { IEventStorageReader } from './IEventStorage';
+import { IIdentifierProvider } from './IIdentifierProvider';
+import { IMessageHandler, IObservable } from './IObservable';
 
 export interface IEventStore
 	extends IObservable, IEventDispatcher, IEventStorageReader, IIdentifierProvider {

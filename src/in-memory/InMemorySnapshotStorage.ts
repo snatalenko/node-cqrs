@@ -1,4 +1,4 @@
-import { IAggregateSnapshotStorage, Identifier, IEvent } from "../interfaces";
+import { IAggregateSnapshotStorage, Identifier, IEvent } from '../interfaces';
 
 /**
  * In-memory storage for aggregate snapshots.

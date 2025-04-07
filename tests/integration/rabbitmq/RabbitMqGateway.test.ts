@@ -16,6 +16,7 @@ describe('RabbitMqGateway', () => {
 
 	beforeEach(async () => {
 		const logger = undefined;
+
 		// const logger = console;
 		gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger });
 		gateway2 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger });
@@ -28,7 +29,7 @@ describe('RabbitMqGateway', () => {
 			await ch.deleteQueue(queueName);
 			await ch.deleteQueue(`${queueName}.failed`);
 			await ch.deleteExchange(exchange);
-			await gateway1.disconnect()
+			await gateway1.disconnect();
 		}
 		await gateway2?.disconnect();
 		await gateway3?.disconnect();
@@ -40,7 +41,7 @@ describe('RabbitMqGateway', () => {
 
 			const message: IMessage = {
 				type: 'test.confirm',
-				payload: { msg: 'confirmed' },
+				payload: { msg: 'confirmed' }
 			};
 
 			await gateway1.publish(exchange, message);
@@ -59,7 +60,7 @@ describe('RabbitMqGateway', () => {
 
 			const message: IMessage = {
 				type: 'test.event',
-				payload: { msg: 'self-test' },
+				payload: { msg: 'self-test' }
 			};
 
 			// publish from the same instance — should be ignored
@@ -83,7 +84,7 @@ describe('RabbitMqGateway', () => {
 
 			const message: IMessage = {
 				type: 'test.event',
-				payload: { from: 'external' },
+				payload: { from: 'external' }
 			};
 
 			gateway3.publish(exchange, message);

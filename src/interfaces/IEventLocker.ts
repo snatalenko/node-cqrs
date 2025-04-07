@@ -1,5 +1,5 @@
-import { IEvent } from "./IEvent";
-import { isObject } from "./isObject";
+import { IEvent } from './IEvent';
+import { isObject } from './isObject';
 
 /**
  * Interface for tracking event processing state to prevent concurrent processing

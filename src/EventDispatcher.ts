@@ -7,11 +7,11 @@ import {
 	IEventBus,
 	isEventSet,
 	IContainer
-} from "./interfaces";
+} from './interfaces';
 import { parallelPipe } from 'async-parallel-pipe';
 import { AsyncIterableBuffer } from 'async-iterable-buffer';
-import { notEmpty } from "./utils";
-import { InMemoryMessageBus } from "./in-memory";
+import { notEmpty } from './utils';
+import { InMemoryMessageBus } from './in-memory';
 
 type EventBatchEnvelope = {
 	data: EventBatch<{ event?: IEvent }>;
@@ -28,7 +28,7 @@ export class EventDispatcher implements IEventDispatcher {
 
 	/**
 	 * Event bus where dispatched messages are delivered after processing.
-	 * 
+	 *
 	 * If not provided in the constructor, defaults to an instance of `InMemoryMessageBus`.
 	 */
 	eventBus: IEventBus;
@@ -105,9 +105,9 @@ export class EventDispatcher implements IEventDispatcher {
 			const events = data.map(e => e.event).filter(notEmpty);
 
 			try {
-				for (const event of events) {
+				for (const event of events)
 					this.eventBus.publish(event);
-				}
+
 				resolve(events);
 			}
 			catch (publishError: any) {

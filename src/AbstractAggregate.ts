@@ -6,7 +6,7 @@ import {
 	IEvent,
 	IEventSet,
 	IAggregateConstructorParams
-} from "./interfaces";
+} from './interfaces';
 
 import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } from './utils';
 
@@ -74,6 +74,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	 * 	// create snapshot every 50 events
 	 * 	return this.version % 50 === 0;
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	get shouldTakeSnapshot(): boolean {
 		return false;
 	}

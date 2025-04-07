@@ -1,11 +1,13 @@
 import { Database } from 'better-sqlite3';
 
 export type SqliteDbParams = {
+
 	/** Configured instance of better-sqlite3.Database */
 	viewModelSqliteDb: Database;
 };
 
 export type SqliteProjectionDataParams = {
+
 	/**
 	 * Unique identifier for the projection, used with the schema version to distinguish data ownership.
 	 */

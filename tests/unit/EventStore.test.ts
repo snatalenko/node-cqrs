@@ -89,9 +89,9 @@ describe('EventStore', () => {
 			mockStorage.getAggregateEvents.mockResolvedValueOnce(storedEvents);
 
 			const result: IEvent[] = [];
-			for await (const event of store.getAggregateEvents('aggregate-1')) {
+			for await (const event of store.getAggregateEvents('aggregate-1'))
 				result.push(event);
-			}
+
 
 			expect(result).toEqual([snapshotEvent, ...storedEvents]);
 			expect(mockSnapshotStorage.getAggregateSnapshot).toHaveBeenCalledWith('aggregate-1');
@@ -107,9 +107,9 @@ describe('EventStore', () => {
 			const filter = { beforeEvent: { sagaVersion: 1 } };
 
 			const result: IEvent[] = [];
-			for await (const event of store.getSagaEvents('saga-1', filter)) {
+			for await (const event of store.getSagaEvents('saga-1', filter))
 				result.push(event);
-			}
+
 
 			expect(result).toEqual(sagaEvents);
 			expect(mockStorage.getSagaEvents).toHaveBeenCalledWith('saga-1', filter);
@@ -150,13 +150,13 @@ describe('EventStore', () => {
 		it('sets up a one-time subscription and resolves with an event', async () => {
 			let callCount = 0;
 			const testEvent = { type: 'onceEvent' } as IEvent;
-			const promise = store.once('onceEvent', (e: IEvent) => {
+			const promise = store.once('onceEvent', (_e: IEvent) => {
 				callCount++;
 			});
 
 			await store.dispatch([testEvent]);
 
-			expect(promise).resolves.toBe(testEvent);
+			await expect(promise).resolves.toBe(testEvent);
 			expect(callCount).toBe(1);
 		});
 
@@ -164,14 +164,14 @@ describe('EventStore', () => {
 			let callCount = 0;
 			const testEvent = { type: 'onceEvent' } as IEvent;
 			const testEvent2 = { type: 'onceEvent' } as IEvent;
-			const promise = store.once('onceEvent', (e: IEvent) => {
+			const promise = store.once('onceEvent', (_e: IEvent) => {
 				callCount++;
 			});
 
 			await store.dispatch([testEvent, testEvent2]);
 			await store.dispatch([testEvent2]);
 
-			expect(promise).resolves.toBe(testEvent);
+			await expect(promise).resolves.toBe(testEvent);
 			expect(callCount).toBe(1);
 		});
 	});

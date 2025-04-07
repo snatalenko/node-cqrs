@@ -1,4 +1,4 @@
-import { IEvent } from "../../interfaces";
+import { IEvent } from '../../interfaces';
 import { guid } from './guid';
 import md5 = require('md5');
 

@@ -109,11 +109,11 @@ describe('RabbitMqEventBus', () => {
 			const received1: IMessage[] = [];
 			const received2: IMessage[] = [];
 
-			await eventBus1.queue(queueName).on(eventType, (msg) => {
+			await eventBus1.queue(queueName).on(eventType, msg => {
 				received1.push(msg);
 			});
 
-			await eventBus2.queue(queueName).on(eventType, (msg) => {
+			await eventBus2.queue(queueName).on(eventType, msg => {
 				received2.push(msg);
 			});
 
@@ -135,11 +135,11 @@ describe('RabbitMqEventBus', () => {
 			const received1: IMessage[] = [];
 			const received2: IMessage[] = [];
 
-			await eventBus1.queue(queueName).on(RabbitMqEventBus.allEventsWildcard, (msg) => {
+			await eventBus1.queue(queueName).on(RabbitMqEventBus.allEventsWildcard, msg => {
 				received1.push(msg);
 			});
 
-			await eventBus2.queue(queueName).on(RabbitMqEventBus.allEventsWildcard, (msg) => {
+			await eventBus2.queue(queueName).on(RabbitMqEventBus.allEventsWildcard, msg => {
 				received2.push(msg);
 			});
 

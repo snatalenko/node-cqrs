@@ -1,4 +1,4 @@
-import { IEvent } from "./interfaces";
+import { IEvent } from './interfaces';
 
 /**
  * Get text description of an event for logging purposes

@@ -7,8 +7,8 @@ import {
 	IEventStream,
 	IEventStorageWriter,
 	Identifier
-} from "../interfaces";
-import { nextCycle } from "./utils";
+} from '../interfaces';
+import { nextCycle } from './utils';
 
 /**
  * A simple event storage implementation intended to use for tests only.
@@ -33,14 +33,14 @@ export class InMemoryEventStorage implements IEventStorageReader, IEventStorageW
 		return events;
 	}
 
-	async *getAggregateEvents(aggregateId: Identifier, options?: { snapshot: IEvent }): IEventStream {
+	async* getAggregateEvents(aggregateId: Identifier, options?: { snapshot: IEvent }): IEventStream {
 		await nextCycle();
 
 		const afterVersion = options?.snapshot?.aggregateVersion;
 		const results = !afterVersion ?
-			this.#events.filter(e => e.aggregateId == aggregateId) :
+			this.#events.filter(e => e.aggregateId === aggregateId) :
 			this.#events.filter(e =>
-				e.aggregateId == aggregateId &&
+				e.aggregateId === aggregateId &&
 				e.aggregateVersion !== undefined &&
 				e.aggregateVersion > afterVersion);
 
@@ -49,11 +49,11 @@ export class InMemoryEventStorage implements IEventStorageReader, IEventStorageW
 		yield* results;
 	}
 
-	async *getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
+	async* getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
 		await nextCycle();
 
 		const results = this.#events.filter(e =>
-			e.sagaId == sagaId &&
+			e.sagaId === sagaId &&
 			e.sagaVersion !== undefined &&
 			beforeEvent.sagaVersion !== undefined &&
 			e.sagaVersion < beforeEvent.sagaVersion);

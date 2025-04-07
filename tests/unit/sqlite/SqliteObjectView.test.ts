@@ -15,7 +15,7 @@ describe('SqliteObjectView', function () {
 			projectionName: 'test',
 			tableNamePrefix: 'tbl_test',
 			schemaVersion: '1'
-		})
+		});
 	});
 
 	describe('get', () => {

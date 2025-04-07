@@ -1,11 +1,12 @@
-import { IMessage } from "./IMessage";
-import { isObject } from "./isObject";
+import { IMessage } from './IMessage';
+import { isObject } from './isObject';
 
 export interface IMessageHandler {
 	(message: IMessage, meta?: Record<string, any>): any | Promise<any>
-};
+}
 
 export interface IObservable {
+
 	/**
 	 * Setup a listener for a specific event type
 	 */

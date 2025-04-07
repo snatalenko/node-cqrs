@@ -45,7 +45,7 @@ describe('SqliteEventLocker', function () {
 		locker.tryMarkAsProjecting(testEvent);
 		locker.markAsProjected(testEvent);
 
-		const row = db.prepare(`SELECT processed_at FROM test_event_lock WHERE event_id = ?`)
+		const row = db.prepare('SELECT processed_at FROM test_event_lock WHERE event_id = ?')
 			.get(guid(testEvent.id)) as any;
 
 		expect(row).to.exist;
@@ -53,7 +53,7 @@ describe('SqliteEventLocker', function () {
 	});
 
 	it('retrieves the last projected event', function () {
-		
+
 		locker.tryMarkAsProjecting(testEvent);
 		locker.markAsProjected(testEvent);
 
@@ -83,7 +83,7 @@ describe('SqliteEventLocker', function () {
 	});
 
 	it('fails to update an event if its version is modified in DB', function () {
-	
+
 		locker.tryMarkAsProjecting(testEvent);
 
 		// Modify the event in DB to simulate an external change

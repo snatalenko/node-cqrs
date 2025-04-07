@@ -81,7 +81,9 @@ describe('AbstractAggregate', function () {
 		it('returns immutable aggregate id', () => {
 
 			expect(agg.id).to.equal(1);
-			expect(() => (agg as any).id = 2).to.throw(TypeError);
+			expect(() => {
+				(agg as any).id = 2;
+			}).to.throw(TypeError);
 		});
 	});
 
@@ -94,7 +96,9 @@ describe('AbstractAggregate', function () {
 			expect(changes).to.be.an('Array');
 			expect(changes).to.be.empty;
 			expect(changes).to.not.equal(agg.changes);
-			expect(() => (agg as any).changes = []).to.throw(TypeError);
+			expect(() => {
+				(agg as any).changes = [];
+			}).to.throw(TypeError);
 
 			return agg.doSomething({}).then(() => {
 
@@ -110,7 +114,9 @@ describe('AbstractAggregate', function () {
 		it('is a read-only auto-incrementing aggregate version, starting from 0', () => {
 
 			expect(agg.version).to.equal(0);
-			expect(() => (agg as any).version = 1).to.throw(TypeError);
+			expect(() => {
+				(agg as any).version = 1;
+			}).to.throw(TypeError);
 		});
 
 		it('restores, when aggregate is restored from event stream', () => {
@@ -227,7 +233,7 @@ describe('AbstractAggregate', function () {
 
 		it('does not mutate state if state event handler is not defined', () => {
 
-			const state = new class AggregateState {
+			const state = new class AnotherAggregateState {
 				somethingHappened() { }
 			}();
 			const somethingHappenedSpy = sinon.spy(state, 'somethingHappened');
@@ -303,7 +309,9 @@ describe('AbstractAggregate', function () {
 				const keysToCopy = Object.keys(snapshotEvent).filter(k => k !== keyToMiss);
 				const brokenEvent = JSON.parse(JSON.stringify(snapshotEvent, keysToCopy));
 
-				expect(() => (agg as any).restoreSnapshot(brokenEvent)).to.throw(TypeError);
+				expect(() => {
+					(agg as any).restoreSnapshot(brokenEvent);
+				}).to.throw(TypeError);
 			}
 
 			expect(() => (agg as any).restoreSnapshot({ aggregateVersion: 1, type: 'somethingHappened', payload: {} })).to.throw('snapshot event type expected');

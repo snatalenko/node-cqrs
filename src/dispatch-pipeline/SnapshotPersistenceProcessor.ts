@@ -5,7 +5,7 @@ import {
 	IEventProcessor,
 	IExtendableLogger,
 	ILogger
-} from "../interfaces";
+} from '../interfaces';
 import * as Event from '../Event';
 
 const SNAPSHOT_EVENT_TYPE = 'snapshot';

@@ -24,12 +24,11 @@ class MyDumbProjection extends AbstractProjection<SqliteObjectView<any>> {
 		if (!e.payload)
 			throw new TypeError('e.payload is required');
 
-		await this.view.update(e.aggregateId, u => e.payload);
+		await this.view.update(e.aggregateId, _u => e.payload);
 	}
 }
 
-
-describe.only('SqliteView', () => {
+describe('SqliteView', () => {
 
 	let viewModelSqliteDb: import('better-sqlite3').Database;
 

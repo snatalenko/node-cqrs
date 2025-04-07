@@ -18,7 +18,7 @@ class Saga extends AbstractSaga {
 	static get handles(): string[] {
 		return ['followingHappened'];
 	}
-	somethingHappened(event) {
+	somethingHappened(_event) {
 		super.enqueue('doSomething', undefined, { foo: 'bar' });
 	}
 	followingHappened() {
@@ -66,7 +66,7 @@ describe('SagaEventHandler', function () {
 
 		commandBus.on('complete', () => {
 			deferred.resolve(undefined);
-		})
+		});
 
 		sinon.spy(eventStore, 'getSagaEvents');
 
@@ -94,7 +94,7 @@ describe('SagaEventHandler', function () {
 		commandBus.on('fixError', command => {
 			resolvePromise(command);
 		});
-		commandBus.on('doSomething', command => {
+		commandBus.on('doSomething', _command => {
 			throw new Error('command execution failed');
 		});
 

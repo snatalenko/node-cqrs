@@ -1,4 +1,4 @@
-import { IMessageHandler } from "../interfaces";
+import { IMessageHandler } from '../interfaces';
 
 /**
  * Gets a handler for a specific message type, prefers a public (w\o _ prefix) method, if available
@@ -17,4 +17,4 @@ export function getHandler(context: { [key: string]: any }, messageType: string)
 		return context[privateHandlerName].bind(context);
 
 	return null;
-};
+}

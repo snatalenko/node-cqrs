@@ -10,7 +10,7 @@ describe('SqliteObjectStorage', function () {
 		db = createDb(':memory:');
 		storage = new SqliteObjectStorage<{ name: string; value: number }>({
 			viewModelSqliteDb: db,
-			tableName: 'test_objects',
+			tableName: 'test_objects'
 		});
 	});
 
@@ -36,7 +36,7 @@ describe('SqliteObjectStorage', function () {
 
 		storage.create('0002', { name: 'Old Data', value: 5 });
 
-		storage.update('0002', (r) => ({ ...r, value: 99 }));
+		storage.update('0002', r => ({ ...r, value: 99 }));
 
 		const updated = storage.get('0002');
 		expect(updated).to.deep.equal({ name: 'Old Data', value: 99 });
@@ -44,7 +44,7 @@ describe('SqliteObjectStorage', function () {
 
 	it('throws an error when updating a non-existent object', async function () {
 
-		expect(() => storage.update('nonexistent', (r) => ({ ...r, value: 99 })))
+		expect(() => storage.update('nonexistent', r => ({ ...r, value: 99 })))
 			.to.throw(Error, "Record 'nonexistent' does not exist");
 	});
 
@@ -71,7 +71,7 @@ describe('SqliteObjectStorage', function () {
 		let retrieved = storage.get('0004');
 		expect(retrieved).to.deep.equal({ name: 'Created', value: 1 });
 
-		storage.updateEnforcingNew('0004', (r) => ({ ...r!, value: 100 }));
+		storage.updateEnforcingNew('0004', r => ({ ...r!, value: 100 }));
 
 		retrieved = storage.get('0004');
 		expect(retrieved).to.deep.equal({ name: 'Created', value: 100 });

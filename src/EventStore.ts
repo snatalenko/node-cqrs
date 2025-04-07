@@ -18,12 +18,12 @@ import {
 	isIEventBus,
 	isIEventStorageReader,
 	IContainer
-} from "./interfaces";
+} from './interfaces';
 import {
 	getClassName,
 	setupOneTimeEmitterSubscription
-} from "./utils";
-import { EventDispatcher } from "./EventDispatcher";
+} from './utils';
+import { EventDispatcher } from './EventDispatcher';
 
 export class EventStore implements IEventStore {
 
@@ -41,7 +41,7 @@ export class EventStore implements IEventStore {
 		snapshotStorage,
 		eventBus,
 		eventDispatcher,
-		logger,
+		logger
 	}: Pick<IContainer,
 		'identifierProvider' |
 		'eventStorageReader' |

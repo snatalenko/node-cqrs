@@ -1,7 +1,7 @@
-import { ICommand } from "./ICommand";
-import { IEventSet } from "./IEventSet";
-import { IObservable } from "./IObservable";
-import { IObserver } from "./IObserver";
+import { ICommand } from './ICommand';
+import { IEventSet } from './IEventSet';
+import { IObservable } from './IObservable';
+import { IObserver } from './IObserver';
 
 export interface ICommandBus extends IObservable {
 	send(commandType: string, aggregateId: string | undefined, options: { payload?: object, context?: object }):

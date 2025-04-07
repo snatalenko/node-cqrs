@@ -1,14 +1,13 @@
 import * as amqplib from 'amqplib';
 import { RabbitMqGateway } from '../../../src/rabbitmq/RabbitMqGateway';
 import { RabbitMqEventInjector } from '../../../src/rabbitmq/RabbitMqEventInjector';
-import { IEvent, IEventDispatcher, IMessage } from '../../../src/interfaces';
+import { IEvent, IEventDispatcher } from '../../../src/interfaces';
 import { jest } from '@jest/globals';
 import { delay } from '../../../src/utils';
 
 describe('RabbitMqEventInjector', () => {
 	let rabbitMqGateway: RabbitMqGateway;
 	let eventDispatcher: jest.Mocked<IEventDispatcher>;
-	let injector: RabbitMqEventInjector;
 
 	const exchange = 'node-cqrs.events';
 	const queueName = 'test-injector-queue';
@@ -20,10 +19,11 @@ describe('RabbitMqEventInjector', () => {
 		rabbitMqGateway = new RabbitMqGateway({ rabbitMqConnectionFactory });
 
 		eventDispatcher = {
-			dispatch: jest.fn().mockResolvedValue(undefined),
+			dispatch: jest.fn().mockResolvedValue(undefined)
 		} as unknown as jest.Mocked<IEventDispatcher>;
 
-		injector = new RabbitMqEventInjector({
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const injector = new RabbitMqEventInjector({
 			rabbitMqGateway,
 			eventDispatcher,
 			queueName,
@@ -55,7 +55,7 @@ describe('RabbitMqEventInjector', () => {
 		const testEvent: IEvent = {
 			type: eventType,
 			payload: { data: 'test-payload' },
-			id: 'test-id-123',
+			id: 'test-id-123'
 		};
 
 		await rabbitMqGateway.publish(exchange, testEvent);
@@ -70,7 +70,7 @@ describe('RabbitMqEventInjector', () => {
 		const testEvent: IEvent = {
 			type: 'error-event',
 			payload: { data: 'trigger-error' },
-			id: 'error-id-456',
+			id: 'error-id-456'
 		};
 		const dispatchError = new Error('Dispatch failed');
 		eventDispatcher.dispatch.mockRejectedValueOnce(dispatchError);

@@ -1,4 +1,4 @@
-import { IEvent } from "./IEvent";
+import { IEvent } from './IEvent';
 
 /**
  * Represents a wrapper for an event that can optionally contain additional metadata.

@@ -1,8 +1,7 @@
-import { IEvent, IEventLocker, ILogger } from '../interfaces';
+import { IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces';
 import { Database } from 'better-sqlite3';
 import { SqliteViewLocker, SqliteViewLockerParams } from './SqliteViewLocker';
 import { SqliteEventLocker, SqliteEventLockerParams } from './SqliteEventLocker';
-import { IViewLocker } from '../interfaces';
 
 export abstract class AbstractSqliteView implements IViewLocker, IEventLocker {
 
@@ -21,7 +20,7 @@ export abstract class AbstractSqliteView implements IViewLocker, IEventLocker {
 		this.schemaVersion = options.schemaVersion;
 		this.viewLocker = new SqliteViewLocker(options);
 		this.eventLocker = new SqliteEventLocker(options);
-		this.logger = options.logger && 'child' in options.logger ? 
+		this.logger = options.logger && 'child' in options.logger ?
 			options.logger.child({ serviceName: new.target.name }) :
 			options.logger;
 	}

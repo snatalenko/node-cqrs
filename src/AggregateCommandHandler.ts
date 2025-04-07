@@ -9,9 +9,8 @@ import {
 	Identifier,
 	IEventSet,
 	IEventStore,
-	IExtendableLogger,
 	ILogger
-} from "./interfaces";
+} from './interfaces';
 
 import {
 	iteratorToArray,
@@ -104,8 +103,10 @@ export class AggregateCommandHandler implements ICommandHandler {
 
 	/** Pass a command to corresponding aggregate */
 	async execute(cmd: ICommand): Promise<IEventSet> {
-		if (!cmd) throw new TypeError('cmd argument required');
-		if (!cmd.type) throw new TypeError('cmd.type argument required');
+		if (!cmd)
+			throw new TypeError('cmd argument required');
+		if (!cmd.type)
+			throw new TypeError('cmd.type argument required');
 
 		const aggregate = cmd.aggregateId ?
 			await this.#restoreAggregate(cmd.aggregateId) :

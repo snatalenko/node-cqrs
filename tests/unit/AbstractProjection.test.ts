@@ -14,12 +14,13 @@ class MyProjection extends AbstractProjection<InMemoryView<{ somethingHappenedCn
 		return ['somethingHappened'];
 	}
 
-	async _somethingHappened({ aggregateId, payload, context }) {
+	async _somethingHappened({ aggregateId }) {
 		return this.view.updateEnforcingNew(aggregateId, (v = {}) => {
 			if (v.somethingHappenedCnt)
 				v.somethingHappenedCnt += 1;
 			else
 				v.somethingHappenedCnt = 1;
+
 			return v;
 		});
 	}
@@ -210,14 +211,14 @@ describe('AbstractProjection', function () {
 			projection.view.unlock();
 			sinon.spy(projection, '_somethingHappened');
 
-			const event = { type: 'somethingHappened', aggregateId: 1 };
+			const event2 = { type: 'somethingHappened', aggregateId: 1 };
 
 			expect(projection._somethingHappened).to.have.property('called', false);
 
-			await projection.project(event);
+			await projection.project(event2);
 
 			expect(projection._somethingHappened).to.have.property('calledOnce', true);
-			expect(projection._somethingHappened.lastCall.args).to.eql([event]);
+			expect(projection._somethingHappened.lastCall.args).to.eql([event2]);
 		});
 	});
 });

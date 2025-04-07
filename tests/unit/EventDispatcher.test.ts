@@ -16,7 +16,7 @@ describe('EventDispatcher', () => {
 		const event2: IEvent = { type: 'test-event-2' };
 
 		const processorMock: IEventProcessor = {
-			process: jest.fn(batch => Promise.resolve(batch)),
+			process: jest.fn(batch => Promise.resolve(batch))
 		};
 
 		dispatcher.addPipelineProcessor(processorMock);
@@ -36,7 +36,7 @@ describe('EventDispatcher', () => {
 
 		const processorMock: IEventProcessor = {
 			process: jest.fn().mockRejectedValue(error),
-			revert: jest.fn().mockResolvedValue(undefined),
+			revert: jest.fn().mockResolvedValue(undefined)
 		};
 
 		dispatcher.addPipelineProcessor(processorMock);
@@ -63,7 +63,7 @@ describe('EventDispatcher', () => {
 				await new Promise(res => setTimeout(res, 5));
 				executionOrder.push(`A-end-${batch[0].event.type}`);
 				return batch;
-			}),
+			})
 		};
 
 		const processorB: IEventProcessor = {
@@ -72,7 +72,7 @@ describe('EventDispatcher', () => {
 				await new Promise(res => setTimeout(res, 5));
 				executionOrder.push(`B-end-${batch[0].event.type}`);
 				return batch;
-			}),
+			})
 		};
 
 		dispatcher.addPipelineProcessor(processorA);
@@ -83,7 +83,7 @@ describe('EventDispatcher', () => {
 
 		await Promise.all([
 			dispatcher.dispatch([event1]),
-			dispatcher.dispatch([event2]),
+			dispatcher.dispatch([event2])
 		]);
 
 		expect(executionOrder).toEqual([
@@ -94,7 +94,7 @@ describe('EventDispatcher', () => {
 			'A-end-event-2',
 			'B-start-event-2',
 			'B-end-event-1',
-			'B-end-event-2',
+			'B-end-event-2'
 		]);
 	});
 });

@@ -1,7 +1,7 @@
-import { IContainer } from "../interfaces/IContainer";
-import { IMessage } from "../interfaces/IMessage";
-import { RabbitMqGateway } from "./RabbitMqGateway";
-import { IEventDispatcher, isEvent } from "../interfaces";
+import { IContainer } from '../interfaces/IContainer';
+import { IMessage } from '../interfaces/IMessage';
+import { RabbitMqGateway } from './RabbitMqGateway';
+import { IEventDispatcher } from '../interfaces';
 import * as Event from '../Event';
 
 export class RabbitMqEventInjector {
@@ -18,9 +18,9 @@ export class RabbitMqEventInjector {
 		queueName?: string;
 	}) {
 		if (!container.eventDispatcher)
-			throw new Error("eventDispatcher is required in the container.");
+			throw new Error('eventDispatcher is required in the container.');
 		if (!container.rabbitMqGateway)
-			throw new Error("rabbitMqGateway is required in the container.");
+			throw new Error('rabbitMqGateway is required in the container.');
 
 		this.#rabbitMqGateway = container.rabbitMqGateway;
 		this.#eventDispatcher = container.eventDispatcher;

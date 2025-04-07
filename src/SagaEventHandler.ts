@@ -5,7 +5,6 @@ import {
 	IEvent,
 	IEventReceptor,
 	IEventStore,
-	IExtendableLogger,
 	ILogger,
 	IObservable,
 	ISaga,

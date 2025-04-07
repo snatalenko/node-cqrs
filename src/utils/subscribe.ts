@@ -1,6 +1,6 @@
-import { IMessageHandler, IObservable } from "../interfaces";
+import { IMessageHandler, IObservable } from '../interfaces';
 import { getHandler } from './getHandler';
-import { getMessageHandlerNames } from "./getMessageHandlerNames";
+import { getMessageHandlerNames } from './getMessageHandlerNames';
 
 const unique = <T>(arr: T[]): T[] => [...new Set(arr)];
 

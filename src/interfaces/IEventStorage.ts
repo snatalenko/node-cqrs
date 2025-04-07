@@ -1,20 +1,23 @@
-import { Identifier } from "./Identifier";
-import { IEvent } from "./IEvent";
-import { IEventSet } from "./IEventSet";
-import { IEventStream } from "./IEventStream";
-import { isObject } from "./isObject";
+import { Identifier } from './Identifier';
+import { IEvent } from './IEvent';
+import { IEventSet } from './IEventSet';
+import { IEventStream } from './IEventStream';
+import { isObject } from './isObject';
 
 export type EventQueryAfter = {
+
 	/** Get events emitted after this specific event */
 	afterEvent?: IEvent;
 }
 
 export type EventQueryBefore = {
+
 	/** Get events emitted before this specific event */
 	beforeEvent?: IEvent;
 }
 
 export interface IEventStorageReader {
+
 	/**
 	 * Retrieves events of specified types that were emitted after a given event.
 	 */
@@ -32,6 +35,7 @@ export interface IEventStorageReader {
 }
 
 export interface IEventStorageWriter {
+
 	/**
 	 * Persists a set of events to the event store.
 	 * Returns the persisted event set (potentially enriched or normalized).

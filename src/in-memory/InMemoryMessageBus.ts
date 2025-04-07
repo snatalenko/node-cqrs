@@ -4,7 +4,7 @@ import {
 	IMessageBus,
 	IMessageHandler,
 	IObservable
-} from "../interfaces";
+} from '../interfaces';
 
 /**
  * Default implementation of the message bus.
@@ -15,6 +15,7 @@ export class InMemoryMessageBus implements IMessageBus {
 	#handlers: Map<string, Set<IMessageHandler>> = new Map();
 	#name: string | undefined;
 	#uniqueEventHandlers: boolean;
+	// eslint-disable-next-line no-use-before-define
 	#queues: Map<string, InMemoryMessageBus> = new Map();
 
 	constructor({ name, uniqueEventHandlers = !!name }: {
@@ -38,8 +39,8 @@ export class InMemoryMessageBus implements IMessageBus {
 
 		// Events published to a named queue must be consumed only once.
 		// For example, for sending a welcome email, NotificationReceptor will subscribe to "notifications:userCreated".
-		// Since we use an in-memory bus, there is no need to track message handling by multiple distributed subscribers,
-		// and we only need to make sure that no more than 1 such subscriber will be created
+		// Since we use an in-memory bus, there is no need to track message handling by multiple distributed
+		// subscribers, and we only need to make sure that no more than 1 such subscriber will be created
 		if (!this.#handlers.has(messageType))
 			this.#handlers.set(messageType, new Set());
 		else if (this.#uniqueEventHandlers)

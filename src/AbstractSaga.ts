@@ -1,4 +1,4 @@
-import { ICommand, Identifier, IEvent, ISaga, ISagaConstructorParams } from "./interfaces";
+import { ICommand, Identifier, IEvent, ISaga, ISagaConstructorParams } from './interfaces';
 
 import { getClassName, validateHandlers, getHandler } from './utils';
 
@@ -97,7 +97,7 @@ export abstract class AbstractSaga implements ISaga {
 	}
 
 	/** Put a command to the execution queue */
-	 protected enqueueRaw(command: ICommand) {
+	protected enqueueRaw(command: ICommand) {
 		if (typeof command !== 'object' || !command)
 			throw new TypeError('command argument must be an Object');
 		if (typeof command.type !== 'string' || !command.type.length)
@@ -107,7 +107,7 @@ export abstract class AbstractSaga implements ISaga {
 	}
 
 	/** Clear the execution queue */
-	 resetUncommittedMessages() {
+	resetUncommittedMessages() {
 		this.#messages.length = 0;
 	}
 

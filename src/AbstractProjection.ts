@@ -21,6 +21,7 @@ import {
 } from './utils';
 
 export type AbstractProjectionParams<T> = {
+
 	/**
 	 * The default view associated with the projection.
 	 * Can optionally implement IViewLocker and/or IEventLocker.

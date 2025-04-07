@@ -227,7 +227,7 @@ export class RabbitMqGateway {
 	}
 
 	async #assertConnection() {
-		return this.#connection ?? await this.connect();
+		return this.#connection ?? this.connect();
 	}
 
 	/** Get existing or open a new channel for a given queue name */
@@ -245,6 +245,7 @@ export class RabbitMqGateway {
 	 * Ensure queue, exchange, and binding exist
 	 */
 	async #assetQueue(channel: Channel, exchange: string, queueName: string, eventType?: string, options?: {
+
 		/** The queue will survive a broker restart */
 		durable?: boolean,
 
@@ -374,7 +375,7 @@ export class RabbitMqGateway {
 
 		return new Promise<void>((resolve, reject) => {
 			const published = this.#pubChannel!.publish(exchange, message.type, content, properties, err =>
-				err ? reject(err) : resolve());
+				(err ? reject(err) : resolve()));
 			if (!published)
 				throw new Error(`${this.#appId}: Failed to send event ${Event.describe(message)}, channel buffer is full`);
 		});

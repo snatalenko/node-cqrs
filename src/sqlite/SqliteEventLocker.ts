@@ -6,9 +6,10 @@ import { SqliteViewLockerParams } from './SqliteViewLocker';
 import { SqliteDbParams, SqliteProjectionDataParams } from './commonParams';
 
 export type SqliteEventLockerParams = SqliteDbParams & SqliteProjectionDataParams & {
+
 	/**
 	 * (Optional) SQLite table name where event locks are stored
-	 * 
+	 *
 	 * @default "tbl_event_lock"
 	 */
 	eventLockTableName?: string;

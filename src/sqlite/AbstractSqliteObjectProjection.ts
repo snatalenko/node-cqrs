@@ -1,7 +1,7 @@
-import { AbstractProjection } from "../AbstractProjection";
-import { IExtendableLogger } from "../interfaces";
-import { SqliteDbParams } from "./commonParams";
-import { SqliteObjectView } from "./SqliteObjectView";
+import { AbstractProjection } from '../AbstractProjection';
+import { IExtendableLogger } from '../interfaces';
+import { SqliteDbParams } from './commonParams';
+import { SqliteObjectView } from './SqliteObjectView';
 
 export abstract class AbstractSqliteObjectProjection<T> extends AbstractProjection<SqliteObjectView<T>> {
 

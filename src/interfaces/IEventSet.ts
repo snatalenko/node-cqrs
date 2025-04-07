@@ -1,4 +1,4 @@
-import { IEvent, isEvent } from "./IEvent";
+import { IEvent, isEvent } from './IEvent';
 
 export type IEventSet = ReadonlyArray<Readonly<IEvent>>;
 

@@ -58,7 +58,8 @@
     "build": "tsc --build",
     "prepare": "npm run build",
     "preversion": "npm test",
-    "version": "npm run changelog && git add CHANGELOG.md"
+    "version": "npm run changelog && git add CHANGELOG.md",
+    "lint": "eslint"
   },
   "author": "@snatalenko",
   "license": "MIT",
@@ -69,6 +70,7 @@
     "di0": "^1.0.0"
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin-ts": "^4.2.0",
     "@types/amqplib": "^0.10.7",
     "@types/better-sqlite3": "^7.6.11",
     "@types/chai": "^4.3.20",
@@ -76,13 +78,18 @@
     "@types/md5": "^2.3.5",
     "@types/node": "^20.16.9",
     "@types/sinon": "^17.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.29.0",
+    "@typescript-eslint/parser": "^8.29.0",
     "chai": "^4.5.0",
     "conventional-changelog": "^3.1.25",
+    "eslint": "^9.24.0",
+    "eslint-plugin-jest": "^28.11.0",
     "jest": "^29.7.0",
     "sinon": "^19.0.2",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.29.0"
   },
   "peerDependencies": {
     "amqplib": "^0.10.5",

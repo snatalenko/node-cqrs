@@ -1,7 +1,8 @@
-import { Identifier } from "./Identifier";
-import { isObject } from "./isObject";
+import { Identifier } from './Identifier';
+import { isObject } from './isObject';
 
 export interface IMessage<TPayload = any> {
+
 	/** Event or command type */
 	type: string;
 

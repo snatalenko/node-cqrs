@@ -1,7 +1,8 @@
-import { Identifier } from "./Identifier";
-import { isObject } from "./isObject";
+import { Identifier } from './Identifier';
+import { isObject } from './isObject';
 
 export interface IIdentifierProvider {
+
 	/**
 	 * Generates and returns a new unique identifier suitable for aggregates, sagas, and events.
 	 *

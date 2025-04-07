@@ -1,5 +1,5 @@
-import { IEvent, IEventBus, IMessage, IMessageHandler, IObservable } from "../interfaces";
-import { RabbitMqGateway } from "./RabbitMqGateway";
+import { IEvent, IEventBus, IMessageHandler, IObservable } from '../interfaces';
+import { RabbitMqGateway } from './RabbitMqGateway';
 
 const ALL_EVENTS_WILDCARD = '*';
 

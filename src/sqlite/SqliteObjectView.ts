@@ -1,4 +1,4 @@
-import { AbstractSqliteView } from "./AbstractSqliteView";
+import { AbstractSqliteView } from './AbstractSqliteView';
 import { IObjectStorage, IEventLocker } from '../interfaces';
 import { SqliteObjectStorage } from './SqliteObjectStorage';
 
