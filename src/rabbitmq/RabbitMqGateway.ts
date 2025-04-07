@@ -1,6 +1,6 @@
 import { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import {
-	IExtendableLogger,
+	IContainer,
 	ILogger,
 	IMessage,
 	isMessage
@@ -43,7 +43,7 @@ export class RabbitMqGateway {
 	#pubChannel: ConfirmChannel | undefined;
 	#exclusiveQueueName: string | undefined;
 	#queueChannels = new Map<string, Channel>();
-	#queueConsumers = new Map<string, string>();
+	#queueConsumers = new Map<string, { channel: Channel, consumerTag: string }>();
 
 	#subscriptions: Array<Subscription & { queueGivenName: string }> = [];
 	#handlers: Map<string, Map<string, Set<MessageHandler>>> = new Map();
@@ -56,9 +56,8 @@ export class RabbitMqGateway {
 		return this.#pubChannel;
 	}
 
-	constructor(o: {
-		rabbitMqConnectionFactory?: () => Promise<ChannelModel>,
-		logger?: ILogger | IExtendableLogger
+	constructor(o: Partial<Pick<IContainer, 'logger' | 'process'>> & {
+		rabbitMqConnectionFactory?: () => Promise<ChannelModel>
 	}) {
 		if (!o.rabbitMqConnectionFactory)
 			throw new TypeError('rabbitMqConnectionFactory argument required');
@@ -68,6 +67,9 @@ export class RabbitMqGateway {
 		this.#logger = o.logger && 'child' in o.logger ?
 			o.logger.child({ service: new.target.name }) :
 			o.logger;
+
+		if (o.process)
+			o.process.on('SIGINT', () => this.#stopConsuming());
 	}
 
 	async connect(): Promise<ChannelModel> {
@@ -100,9 +102,40 @@ export class RabbitMqGateway {
 	}
 
 	async disconnect() {
-		await this.#connection?.close();
-		if (this.#connection) // clean up in case 'close' event was not triggered
-			this.#onConnectionClosed();
+		try {
+			this.#logger?.debug(`${this.#appId}: Disconnecting from RabbitMQ...`);
+
+			await this.#stopConsuming();
+			await this.#connection?.close();
+			if (this.#connection) // clean up in case 'close' event was not triggered
+				this.#onConnectionClosed();
+
+			this.#logger?.debug(`${this.#appId}: Disconnected from RabbitMQ`);
+		}
+		catch (err: any) {
+			this.#logger?.error(`${this.#appId}: Failed to disconnect from RabbitMQ: ${err.message}`, {
+				stack: err.stack
+			});
+		}
+	}
+
+	async #stopConsuming() {
+		this.#logger?.info(`${this.#appId}: Stopping all consumers...`);
+
+		const cancellations = this.#queueConsumers.entries().map(async ([queueName, { channel, consumerTag }]) => {
+			this.#logger?.debug(`${this.#appId}: Cancelling consumer "${consumerTag}" for queue "${queueName}"`);
+			try {
+				await channel.cancel(consumerTag);
+				this.#logger?.debug(`${this.#appId}: Consumer "${consumerTag}" on queue "${queueName}" cancelled successfully`);
+				this.#queueConsumers.delete(queueName);
+			}
+			catch (err: any) {
+				this.#logger?.error(`${this.#appId}: Failed to cancel consumer "${consumerTag}" for queue "${queueName}": ${err.message}`);
+			}
+		});
+
+		await Promise.all(cancellations);
+		this.#logger?.info(`${this.#appId}: All consumers stopped.`);
 	}
 
 	#onConnectionError(err: Error) {
@@ -302,7 +335,10 @@ export class RabbitMqGateway {
 
 		this.#logger?.debug(`${this.#appId}: Consumer "${c.consumerTag}" registered on queue "${queueGivenName}"`);
 
-		this.#queueConsumers.set(queueGivenName, c.consumerTag);
+		this.#queueConsumers.set(queueGivenName, {
+			channel,
+			consumerTag: c.consumerTag
+		});
 	}
 
 	/**

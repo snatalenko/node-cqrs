@@ -2,6 +2,8 @@ import { RabbitMqGateway } from '../../../src/rabbitmq/RabbitMqGateway';
 import { IMessage } from '../../../src/interfaces';
 import * as amqplib from 'amqplib';
 import { delay } from '../../../src/utils';
+import { Deferred } from '../../../dist/in-memory/utils/Deferred';
+import { EventEmitter } from 'stream';
 
 describe('RabbitMqGateway', () => {
 
@@ -10,11 +12,11 @@ describe('RabbitMqGateway', () => {
 	let gateway3: RabbitMqGateway | undefined;
 	const exchange = 'test-exchange';
 	const queueName = 'test-queue';
+	const rabbitMqConnectionFactory = () => amqplib.connect('amqp://localhost');
 
 	beforeEach(async () => {
 		const logger = undefined;
 		// const logger = console;
-		const rabbitMqConnectionFactory = () => amqplib.connect('amqp://localhost');
 		gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger });
 		gateway2 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger });
 		gateway3 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger });
@@ -301,6 +303,41 @@ describe('RabbitMqGateway', () => {
 
 			expect(fanoutReceived).toEqual([message]);
 			expect(queueReceived).toEqual([message]);
+		});
+
+		it('stops receiving messages on SIGINT', async () => {
+
+			const received: IMessage[] = [];
+			const process = new EventEmitter();
+			const handlerBlocker = new Deferred();
+			const message: IMessage = {
+				type: 'test.sigint',
+				payload: { check: true }
+			};
+
+			gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory, process: process as any });
+
+			await gateway1.subscribeToFanout(exchange, async msg => {
+				await handlerBlocker.promise;
+				received.push(msg);
+			});
+
+			gateway3 = new RabbitMqGateway({ rabbitMqConnectionFactory });
+
+			await gateway3.publish(exchange, message);
+			await delay(50);
+
+			expect(received).toHaveLength(0);
+
+			process.emit('SIGINT');
+			await delay(10);
+
+			expect(received).toHaveLength(0);
+
+			handlerBlocker.resolve();
+			await delay(10);
+
+			expect(received).toHaveLength(1);
 		});
 	});
 });

@@ -22,4 +22,5 @@ export interface IContainer extends Container {
 	eventDispatchProcessors?: IEventProcessor[];
 
 	logger?: ILogger | IExtendableLogger;
+	process?: NodeJS.Process
 }
