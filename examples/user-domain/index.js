@@ -20,7 +20,7 @@ exports.createContainer = () => {
 	const builder = new ContainerBuilder();
 
 	// register infrastructure services
-	builder.register(InMemoryEventStorage).as('storage');
+	builder.register(InMemoryEventStorage).as('eventStorageReader').as('eventStorageWriter');
 	builder.register(InMemoryMessageBus).as('eventBus');
 
 	// register domain entities
@@ -39,9 +39,9 @@ exports.createBaseInstances = () => {
 	const eventBus = new InMemoryMessageBus();
 	const storage = new InMemoryEventStorage();
 	const eventDispatcher = new EventDispatcher({ eventBus })
-	eventDispatcher.addPipelineProcessor(new EventPersistenceProcessor({ storage }));
+	eventDispatcher.addPipelineProcessor(new EventPersistenceProcessor({ eventStorageWriter: storage }));
 
-	const eventStore = new EventStore({ storage, eventBus, eventDispatcher });
+	const eventStore = new EventStore({ eventStorageReader: storage, eventBus, eventDispatcher });
 	const commandBus = new CommandBus();
 
 	/** @type {import('../..').IAggregateConstructor} */
