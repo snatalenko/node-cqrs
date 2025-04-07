@@ -1,4 +1,5 @@
 import { IEvent, IEventBus, IMessageHandler, IObservable } from '../interfaces';
+import { DEFAULT_EXCHANGE } from './constants';
 import { RabbitMqGateway } from './RabbitMqGateway';
 
 const ALL_EVENTS_WILDCARD = '*';
@@ -20,7 +21,7 @@ export class RabbitMqEventBus implements IEventBus {
 		queueName?: string
 	}) {
 		this.#gateway = o.rabbitMqGateway;
-		this.#exchange = o.exchange ?? 'node-cqrs.events';
+		this.#exchange = o.exchange ?? DEFAULT_EXCHANGE;
 		this.#queueName = o.queueName;
 	}
 

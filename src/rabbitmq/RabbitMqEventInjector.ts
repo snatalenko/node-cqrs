@@ -3,6 +3,7 @@ import { IMessage } from '../interfaces/IMessage';
 import { RabbitMqGateway } from './RabbitMqGateway';
 import { IEventDispatcher } from '../interfaces';
 import * as Event from '../Event';
+import { DEFAULT_EXCHANGE } from './constants';
 
 export class RabbitMqEventInjector {
 	#rabbitMqGateway: RabbitMqGateway;
@@ -10,7 +11,6 @@ export class RabbitMqEventInjector {
 	#logger: IContainer['logger'];
 
 	#exchangeName: string;
-	#queueName: string;
 	#messageHandler: (message: IMessage) => Promise<void>;
 
 	constructor(container: Partial<Pick<IContainer, 'eventDispatcher' | 'rabbitMqGateway' | 'logger'>> & {
@@ -29,32 +29,26 @@ export class RabbitMqEventInjector {
 			container.logger.child({ service: new.target.name }) :
 			container.logger;
 
-		this.#exchangeName = container.exchange ?? 'node-cqrs.events';
-		this.#queueName = container.queueName ?? 'node-cqrs.persistence';
+		this.#exchangeName = container.exchange ?? DEFAULT_EXCHANGE;
 		this.#messageHandler = this.#handleMessage.bind(this);
 
 		this.start();
 	}
 
 	async start(): Promise<void> {
-		this.#logger?.info(`Starting event injection from queue "${this.#queueName}"`);
+		this.#logger?.debug(`Subscribing to messages from exchange "${this.#exchangeName}"...`);
 
-		await this.#rabbitMqGateway.subscribeToQueue(
-			this.#exchangeName,
-			this.#queueName,
-			this.#messageHandler
-		);
+		await this.#rabbitMqGateway.subscribeToFanout(this.#exchangeName, this.#messageHandler);
 
-		this.#logger?.info(`Subscribed to queue "${this.#queueName}" on exchange "${this.#exchangeName}"`);
+		this.#logger?.debug(`Listening to messages from exchange "${this.#exchangeName}"`);
 	}
 
 	async #handleMessage(message: IMessage): Promise<void> {
-		this.#logger?.debug(`Received message from queue "${this.#queueName}": ${message.type}`);
+		this.#logger?.debug(`Received "${Event.describe(message)}" message from exchange "${this.#exchangeName}"`);
 		try {
-			// EventDispatcher expects an array of events (IEventSet)
-			// Assuming IMessage is compatible with IEvent or needs transformation
 			await this.#eventDispatcher.dispatch([message]);
-			this.#logger?.debug(`Event ${Event.describe(message)} dispatched successfully`);
+
+			this.#logger?.debug(`${Event.describe(message)} dispatched successfully`);
 		}
 		catch (error: any) {
 			this.#logger?.error(`Failed to dispatch event ${message.type}: ${error.message}`, { stack: error.stack });
