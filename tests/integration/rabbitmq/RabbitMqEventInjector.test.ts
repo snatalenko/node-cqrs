@@ -7,6 +7,7 @@ import { delay } from '../../../src/utils';
 
 describe('RabbitMqEventInjector', () => {
 	let rabbitMqGateway: RabbitMqGateway;
+	let rabbitMqGateway2: RabbitMqGateway;
 	let eventDispatcher: jest.Mocked<IEventDispatcher>;
 
 	const exchange = 'node-cqrs.events';
@@ -15,38 +16,26 @@ describe('RabbitMqEventInjector', () => {
 	beforeEach(async () => {
 		const rabbitMqConnectionFactory = () => amqplib.connect('amqp://localhost');
 		rabbitMqGateway = new RabbitMqGateway({ rabbitMqConnectionFactory });
+		rabbitMqGateway2 = new RabbitMqGateway({ rabbitMqConnectionFactory });
 
 		eventDispatcher = {
 			dispatch: jest.fn().mockResolvedValue(undefined)
 		} as unknown as jest.Mocked<IEventDispatcher>;
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const injector = new RabbitMqEventInjector({
-			rabbitMqGateway,
-			eventDispatcher,
-			exchange
-		});
+		const injector = new RabbitMqEventInjector({ rabbitMqGateway, eventDispatcher });
 
-		await delay(50); // Allow time for subscription setup
+		await injector.start(exchange);
 	});
 
 	afterEach(async () => {
-		try {
-			const ch = await rabbitMqGateway.connection?.createChannel();
-			if (ch) {
-				await ch.deleteExchange(exchange);
-				await ch.close();
-			}
-		}
-		catch (error) {
-			console.warn('Error during RabbitMQ cleanup:', error);
-		}
-		finally {
-			await rabbitMqGateway.disconnect();
-		}
+		const ch = await rabbitMqGateway.connection?.createChannel();
+		await ch.deleteExchange(exchange);
+		await ch.close();
+		await rabbitMqGateway.disconnect();
+		await rabbitMqGateway2.disconnect();
 	});
 
-	it('receives messages and dispatches them via EventDispatcher', async () => {
+	it('does not receive messages published to own gateway', async () => {
 		const testEvent: IEvent = {
 			type: eventType,
 			payload: { data: 'test-payload' },
@@ -54,6 +43,20 @@ describe('RabbitMqEventInjector', () => {
 		};
 
 		await rabbitMqGateway.publish(exchange, testEvent);
+
+		await delay(50);
+
+		expect(eventDispatcher.dispatch).not.toHaveBeenCalled();
+	});
+
+	it('receives messages published to other gateway, dispatches to eventDispatcher', async () => {
+		const testEvent: IEvent = {
+			type: eventType,
+			payload: { data: 'test-payload' },
+			id: 'test-id-123'
+		};
+
+		await rabbitMqGateway2.publish(exchange, testEvent);
 
 		await delay(50);
 
