@@ -23,6 +23,5 @@ export interface IContainer extends Container {
 
 	logger?: ILogger | IExtendableLogger;
 
-	// eslint-disable-next-line no-undef
 	process?: NodeJS.Process
 }

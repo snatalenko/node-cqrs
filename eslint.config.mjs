@@ -16,7 +16,8 @@ export default defineConfig([
 		languageOptions: {
 			parser: tsParser,
 			globals: {
-				...globals.node
+				...globals.node,
+				NodeJS: true
 			}
 		},
 		plugins: {
