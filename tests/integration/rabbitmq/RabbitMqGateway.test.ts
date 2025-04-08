@@ -14,13 +14,16 @@ describe('RabbitMqGateway', () => {
 	const queueName = 'test-queue';
 	const rabbitMqConnectionFactory = () => amqplib.connect('amqp://localhost');
 
+	let process: EventEmitter;
+
 	beforeEach(async () => {
+		// const logger = console;
 		const logger = undefined;
 
-		// const logger = console;
-		gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger });
-		gateway2 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger });
-		gateway3 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger });
+		process = new EventEmitter();
+		gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger, process: process as NodeJS.Process });
+		gateway2 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger, process: process as NodeJS.Process });
+		gateway3 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger, process: process as NodeJS.Process });
 	});
 
 	afterEach(async () => {
@@ -115,7 +118,6 @@ describe('RabbitMqGateway', () => {
 			expect(received1).toHaveLength(1);
 			expect(received2).toHaveLength(1);
 		});
-
 	});
 
 	describe('subscribeToQueue', () => {
@@ -268,6 +270,115 @@ describe('RabbitMqGateway', () => {
 			await delay(50);
 
 			expect(received1).toEqual([event1, event1, event1]);
+		});
+	});
+
+	describe('unsubscribe', () => {
+
+		it('removes subscription so handler does not receive further events', async () => {
+
+			const received: IMessage[] = [];
+			const handler = (msg: IMessage) => {
+				received.push(msg);
+			};
+			const event1 = {
+				type: 'test.unsubscribe',
+				payload: { info: 'first event' },
+				context: { ts: Date.now() }
+			};
+
+			// Subscribe to a durable queue
+			await gateway1.subscribeToQueue(exchange, queueName, handler);
+
+			// Publish an event and verify handler is invoked
+			await gateway1.publish(exchange, event1);
+			await delay(50);
+
+			expect(received).toEqual([event1]);
+
+			await gateway1.unsubscribe({ exchange, queueName, handler });
+
+			// Clear received messages
+			received.length = 0;
+			expect(received).toEqual([]);
+
+			// Publish a second event; handler should not be invoked
+			await gateway1.publish(exchange, event1);
+			await delay(50);
+
+			expect(received).toEqual([]);
+		});
+
+		it('cancels consumer when unsubscribing the last subscription on a queue', async () => {
+
+			const processOnSpy = jest.spyOn(process, 'on');
+			const processOffSpy = jest.spyOn(process, 'off');
+
+			const received1: IMessage[] = [];
+			const received2: IMessage[] = [];
+
+			const handler1 = (msg: IMessage) => {
+				received1.push(msg);
+			};
+			const handler2 = (msg: IMessage) => {
+				received2.push(msg);
+			};
+
+			const event1 = {
+				type: 'test.unsubscribe',
+				payload: { info: 'event for handler2' },
+				context: { ts: Date.now() }
+			};
+
+			// Subscribe both handlers to the same durable queue
+			await gateway1.subscribe({
+				exchange,
+				eventType: event1.type,
+				handler: handler1
+			});
+			await gateway1.subscribe({
+				exchange,
+				eventType: event1.type,
+				handler: handler2
+			});
+
+			expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+			expect(processOnSpy).toHaveBeenCalledTimes(1);
+			expect(processOffSpy).not.toHaveBeenCalled();
+
+			// Unsubscribe one handler; the queue should still be active
+			await gateway1.unsubscribe({
+				exchange,
+				eventType: event1.type,
+				handler: handler1
+			});
+
+			expect(processOffSpy).not.toHaveBeenCalled();
+
+			// Publish an event; only handler2 should receive it
+
+			await gateway1.publish(exchange, event1);
+			await delay(50);
+
+			expect(received1).toEqual([]);
+			expect(received2).toEqual([event1]);
+
+			// Now unsubscribe the last handler; this should cancel the consumer for the queue
+			await gateway1.unsubscribe({
+				exchange,
+				eventType: event1.type,
+				handler: handler2
+			});
+
+			expect(processOffSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+
+			// Publish a second event; no handler should receive it because the consumer is cancelled
+			received2.length = 0;
+
+			await gateway1.publish(exchange, event1);
+			await delay(50);
+
+			expect(received1).toEqual([]);
 		});
 	});
 

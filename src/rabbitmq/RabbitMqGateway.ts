@@ -1,12 +1,9 @@
 import { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
-import {
-	IContainer,
-	ILogger,
-	IMessage,
-	isMessage
-} from '../interfaces';
+import { IContainer, ILogger, IMessage, isMessage } from '../interfaces';
 import * as Event from '../Event';
 import { delay } from '../utils';
+import { HANDLER_PROCESS_TIMEOUT } from './constants';
+import { TerminationHandler } from './TerminationHandler';
 
 /** Generate a short pseudo-unique identifier using a truncated timestamp and random component */
 const getRandomAppId = () =>
@@ -64,12 +61,11 @@ export class RabbitMqGateway {
 	#subscriptions: Array<Subscription & { queueGivenName: string }> = [];
 	#handlers: Map<string, Map<string, Set<MessageHandler>>> = new Map();
 
+	/** Handles termination signals for graceful shutdown */
+	#terminationHandler: TerminationHandler | undefined;
+
 	get connection() {
 		return this.#connection;
-	}
-
-	get channel() {
-		return this.#pubChannel;
 	}
 
 	constructor(o: Partial<Pick<IContainer, 'logger' | 'process'>> & {
@@ -85,9 +81,19 @@ export class RabbitMqGateway {
 			o.logger;
 
 		if (o.process)
-			o.process.on('SIGINT', () => this.#stopConsuming());
+			this.#terminationHandler = new TerminationHandler(o.process, () => this.#stopConsuming());
 	}
 
+	/**
+	 * Establishes a connection to RabbitMQ.
+	 * If a connection attempt is already in progress, it waits for it to complete.
+	 * If the connection is lost, it attempts to reconnect automatically.
+	 * Upon successful connection, it restores any previously active subscriptions.
+	 *
+	 * This method is called automatically by other methods if a connection is required but not yet established.
+	 *
+	 * @returns A promise that resolves with the ChannelModel representing the established connection.
+	 */
 	async connect(): Promise<ChannelModel> {
 		while (this.#connecting)
 			await delay(1_000);
@@ -342,19 +348,31 @@ export class RabbitMqGateway {
 			if (!msg)
 				return;
 
-			const { consumerTag, routingKey } = msg.fields;
-			const { appId, messageId, correlationId } = msg.properties;
+			const { consumerTag, routingKey } = msg.fields ?? {};
+			const { messageId, correlationId, appId } = msg.properties ?? {};
 
-			this.#logger?.debug(`${this.#appId}: Message received`, {
-				queueName: queueGivenName,
-				consumerTag,
-				routingKey,
-				messageId,
-				correlationId,
-				appId
-			});
+			// Keep the process alive while waiting for the handler to finish
+			const keepAliveTimeout = setTimeout(() => {
+				this.#logger?.warn(`${this.#appId}: Message processing timed out`, {
+					queueName: queueGivenName,
+					consumerTag,
+					routingKey,
+					messageId
+				});
+				channel.nack(msg, false, false);
+			}, HANDLER_PROCESS_TIMEOUT);
 
 			try {
+
+				this.#logger?.debug(`${this.#appId}: Message received`, {
+					queueName: queueGivenName,
+					consumerTag,
+					routingKey,
+					messageId,
+					correlationId,
+					appId
+				});
+
 				const jsonContent = msg.content.toString();
 				const message: IMessage = JSON.parse(jsonContent);
 
@@ -377,6 +395,9 @@ export class RabbitMqGateway {
 				// Redirect message to dead letter queue, if `{ noAck: true }` was not set on consumption
 				channel?.nack(msg, false, false);
 			}
+			finally {
+				clearTimeout(keepAliveTimeout);
+			}
 		});
 
 		this.#logger?.debug(`${this.#appId}: Consumer "${c.consumerTag}" registered on queue "${queueGivenName}"`);
@@ -385,6 +406,25 @@ export class RabbitMqGateway {
 			channel,
 			consumerTag: c.consumerTag
 		});
+
+		this.#terminationHandler?.on();
+	}
+
+	async #tryDropConsumer(queueGivenName: string) {
+		const queueStillUsed = this.#subscriptions.some(s => s.queueGivenName === queueGivenName);
+		if (queueStillUsed)
+			return;
+
+		const consumer = this.#queueConsumers.get(queueGivenName);
+		if (!consumer)
+			return;
+
+		this.#queueConsumers.delete(queueGivenName);
+		await consumer.channel.cancel(consumer.consumerTag);
+
+		// If no consumers are active anymore, disable the termination handler
+		if (!this.#queueConsumers.size)
+			this.#terminationHandler?.off();
 	}
 
 	/**
@@ -419,7 +459,12 @@ export class RabbitMqGateway {
 		};
 
 		return new Promise<void>((resolve, reject) => {
-			const published = this.#pubChannel!.publish(exchange, message.type, content, properties, err =>
+			if (!this.#pubChannel)
+				throw new Error(`${this.#appId}: No channel available for publishing`);
+
+			this.#logger?.debug(`${this.#appId}: Publishing message "${Event.describe(message)}" to exchange "${exchange}"`);
+
+			const published = this.#pubChannel.publish(exchange, message.type, content, properties, err =>
 				(err ? reject(err) : resolve()));
 			if (!published)
 				throw new Error(`${this.#appId}: Failed to send event ${Event.describe(message)}, channel buffer is full`);
