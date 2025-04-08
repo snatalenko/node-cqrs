@@ -13,13 +13,29 @@ const getRandomAppId = () =>
 	`${Date.now().toString(36).slice(-4)}.${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
 
 type MessageHandler = (m: IMessage) => Promise<unknown> | unknown;
+
+/**
+ * Represents a subscription to events from a RabbitMQ exchange.
+ */
 type Subscription = {
-	exchange: string,
-	queueName?: string,
-	eventType?: string,
-	handler: MessageHandler,
-	ignoreOwn?: boolean,
-	concurrentLimit?: number
+
+	/** Name of the exchange to subscribe to */
+	exchange: string;
+
+	/** Optional durable queue name; if omitted, an exclusive temporary queue is used */
+	queueName?: string;
+
+	/** Specific event type (routing key) for filtering, defaults to all if omitted */
+	eventType?: string;
+
+	/** Callback function to process received messages */
+	handler: MessageHandler;
+
+	/** If true, messages originating from this instance are ignored */
+	ignoreOwn?: boolean;
+
+	/** Optional limit for concurrent message handling */
+	concurrentLimit?: number;
 };
 
 const isSystemQueue = (queueName: string) => queueName.startsWith('amq.');
@@ -176,7 +192,26 @@ export class RabbitMqGateway {
 		return this.subscribe({ exchange, handler, ignoreOwn: true });
 	}
 
+	/**
+	 * Subscribes to events from a specified exchange.
+	 *
+	 * This method sets up the necessary RabbitMQ topology (exchange, queue, bindings) based on the provided details.
+	 * If a `queueName` is provided, it asserts a durable queue with a dead-letter queue for failed messages.
+	 * If `queueName` is omitted, it uses or creates a temporary, exclusive queue for the connection.
+	 * Then it starts consuming messages from the queue with the specified concurrency limit, if specified.
+	 *
+	 * @param subscription - The subscription details.
+	 * @param subscription.exchange - The name of the exchange to subscribe to.
+	 * @param subscription.queueName - Optional. The name of the durable queue. If omitted, an exclusive queue is used.
+	 * @param subscription.eventType - The routing key or pattern to bind the queue with.
+	 * @param subscription.concurrentLimit - Optional. The maximum number of concurrent messages to process.
+	 * @returns A promise that resolves when the subscription is successfully set up.
+	 */
 	async subscribe(subscription: Subscription) {
+		const subscriptionExists = !!this.#findSubscription(subscription);
+		if (subscriptionExists)
+			throw new Error('Subscription already exists');
+
 		const {
 			exchange,
 			queueName,
@@ -218,12 +253,22 @@ export class RabbitMqGateway {
 		this.#subscriptions.push({ ...subscription, queueGivenName });
 	}
 
-	async unsubscribe(d: Subscription) {
-		this.#subscriptions = this.#subscriptions.filter(s => !(
-			s.exchange === d.exchange &&
-			s.queueName === d.queueName &&
-			s.eventType === d.eventType &&
-			s.handler === d.handler));
+	#findSubscription(subscription: Pick<Subscription, 'exchange' | 'queueName' | 'eventType' | 'handler'>) {
+		return this.#subscriptions.find(s =>
+			s.exchange === subscription.exchange &&
+			s.queueName === subscription.queueName &&
+			s.eventType === subscription.eventType &&
+			s.handler === subscription.handler);
+	}
+
+	async unsubscribe(subscription: Pick<Subscription, 'exchange' | 'queueName' | 'eventType' | 'handler'>) {
+		const subscriptionToRemove = this.#findSubscription(subscription);
+		if (!subscriptionToRemove)
+			throw new Error('Such subscription does not exist');
+
+		this.#subscriptions = this.#subscriptions.filter(s => s !== subscriptionToRemove);
+
+		await this.#tryDropConsumer(subscriptionToRemove.queueGivenName);
 	}
 
 	async #assertConnection() {
