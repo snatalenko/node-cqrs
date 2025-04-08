@@ -15,15 +15,17 @@ export class TerminationHandler {
 	}
 
 	on() {
-		this.#process.on('SIGINT', this.#terminationHandler);
+		this.#process.once('SIGINT', this.#terminationHandler);
+		this.#process.once('SIGTERM', this.#terminationHandler);
 	}
 
 	off() {
 		this.#process.off('SIGINT', this.#terminationHandler);
+		this.#process.off('SIGTERM', this.#terminationHandler);
 	}
 
 	async #onProcessTermination() {
-		await this.#cleanupHandler();
 		this.off();
+		await this.#cleanupHandler();
 	}
 }

@@ -311,7 +311,7 @@ describe('RabbitMqGateway', () => {
 
 		it('cancels consumer when unsubscribing the last subscription on a queue', async () => {
 
-			const processOnSpy = jest.spyOn(process, 'on');
+			const processOnSpy = jest.spyOn(process, 'once');
 			const processOffSpy = jest.spyOn(process, 'off');
 
 			const received1: IMessage[] = [];
@@ -343,7 +343,8 @@ describe('RabbitMqGateway', () => {
 			});
 
 			expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
-			expect(processOnSpy).toHaveBeenCalledTimes(1);
+			expect(processOnSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+			expect(processOnSpy).toHaveBeenCalledTimes(2);
 			expect(processOffSpy).not.toHaveBeenCalled();
 
 			// Unsubscribe one handler; the queue should still be active
