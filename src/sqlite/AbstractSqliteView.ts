@@ -1,11 +1,9 @@
-import { IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces';
-import { Database } from 'better-sqlite3';
+import { IContainer, IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces';
 import { SqliteViewLocker, SqliteViewLockerParams } from './SqliteViewLocker';
 import { SqliteEventLocker, SqliteEventLockerParams } from './SqliteEventLocker';
 
 export abstract class AbstractSqliteView implements IViewLocker, IEventLocker {
 
-	protected readonly db: Database;
 	protected readonly schemaVersion: string;
 	protected readonly viewLocker: SqliteViewLocker;
 	protected readonly eventLocker: SqliteEventLocker;
@@ -15,8 +13,10 @@ export abstract class AbstractSqliteView implements IViewLocker, IEventLocker {
 		return this.viewLocker.ready;
 	}
 
-	constructor(options: SqliteEventLockerParams & SqliteViewLockerParams) {
-		this.db = options.viewModelSqliteDb;
+	constructor(options: Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory' | 'logger'>
+		& SqliteEventLockerParams
+		& SqliteViewLockerParams) {
+
 		this.schemaVersion = options.schemaVersion;
 		this.viewLocker = new SqliteViewLocker(options);
 		this.eventLocker = new SqliteEventLocker(options);

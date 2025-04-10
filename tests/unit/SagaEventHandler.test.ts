@@ -7,9 +7,9 @@ import {
 	CommandBus,
 	AbstractSaga,
 	InMemoryMessageBus,
-	Deferred,
 	EventDispatcher
 } from '../../src';
+import { Deferred } from '../../src/utils';
 
 class Saga extends AbstractSaga {
 	static get startsWith() {

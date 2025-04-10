@@ -1,3 +1,5 @@
+export * from './AbstractSqliteAccessor';
+export * from './AbstractSqliteObjectProjection';
 export * from './AbstractSqliteView';
 export * from './SqliteEventLocker';
 export * from './SqliteObjectStorage';

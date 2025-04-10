@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import * as createDb from 'better-sqlite3';
 import { SqliteEventLocker } from '../../../src/sqlite/SqliteEventLocker';
 import { IEvent } from '../../../src/interfaces';
@@ -6,7 +5,7 @@ import { guid } from '../../../src/sqlite';
 import { promisify } from 'util';
 const delay = promisify(setTimeout);
 
-describe('SqliteEventLocker', function () {
+describe('SqliteEventLocker', () => {
 
 	let db: import('better-sqlite3').Database;
 	let locker: SqliteEventLocker;
@@ -22,76 +21,70 @@ describe('SqliteEventLocker', function () {
 			viewLockTableName: 'test_view_lock',
 			eventLockTtl: 50 // ms
 		});
-		jest.useFakeTimers();
 	});
 
 	afterEach(() => {
 		db.close();
-		jest.useRealTimers();
 	});
 
-	it('allows marking an event as projecting', function () {
-		const result = locker.tryMarkAsProjecting(testEvent);
-		expect(result).to.be.true;
+	it('allows marking an event as projecting', async () => {
+		const result = await locker.tryMarkAsProjecting(testEvent);
+		expect(result).toBe(true);
 	});
 
-	it('prevents re-locking an already locked event', function () {
-		locker.tryMarkAsProjecting(testEvent);
-		const result = locker.tryMarkAsProjecting(testEvent);
-		expect(result).to.be.false;
+	it('prevents re-locking an already locked event', async () => {
+		await locker.tryMarkAsProjecting(testEvent);
+		const result = await locker.tryMarkAsProjecting(testEvent);
+		expect(result).toBe(false);
 	});
 
-	it('marks an event as projected', function () {
-		locker.tryMarkAsProjecting(testEvent);
-		locker.markAsProjected(testEvent);
+	it('marks an event as projected', async () => {
+		await locker.tryMarkAsProjecting(testEvent);
+		await locker.markAsProjected(testEvent); // Assuming markAsProjected might become async
 
+		// DB query remains synchronous with better-sqlite3
 		const row = db.prepare('SELECT processed_at FROM test_event_lock WHERE event_id = ?')
 			.get(guid(testEvent.id)) as any;
 
-		expect(row).to.exist;
-		expect(row.processed_at).to.not.be.null;
+		expect(row).toBeDefined();
+		expect(row.processed_at).not.toBeNull();
 	});
 
-	it('retrieves the last projected event', function () {
+	it('retrieves the last projected event', async () => {
+		await locker.tryMarkAsProjecting(testEvent);
+		await locker.markAsProjected(testEvent);
 
-		locker.tryMarkAsProjecting(testEvent);
-		locker.markAsProjected(testEvent);
+		const lastEvent = await locker.getLastEvent(); // Assuming getLastEvent might become async
 
-		const lastEvent = locker.getLastEvent();
-
-		expect(lastEvent).to.deep.equal(testEvent);
+		expect(lastEvent).toEqual(testEvent);
 	});
 
-	it('returns undefined if no event has been projected', function () {
-		const lastEvent = locker.getLastEvent();
-		expect(lastEvent).to.be.undefined;
+	it('returns undefined if no event has been projected', async () => {
+		const lastEvent = await locker.getLastEvent();
+		expect(lastEvent).toBeUndefined();
 	});
 
-	it('fails to mark an event as projected if it was never locked', function () {
-		expect(() => locker.markAsProjected(testEvent))
-			.to.throw(Error, `Event ${testEvent.id} could not be marked as processed`);
+	it('fails to mark an event as projected if it was never locked', async () => {
+		await expect(() => locker.markAsProjected(testEvent))
+			.rejects.toThrow(`Event ${testEvent.id} could not be marked as processed`);
 	});
 
-	it('allows re-locking after TTL expires', async function () {
+	it('allows re-locking after TTL expires', async () => {
+		await locker.tryMarkAsProjecting(testEvent);
 
-		locker.tryMarkAsProjecting(testEvent);
+		await delay(51); // Wait for TTL to expire
 
-		await delay(51);
-
-		const result = locker.tryMarkAsProjecting(testEvent);
-		expect(result).to.be.true;
+		const result = await locker.tryMarkAsProjecting(testEvent);
+		expect(result).toBe(true);
 	});
 
-	it('fails to update an event if its version is modified in DB', function () {
+	it('fails to update an event if its version is modified in DB', async () => {
+		await locker.tryMarkAsProjecting(testEvent);
 
-		locker.tryMarkAsProjecting(testEvent);
-
-		// Modify the event in DB to simulate an external change
 		db.prepare('UPDATE test_event_lock SET processed_at = ? WHERE event_id = ?')
 			.run(Date.now(), guid(testEvent.id));
 
-		// Attempt to finalize the event processing
-		expect(() => locker.markAsProjected(testEvent))
-			.to.throw(Error, `Event ${testEvent.id} could not be marked as processed`);
+		await expect(() => locker.markAsProjected(testEvent))
+			.rejects.toThrow(`Event ${testEvent.id} could not be marked as processed`);
 	});
 });

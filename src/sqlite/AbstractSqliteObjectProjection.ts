@@ -1,6 +1,5 @@
 import { AbstractProjection } from '../AbstractProjection';
-import { IExtendableLogger } from '../interfaces';
-import { SqliteDbParams } from './commonParams';
+import { IContainer } from '../interfaces';
 import { SqliteObjectView } from './SqliteObjectView';
 
 export abstract class AbstractSqliteObjectProjection<T> extends AbstractProjection<SqliteObjectView<T>> {
@@ -13,13 +12,18 @@ export abstract class AbstractSqliteObjectProjection<T> extends AbstractProjecti
 		throw new Error('schemaVersion is not defined');
 	}
 
-	constructor({ viewModelSqliteDb, logger }: SqliteDbParams & { logger?: IExtendableLogger }) {
+	constructor({ viewModelSqliteDb, viewModelSqliteDbFactory, logger }: Pick<IContainer,
+		'viewModelSqliteDbFactory' |
+		'viewModelSqliteDb' |
+		'logger'
+	>) {
 		super({ logger });
 
 		this.view = new SqliteObjectView({
 			schemaVersion: new.target.schemaVersion,
 			projectionName: new.target.name,
 			viewModelSqliteDb,
+			viewModelSqliteDbFactory,
 			tableNamePrefix: new.target.tableName,
 			logger
 		});

@@ -16,16 +16,14 @@ export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IOb
 
 		super(options);
 
-		this.#sqliteObjectStorage = new SqliteObjectStorage({
+		this.#sqliteObjectStorage = new SqliteObjectStorage<TRecord>({
 			viewModelSqliteDb: options.viewModelSqliteDb,
+			viewModelSqliteDbFactory: options.viewModelSqliteDbFactory,
 			tableName: `${options.tableNamePrefix}_${options.schemaVersion}`
 		});
 	}
 
 	async get(id: string): Promise<TRecord | undefined> {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
-
 		if (!this.ready)
 			await this.once('ready');
 
@@ -33,41 +31,22 @@ export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IOb
 	}
 
 	getSync(id: string) {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
-
-		return this.#sqliteObjectStorage.get(id);
+		return this.#sqliteObjectStorage.getSync(id);
 	}
 
-	create(id: string, data: TRecord) {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
-
-		this.#sqliteObjectStorage.create(id, data);
+	async create(id: string, data: TRecord) {
+		await this.#sqliteObjectStorage.create(id, data);
 	}
 
-	update(id: string, update: (r: TRecord) => TRecord) {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
-		if (typeof update !== 'function')
-			throw new TypeError('update argument must be a Function');
-
-		this.#sqliteObjectStorage.update(id, update);
+	async update(id: string, update: (r: TRecord) => TRecord) {
+		await this.#sqliteObjectStorage.update(id, update);
 	}
 
-	updateEnforcingNew(id: string, update: (r?: TRecord) => TRecord) {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
-		if (typeof update !== 'function')
-			throw new TypeError('update argument must be a Function');
-
-		this.#sqliteObjectStorage.updateEnforcingNew(id, update);
+	async updateEnforcingNew(id: string, update: (r?: TRecord) => TRecord) {
+		await this.#sqliteObjectStorage.updateEnforcingNew(id, update);
 	}
 
-	delete(id: string): boolean {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
-
+	async delete(id: string): Promise<boolean> {
 		return this.#sqliteObjectStorage.delete(id);
 	}
 }

@@ -1,4 +1,4 @@
-import { Deferred } from './utils';
+import { Deferred } from '../utils';
 
 export class InMemoryLock {
 

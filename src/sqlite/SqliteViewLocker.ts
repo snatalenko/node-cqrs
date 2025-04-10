@@ -1,12 +1,12 @@
 import { Database, Statement } from 'better-sqlite3';
-import { IExtendableLogger, ILogger, IViewLocker } from '../interfaces';
-import { Deferred } from '../in-memory';
+import { IContainer, ILogger, IViewLocker } from '../interfaces';
+import { Deferred } from '../utils';
 import { promisify } from 'util';
 import { viewLockTableInit } from './queries';
-import { SqliteDbParams, SqliteProjectionDataParams } from './commonParams';
+import { SqliteProjectionDataParams } from './SqliteProjectionDataParams';
 const delay = promisify(setTimeout);
 
-export type SqliteViewLockerParams = SqliteDbParams & SqliteProjectionDataParams & {
+export type SqliteViewLockerParams = SqliteProjectionDataParams & {
 
 	/**
 	 * (Optional) SQLite table name where event locks along with the latest event are stored
@@ -21,13 +21,6 @@ export type SqliteViewLockerParams = SqliteDbParams & SqliteProjectionDataParams
 	 * @default 120_000
 	 */
 	viewLockTtl?: number;
-
-	/**
-	 * (Optional) Logger instance for logging operations,
-	 * can be an IExtendableLogger (Winston)
-	 * or ILogger (Console)
-	 */
-	logger?: IExtendableLogger | ILogger;
 };
 
 export class SqliteViewLocker implements IViewLocker {
@@ -45,10 +38,9 @@ export class SqliteViewLocker implements IViewLocker {
 	#removeTableLockQuery: Statement<[string, string], void>;
 
 	#lockMarker: Deferred<void> | undefined;
-	// eslint-disable-next-line no-undef
 	#lockProlongationTimeout: NodeJS.Timeout | undefined;
 
-	constructor(o: SqliteViewLockerParams) {
+	constructor(o: Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory' | 'logger'> & SqliteViewLockerParams) {
 		if (!o.viewModelSqliteDb)
 			throw new TypeError('viewModelSqliteDb argument required');
 		if (!o.projectionName)

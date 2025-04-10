@@ -1,11 +1,12 @@
 import { Database, Statement } from 'better-sqlite3';
-import { IEvent, IEventLocker } from '../interfaces';
+import { IContainer, IEvent, IEventLocker } from '../interfaces';
 import { getEventId } from './utils';
 import { viewLockTableInit, eventLockTableInit } from './queries';
 import { SqliteViewLockerParams } from './SqliteViewLocker';
-import { SqliteDbParams, SqliteProjectionDataParams } from './commonParams';
+import { SqliteProjectionDataParams } from './SqliteProjectionDataParams';
+import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
 
-export type SqliteEventLockerParams = SqliteDbParams & SqliteProjectionDataParams & {
+export type SqliteEventLockerParams = SqliteProjectionDataParams & {
 
 	/**
 	 * (Optional) SQLite table name where event locks are stored
@@ -24,40 +25,39 @@ export type SqliteEventLockerParams = SqliteDbParams & SqliteProjectionDataParam
 }
 	& Pick<SqliteViewLockerParams, 'viewLockTableName'>;
 
-export class SqliteEventLocker implements IEventLocker {
+export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventLocker {
 
-	#db: Database;
 	#projectionName: string;
 	#schemaVersion: string;
 	#viewLockTableName: string;
 	#eventLockTableName: string;
 	#eventLockTtl: number;
 
-	#upsertLastEventQuery: Statement<[string, string, string], void>;
-	#getLastEventQuery: Statement<[string, string], { last_event: string }>;
-	#lockEventQuery: Statement<[string, string, Buffer], void>;
-	#finalizeEventLockQuery: Statement<[string, string, Buffer], void>;
+	#upsertLastEventQuery!: Statement<[string, string, string], void>;
+	#getLastEventQuery!: Statement<[string, string], { last_event: string }>;
+	#lockEventQuery!: Statement<[string, string, Buffer], void>;
+	#finalizeEventLockQuery!: Statement<[string, string, Buffer], void>;
 
-	constructor(o: SqliteEventLockerParams) {
-		if (!o.viewModelSqliteDb)
-			throw new TypeError('viewModelSqliteDb argument required');
+	constructor(o: Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory'> & SqliteEventLockerParams) {
+		super(o);
+
 		if (!o.projectionName)
 			throw new TypeError('projectionName argument required');
 		if (!o.schemaVersion)
 			throw new TypeError('schemaVersion argument required');
 
-		this.#db = o.viewModelSqliteDb;
 		this.#projectionName = o.projectionName;
 		this.#schemaVersion = o.schemaVersion;
 		this.#viewLockTableName = o.viewLockTableName ?? 'tbl_view_lock';
 		this.#eventLockTableName = o.eventLockTableName ?? 'tbl_event_lock';
 		this.#eventLockTtl = o.eventLockTtl ?? 15_000;
+	}
 
+	protected initialize(db: Database) {
+		db.exec(viewLockTableInit(this.#viewLockTableName));
+		db.exec(eventLockTableInit(this.#eventLockTableName));
 
-		this.#db.exec(viewLockTableInit(this.#viewLockTableName));
-		this.#db.exec(eventLockTableInit(this.#eventLockTableName));
-
-		this.#upsertLastEventQuery = this.#db.prepare(`
+		this.#upsertLastEventQuery = db.prepare(`
 			INSERT INTO ${this.#viewLockTableName} (projection_name, schema_version, last_event)
 			VALUES (?, ?, ?)
 			ON CONFLICT (projection_name, schema_version)
@@ -65,7 +65,7 @@ export class SqliteEventLocker implements IEventLocker {
 				last_event = excluded.last_event
 		`);
 
-		this.#getLastEventQuery = this.#db.prepare(`
+		this.#getLastEventQuery = db.prepare(`
 			SELECT
 				last_event
 			FROM ${this.#viewLockTableName}
@@ -74,7 +74,7 @@ export class SqliteEventLocker implements IEventLocker {
 				AND schema_version =?
 		`);
 
-		this.#lockEventQuery = this.#db.prepare(`
+		this.#lockEventQuery = db.prepare(`
 			INSERT INTO ${this.#eventLockTableName} (projection_name, schema_version, event_id)
 			VALUES (?, ?, ?)
 			ON CONFLICT (projection_name, schema_version, event_id)
@@ -85,7 +85,7 @@ export class SqliteEventLocker implements IEventLocker {
 				AND processing_at <= cast(strftime('%f', 'now') * 1000 as INTEGER) - ${this.#eventLockTtl}
 		`);
 
-		this.#finalizeEventLockQuery = this.#db.prepare(`
+		this.#finalizeEventLockQuery = db.prepare(`
 			UPDATE ${this.#eventLockTableName}
 			SET
 				processed_at = (cast(strftime('%f', 'now') * 1000 as INTEGER))
@@ -97,7 +97,9 @@ export class SqliteEventLocker implements IEventLocker {
 		`);
 	}
 
-	tryMarkAsProjecting(event: IEvent<any>) {
+	async tryMarkAsProjecting(event: IEvent<any>) {
+		await this.assertConnection();
+
 		const eventId = getEventId(event);
 
 		const r = this.#lockEventQuery.run(this.#projectionName, this.#schemaVersion, eventId);
@@ -105,10 +107,12 @@ export class SqliteEventLocker implements IEventLocker {
 		return r.changes !== 0;
 	}
 
-	markAsProjected(event: IEvent<any>) {
+	async markAsProjected(event: IEvent<any>) {
+		await this.assertConnection();
+
 		const eventId = getEventId(event);
 
-		const transaction = this.#db.transaction(() => {
+		const transaction = this.db!.transaction(() => {
 			const updateResult = this.#finalizeEventLockQuery.run(this.#projectionName, this.#schemaVersion, eventId);
 			if (updateResult.changes === 0)
 				throw new Error(`Event ${event.id} could not be marked as processed`);
@@ -119,7 +123,9 @@ export class SqliteEventLocker implements IEventLocker {
 		transaction();
 	}
 
-	getLastEvent(): IEvent<any> | undefined {
+	async getLastEvent(): Promise<IEvent<any> | undefined> {
+		await this.assertConnection();
+
 		const viewInfoRecord = this.#getLastEventQuery.get(this.#projectionName, this.#schemaVersion);
 		if (!viewInfoRecord?.last_event)
 			return undefined;
