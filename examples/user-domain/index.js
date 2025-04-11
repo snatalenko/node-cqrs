@@ -9,7 +9,6 @@ const {
 	InMemoryMessageBus,
 	EventDispatcher
 } = require('../..'); // node-cqrs
-const { EventPersistenceProcessor } = require('../../src/dispatch-pipeline');
 const UserAggregate = require('./UserAggregate');
 const UsersProjection = require('./UsersProjection');
 
@@ -39,7 +38,7 @@ exports.createBaseInstances = () => {
 	const eventBus = new InMemoryMessageBus();
 	const storage = new InMemoryEventStorage();
 	const eventDispatcher = new EventDispatcher({ eventBus })
-	eventDispatcher.addPipelineProcessor(new EventPersistenceProcessor({ eventStorageWriter: storage }));
+	eventDispatcher.addPipelineProcessor(storage);
 
 	const eventStore = new EventStore({ eventStorageReader: storage, eventBus, eventDispatcher });
 	const commandBus = new CommandBus();

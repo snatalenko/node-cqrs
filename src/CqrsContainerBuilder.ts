@@ -1,21 +1,12 @@
 import { ContainerBuilder, TypeConfig, TClassOrFactory } from 'di0';
-
 import { AggregateCommandHandler } from './AggregateCommandHandler';
 import { CommandBus } from './CommandBus';
 import { EventStore } from './EventStore';
 import { SagaEventHandler } from './SagaEventHandler';
 import { EventDispatcher } from './EventDispatcher';
-import { InMemoryMessageBus } from './in-memory';
-import {
-	EventValidationProcessor,
-	SnapshotPersistenceProcessor,
-	EventPersistenceProcessor
-} from './dispatch-pipeline';
-
-import {
-	isClass
-} from './utils';
-
+import { InMemoryEventStorage, InMemoryMessageBus, InMemorySnapshotStorage } from './in-memory';
+import { EventValidationProcessor } from './EventValidationProcessor';
+import { isClass } from './utils';
 import {
 	IAggregateConstructor,
 	ICommandHandler,
@@ -25,7 +16,6 @@ import {
 	IProjectionConstructor,
 	ISagaConstructor
 } from './interfaces';
-import { ExternalEventPublishingProcessor } from './dispatch-pipeline/ExternalEventPublishingProcessor';
 
 export class CqrsContainerBuilder extends ContainerBuilder {
 
@@ -38,12 +28,18 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		super.register(EventStore).as('eventStore');
 		super.register(CommandBus).as('commandBus');
 		super.register(EventDispatcher).as('eventDispatcher');
-		super.register(container => [
-			new EventValidationProcessor(container),
-			new ExternalEventPublishingProcessor(container),
-			new EventPersistenceProcessor(container),
-			new SnapshotPersistenceProcessor(container)
-		]).as('eventDispatchProcessors');
+
+		super.register(InMemoryEventStorage).as('eventStorageWriter');
+		super.register(InMemorySnapshotStorage).as('snapshotStorage');
+
+		// Register default event dispatch pipeline:
+		// validate events, write to event storage, write to snapshot storage.
+		// If any of the processors is not defined, it will be skipped.
+		super.register((container: IContainer) => [
+			new EventValidationProcessor(),
+			container.eventStorageWriter,
+			container.snapshotStorage
+		]).as('eventDispatchPipeline');
 	}
 
 	/** Register command handler, which will be subscribed to commandBus upon instance creation */

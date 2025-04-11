@@ -53,7 +53,7 @@ export class RabbitMqEventInjector {
 	async #handleMessage(message: IMessage): Promise<void> {
 		this.#logger?.debug(`"${Event.describe(message)}" received`);
 		try {
-			await this.#eventDispatcher.dispatch([message]);
+			await this.#eventDispatcher.dispatch([message], { origin: 'external' });
 
 			this.#logger?.debug(`${Event.describe(message)} dispatched successfully`);
 		}

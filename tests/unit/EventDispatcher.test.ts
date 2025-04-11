@@ -1,4 +1,4 @@
-import { IEvent, IEventBus, IEventProcessor } from '../../src';
+import { IEvent, IEventBus, IDispatchPipelineProcessor } from '../../src';
 import { EventDispatcher } from '../../src/EventDispatcher';
 
 describe('EventDispatcher', () => {
@@ -15,7 +15,7 @@ describe('EventDispatcher', () => {
 		const event1: IEvent = { type: 'test-event-1' };
 		const event2: IEvent = { type: 'test-event-2' };
 
-		const processorMock: IEventProcessor = {
+		const processorMock: IDispatchPipelineProcessor = {
 			process: jest.fn(batch => Promise.resolve(batch))
 		};
 
@@ -34,7 +34,7 @@ describe('EventDispatcher', () => {
 		const event: IEvent = { type: 'failing-event' };
 		const error = new Error('processor error');
 
-		const processorMock: IEventProcessor = {
+		const processorMock: IDispatchPipelineProcessor = {
 			process: jest.fn().mockRejectedValue(error),
 			revert: jest.fn().mockResolvedValue(undefined)
 		};
@@ -57,7 +57,7 @@ describe('EventDispatcher', () => {
 
 		const executionOrder: string[] = [];
 
-		const processorA: IEventProcessor = {
+		const processorA: IDispatchPipelineProcessor = {
 			process: jest.fn(async batch => {
 				executionOrder.push(`A-start-${batch[0].event.type}`);
 				await new Promise(res => setTimeout(res, 5));
@@ -66,7 +66,7 @@ describe('EventDispatcher', () => {
 			})
 		};
 
-		const processorB: IEventProcessor = {
+		const processorB: IDispatchPipelineProcessor = {
 			process: jest.fn(async batch => {
 				executionOrder.push(`B-start-${batch[0].event.type}`);
 				await new Promise(res => setTimeout(res, 5));

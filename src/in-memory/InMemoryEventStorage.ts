@@ -6,7 +6,9 @@ import {
 	IEventStorageReader,
 	IEventStream,
 	IEventStorageWriter,
-	Identifier
+	Identifier,
+	IDispatchPipelineProcessor,
+	DispatchPipelineBatch
 } from '../interfaces';
 import { nextCycle } from './utils';
 
@@ -14,7 +16,12 @@ import { nextCycle } from './utils';
  * A simple event storage implementation intended to use for tests only.
  * Storage content resets on each app restart.
  */
-export class InMemoryEventStorage implements IEventStorageReader, IEventStorageWriter, IIdentifierProvider {
+export class InMemoryEventStorage implements
+	IEventStorageReader,
+	IEventStorageWriter,
+	IIdentifierProvider,
+	IDispatchPipelineProcessor {
+
 	#nextId: number = 0;
 	#events: IEventSet = [];
 
@@ -77,5 +84,25 @@ export class InMemoryEventStorage implements IEventStorageReader, IEventStorageW
 			else if (!eventTypes || eventTypes.includes(event.type))
 				yield event;
 		}
+	}
+
+	/**
+	 * Processes a batch of dispatch pipeline items, extracts the events,
+	 * commits them to the in-memory storage, and returns the original batch.
+	 *
+	 * This method is part of the `IDispatchPipelineProcessor` interface.
+	 */
+	async process(batch: DispatchPipelineBatch): Promise<DispatchPipelineBatch> {
+		const events: IEvent[] = [];
+		for (const { event } of batch) {
+			if (!event)
+				throw new Error('Event batch does not contain `event`');
+
+			events.push(event);
+		}
+
+		await this.commitEvents(events);
+
+		return batch;
 	}
 }

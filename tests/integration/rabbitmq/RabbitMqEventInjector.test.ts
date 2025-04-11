@@ -61,6 +61,6 @@ describe('RabbitMqEventInjector', () => {
 		await delay(50);
 
 		expect(eventDispatcher.dispatch).toHaveBeenCalledTimes(1);
-		expect(eventDispatcher.dispatch).toHaveBeenCalledWith([testEvent]);
+		expect(eventDispatcher.dispatch).toHaveBeenCalledWith([testEvent], { origin: 'external' });
 	});
 });

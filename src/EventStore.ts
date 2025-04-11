@@ -153,7 +153,7 @@ export class EventStore implements IEventStore {
 
 		const augmentedEvents = await this.#attachSagaIdToSagaStarterEvents(events);
 
-		return this.#eventDispatcher.dispatch(augmentedEvents);
+		return this.#eventDispatcher.dispatch(augmentedEvents, { origin: 'internal' });
 	}
 
 	/**

@@ -64,7 +64,7 @@ describe('EventStore', () => {
 
 			expect(event.sagaId).toBe(mockId);
 			expect(event.sagaVersion).toBe(0);
-			expect(dispatchSpy).toHaveBeenCalledWith([event]);
+			expect(dispatchSpy).toHaveBeenCalledWith([event], { origin: 'internal' });
 		});
 
 		it('does not modify non-saga starter events', async () => {
@@ -76,7 +76,7 @@ describe('EventStore', () => {
 
 			expect(event.sagaId).toBeUndefined();
 			expect(event.sagaVersion).toBeUndefined();
-			expect(dispatchSpy).toHaveBeenCalledWith([event]);
+			expect(dispatchSpy).toHaveBeenCalledWith([event], { origin: 'internal' });
 		});
 	});
 

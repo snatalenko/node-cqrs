@@ -1,5 +1,7 @@
 import {
+	DispatchPipelineBatch,
 	ICommand,
+	IDispatchPipelineProcessor,
 	IEvent,
 	IMessageBus,
 	IMessageHandler,
@@ -10,7 +12,7 @@ import {
  * Default implementation of the message bus.
  * Keeps all subscriptions and messages in memory.
  */
-export class InMemoryMessageBus implements IMessageBus {
+export class InMemoryMessageBus implements IMessageBus, IDispatchPipelineProcessor {
 
 	#handlers: Map<string, Set<IMessageHandler>> = new Map();
 	#name: string | undefined;
@@ -115,5 +117,25 @@ export class InMemoryMessageBus implements IMessageBus {
 		];
 
 		return Promise.all(handlers.map(handler => handler(event, meta)));
+	}
+
+	/**
+	 * Processes a batch of events and publishes them to the fanout exchange.
+	 *
+	 * This method is part of the `IDispatchPipelineProcessor` interface.
+	 */
+	async process(batch: DispatchPipelineBatch): Promise<DispatchPipelineBatch> {
+		for (const { event, origin } of batch) {
+			// Skip publishing if the event was dispatched from external source
+			if (origin === 'external')
+				continue;
+
+			if (!event)
+				throw new Error('Event batch does not contain `event`');
+
+			await this.publish(event);
+		}
+
+		return batch;
 	}
 }

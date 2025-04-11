@@ -9,9 +9,9 @@ export * from './AbstractSaga';
 export * from './SagaEventHandler';
 export * from './AbstractProjection';
 export * from './EventDispatcher';
+export * from './EventValidationProcessor';
 
 export * from './in-memory';
-export * from './dispatch-pipeline';
 
 export * as Event from './Event';
 export {

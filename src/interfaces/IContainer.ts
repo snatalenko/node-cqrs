@@ -3,7 +3,7 @@ import { ICommandBus } from './ICommandBus';
 import { IEventDispatcher } from './IEventDispatcher';
 import { IEventStore } from './IEventStore';
 import { IEventBus } from './IEventBus';
-import { IEventProcessor } from './IEventProcessor';
+import { IDispatchPipelineProcessor } from './IDispatchPipelineProcessor';
 import { IEventStorageReader, IEventStorageWriter } from './IEventStorage';
 import { IAggregateSnapshotStorage } from './IAggregateSnapshotStorage';
 import { IIdentifierProvider } from './IIdentifierProvider';
@@ -19,7 +19,7 @@ export interface IContainer extends Container {
 
 	commandBus: ICommandBus;
 	eventDispatcher: IEventDispatcher;
-	eventDispatchProcessors?: IEventProcessor[];
+	eventDispatchPipeline?: IDispatchPipelineProcessor[];
 
 	logger?: ILogger | IExtendableLogger;
 

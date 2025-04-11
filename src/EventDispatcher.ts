@@ -1,12 +1,13 @@
 import {
-	EventBatch,
+	DispatchPipelineBatch,
 	IEvent,
 	IEventDispatcher,
-	IEventProcessor,
+	IDispatchPipelineProcessor,
 	IEventSet,
 	IEventBus,
 	isEventSet,
-	IContainer
+	IContainer,
+	isDispatchPipelineProcessor
 } from './interfaces';
 import { parallelPipe } from 'async-parallel-pipe';
 import { AsyncIterableBuffer } from 'async-iterable-buffer';
@@ -14,7 +15,7 @@ import { notEmpty } from './utils';
 import { InMemoryMessageBus } from './in-memory';
 
 type EventBatchEnvelope = {
-	data: EventBatch<{ event?: IEvent }>;
+	data: DispatchPipelineBatch<{ event?: IEvent }>;
 	error?: Error;
 	resolve: (event: IEvent[]) => void;
 	reject: (error: Error) => void;
@@ -23,7 +24,7 @@ type EventBatchEnvelope = {
 export class EventDispatcher implements IEventDispatcher {
 
 	#pipelineInput = new AsyncIterableBuffer<EventBatchEnvelope>();
-	#processors: Array<IEventProcessor> = [];
+	#processors: Array<IDispatchPipelineProcessor> = [];
 	#pipeline: AsyncIterableIterator<EventBatchEnvelope> | IterableIterator<EventBatchEnvelope> = this.#pipelineInput;
 
 	/**
@@ -38,7 +39,7 @@ export class EventDispatcher implements IEventDispatcher {
 	 */
 	concurrentLimit: number;
 
-	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchProcessors'> & {
+	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchPipeline'> & {
 		eventDispatcherConfig?: {
 			concurrentLimit?: number
 		}
@@ -46,8 +47,16 @@ export class EventDispatcher implements IEventDispatcher {
 		this.eventBus = o?.eventBus ?? new InMemoryMessageBus();
 		this.concurrentLimit = o?.eventDispatcherConfig?.concurrentLimit ?? 100;
 
-		if (o?.eventDispatchProcessors) {
-			for (const processor of o.eventDispatchProcessors)
+		if (o?.eventDispatchPipeline)
+			this.addPipelineProcessors(o.eventDispatchPipeline);
+	}
+
+	addPipelineProcessors(eventDispatchPipeline: IDispatchPipelineProcessor[]) {
+		if (!Array.isArray(eventDispatchPipeline))
+			throw new TypeError('eventDispatchPipeline argument must be an Array');
+
+		for (const processor of eventDispatchPipeline) {
+			if (processor)
 				this.addPipelineProcessor(processor);
 		}
 	}
@@ -57,14 +66,15 @@ export class EventDispatcher implements IEventDispatcher {
 	 *
 	 * Preprocessors run in order they are added but process separate batches in parallel, maintaining FIFO order.
 	 */
-	addPipelineProcessor(preprocessor: IEventProcessor) {
+	addPipelineProcessor(preprocessor: IDispatchPipelineProcessor) {
+		if (!isDispatchPipelineProcessor(preprocessor))
+			throw new TypeError('preprocessor must implement IDispatchPipelineProcessor');
 		if (this.#pipelineProcessing)
 			throw new Error('pipeline processing already started');
 
 		this.#processors.push(preprocessor);
 
-		// Build a processing pipeline that runs preprocessors concurrently
-		// while preserving first-in-first-out ordering.
+		// Build a processing pipeline that runs preprocessors concurrently, preserving FIFO ordering
 		this.#pipeline = parallelPipe(this.#pipeline, this.concurrentLimit, async envelope => {
 			if (envelope.error)
 				return envelope;
@@ -119,7 +129,7 @@ export class EventDispatcher implements IEventDispatcher {
 	/**
 	 * Revert side effects made by pipeline processors in case of a batch processing failure
 	 */
-	async #revert(batch: EventBatch) {
+	async #revert(batch: DispatchPipelineBatch) {
 		for (const processor of this.#processors)
 			await processor.revert?.(batch);
 	}
