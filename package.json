@@ -11,14 +11,14 @@
     "url": "https://github.com/snatalenko/node-cqrs.git"
   },
   "main": "./dist/index.js",
-  "types": "./src/index.ts",
+  "types": "./types/index.d.ts",
   "typesVersions": {
     "*": {
       "rabbitmq": [
-        "src/rabbitmq/index.ts"
+        "types/rabbitmq/index.d.ts"
       ],
       "sqlite": [
-        "src/sqlite/index.ts"
+        "types/sqlite/index.d.ts"
       ]
     }
   },
@@ -26,17 +26,17 @@
     ".": {
       "require": "./dist/index.js",
       "import": "./dist/index.js",
-      "types": "./src/index.ts"
+      "types": "./types/index.d.ts"
     },
     "./rabbitmq": {
       "require": "./dist/rabbitmq/index.js",
       "import": "./dist/rabbitmq/index.js",
-      "types": "./src/rabbitmq/index.ts"
+      "types": "./types/rabbitmq/index.d.ts"
     },
     "./sqlite": {
       "require": "./dist/sqlite/index.js",
       "import": "./dist/sqlite/index.js",
-      "types": "./src/sqlite/index.ts"
+      "types": "./types/sqlite/index.d.ts"
     }
   },
   "directories": {
