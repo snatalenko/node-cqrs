@@ -1,3 +1,11 @@
+# [1.0.0-rc.10](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.9...v1.0.0-rc.10) (2025-04-13)
+
+
+### Fixes
+
+* Asserting db connection in prolongLock and unlock methods ([b272473](https://github.com/snatalenko/node-cqrs/commit/b2724739b3ff483b13c0cfeea30c73c7d8ab8b94))
+
+
 # [1.0.0-rc.9](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.8...v1.0.0-rc.9) (2025-04-13)
 
 
