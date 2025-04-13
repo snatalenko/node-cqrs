@@ -1,3 +1,15 @@
+# [1.0.0-rc.8](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.7...v1.0.0-rc.8) (2025-04-13)
+
+
+### Features
+
+* RabbitMQ integration classes to support event publishing and subscription ([991c223](https://github.com/snatalenko/node-cqrs/commit/991c2233185d3610a2b8930f6930a03c0cdea01d))
+
+### Changes
+
+* Move validation, snapshot and event persistence to EventDispatcher pipeline ([e781f7c](https://github.com/snatalenko/node-cqrs/commit/e781f7c6c2e4f7c9f8c4615b170d0d29d3e8f133))
+
+
 # [1.0.0-rc.7](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.6...v1.0.0-rc.7) (2025-04-13)
 
 
