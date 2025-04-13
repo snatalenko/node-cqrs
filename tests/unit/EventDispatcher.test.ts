@@ -24,8 +24,8 @@ describe('EventDispatcher', () => {
 
 		expect(processorMock.process).toHaveBeenCalledTimes(1);
 		expect(eventBus.publish).toHaveBeenCalledTimes(2);
-		expect(eventBus.publish).toHaveBeenCalledWith(event1);
-		expect(eventBus.publish).toHaveBeenCalledWith(event2);
+		expect(eventBus.publish).toHaveBeenCalledWith(event1, {});
+		expect(eventBus.publish).toHaveBeenCalledWith(event2, {});
 		expect(result).toEqual([event1, event2]);
 	});
 

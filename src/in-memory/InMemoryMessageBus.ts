@@ -14,18 +14,17 @@ import {
  */
 export class InMemoryMessageBus implements IMessageBus, IDispatchPipelineProcessor {
 
-	#handlers: Map<string, Set<IMessageHandler>> = new Map();
-	#name: string | undefined;
-	#uniqueEventHandlers: boolean;
-	// eslint-disable-next-line no-use-before-define
-	#queues: Map<string, InMemoryMessageBus> = new Map();
+	protected handlers: Map<string, Set<IMessageHandler>> = new Map();
+	protected uniqueEventHandlers: boolean;
+	protected queueName: string | undefined;
+	protected queues: Map<string, IMessageBus> = new Map();
 
-	constructor({ name, uniqueEventHandlers = !!name }: {
-		name?: string,
+	constructor({ queueName, uniqueEventHandlers = !!queueName }: {
+		queueName?: string,
 		uniqueEventHandlers?: boolean
 	} = {}) {
-		this.#name = name;
-		this.#uniqueEventHandlers = uniqueEventHandlers;
+		this.queueName = queueName;
+		this.uniqueEventHandlers = uniqueEventHandlers;
 	}
 
 	/**
@@ -43,23 +42,23 @@ export class InMemoryMessageBus implements IMessageBus, IDispatchPipelineProcess
 		// For example, for sending a welcome email, NotificationReceptor will subscribe to "notifications:userCreated".
 		// Since we use an in-memory bus, there is no need to track message handling by multiple distributed
 		// subscribers, and we only need to make sure that no more than 1 such subscriber will be created
-		if (!this.#handlers.has(messageType))
-			this.#handlers.set(messageType, new Set());
-		else if (this.#uniqueEventHandlers)
-			throw new Error(`"${messageType}" handler is already set up on the "${this.#name}" queue`);
+		if (!this.handlers.has(messageType))
+			this.handlers.set(messageType, new Set());
+		else if (this.uniqueEventHandlers)
+			throw new Error(`"${messageType}" handler is already set up on the "${this.queueName}" queue`);
 
-		this.#handlers.get(messageType)?.add(handler);
+		this.handlers.get(messageType)?.add(handler);
 	}
 
 	/**
 	 * Get or create a named queue.
 	 * Named queues support only one handler per event type.
 	 */
-	queue(name: string): IObservable {
-		let queue = this.#queues.get(name);
+	queue(queueName: string): IObservable {
+		let queue = this.queues.get(queueName);
 		if (!queue) {
-			queue = new InMemoryMessageBus({ name, uniqueEventHandlers: true });
-			this.#queues.set(name, queue);
+			queue = new InMemoryMessageBus({ queueName, uniqueEventHandlers: true });
+			this.queues.set(queueName, queue);
 		}
 
 		return queue;
@@ -75,10 +74,10 @@ export class InMemoryMessageBus implements IMessageBus, IDispatchPipelineProcess
 			throw new TypeError('handler argument must be a Function');
 		if (arguments.length !== 2)
 			throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
-		if (!this.#handlers.has(messageType))
+		if (!this.handlers.has(messageType))
 			throw new Error(`No ${messageType} subscribers found`);
 
-		this.#handlers.get(messageType)?.delete(handler);
+		this.handlers.get(messageType)?.delete(handler);
 	}
 
 	/**
@@ -90,7 +89,7 @@ export class InMemoryMessageBus implements IMessageBus, IDispatchPipelineProcess
 		if (typeof command.type !== 'string' || !command.type.length)
 			throw new TypeError('command.type argument must be a non-empty String');
 
-		const handlers = this.#handlers.get(command.type);
+		const handlers = this.handlers.get(command.type);
 		if (!handlers || !handlers.size)
 			throw new Error(`No '${command.type}' subscribers found`);
 		if (handlers.size > 1)
@@ -111,8 +110,8 @@ export class InMemoryMessageBus implements IMessageBus, IDispatchPipelineProcess
 			throw new TypeError('event.type argument must be a non-empty String');
 
 		const handlers = [
-			...this.#handlers.get(event.type) || [],
-			...Array.from(this.#queues.values()).map(namedQueue =>
+			...this.handlers.get(event.type) || [],
+			...Array.from(this.queues.values()).map(namedQueue =>
 				(e: IEvent, m?: Record<string, any>) => namedQueue.publish(e, m))
 		];
 

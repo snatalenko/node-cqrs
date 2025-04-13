@@ -115,8 +115,11 @@ export class EventDispatcher implements IEventDispatcher {
 			const events = data.map(e => e.event).filter(notEmpty);
 
 			try {
-				for (const event of events)
-					this.eventBus.publish(event);
+				for (const batch of data) {
+					const { event, ...meta } = batch;
+					if (event)
+						this.eventBus.publish(event, meta);
+				}
 
 				resolve(events);
 			}

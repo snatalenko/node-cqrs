@@ -4,5 +4,5 @@ import { IObservable } from './IObservable';
 
 export interface IMessageBus extends IObservable {
 	send(command: ICommand): Promise<any>;
-	publish(event: IEvent): Promise<any>;
+	publish(event: IEvent, meta?: Record<string, any>): Promise<any>;
 }
