@@ -1,6 +1,7 @@
 import { AbstractSqliteView } from './AbstractSqliteView';
 import { IObjectStorage, IEventLocker } from '../interfaces';
 import { SqliteObjectStorage } from './SqliteObjectStorage';
+import { Database } from 'better-sqlite3';
 
 export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IObjectStorage<TRecord>, IEventLocker {
 
@@ -21,6 +22,11 @@ export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IOb
 			viewModelSqliteDbFactory: options.viewModelSqliteDbFactory,
 			tableName: `${options.tableNamePrefix}_${options.schemaVersion}`
 		});
+	}
+
+	// eslint-disable-next-line class-methods-use-this, @typescript-eslint/no-unused-vars
+	protected initialize(db: Database): Promise<void> | void {
+		// No need to initialize the table here, it's done in SqliteObjectStorage
 	}
 
 	async get(id: string): Promise<TRecord | undefined> {
