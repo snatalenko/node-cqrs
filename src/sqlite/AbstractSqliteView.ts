@@ -1,8 +1,9 @@
 import { IContainer, IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces';
 import { SqliteViewLocker, SqliteViewLockerParams } from './SqliteViewLocker';
 import { SqliteEventLocker, SqliteEventLockerParams } from './SqliteEventLocker';
+import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
 
-export abstract class AbstractSqliteView implements IViewLocker, IEventLocker {
+export abstract class AbstractSqliteView extends AbstractSqliteAccessor implements IViewLocker, IEventLocker {
 
 	protected readonly schemaVersion: string;
 	protected readonly viewLocker: SqliteViewLocker;
@@ -13,9 +14,10 @@ export abstract class AbstractSqliteView implements IViewLocker, IEventLocker {
 		return this.viewLocker.ready;
 	}
 
-	constructor(options: Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory' | 'logger'>
+	constructor(options: Partial<Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory' | 'logger'>>
 		& SqliteEventLockerParams
 		& SqliteViewLockerParams) {
+		super(options);
 
 		this.schemaVersion = options.schemaVersion;
 		this.viewLocker = new SqliteViewLocker(options);

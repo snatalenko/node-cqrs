@@ -6,24 +6,26 @@ import { SqliteViewLockerParams } from './SqliteViewLocker';
 import { SqliteProjectionDataParams } from './SqliteProjectionDataParams';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
 
-export type SqliteEventLockerParams = SqliteProjectionDataParams & {
+export type SqliteEventLockerParams =
+	SqliteProjectionDataParams
+	& Pick<SqliteViewLockerParams, 'viewLockTableName'>
+	& {
 
-	/**
-	 * (Optional) SQLite table name where event locks are stored
-	 *
-	 * @default "tbl_event_lock"
-	 */
-	eventLockTableName?: string;
+		/**
+		 * (Optional) SQLite table name where event locks are stored
+		 *
+		 * @default "tbl_event_lock"
+		 */
+		eventLockTableName?: string;
 
-	/**
-	 * (Optional) Time-to-live (TTL) duration in milliseconds
-	 * for which an event remains in the "processing" state until released.
-	 *
-	 * @default 15_000
-	 */
-	eventLockTtl?: number;
-}
-	& Pick<SqliteViewLockerParams, 'viewLockTableName'>;
+		/**
+		 * (Optional) Time-to-live (TTL) duration in milliseconds
+		 * for which an event remains in the "processing" state until released.
+		 *
+		 * @default 15_000
+		 */
+		eventLockTtl?: number;
+	};
 
 export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventLocker {
 

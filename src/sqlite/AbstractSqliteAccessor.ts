@@ -17,7 +17,7 @@ export abstract class AbstractSqliteAccessor {
 	#initLocker = new Lock();
 	#initialized = false;
 
-	constructor(c: Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory'>) {
+	constructor(c: Partial<Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory'>>) {
 		if (!c.viewModelSqliteDb && !c.viewModelSqliteDbFactory)
 			throw new TypeError('either viewModelSqliteDb or viewModelSqliteDbFactory argument required');
 
