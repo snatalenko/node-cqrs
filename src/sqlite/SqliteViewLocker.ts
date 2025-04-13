@@ -4,6 +4,7 @@ import { Deferred } from '../utils';
 import { promisify } from 'util';
 import { viewLockTableInit } from './queries';
 import { SqliteProjectionDataParams } from './SqliteProjectionDataParams';
+import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
 const delay = promisify(setTimeout);
 
 export type SqliteViewLockerParams = SqliteProjectionDataParams & {
@@ -23,9 +24,8 @@ export type SqliteViewLockerParams = SqliteProjectionDataParams & {
 	viewLockTtl?: number;
 };
 
-export class SqliteViewLocker implements IViewLocker {
+export class SqliteViewLocker extends AbstractSqliteAccessor implements IViewLocker {
 
-	#db: Database;
 	#projectionName: string;
 	#schemaVersion: string;
 
@@ -33,22 +33,22 @@ export class SqliteViewLocker implements IViewLocker {
 	#viewLockTtl: number;
 	#logger: ILogger | undefined;
 
-	#upsertTableLockQuery: Statement<[string, string, number], void>;
-	#updateTableLockQuery: Statement<[number, string, string], void>;
-	#removeTableLockQuery: Statement<[string, string], void>;
+	#upsertTableLockQuery!: Statement<[string, string, number], void>;
+	#updateTableLockQuery!: Statement<[number, string, string], void>;
+	#removeTableLockQuery!: Statement<[string, string], void>;
 
 	#lockMarker: Deferred<void> | undefined;
 	#lockProlongationTimeout: NodeJS.Timeout | undefined;
 
-	constructor(o: Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory' | 'logger'> & SqliteViewLockerParams) {
-		if (!o.viewModelSqliteDb)
-			throw new TypeError('viewModelSqliteDb argument required');
+	constructor(o: Partial<Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory' | 'logger'>>
+		& SqliteViewLockerParams) {
+		super(o);
+
 		if (!o.projectionName)
 			throw new TypeError('projectionName argument required');
 		if (!o.schemaVersion)
 			throw new TypeError('schemaVersion argument required');
 
-		this.#db = o.viewModelSqliteDb;
 		this.#projectionName = o.projectionName;
 		this.#schemaVersion = o.schemaVersion;
 
@@ -57,11 +57,12 @@ export class SqliteViewLocker implements IViewLocker {
 		this.#logger = o.logger && 'child' in o.logger ?
 			o.logger.child({ service: this.constructor.name }) :
 			o.logger;
+	}
 
+	protected initialize(db: Database) {
+		db.exec(viewLockTableInit(this.#viewLockTableName));
 
-		this.#db.exec(viewLockTableInit(this.#viewLockTableName));
-
-		this.#upsertTableLockQuery = this.#db.prepare(`
+		this.#upsertTableLockQuery = db.prepare(`
 			INSERT INTO ${this.#viewLockTableName} (projection_name, schema_version, locked_till)
 			VALUES (?, ?, ?)
 			ON CONFLICT (projection_name, schema_version)
@@ -72,7 +73,7 @@ export class SqliteViewLocker implements IViewLocker {
 				OR locked_till < excluded.locked_till
 		`);
 
-		this.#updateTableLockQuery = this.#db.prepare(`
+		this.#updateTableLockQuery = db.prepare(`
 			UPDATE ${this.#viewLockTableName}
 			SET
 				locked_till = ?
@@ -82,7 +83,7 @@ export class SqliteViewLocker implements IViewLocker {
 				AND locked_till IS NOT NULL
 		`);
 
-		this.#removeTableLockQuery = this.#db.prepare(`
+		this.#removeTableLockQuery = db.prepare(`
 			UPDATE ${this.#viewLockTableName}
 			SET
 				locked_till = NULL
@@ -99,6 +100,8 @@ export class SqliteViewLocker implements IViewLocker {
 
 	async lock() {
 		this.#lockMarker = new Deferred();
+
+		await this.assertConnection();
 
 		let lockAcquired = false;
 		while (!lockAcquired) {
