@@ -2,7 +2,7 @@ import { RabbitMqGateway } from '../../../src/rabbitmq/RabbitMqGateway';
 import { IMessage } from '../../../src/interfaces';
 import * as amqplib from 'amqplib';
 import { delay } from '../../../src/utils';
-import { Deferred } from '../../../dist/in-memory/utils/Deferred';
+import { Deferred } from '../../../src/utils/Deferred';
 import { EventEmitter } from 'stream';
 
 describe('RabbitMqGateway', () => {
