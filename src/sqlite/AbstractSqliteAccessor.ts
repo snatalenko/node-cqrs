@@ -36,6 +36,9 @@ export abstract class AbstractSqliteAccessor {
 	 * This method is idempotent and safe to call multiple times.
 	 */
 	async assertConnection() {
+		if (this.#initialized)
+			return;
+
 		try {
 			this.#initLocker.acquire();
 			if (this.#initialized)
