@@ -146,7 +146,14 @@ export class EventDispatcher implements IEventDispatcher {
 		if (!isEventSet(events) || events.length === 0)
 			throw new Error('dispatch requires a non-empty array of events');
 
-		const { promise, resolve, reject } = Promise.withResolvers<IEventSet>();
+		// const { promise, resolve, reject } = Promise.withResolvers<IEventSet>();
+		let resolve!: (value: IEventSet | PromiseLike<IEventSet>) => void;
+		let reject!: (reason?: any) => void;
+		const promise = new Promise<IEventSet>((res, rej) => {
+			resolve = res;
+			reject = rej;
+		});
+
 		const envelope: EventBatchEnvelope = {
 			data: events.map(event => ({
 				event,

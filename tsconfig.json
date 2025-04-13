@@ -6,7 +6,7 @@
         "sourceMap": true,
         "alwaysStrict": false,
         "outDir": "./dist",
-        "target": "ESNext",
+        "target": "ES2022",
         "declaration": true,
         "declarationDir": "./types",
         "allowSyntheticDefaultImports": true,

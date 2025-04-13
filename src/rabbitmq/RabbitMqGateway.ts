@@ -144,7 +144,7 @@ export class RabbitMqGateway {
 	async #stopConsuming() {
 		this.#logger?.info(`${this.#appId}: Stopping all consumers...`);
 
-		const cancellations = this.#queueConsumers.entries().map(async ([queueName, { channel, consumerTag }]) => {
+		const cancellations = [...this.#queueConsumers.entries()].map(async ([queueName, { channel, consumerTag }]) => {
 			this.#logger?.debug(`${this.#appId}: Cancelling consumer "${consumerTag}" for queue "${queueName}"`);
 			try {
 				await channel.cancel(consumerTag);
