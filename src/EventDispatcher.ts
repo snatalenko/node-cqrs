@@ -11,7 +11,7 @@ import {
 } from './interfaces';
 import { parallelPipe } from 'async-parallel-pipe';
 import { AsyncIterableBuffer } from 'async-iterable-buffer';
-import { notEmpty } from './utils';
+import { getClassName, notEmpty } from './utils';
 import { InMemoryMessageBus } from './in-memory';
 
 type EventBatchEnvelope = {
@@ -68,7 +68,7 @@ export class EventDispatcher implements IEventDispatcher {
 	 */
 	addPipelineProcessor(preprocessor: IDispatchPipelineProcessor) {
 		if (!isDispatchPipelineProcessor(preprocessor))
-			throw new TypeError('preprocessor must implement IDispatchPipelineProcessor');
+			throw new TypeError(`preprocessor ${getClassName(preprocessor)} does not implement IDispatchPipelineProcessor`);
 		if (this.#pipelineProcessing)
 			throw new Error('pipeline processing already started');
 
