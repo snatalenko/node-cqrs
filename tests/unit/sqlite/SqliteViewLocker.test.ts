@@ -96,7 +96,7 @@ describe('SqliteViewLocker', function () {
 
 	it('should release the lock upon unlock()', async function () {
 		await firstLock.lock();
-		firstLock.unlock();
+		await firstLock.unlock();
 
 		const row = viewModelSqliteDb.prepare('SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?')
 			.get('test', '1.0') as any;
@@ -106,7 +106,7 @@ describe('SqliteViewLocker', function () {
 
 	it('should fail to prolong the lock if already released', async function () {
 		await firstLock.lock();
-		firstLock.unlock();
+		await firstLock.unlock();
 
 		let error;
 		try {

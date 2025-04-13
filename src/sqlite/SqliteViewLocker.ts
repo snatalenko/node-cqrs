@@ -136,7 +136,9 @@ export class SqliteViewLocker extends AbstractSqliteAccessor implements IViewLoc
 		this.#logger?.debug(`"${this.#projectionName}" lock refresh canceled`);
 	}
 
-	private prolongLock() {
+	private async prolongLock() {
+		await this.assertConnection();
+
 		const lockedTill = Date.now() + this.#viewLockTtl;
 		const r = this.#updateTableLockQuery.run(lockedTill, this.#projectionName, this.#schemaVersion);
 		if (r.changes !== 1)
@@ -145,11 +147,13 @@ export class SqliteViewLocker extends AbstractSqliteAccessor implements IViewLoc
 		this.#logger?.debug(`"${this.#projectionName}" lock prolonged for ${this.#viewLockTtl}s`);
 	}
 
-	unlock() {
+	async unlock() {
 		this.#lockMarker?.resolve();
 		this.#lockMarker = undefined;
 
 		this.cancelLockProlongation();
+
+		await this.assertConnection();
 
 		const updateResult = this.#removeTableLockQuery.run(this.#projectionName, this.#schemaVersion);
 		if (updateResult.changes === 1)
