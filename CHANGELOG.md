@@ -1,3 +1,11 @@
+# [1.0.0-rc.7](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.6...v1.0.0-rc.7) (2025-04-13)
+
+
+### Changes
+
+* Remove `publishAsync` setting, simplify publishing sequence ([79257e5](https://github.com/snatalenko/node-cqrs/commit/79257e59d322df5dd8e41bedf5273c97ae77b609))
+
+
 # [1.0.0-rc.6](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.5...v1.0.0-rc.6) (2025-03-21)
 
 
