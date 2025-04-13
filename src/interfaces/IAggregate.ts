@@ -1,7 +1,7 @@
-import { ICommand } from "./ICommand";
-import { Identifier } from "./Identifier";
-import { IEvent } from "./IEvent";
-import { IEventSet } from "./IEventSet";
+import { ICommand } from './ICommand';
+import { Identifier } from './Identifier';
+import { IEvent } from './IEvent';
+import { IEventSet } from './IEventSet';
 
 /**
  * Minimum aggregate interface, as it's used by default `AggregateCommandHandler`
@@ -25,6 +25,7 @@ export interface IAggregate {
 }
 
 export interface IMutableAggregateState {
+
 	// schemaVersion?: number;
 	// constructor: IAggregateStateConstructor;
 	mutate(event: IEvent): void;
@@ -36,6 +37,7 @@ export interface IMutableAggregateState {
 // }
 
 export type IAggregateConstructorParams<TState extends IMutableAggregateState | object | void> = {
+
 	/** Unique aggregate identifier */
 	id: Identifier,
 

@@ -7,8 +7,9 @@ import {
 	CommandBus,
 	AbstractSaga,
 	InMemoryMessageBus,
-	Deferred
+	EventDispatcher
 } from '../../src';
+import { Deferred } from '../../src/utils';
 
 class Saga extends AbstractSaga {
 	static get startsWith() {
@@ -17,7 +18,7 @@ class Saga extends AbstractSaga {
 	static get handles(): string[] {
 		return ['followingHappened'];
 	}
-	somethingHappened(event) {
+	somethingHappened(_event) {
 		super.enqueue('doSomething', undefined, { foo: 'bar' });
 	}
 	followingHappened() {
@@ -42,9 +43,16 @@ describe('SagaEventHandler', function () {
 	let sagaEventHandler: SagaEventHandler;
 
 	beforeEach(() => {
-		const supplementaryEventBus = new InMemoryMessageBus();
+		const eventBus = new InMemoryMessageBus();
+		const eventDispatcher = new EventDispatcher({ eventBus });
+		const eventStorageReader = new InMemoryEventStorage();
 		commandBus = new CommandBus({});
-		eventStore = new EventStore({ storage: new InMemoryEventStorage(), supplementaryEventBus });
+		eventStore = new EventStore({
+			eventStorageReader,
+			identifierProvider: eventStorageReader,
+			eventBus,
+			eventDispatcher
+		});
 		sagaEventHandler = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus });
 	});
 
@@ -58,7 +66,7 @@ describe('SagaEventHandler', function () {
 
 		commandBus.on('complete', () => {
 			deferred.resolve(undefined);
-		})
+		});
 
 		sinon.spy(eventStore, 'getSagaEvents');
 
@@ -86,7 +94,7 @@ describe('SagaEventHandler', function () {
 		commandBus.on('fixError', command => {
 			resolvePromise(command);
 		});
-		commandBus.on('doSomething', command => {
+		commandBus.on('doSomething', _command => {
 			throw new Error('command execution failed');
 		});
 

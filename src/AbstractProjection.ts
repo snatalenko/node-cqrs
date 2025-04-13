@@ -1,5 +1,5 @@
 import { describe } from './Event';
-import { InMemoryView } from './infrastructure/memory/InMemoryView';
+import { InMemoryView } from './in-memory/InMemoryView';
 import {
 	IViewLocker,
 	IEventLocker,
@@ -21,6 +21,7 @@ import {
 } from './utils';
 
 export type AbstractProjectionParams<T> = {
+
 	/**
 	 * The default view associated with the projection.
 	 * Can optionally implement IViewLocker and/or IEventLocker.
@@ -44,7 +45,7 @@ export type AbstractProjectionParams<T> = {
 /**
  * Base class for Projection definition
  */
-export abstract class AbstractProjection<TView = InMemoryView<any>> implements IProjection<TView> {
+export abstract class AbstractProjection<TView = any> implements IProjection<TView> {
 
 	/**
 	 * List of event types handled by the projection. Can be overridden in the projection implementation.
@@ -188,7 +189,7 @@ export abstract class AbstractProjection<TView = InMemoryView<any>> implements I
 				await this._project(event);
 				eventsCount += 1;
 			}
-			catch (err) {
+			catch (err: any) {
 				this._onRestoringError(err, event);
 			}
 		}

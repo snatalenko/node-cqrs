@@ -6,7 +6,7 @@ import {
 	IEvent,
 	IEventSet,
 	IAggregateConstructorParams
-} from "./interfaces";
+} from './interfaces';
 
 import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } from './utils';
 
@@ -42,7 +42,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	#snapshotVersion: number | undefined;
 
 	/** Internal aggregate state */
-	protected state: TState;
+	protected state: TState | undefined;
 
 	/** Command being handled by aggregate */
 	protected command?: ICommand;
@@ -74,6 +74,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	 * 	// create snapshot every 50 events
 	 * 	return this.version % 50 === 0;
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	get shouldTakeSnapshot(): boolean {
 		return false;
 	}
@@ -115,7 +116,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	}
 
 	/** Mutate aggregate state and increment aggregate version */
-	mutate(event) {
+	mutate(event: IEvent) {
 		if (event.aggregateVersion !== undefined)
 			this.#version = event.aggregateVersion;
 

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as createDb from 'better-sqlite3';
-import { SqliteObjectView } from '../../../src/infrastructure/sqlite';
+import { SqliteObjectView } from '../../../src/sqlite';
 import { promisify } from 'util';
 const delay = promisify(setTimeout);
 
@@ -15,7 +15,7 @@ describe('SqliteObjectView', function () {
 			projectionName: 'test',
 			tableNamePrefix: 'tbl_test',
 			schemaVersion: '1'
-		})
+		});
 	});
 
 	describe('get', () => {

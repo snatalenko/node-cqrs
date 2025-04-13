@@ -1,18 +1,26 @@
 import { expect, assert, AssertionError } from 'chai';
 import * as sinon from 'sinon';
-import { AbstractProjection, InMemoryView, InMemoryEventStorage, EventStore, InMemoryMessageBus } from '../../src';
+import {
+	AbstractProjection,
+	InMemoryView,
+	InMemoryEventStorage,
+	EventStore,
+	InMemoryMessageBus,
+	EventDispatcher
+} from '../../src';
 
 class MyProjection extends AbstractProjection<InMemoryView<{ somethingHappenedCnt?: number }>> {
 	static get handles() {
 		return ['somethingHappened'];
 	}
 
-	async _somethingHappened({ aggregateId, payload, context }) {
+	async _somethingHappened({ aggregateId }) {
 		return this.view.updateEnforcingNew(aggregateId, (v = {}) => {
 			if (v.somethingHappenedCnt)
 				v.somethingHappenedCnt += 1;
 			else
 				v.somethingHappenedCnt = 1;
+
 			return v;
 		});
 	}
@@ -161,9 +169,15 @@ describe('AbstractProjection', function () {
 
 		it('waits until the restoring process is done', async () => {
 
-			const storage = new InMemoryEventStorage();
-			const supplementaryEventBus = new InMemoryMessageBus();
-			const es = new EventStore({ storage, supplementaryEventBus });
+			const eventStorageReader = new InMemoryEventStorage();
+			const eventBus = new InMemoryMessageBus();
+			const eventDispatcher = new EventDispatcher({ eventBus });
+			const es = new EventStore({
+				eventStorageReader,
+				eventBus,
+				eventDispatcher,
+				identifierProvider: eventStorageReader
+			});
 
 			let restored = false;
 			let projected = false;
@@ -197,14 +211,14 @@ describe('AbstractProjection', function () {
 			projection.view.unlock();
 			sinon.spy(projection, '_somethingHappened');
 
-			const event = { type: 'somethingHappened', aggregateId: 1 };
+			const event2 = { type: 'somethingHappened', aggregateId: 1 };
 
 			expect(projection._somethingHappened).to.have.property('called', false);
 
-			await projection.project(event);
+			await projection.project(event2);
 
 			expect(projection._somethingHappened).to.have.property('calledOnce', true);
-			expect(projection._somethingHappened.lastCall.args).to.eql([event]);
+			expect(projection._somethingHappened.lastCall.args).to.eql([event2]);
 		});
 	});
 });

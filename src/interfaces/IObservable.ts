@@ -1,8 +1,12 @@
+import { IMessage } from './IMessage';
+import { isObject } from './isObject';
+
 export interface IMessageHandler {
-	(...args: any[]): any | Promise<any>
-};
+	(message: IMessage, meta?: Record<string, any>): any | Promise<any>
+}
 
 export interface IObservable {
+
 	/**
 	 * Setup a listener for a specific event type
 	 */
@@ -18,3 +22,10 @@ export interface IObservable {
 	 */
 	queue?(name: string): IObservable;
 }
+
+export const isIObservable = (obj: unknown): obj is IObservable =>
+	isObject(obj)
+	&& 'on' in obj
+	&& typeof obj.on === 'function'
+	&& 'off' in obj
+	&& typeof obj.off === 'function';

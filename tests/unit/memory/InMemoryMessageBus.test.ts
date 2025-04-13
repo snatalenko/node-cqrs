@@ -5,7 +5,9 @@ import { spy } from 'sinon';
 describe('InMemoryMessageBus', function () {
 
 	let bus: IMessageBus;
-	beforeEach(() => bus = new InMemoryMessageBus());
+	beforeEach(() => {
+		bus = new InMemoryMessageBus();
+	});
 
 	describe('send(command)', function () {
 
@@ -13,7 +15,6 @@ describe('InMemoryMessageBus', function () {
 
 			bus.on('doSomething', cmd => {
 				try {
-					// console.log(cmd);
 					expect(cmd).to.have.nested.property('payload.message', 'test');
 					done();
 				}

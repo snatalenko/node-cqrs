@@ -1,6 +1,6 @@
-import { IEvent } from "./IEvent";
-import { IEventStore } from "./IEventStore";
-import { IObserver } from "./IObserver";
+import { IEvent } from './IEvent';
+import { IEventStore } from './IEventStore';
+import { IObserver } from './IObserver';
 
 export interface IProjection<TView> extends IObserver {
 	readonly view: TView;

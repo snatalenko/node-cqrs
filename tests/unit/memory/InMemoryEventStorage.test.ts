@@ -27,9 +27,9 @@ describe('InMemoryEventStorage', () => {
 			await storage.commitEvents([event1, event2]);
 
 			const results = [];
-			for await (const event of storage.getAggregateEvents('agg1')) {
+			for await (const event of storage.getAggregateEvents('agg1'))
 				results.push(event);
-			}
+
 			expect(results).to.deep.equal([event1]);
 		});
 
@@ -41,9 +41,9 @@ describe('InMemoryEventStorage', () => {
 
 			const snapshot = { aggregateVersion: 1 };
 			const results = [];
-			for await (const event of storage.getAggregateEvents('agg1', { snapshot })) {
+			for await (const event of storage.getAggregateEvents('agg1', { snapshot }))
 				results.push(event);
-			}
+
 			expect(results).to.deep.equal([event2]);
 		});
 	});
@@ -59,9 +59,9 @@ describe('InMemoryEventStorage', () => {
 
 			const beforeEvent = { sagaVersion: 3 };
 			const results = [];
-			for await (const event of storage.getSagaEvents('saga1', { beforeEvent })) {
+			for await (const event of storage.getSagaEvents('saga1', { beforeEvent }))
 				results.push(event);
-			}
+
 			expect(results).to.deep.equal([event1, event2]);
 		});
 	});
@@ -76,9 +76,9 @@ describe('InMemoryEventStorage', () => {
 			await storage.commitEvents([event1, event2, event3]);
 
 			const results = [];
-			for await (const event of storage.getEventsByTypes(['A'])) {
+			for await (const event of storage.getEventsByTypes(['A']))
 				results.push(event);
-			}
+
 			expect(results).to.deep.equal([event1, event3]);
 		});
 
@@ -91,9 +91,9 @@ describe('InMemoryEventStorage', () => {
 
 			const options = { afterEvent: { id: '1' } };
 			const results = [];
-			for await (const event of storage.getEventsByTypes(['A'], options)) {
+			for await (const event of storage.getEventsByTypes(['A'], options))
 				results.push(event);
-			}
+
 			expect(results).to.deep.equal([event2, event3]);
 		});
 
@@ -107,7 +107,8 @@ describe('InMemoryEventStorage', () => {
 			try {
 				await gen.next();
 				throw new Error('Expected error was not thrown');
-			} catch (err) {
+			}
+			catch (err) {
 				expect(err).to.be.instanceOf(TypeError);
 				expect(err.message).to.equal('options.afterEvent.id is required');
 			}

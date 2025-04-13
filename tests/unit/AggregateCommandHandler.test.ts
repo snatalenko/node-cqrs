@@ -1,8 +1,13 @@
 import { expect, assert } from 'chai';
 import * as sinon from 'sinon';
-import { ICommandBus, Identifier, IEventSet, IEventStore, IMessageBus, InMemoryMessageBus } from '../../src';
-
 import {
+	EventDispatcher,
+	ICommandBus,
+	Identifier,
+	IEventBus,
+	IEventSet,
+	IEventStore,
+	InMemoryMessageBus,
 	AggregateCommandHandler,
 	AbstractAggregate,
 	InMemoryEventStorage,
@@ -43,25 +48,32 @@ describe('AggregateCommandHandler', function () {
 	// this.timeout(500);
 	// this.slow(300);
 
-	let storage: InMemoryEventStorage;
+	let eventStorageReader: InMemoryEventStorage;
 	let snapshotStorage: InMemorySnapshotStorage;
 	let eventStore: IEventStore;
 	let commandBus: ICommandBus;
-	let supplementaryEventBus: IMessageBus;
+	let eventBus: IEventBus;
 	let onSpy;
 	let getNewIdSpy;
 	let getAggregateEventsSpy;
 	let commitSpy;
 
 	beforeEach(() => {
-		supplementaryEventBus = new InMemoryMessageBus();
-		storage = new InMemoryEventStorage();
+		eventBus = new InMemoryMessageBus();
+		eventStorageReader = new InMemoryEventStorage();
 		snapshotStorage = new InMemorySnapshotStorage();
+		const eventDispatcher = new EventDispatcher({ eventBus });
 
-		eventStore = new EventStore({ storage, snapshotStorage, supplementaryEventBus });
+		eventStore = new EventStore({
+			eventStorageReader,
+			snapshotStorage,
+			eventBus,
+			eventDispatcher,
+			identifierProvider: eventStorageReader
+		});
 		getNewIdSpy = sinon.spy(eventStore, 'getNewId');
 		getAggregateEventsSpy = sinon.spy(eventStore, 'getAggregateEvents');
-		commitSpy = sinon.spy(eventStore, 'commit');
+		commitSpy = sinon.spy(eventStore, 'dispatch');
 
 		commandBus = new CommandBus() as any;
 		onSpy = sinon.spy(commandBus, 'on');
@@ -133,8 +145,6 @@ describe('AggregateCommandHandler', function () {
 	});
 
 	it('attaches command context, sagaId, sagaVersion to produced events', async () => {
-
-		const aggregate = new MyAggregate({ id: 1 });
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
@@ -214,48 +224,5 @@ describe('AggregateCommandHandler', function () {
 		expect(eventStream[2]).to.have.property('type', 'snapshot');
 		expect(eventStream[2]).to.have.property('aggregateVersion', 2);
 		expect(eventStream[2]).to.have.property('payload');
-	});
-
-	it.skip('executes concurrent commands on same aggregate instance', async () => {
-
-		// setup
-
-		class PersistedAggregate extends MyAggregate {
-			get shouldTakeSnapshot() {
-				return this.version > 2;
-			}
-		}
-
-		const handler = new AggregateCommandHandler({ eventStore, aggregateType: PersistedAggregate });
-
-		const getAggregateEventsSpy = sinon.spy(storage, 'getAggregateEvents');
-		const commitEventsSpy = sinon.spy(storage, 'commitEvents');
-
-		// test
-
-		const cmd0 = { type: 'createAggregate' };
-
-		const [{ aggregateId }] = await handler.execute(cmd0);
-
-		expect(storage).to.have.nested.property('getAggregateEvents.callCount', 0);
-		expect(storage).to.have.nested.property('commitEvents.callCount', 1);
-
-		const cmd1 = { aggregateId, type: 'doSomething' };
-		const cmd2 = { aggregateId, type: 'doSomething' };
-		const cmd3 = { aggregateId, type: 'doSomething' };
-
-		await Promise.all([cmd1, cmd2, cmd3].map(c => handler.execute(c)));
-
-		// expect(storage).to.have.nested.property('getAggregateEvents.callCount', 1);
-		// expect(storage).to.have.nested.property('commitEvents.callCount', 2);
-
-		const events = await eventStore.getAggregateEvents(aggregateId as Identifier);
-
-		expect(events).to.have.length(4);
-		expect(events[0]).to.have.property('type', 'snapshot');
-		expect(events[0]).to.have.property('aggregateVersion', 1);
-		expect(events[1]).to.have.property('aggregateVersion', 2);
-		expect(events[2]).to.have.property('aggregateVersion', 3);
-		expect(events[3]).to.have.property('aggregateVersion', 4);
 	});
 });

@@ -4,7 +4,7 @@ Projection is an Observer, that listens to events and updates an associated View
 
 ## Projection View Restoring
 
-By default, an [InMemoryView](https://github.com/snatalenko/node-cqrs/blob/master/src/infrastructure/InMemoryViewStorage.js) is used. That means that upon application start, Projection queries all known events from the EventStore and projects them to the view. Once this process is complete, the view's `ready` property gets switched from *false* to *true*.
+By default, an [InMemoryView](https://github.com/snatalenko/node-cqrs/blob/master/src/in-memory/InMemoryViewStorage.js) is used. That means that upon application start, Projection queries all known events from the EventStore and projects them to the view. Once this process is complete, the view's `ready` property gets switched from *false* to *true*.
 
 ## Projection Event Handlers
 

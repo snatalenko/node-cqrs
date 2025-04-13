@@ -1,4 +1,4 @@
-import { IEvent, ILogger, IObservable } from "../interfaces";
+import { IEvent, ILogger, IObservable } from '../interfaces';
 
 /**
  * Create one-time eventEmitter subscription for one or multiple events that match a filter
@@ -34,8 +34,10 @@ export function setupOneTimeEmitterSubscription(
 		let handled = false;
 
 		function filteredHandler(event: IEvent) {
-			if (filter && !filter(event)) return;
-			if (handled) return;
+			if (filter && !filter(event))
+				return;
+			if (handled)
+				return;
 			handled = true;
 
 			for (const messageType of messageTypes)

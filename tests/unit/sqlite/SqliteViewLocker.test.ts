@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as createDb from 'better-sqlite3';
-import { SqliteViewLocker } from '../../../src/infrastructure/sqlite';
+import { SqliteViewLocker } from '../../../src/sqlite';
 
 describe('SqliteViewLocker', function () {
 
@@ -81,14 +81,14 @@ describe('SqliteViewLocker', function () {
 	it('prolongs the lock while active', async function () {
 		await firstLock.lock();
 
-		const initial = viewModelSqliteDb.prepare(`SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?`)
+		const initial = viewModelSqliteDb.prepare('SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?')
 			.get('test', '1.0') as any;
 
 		expect(initial).to.have.property('locked_till').that.is.gt(Date.now());
 
 		await jest.advanceTimersByTimeAsync(viewLockTtl);
 
-		const updated = viewModelSqliteDb.prepare(`SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?`)
+		const updated = viewModelSqliteDb.prepare('SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?')
 			.get('test', '1.0') as any;
 
 		expect(updated).to.have.property('locked_till').that.is.gt(initial.locked_till);
@@ -98,7 +98,7 @@ describe('SqliteViewLocker', function () {
 		await firstLock.lock();
 		firstLock.unlock();
 
-		const row = viewModelSqliteDb.prepare(`SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?`)
+		const row = viewModelSqliteDb.prepare('SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?')
 			.get('test', '1.0') as any;
 
 		expect(row.locked_till).to.be.null;

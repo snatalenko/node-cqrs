@@ -4,7 +4,8 @@ import { getHandler } from './getHandler';
  * Ensure instance has handlers declared for all handled message types
  */
 export function validateHandlers(instance: object, handlesFieldName = 'handles') {
-	if (!instance) throw new TypeError('instance argument required');
+	if (!instance)
+		throw new TypeError('instance argument required');
 
 	const messageTypes = Object.getPrototypeOf(instance).constructor[handlesFieldName];
 	if (messageTypes === undefined)

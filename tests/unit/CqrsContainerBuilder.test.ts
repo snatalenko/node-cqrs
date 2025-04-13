@@ -15,8 +15,8 @@ describe('CqrsContainerBuilder', function () {
 
 	beforeEach(() => {
 		builder = new ContainerBuilder();
-		builder.register(InMemoryEventStorage).as('storage');
-		builder.register(InMemoryMessageBus).as('supplementaryEventBus');
+		builder.register(InMemoryEventStorage).as('eventStorageWriter').as('eventStorageReader').as('identifierProvider');
+		builder.register(InMemoryMessageBus).as('eventBus');
 	});
 
 	describe('registerAggregate(aggregateType) extension', () => {
@@ -81,7 +81,7 @@ describe('CqrsContainerBuilder', function () {
 				{ type: 'somethingHappened', aggregateId: 1 }
 			];
 
-			container.eventStore.commit(events).catch(done);
+			container.eventStore.dispatch(events).catch(done);
 		});
 	});
 

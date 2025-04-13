@@ -1,6 +1,6 @@
 import { InMemoryView } from '../../../src';
 import { expect, assert } from 'chai';
-import { nextCycle } from '../../../src/infrastructure/memory/utils';
+import { nextCycle } from '../../../src/in-memory/utils';
 
 describe('InMemoryView', function () {
 
@@ -11,6 +11,8 @@ describe('InMemoryView', function () {
 	});
 
 	describe('create', () => {
+
+		beforeEach(() => v.unlock());
 
 		it('creates a record', async () => {
 
@@ -23,12 +25,29 @@ describe('InMemoryView', function () {
 
 			await v.create('foo', 'bar');
 
-			try{
+			try {
 				await v.create('foo', 'bar');
 				assert(false, 'did not throw');
 			}
-			catch(e: any) {
+			catch (e: any) {
 				expect(e).to.have.property('message', 'Key \'foo\' already exists');
+			}
+		});
+
+		it('creates new record, as passed in value', async () => {
+
+			await v.create('foo', 'bar');
+			expect(await v.get('foo')).to.eq('bar');
+		});
+
+		it('fails, when trying to pass a function as a value', async () => {
+			try {
+				await v.create('foo', () => 'bar');
+				assert(false, 'did not throw');
+			}
+			catch (err) {
+				if (!(err instanceof TypeError))
+					throw err;
 			}
 		});
 	});
@@ -148,28 +167,6 @@ describe('InMemoryView', function () {
 		});
 	});
 
-	describe('create', () => {
-
-		beforeEach(() => v.unlock());
-
-		it('creates new record, as passed in value', async () => {
-
-			await v.create('foo', 'bar');
-			expect(await v.get('foo')).to.eq('bar');
-		});
-
-		it('fails, when trying to pass a function as a value', async () => {
-			try {
-				await v.create('foo', () => 'bar');
-				assert(false, 'did not throw');
-			}
-			catch (err) {
-				if (!(err instanceof TypeError))
-					throw err;
-			}
-		});
-	});
-
 	describe('update', () => {
 
 		beforeEach(() => v.unlock());
@@ -180,7 +177,7 @@ describe('InMemoryView', function () {
 				await v.update('foo', () => null);
 				assert(false, 'did not throw');
 			}
-			catch(e: any) {
+			catch (e: any) {
 				expect(e).to.have.property('message', 'Key \'foo\' does not exist');
 			}
 		});
@@ -191,7 +188,7 @@ describe('InMemoryView', function () {
 
 			expect(await v.get('foo')).to.eq('bar');
 
-			await v.updateEnforcingNew('foo', v => `${v}-upd`);
+			await v.updateEnforcingNew('foo', val => `${val}-upd`);
 
 			expect(await v.get('foo')).to.eq('bar-upd');
 		});
@@ -202,8 +199,8 @@ describe('InMemoryView', function () {
 
 			expect(await v.get('foo')).to.deep.eq({ x: 'bar' });
 
-			await v.updateEnforcingNew('foo', v => {
-				v.x += '-upd';
+			await v.updateEnforcingNew('foo', val => {
+				val.x += '-upd';
 			});
 
 			expect(await v.get('foo')).to.deep.eq({ x: 'bar-upd' });
@@ -229,7 +226,7 @@ describe('InMemoryView', function () {
 
 			expect(await v.get('foo')).to.eq('bar');
 
-			await v.updateEnforcingNew('foo', v => `${v}-upd`);
+			await v.updateEnforcingNew('foo', val => `${val}-upd`);
 
 			expect(await v.get('foo')).to.eq('bar-upd');
 		});
@@ -243,7 +240,7 @@ describe('InMemoryView', function () {
 			await v.create('x', { v: 'y' });
 			await v.unlock();
 
-			await v.updateAll(v => typeof v === 'string', v => `${v}-updated`);
+			await v.updateAll(val => typeof val === 'string', val => `${val}-updated`);
 
 			expect(await v.get('foo')).to.eq('bar-updated');
 			expect(await v.get('x')).to.eql({ v: 'y' });
@@ -279,7 +276,7 @@ describe('InMemoryView', function () {
 			await v.create('x', { v: 'y' });
 			await v.unlock();
 
-			await v.deleteAll(v => typeof v === 'object');
+			await v.deleteAll(val => typeof val === 'object');
 
 			expect(await v.get('foo')).to.eq('bar');
 			expect(await v.get('x')).to.eq(undefined);

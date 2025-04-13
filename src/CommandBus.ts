@@ -1,4 +1,4 @@
-import { InMemoryMessageBus } from "./infrastructure/memory";
+import { InMemoryMessageBus } from './in-memory';
 import {
 	ICommand,
 	ICommandBus,
@@ -7,25 +7,22 @@ import {
 	ILogger,
 	IMessageBus,
 	IMessageHandler
-} from "./interfaces";
+} from './interfaces';
 
 export class CommandBus implements ICommandBus {
 
 	#logger?: ILogger;
 	#bus: IMessageBus;
 
-	/**
-	 * Creates an instance of CommandBus.
-	 */
-	constructor({ messageBus, logger }: {
+	constructor(o?: {
 		messageBus?: IMessageBus,
 		logger?: ILogger | IExtendableLogger
 	}) {
-		this.#bus = messageBus ?? new InMemoryMessageBus();
+		this.#bus = o?.messageBus ?? new InMemoryMessageBus();
 
-		this.#logger = logger && 'child' in logger ?
-			logger.child({ service: 'CommandBus' }) :
-			logger;
+		this.#logger = o?.logger && 'child' in o.logger ?
+			o.logger.child({ service: 'CommandBus' }) :
+			o?.logger;
 	}
 
 	/**
@@ -55,7 +52,12 @@ export class CommandBus implements ICommandBus {
 	/**
 	 * Format and send a command for execution
 	 */
-	send<TPayload>(type: string, aggregateId: string, options: { payload: TPayload, context: object }, ...otherArgs: object[]): Promise<IEventSet> {
+	send<TPayload>(
+		type: string,
+		aggregateId: string,
+		options: { payload: TPayload, context: object },
+		...otherArgs: object[]
+	): Promise<IEventSet> {
 		if (typeof type !== 'string' || !type.length)
 			throw new TypeError('type argument must be a non-empty String');
 		if (options && typeof options !== 'object')

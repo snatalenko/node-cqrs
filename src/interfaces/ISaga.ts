@@ -1,9 +1,10 @@
-import { ICommand } from "./ICommand";
-import { Identifier } from "./Identifier";
-import { IEvent } from "./IEvent";
-import { IEventSet } from "./IEventSet";
+import { ICommand } from './ICommand';
+import { Identifier } from './Identifier';
+import { IEvent } from './IEvent';
+import { IEventSet } from './IEventSet';
 
 export interface ISaga {
+
 	/** Unique Saga ID */
 	readonly id: Identifier;
 

@@ -7,10 +7,15 @@
         "alwaysStrict": false,
         "outDir": "./dist",
         "target": "ESNext",
-        "declaration": false,
-        "strictNullChecks": true,
+        "declaration": true,
+        "declarationDir": "./types",
         "allowSyntheticDefaultImports": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "strict": true,
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        "strictBindCallApply": true,
+        "strictPropertyInitialization": true,
     },
     "include": [
         "src/**/*"

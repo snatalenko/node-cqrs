@@ -1,6 +1,7 @@
-import { IEvent } from "./IEvent";
+import { IEvent, isEvent } from './IEvent';
 
-/**
- * @deprecated Try to use `IEventStream` instead
- */
 export type IEventSet = ReadonlyArray<Readonly<IEvent>>;
+
+export const isEventSet = (arr: unknown): arr is IEventSet =>
+	Array.isArray(arr)
+	&& arr.every(isEvent);

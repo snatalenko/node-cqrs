@@ -33,7 +33,7 @@ describe('InMemoryLock', () => {
 		});
 
 		// Ensure second lock() is still waiting
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await new Promise(resolve => setTimeout(resolve, 100));
 		expect(secondLockAcquired).to.be.false;
 
 		// Unlock and allow second lock to proceed
@@ -69,7 +69,7 @@ describe('InMemoryLock', () => {
 		});
 
 		// Ensure it's still waiting
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await new Promise(resolve => setTimeout(resolve, 100));
 		expect(resolved).to.be.false;
 
 		// Unlock and verify resolution

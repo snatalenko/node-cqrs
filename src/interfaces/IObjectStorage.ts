@@ -1,4 +1,4 @@
-import { Identifier } from "./Identifier";
+import { Identifier } from './Identifier';
 
 export interface IObjectStorage<TRecord> {
 	get(id: Identifier): Promise<TRecord | undefined> | TRecord | undefined;

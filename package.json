@@ -2,30 +2,54 @@
   "name": "node-cqrs",
   "version": "1.0.0-rc.7",
   "description": "Basic ES6 backbone for CQRS app development",
+  "keywords": [
+    "cqrs",
+    "eventsourcing"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/snatalenko/node-cqrs.git"
+  },
+  "main": "./dist/index.js",
+  "types": "./types/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "rabbitmq": [
+        "types/rabbitmq/index.d.ts"
+      ],
+      "sqlite": [
+        "types/sqlite/index.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./types/index.d.ts"
+    },
+    "./rabbitmq": {
+      "require": "./dist/rabbitmq/index.js",
+      "import": "./dist/rabbitmq/index.js",
+      "types": "./types/rabbitmq/index.d.ts"
+    },
+    "./sqlite": {
+      "require": "./dist/sqlite/index.js",
+      "import": "./dist/sqlite/index.js",
+      "types": "./types/sqlite/index.d.ts"
+    }
   },
   "directories": {
     "doc": "docs",
     "example": "examples",
     "test": "tests"
   },
-  "keywords": [
-    "cqrs",
-    "eventsourcing",
-    "ddd",
-    "domain",
-    "eventstore"
-  ],
-  "main": "./dist/index.js",
-  "types": "./src/index.ts",
   "engines": {
     "node": ">=10.3.0"
   },
   "scripts": {
     "pretest": "npm run build",
-    "test": "jest --verbose tests/unit",
+    "test": "jest tests/unit",
     "test:coverage": "jest --collect-coverage tests/unit",
     "pretest:integration": "npm run build",
     "test:integration": "jest --verbose examples/user-domain-tests tests/integration",
@@ -34,29 +58,41 @@
     "build": "tsc --build",
     "prepare": "npm run build",
     "preversion": "npm test",
-    "version": "npm run changelog && git add CHANGELOG.md"
+    "version": "npm run changelog && git add CHANGELOG.md",
+    "lint": "eslint"
   },
   "author": "@snatalenko",
   "license": "MIT",
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
   "dependencies": {
+    "async-iterable-buffer": "^1.0.0",
+    "async-parallel-pipe": "^1.0.2",
     "di0": "^1.0.0"
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin-ts": "^4.2.0",
+    "@types/amqplib": "^0.10.7",
     "@types/better-sqlite3": "^7.6.11",
     "@types/chai": "^4.3.20",
     "@types/jest": "^29.5.13",
+    "@types/md5": "^2.3.5",
     "@types/node": "^20.16.9",
     "@types/sinon": "^17.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.29.0",
+    "@typescript-eslint/parser": "^8.29.0",
     "chai": "^4.5.0",
     "conventional-changelog": "^3.1.25",
+    "eslint": "^9.24.0",
+    "eslint-plugin-jest": "^28.11.0",
     "jest": "^29.7.0",
     "sinon": "^19.0.2",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.29.0"
   },
   "peerDependencies": {
+    "amqplib": "^0.10.5",
     "better-sqlite3": "^11.3.0",
     "md5": "^2.3.0"
   }

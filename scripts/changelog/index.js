@@ -19,7 +19,7 @@ const TITLES = [
 
 function transform(commit) {
 	if (known[commit.hash])
-		// eslint-disable-next-line no-param-reassign
+		 
 		commit = { ...commit, ...known[commit.hash] };
 	if (!commit.tag)
 		return undefined;

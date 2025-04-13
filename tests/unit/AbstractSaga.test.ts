@@ -5,7 +5,7 @@ class Saga extends AbstractSaga {
 	static get startsWith() {
 		return ['somethingHappened'];
 	}
-	_somethingHappened(event) {
+	_somethingHappened(_event) {
 		super.enqueue('doSomething', undefined, { foo: 'bar' });
 	}
 }
