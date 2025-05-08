@@ -7,7 +7,8 @@ import globals from "globals";
 export default defineConfig([
 	globalIgnores([
 		"coverage/*",
-		"dist/*"
+		"dist/*",
+		"types/*"
 	]),
 	{
 		files: [
