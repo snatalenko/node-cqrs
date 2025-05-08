@@ -10,13 +10,6 @@ import {
 
 import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } from './utils';
 
-/**
- * Deep-clone simple JS object
- */
-function clone<T>(obj: T): T {
-	return JSON.parse(JSON.stringify(obj));
-}
-
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
 
 /**
@@ -192,11 +185,11 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	}
 
 	/** Create an aggregate state snapshot */
-	makeSnapshot(): TState {
+	protected makeSnapshot(): any {
 		if (!this.state)
 			throw new Error('state property is empty, either define state or override makeSnapshot method');
 
-		return clone(this.state);
+		return structuredClone(this.state);
 	}
 
 	/** Restore aggregate state from a snapshot */
@@ -213,7 +206,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		if (!this.state)
 			throw new Error('state property is empty, either defined state or override restoreSnapshot method');
 
-		Object.assign(this.state, clone(snapshotEvent.payload));
+		Object.assign(this.state, structuredClone(snapshotEvent.payload));
 	}
 
 	/** Get human-readable aggregate identifier */
