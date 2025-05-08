@@ -1,53 +1,99 @@
 import { Deferred } from './Deferred';
 
-/**
- * Provides a simple asynchronous lock mechanism.
- * Useful for ensuring that only one asynchronous operation proceeds at a time
- * for a specific resource or section of code.
- */
 export class Lock {
 
-	#deferred?: Deferred<void>;
+	/**
+	 * Indicates that global lock acquiring is started,
+	 * so all other locks should wait to ensure that named lock raised after global don't squeeze before it
+	 */
+	#globalLockAcquiringLock?: Deferred<void>;
 
-	get isLocked(): boolean {
-		return !(this.#deferred?.settled ?? true);
+	/**
+	 * Indicates that global lock is acquired, all others should wait
+	 */
+	#globalLock?: Deferred<void>;
+
+	/**
+	 * Hash of named locks. Each named lock block locks with same name and the global one
+	 */
+	#namedLocks: Map<string, Deferred<void>> = new Map();
+
+	#getAnyBlockingLock(id?: string): Deferred<void> | undefined {
+		return this.#globalLock ?? (
+			id ?
+				this.#namedLocks.get(id) :
+				this.#namedLocks.values().next().value
+		);
+	}
+
+
+	isLocked(name?: string): boolean {
+		return !!this.#getAnyBlockingLock(name);
 	}
 
 	/**
-	 * Wait until lock is released, then acquire it
+	 * Acquire named or global lock
+	 *
+	 * @returns Promise that resolves once lock is acquired
 	 */
-	async acquire(): Promise<void> {
-		// the below code cannot be replaced with `await this.unblocked()`
+	async acquire(name?: string): Promise<void> {
+
+		while (this.#globalLockAcquiringLock)
+			await this.#globalLockAcquiringLock.promise;
+
+		const isGlobal = !name;
+		if (isGlobal)
+			this.#globalLockAcquiringLock = new Deferred();
+
+		// the below code cannot be replaced with `await this.waitForUnlock()`
 		// since check of `isLocked` and `this.#deferred` assignment should happen within 1 callback
-		while (this.isLocked)
-			await this.#deferred?.promise;
+		// while `async waitForUnlock(..) await..` creates one extra promise callback
+		while (this.isLocked(name))
+			await this.#getAnyBlockingLock(name)?.promise;
 
-		this.#deferred = new Deferred();
+		if (name)
+			this.#namedLocks.set(name, new Deferred());
+		else
+			this.#globalLock = new Deferred();
+
+		if (isGlobal) {
+			this.#globalLockAcquiringLock?.resolve();
+			this.#globalLockAcquiringLock = undefined;
+		}
 	}
 
 	/**
-	 * Returns a promise that is resolved once lock is released
+	 * @returns Promise that resolves once lock is released
 	 */
-	async unblocked(): Promise<void> {
-		while (this.isLocked)
-			await this.#deferred?.promise;
+	async waitForUnlock(name?: string): Promise<void> {
+		while (this.isLocked(name))
+			await this.#getAnyBlockingLock(name)?.promise;
 	}
 
-	release(): void {
-		this.#deferred?.resolve();
-		this.#deferred = undefined;
+	/**
+	 * Release named or global lock
+	 */
+	release(name?: string): void {
+		if (name) {
+			this.#namedLocks.get(name)?.resolve();
+			this.#namedLocks.delete(name);
+		}
+		else {
+			this.#globalLock?.resolve();
+			this.#globalLock = undefined;
+		}
 	}
 
 	/**
 	 * Execute callback with lock acquired, then release lock
 	 */
-	async runLocked(callback: () => Promise<void>) {
+	async runExclusively<T>(name: string | undefined, callback: () => Promise<T>): Promise<T> {
 		try {
-			await this.acquire();
-			await callback();
+			await this.acquire(name);
+			return await callback();
 		}
 		finally {
-			this.release();
+			this.release(name);
 		}
 	}
 }

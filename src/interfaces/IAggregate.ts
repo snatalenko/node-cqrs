@@ -11,17 +11,26 @@ export interface IAggregate {
 	/** Unique aggregate identifier */
 	readonly id: Identifier;
 
+	/** Update aggregate state with event */
+	mutate(event: IEvent): void;
+
 	/** Main entry point for aggregate commands */
 	handle(command: ICommand): void | Promise<void>;
 
-	/** List of events emitted by Aggregate as a result of handling command(s) */
+	/** Get events emitted during command(s) handling and reset the `changes` collection */
+	popChanges(): IEventSet;
+
+	/**
+	 * List of events emitted by Aggregate as a result of handling command(s)
+	 * @deprecated use `popChanges()` instead
+	 */
 	readonly changes: IEventSet;
 
 	/** An indicator if aggregate snapshot should be taken */
 	readonly shouldTakeSnapshot?: boolean;
 
 	/** Take an aggregate state snapshot and add it to the changes queue */
-	takeSnapshot(): void;
+	takeSnapshot?(): void;
 }
 
 export interface IMutableAggregateState {
@@ -41,18 +50,25 @@ export type IAggregateConstructorParams<TState extends IMutableAggregateState | 
 	/** Unique aggregate identifier */
 	id: Identifier,
 
-	/** Aggregate events, logged after latest snapshot */
+	/**
+	 * @deprecated The aggregate no longer receives all events in the constructor.
+	 *   Instead, events are loaded and passed to the `mutate` method after instantiation.
+	 */
 	events?: IEventSet,
 
 	/** Aggregate state instance */
 	state?: TState
 };
 
-export interface IAggregateConstructor<TState extends IMutableAggregateState | object | void> {
+export interface IAggregateConstructor<
+	TAggregate extends IAggregate,
+	TState extends IMutableAggregateState | object | void
+> {
 	readonly handles: string[];
-	new(options: IAggregateConstructorParams<TState>): IAggregate;
+	new(options: IAggregateConstructorParams<TState>): TAggregate;
 }
 
-export type IAggregateFactory<TState extends IMutableAggregateState | object | void> =
-	(options: IAggregateConstructorParams<TState>) => IAggregate;
-
+export type IAggregateFactory<
+	TAggregate extends IAggregate,
+	TState extends IMutableAggregateState | object | void
+> = (options: IAggregateConstructorParams<TState>) => TAggregate;

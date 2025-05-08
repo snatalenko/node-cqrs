@@ -91,7 +91,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 	}
 
 	/** Register aggregate type in the container */
-	registerAggregate(AggregateType: IAggregateConstructor<any>) {
+	registerAggregate(AggregateType: IAggregateConstructor<any, any>) {
 		if (!isClass(AggregateType))
 			throw new TypeError('AggregateType argument must be a constructor function');
 

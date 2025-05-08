@@ -6,6 +6,7 @@ export * from './getMessageHandlerNames';
 export * from './isClass';
 export * from './iteratorToArray';
 export * from './Lock';
+export * from './MapAssertable';
 export * from './notEmpty';
 export * from './setupOneTimeEmitterSubscription';
 export * from './subscribe';

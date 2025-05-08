@@ -55,7 +55,10 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		return this.#snapshotVersion;
 	}
 
-	/** Events emitted by Aggregate */
+	/**
+	 * Events emitted by Aggregate
+	 * @deprecated use `popChanges()` instead
+	 */
 	get changes(): IEventSet {
 		return [...this.#changes];
 	}
@@ -126,6 +129,11 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		}
 
 		this.#version += 1;
+	}
+
+	/** Get events emitted during command(s) handling and reset the `changes` collection */
+	popChanges(): IEventSet {
+		return this.#changes.splice(0);
 	}
 
 	/** Format and register aggregate event and mutate aggregate state */
