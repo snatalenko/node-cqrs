@@ -87,25 +87,21 @@ describe('AbstractAggregate', function () {
 		});
 	});
 
-	describe('changes', () => {
+	describe('popChanges', () => {
 
-		it('contains an EventStream of changes happened in aggregate', () => {
+		it('contains an EventStream of changes happened in aggregate', async () => {
 
-			const { changes } = agg;
+			const changes0 = agg.popChanges();
 
-			expect(changes).to.be.an('Array');
-			expect(changes).to.be.empty;
-			expect(changes).to.not.equal(agg.changes);
-			expect(() => {
-				(agg as any).changes = [];
-			}).to.throw(TypeError);
+			expect(changes0).to.be.an('Array');
+			expect(changes0).to.be.empty;
 
-			return agg.doSomething({}).then(() => {
+			const changes = await agg.handle({ type: 'doSomething' });
 
-				expect(agg).to.have.nested.property('changes[0].type', 'somethingDone');
-				expect(agg).to.have.nested.property('changes[0].aggregateId', 1);
-				expect(agg).to.have.nested.property('changes[0].aggregateVersion', 0);
-			});
+			expect(changes).to.not.equal(changes0);
+			expect(changes).to.have.nested.property('[0].type', 'somethingDone');
+			expect(changes).to.have.nested.property('[0].aggregateId', 1);
+			expect(changes).to.have.nested.property('[0].aggregateVersion', 0);
 		});
 	});
 
@@ -155,9 +151,9 @@ describe('AbstractAggregate', function () {
 
 		it('passes command to a handler declared within aggregate, returns a Promise', async () => {
 
-			await agg.handle({ type: 'doSomething' });
+			const changes = await agg.handle({ type: 'doSomething' });
 
-			expect(agg).to.have.nested.property('changes[0].type', 'somethingDone');
+			expect(changes).to.have.nested.property('[0].type', 'somethingDone');
 		});
 
 		it('throws error, if command handler is not defined', async () => {
@@ -186,7 +182,9 @@ describe('AbstractAggregate', function () {
 		it('pushes new event to #changes', () => {
 
 			(agg as any).emit('eventType', {});
-			expect(agg).to.have.nested.property('changes[0].type', 'eventType');
+
+			const changes = agg.popChanges();
+			expect(changes).to.have.nested.property('[0].type', 'eventType');
 		});
 
 		it('increments aggregate #version', () => {
@@ -271,19 +269,23 @@ describe('AbstractAggregate', function () {
 		});
 	});
 
-	describe('takeSnapshot()', () => {
+	describe('makeSnapshot()', () => {
 
 		it('exists', () => {
-			expect(agg).to.respondTo('takeSnapshot');
+			expect(agg).to.respondTo('makeSnapshot');
 		});
 
 		it('adds aggregate state snapshot to the changes queue', async () => {
 
-			await agg.handle({ type: 'doSomething' });
+			class AggregateWithSnapshot extends Aggregate {
+				protected get shouldTakeSnapshot(): boolean {
+					return true;
+				}
+			}
 
-			agg.takeSnapshot();
+			agg = new AggregateWithSnapshot({ id: 1 });
 
-			const { changes } = agg;
+			const changes = await agg.handle({ type: 'doSomething' });
 
 			expect(changes).to.have.length(2);
 

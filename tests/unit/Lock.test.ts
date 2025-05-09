@@ -55,35 +55,38 @@ describe('Lock', () => {
 	describe('isLocked', () => {
 
 		it('returns `false` when lock is not acquired', async () => {
-			expect(lock).toHaveProperty('isLocked', false);
+			expect(lock).toHaveProperty('isLocked');
+			expect(lock.isLocked()).toBe(false);
 		});
 
 		it('returns `true` when lock is acquired', async () => {
 			await lock.acquire();
-			expect(lock).toHaveProperty('isLocked', true);
+			expect(lock).toHaveProperty('isLocked');
+			expect(lock.isLocked()).toBe(true);
 		});
 
 		it('returns `false` when lock is released', async () => {
 			await lock.acquire();
 			await lock.release();
-			expect(lock).toHaveProperty('isLocked', false);
+			expect(lock).toHaveProperty('isLocked');
+			expect(lock.isLocked()).toBe(false);
 		});
 	});
 
-	describe('runLocked', () => {
+	describe('runExclusively', () => {
 
 		it('executes callback with lock acquired', async () => {
 
 			let p1status = 'not-started';
 			let p2status = 'not-started';
 
-			const p1 = lock.runLocked(async () => {
+			const p1 = lock.runExclusively(undefined, async () => {
 				p1status = 'started';
 				await delay(10);
 				p1status = 'processed';
 			});
 
-			const p2 = lock.runLocked(async () => {
+			const p2 = lock.runExclusively(undefined, async () => {
 				p2status = 'started';
 				await delay(5);
 				p2status = 'processed';
@@ -114,36 +117,36 @@ describe('Lock', () => {
 		});
 	});
 
-	describe('unblocked', () => {
+	describe('waitForUnlock', () => {
 
 		it('returns Promise', () => {
-			expect(lock).toHaveProperty('unblocked');
-			expect(lock.unblocked()).toBeInstanceOf(Promise);
+			expect(lock).toHaveProperty('waitForUnlock');
+			expect(lock.waitForUnlock()).toBeInstanceOf(Promise);
 		});
 
 		it('returns resolved promise when lock is not acquired', async () => {
-			await expect(isResolved(lock.unblocked())).resolves.toBe(true);
+			await expect(isResolved(lock.waitForUnlock())).resolves.toBe(true);
 		});
 
 		it('returns pending promise when lock is acquired', async () => {
 			await lock.acquire();
-			await expect(isResolved(lock.unblocked())).resolves.toBe(false);
+			await expect(isResolved(lock.waitForUnlock())).resolves.toBe(false);
 		});
 
 		it('returns resolved promise when lock is released', async () => {
 			await lock.acquire();
 			await lock.release();
-			await expect(isResolved(lock.unblocked())).resolves.toBe(true);
+			await expect(isResolved(lock.waitForUnlock())).resolves.toBe(true);
 		});
 
 		it('can be used to suspend non-blocking processes until lock is released', async () => {
 
 			await lock.acquire(); // blocking process (i.e. update_by_query)
 
-			const p2 = lock.unblocked();
-			const p3 = lock.unblocked();
+			const p2 = lock.waitForUnlock();
+			const p3 = lock.waitForUnlock();
 			const l4 = lock.acquire(); // blocking process (i.e. update_by_query)
-			const p5 = lock.unblocked();
+			const p5 = lock.waitForUnlock();
 			const l6 = lock.acquire(); // blocking process (i.e. update_by_query)
 
 			// Check all are pending initially

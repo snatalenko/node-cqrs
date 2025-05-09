@@ -421,7 +421,6 @@ describe('RabbitMqGateway', () => {
 		it('stops receiving messages on SIGINT', async () => {
 
 			const received: IMessage[] = [];
-			const process = new EventEmitter();
 			const handlerBlocker = new Deferred();
 			const message: IMessage = {
 				type: 'test.sigint',

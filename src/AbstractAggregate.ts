@@ -10,13 +10,6 @@ import {
 
 import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } from './utils';
 
-/**
- * Deep-clone simple JS object
- */
-function clone<T>(obj: T): T {
-	return JSON.parse(JSON.stringify(obj));
-}
-
 const SNAPSHOT_EVENT_TYPE = 'snapshot';
 
 /**
@@ -62,11 +55,6 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		return this.#snapshotVersion;
 	}
 
-	/** Events emitted by Aggregate */
-	get changes(): IEventSet {
-		return [...this.#changes];
-	}
-
 	/**
 	 * Override to define whether an aggregate state snapshot should be taken
 	 *
@@ -75,7 +63,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	 * 	return this.version % 50 === 0;
 	 */
 	// eslint-disable-next-line class-methods-use-this
-	get shouldTakeSnapshot(): boolean {
+	protected get shouldTakeSnapshot(): boolean {
 		return false;
 	}
 
@@ -99,22 +87,6 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 			events.forEach(event => this.mutate(event));
 	}
 
-	/** Pass command to command handler */
-	handle(command: ICommand) {
-		if (!command)
-			throw new TypeError('command argument required');
-		if (!command.type)
-			throw new TypeError('command.type argument required');
-
-		const handler = getHandler(this, command.type);
-		if (!handler)
-			throw new Error(`'${command.type}' handler is not defined or not a function`);
-
-		this.command = command;
-
-		return handler.call(this, command.payload, command.context);
-	}
-
 	/** Mutate aggregate state and increment aggregate version */
 	mutate(event: IEvent) {
 		if (event.aggregateVersion !== undefined)
@@ -133,6 +105,32 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		}
 
 		this.#version += 1;
+	}
+
+	/** Pass command to command handler */
+	async handle(command: ICommand) {
+		if (!command)
+			throw new TypeError('command argument required');
+		if (!command.type)
+			throw new TypeError('command.type argument required');
+
+		const handler = getHandler(this, command.type);
+		if (!handler)
+			throw new Error(`'${command.type}' handler is not defined or not a function`);
+
+		this.command = command;
+
+		await handler.call(this, command.payload, command.context);
+
+		return this.popChanges();
+	}
+
+	/** Get events emitted during command(s) handling and reset the `changes` collection */
+	protected popChanges(): IEventSet {
+		if (this.shouldTakeSnapshot)
+			this.emit(SNAPSHOT_EVENT_TYPE, this.makeSnapshot());
+
+		return this.#changes.splice(0);
 	}
 
 	/** Format and register aggregate event and mutate aggregate state */
@@ -184,19 +182,12 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		this.#changes.push(event);
 	}
 
-	/**
-	 * Take an aggregate state snapshot and add it to the changes queue
-	 */
-	takeSnapshot() {
-		this.emit(SNAPSHOT_EVENT_TYPE, this.makeSnapshot());
-	}
-
 	/** Create an aggregate state snapshot */
-	makeSnapshot(): TState {
+	protected makeSnapshot(): any {
 		if (!this.state)
 			throw new Error('state property is empty, either define state or override makeSnapshot method');
 
-		return clone(this.state);
+		return structuredClone(this.state);
 	}
 
 	/** Restore aggregate state from a snapshot */
@@ -213,7 +204,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		if (!this.state)
 			throw new Error('state property is empty, either defined state or override restoreSnapshot method');
 
-		Object.assign(this.state, clone(snapshotEvent.payload));
+		Object.assign(this.state, structuredClone(snapshotEvent.payload));
 	}
 
 	/** Get human-readable aggregate identifier */

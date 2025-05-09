@@ -41,6 +41,7 @@ class CommandBus {
 	on(messageType, listener) {
 		this.handlers[messageType] = listener;
 	}
+	off() { }
 }
 
 describe('AggregateCommandHandler', function () {
@@ -48,7 +49,7 @@ describe('AggregateCommandHandler', function () {
 	// this.timeout(500);
 	// this.slow(300);
 
-	let eventStorageReader: InMemoryEventStorage;
+	let eventStorage: InMemoryEventStorage;
 	let snapshotStorage: InMemorySnapshotStorage;
 	let eventStore: IEventStore;
 	let commandBus: ICommandBus;
@@ -60,16 +61,21 @@ describe('AggregateCommandHandler', function () {
 
 	beforeEach(() => {
 		eventBus = new InMemoryMessageBus();
-		eventStorageReader = new InMemoryEventStorage();
+		eventStorage = new InMemoryEventStorage();
 		snapshotStorage = new InMemorySnapshotStorage();
-		const eventDispatcher = new EventDispatcher({ eventBus });
+		const eventDispatcher = new EventDispatcher({
+			eventDispatchPipeline: [
+				eventStorage
+			],
+			eventBus
+		});
 
 		eventStore = new EventStore({
-			eventStorageReader,
+			eventStorageReader: eventStorage,
 			snapshotStorage,
 			eventBus,
 			eventDispatcher,
-			identifierProvider: eventStorageReader
+			identifierProvider: eventStorage
 		});
 		getNewIdSpy = sinon.spy(eventStore, 'getNewId');
 		getAggregateEventsSpy = sinon.spy(eventStore, 'getAggregateEvents');
@@ -184,7 +190,7 @@ describe('AggregateCommandHandler', function () {
 		expect(args[0]).to.be.an('Array');
 	});
 
-	it('invokes aggregate.takeSnapshot before committing event stream, when get shouldTakeSnapshot equals true', async () => {
+	it('invokes aggregate.makeSnapshot before committing event stream, when get shouldTakeSnapshot equals true', async () => {
 
 		// setup
 
@@ -195,7 +201,7 @@ describe('AggregateCommandHandler', function () {
 				return this.version !== 0 && this.version % 2 === 0;
 			}
 		});
-		sinon.spy(aggregate, 'takeSnapshot');
+		sinon.spy(aggregate, 'makeSnapshot');
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
@@ -205,24 +211,99 @@ describe('AggregateCommandHandler', function () {
 
 		// test
 
-		expect(aggregate).to.have.nested.property('takeSnapshot.called', false);
+		expect(aggregate).to.have.nested.property('makeSnapshot.called', false);
 		expect(aggregate).to.have.property('version', 0);
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.nested.property('takeSnapshot.called', false);
+		expect(aggregate).to.have.nested.property('makeSnapshot.called', false);
 		expect(aggregate).to.have.property('version', 1); // 1st event
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.nested.property('takeSnapshot.called', true);
+		expect(aggregate).to.have.nested.property('makeSnapshot.called', true);
 		expect(aggregate).to.have.property('version', 3); // 2nd event and snapshot
 
 		const [eventStream] = commitSpy.lastCall.args;
 
-		expect(eventStream).to.have.length(3);
-		expect(eventStream[2]).to.have.property('type', 'snapshot');
-		expect(eventStream[2]).to.have.property('aggregateVersion', 2);
-		expect(eventStream[2]).to.have.property('payload');
+		expect(eventStream).to.have.length(2);
+		expect(eventStream[1]).to.have.property('type', 'snapshot');
+		expect(eventStream[1]).to.have.property('aggregateVersion', 2);
+		expect(eventStream[1]).to.have.property('payload');
+	});
+
+	it('produces events with sequential versions for concurrent commands to the same aggregate', async () => {
+
+		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
+		const aggregateId = 'concurrent-test-id';
+
+		// Ensure aggregate exists
+		await handler.execute({ type: 'createAggregate', aggregateId });
+
+		const command1 = { type: 'doSomething', aggregateId };
+		const command2 = { type: 'doSomething', aggregateId };
+
+		// Execute commands concurrently
+		await Promise.all([
+			handler.execute(command1),
+			handler.execute(command2)
+		]);
+
+		// Retrieve all events for the aggregate
+		const eventsIterable = eventStore.getAggregateEvents(aggregateId);
+		const allEvents = [];
+		for await (const event of eventsIterable)
+			allEvents.push(event);
+
+		const emittedEventVersions = allEvents.map(e => e.aggregateVersion);
+		expect(emittedEventVersions).to.deep.equal([0, 1, 2]);
+	});
+
+	it('uses cached aggregate instance for concurrent commands and restores for subsequent commands', async () => {
+
+		const aggregateId = 'cache-test-id';
+		let factoryCallCount = 0;
+		const aggregateFactory = params => {
+			factoryCallCount++;
+			return new MyAggregate(params);
+		};
+
+		const handler = new AggregateCommandHandler({
+			eventStore,
+			aggregateFactory,
+			handles: MyAggregate.handles
+		});
+
+		// Ensure aggregate exists
+		await handler.execute({ type: 'createAggregate', aggregateId });
+
+		// Reset spies/counters before the main test part
+		getAggregateEventsSpy.resetHistory();
+		factoryCallCount = 0;
+
+		const command1 = { type: 'doSomething', aggregateId };
+		const command2 = { type: 'doSomething', aggregateId };
+
+		// Execute commands concurrently
+		await Promise.all([
+			handler.execute(command1),
+			handler.execute(command2)
+		]);
+
+		// Check that restore and factory were called only once for the concurrent pair
+		assert(getAggregateEventsSpy.calledOnce, 'getAggregateEvents should be called once for concurrent commands');
+		expect(factoryCallCount).to.equal(1, 'Aggregate factory should be called once for concurrent commands');
+
+
+		getAggregateEventsSpy.resetHistory();
+		factoryCallCount = 0;
+
+		// Execute a third command after the first two completed
+		const command3 = { type: 'doSomething', aggregateId };
+		await handler.execute(command3);
+
+		// Check that restore and factory were called again for the subsequent command
+		assert(getAggregateEventsSpy.calledOnce, 'getAggregateEvents should be called again for the subsequent command');
+		expect(factoryCallCount).to.equal(1, 'Aggregate factory should be called again for the subsequent command');
 	});
 });

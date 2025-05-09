@@ -8,51 +8,53 @@ import { IEventSet } from './IEventSet';
  */
 export interface IAggregate {
 
-	/** Unique aggregate identifier */
-	readonly id: Identifier;
+	/**
+	 * Apply a single event to mutate the aggregate's state.
+	 *
+	 * Used by `AggregateCommandHandler` when restoring the aggregate state from the event store.
+	 */
+	mutate(event: IEvent): void;
 
-	/** Main entry point for aggregate commands */
-	handle(command: ICommand): void | Promise<void>;
-
-	/** List of events emitted by Aggregate as a result of handling command(s) */
-	readonly changes: IEventSet;
-
-	/** An indicator if aggregate snapshot should be taken */
-	readonly shouldTakeSnapshot?: boolean;
-
-	/** Take an aggregate state snapshot and add it to the changes queue */
-	takeSnapshot(): void;
+	/**
+	 * Process a command sent to the aggregate.
+	 *
+	 * This is the main entry point for handling aggregate commands.
+	 */
+	handle(command: ICommand): IEventSet | Promise<IEventSet>;
 }
 
 export interface IMutableAggregateState {
 
-	// schemaVersion?: number;
-	// constructor: IAggregateStateConstructor;
+	/**
+	 * Apply a single event to mutate the aggregate's state.
+	 */
 	mutate(event: IEvent): void;
 }
-
-// export interface IAggregateStateConstructor extends Function {
-// 	schemaVersion?: number;
-// 	new(): IAggregateState;
-// }
 
 export type IAggregateConstructorParams<TState extends IMutableAggregateState | object | void> = {
 
 	/** Unique aggregate identifier */
 	id: Identifier,
 
-	/** Aggregate events, logged after latest snapshot */
+	/**
+	 * @deprecated The aggregate no longer receives all events in the constructor.
+	 *   Instead, events are loaded and passed to the `mutate` method after instantiation.
+	 */
 	events?: IEventSet,
 
 	/** Aggregate state instance */
 	state?: TState
 };
 
-export interface IAggregateConstructor<TState extends IMutableAggregateState | object | void> {
+export interface IAggregateConstructor<
+	TAggregate extends IAggregate,
+	TState extends IMutableAggregateState | object | void
+> {
 	readonly handles: string[];
-	new(options: IAggregateConstructorParams<TState>): IAggregate;
+	new(options: IAggregateConstructorParams<TState>): TAggregate;
 }
 
-export type IAggregateFactory<TState extends IMutableAggregateState | object | void> =
-	(options: IAggregateConstructorParams<TState>) => IAggregate;
-
+export type IAggregateFactory<
+	TAggregate extends IAggregate,
+	TState extends IMutableAggregateState | object | void
+> = (options: IAggregateConstructorParams<TState>) => TAggregate;
