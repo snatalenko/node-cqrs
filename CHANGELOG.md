@@ -1,3 +1,16 @@
+# [1.0.0-rc.11](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.10...v1.0.0-rc.11) (2025-05-09)
+
+
+### Changes
+
+* Cache immediate aggregates to handle concurrent commands ([e193c4c](https://github.com/snatalenko/node-cqrs/commit/e193c4c8dc7b91de6cbc84e2ac668170ddb48bc0))
+* Use `structuredClone` for snapshot creation ([1d0e827](https://github.com/snatalenko/node-cqrs/commit/1d0e827da71c760739588a37ae6afe63a4fa8d34))
+
+### Refactoring
+
+* Simplify aggregate interface ([3e141fd](https://github.com/snatalenko/node-cqrs/commit/3e141fd217c4a094a57fefe8788816d474020ffe))
+
+
 # [1.0.0-rc.10](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.9...v1.0.0-rc.10) (2025-04-13)
 
 
