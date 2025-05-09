@@ -8,42 +8,28 @@ import { IEventSet } from './IEventSet';
  */
 export interface IAggregate {
 
-	/** Unique aggregate identifier */
-	readonly id: Identifier;
-
-	/** Update aggregate state with event */
+	/**
+	 * Apply a single event to mutate the aggregate's state.
+	 *
+	 * Used by `AggregateCommandHandler` when restoring the aggregate state from the event store.
+	 */
 	mutate(event: IEvent): void;
 
-	/** Main entry point for aggregate commands */
-	handle(command: ICommand): void | Promise<void>;
-
-	/** Get events emitted during command(s) handling and reset the `changes` collection */
-	popChanges(): IEventSet;
-
 	/**
-	 * List of events emitted by Aggregate as a result of handling command(s)
-	 * @deprecated use `popChanges()` instead
+	 * Process a command sent to the aggregate.
+	 *
+	 * This is the main entry point for handling aggregate commands.
 	 */
-	readonly changes: IEventSet;
-
-	/** An indicator if aggregate snapshot should be taken */
-	readonly shouldTakeSnapshot?: boolean;
-
-	/** Take an aggregate state snapshot and add it to the changes queue */
-	takeSnapshot?(): void;
+	handle(command: ICommand): IEventSet | Promise<IEventSet>;
 }
 
 export interface IMutableAggregateState {
 
-	// schemaVersion?: number;
-	// constructor: IAggregateStateConstructor;
+	/**
+	 * Apply a single event to mutate the aggregate's state.
+	 */
 	mutate(event: IEvent): void;
 }
-
-// export interface IAggregateStateConstructor extends Function {
-// 	schemaVersion?: number;
-// 	new(): IAggregateState;
-// }
 
 export type IAggregateConstructorParams<TState extends IMutableAggregateState | object | void> = {
 

@@ -87,7 +87,7 @@ export class Lock {
 	/**
 	 * Execute callback with lock acquired, then release lock
 	 */
-	async runExclusively<T>(name: string | undefined, callback: () => Promise<T>): Promise<T> {
+	async runExclusively<T>(name: string | undefined, callback: () => Promise<T> | T): Promise<T> {
 		try {
 			await this.acquire(name);
 			return await callback();

@@ -128,16 +128,12 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		const aggregate = await this.#getAggregateInstance(cmd.aggregateId);
 
 		try {
+			// multiple concurrent commands to a same aggregateId will execute sequentially
+			if (cmd.aggregateId)
+				this.#executionLock.acquire(String(cmd.aggregateId));
+
 			// pass command to aggregate instance
-			// multiple concurrent calls will execute sequentially
-			const events = await this.#executionLock.runExclusively(String(aggregate.id), async () => {
-				await aggregate.handle(cmd);
-
-				if (aggregate.shouldTakeSnapshot)
-					aggregate.takeSnapshot?.();
-
-				return aggregate.popChanges();
-			});
+			const events = await aggregate.handle(cmd);
 
 			this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
 
@@ -147,7 +143,10 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			return events;
 		}
 		finally {
-			this.#aggregatesCache.release(aggregate.id);
+			if (cmd.aggregateId) {
+				this.#executionLock.release(String(cmd.aggregateId));
+				this.#aggregatesCache.release(cmd.aggregateId);
+			}
 		}
 	}
 }

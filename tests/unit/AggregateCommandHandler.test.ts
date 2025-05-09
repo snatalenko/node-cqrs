@@ -190,7 +190,7 @@ describe('AggregateCommandHandler', function () {
 		expect(args[0]).to.be.an('Array');
 	});
 
-	it('invokes aggregate.takeSnapshot before committing event stream, when get shouldTakeSnapshot equals true', async () => {
+	it('invokes aggregate.makeSnapshot before committing event stream, when get shouldTakeSnapshot equals true', async () => {
 
 		// setup
 
@@ -201,7 +201,7 @@ describe('AggregateCommandHandler', function () {
 				return this.version !== 0 && this.version % 2 === 0;
 			}
 		});
-		sinon.spy(aggregate, 'takeSnapshot');
+		sinon.spy(aggregate, 'makeSnapshot');
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
@@ -211,17 +211,17 @@ describe('AggregateCommandHandler', function () {
 
 		// test
 
-		expect(aggregate).to.have.nested.property('takeSnapshot.called', false);
+		expect(aggregate).to.have.nested.property('makeSnapshot.called', false);
 		expect(aggregate).to.have.property('version', 0);
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.nested.property('takeSnapshot.called', false);
+		expect(aggregate).to.have.nested.property('makeSnapshot.called', false);
 		expect(aggregate).to.have.property('version', 1); // 1st event
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.nested.property('takeSnapshot.called', true);
+		expect(aggregate).to.have.nested.property('makeSnapshot.called', true);
 		expect(aggregate).to.have.property('version', 3); // 2nd event and snapshot
 
 		const [eventStream] = commitSpy.lastCall.args;
