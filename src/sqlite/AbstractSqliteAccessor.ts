@@ -40,7 +40,7 @@ export abstract class AbstractSqliteAccessor {
 			return;
 
 		try {
-			this.#initLocker.acquire();
+			await this.#initLocker.acquire();
 			if (this.#initialized)
 				return;
 
