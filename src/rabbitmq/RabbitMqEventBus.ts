@@ -53,8 +53,8 @@ export class RabbitMqEventBus implements IEventBus, IDispatchPipelineProcessor {
 	/**
 	 * Removes a previously registered message handler for a specific event type.
 	 */
-	off(eventType: string, handler: IMessageHandler): void {
-		this.#gateway.unsubscribe({
+	async off(eventType: string, handler: IMessageHandler): Promise<void> {
+		await this.#gateway.unsubscribe({
 			exchange: this.#exchange,
 			queueName: this.#queueName,
 			eventType,

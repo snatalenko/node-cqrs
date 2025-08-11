@@ -130,7 +130,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		try {
 			// multiple concurrent commands to a same aggregateId will execute sequentially
 			if (cmd.aggregateId)
-				this.#executionLock.acquire(String(cmd.aggregateId));
+				await this.#executionLock.acquire(String(cmd.aggregateId));
 
 			// pass command to aggregate instance
 			const events = await aggregate.handle(cmd);

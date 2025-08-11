@@ -125,9 +125,9 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 		// it's safe to get then modify within this process
 		const record = this.#getQuery.get(guid(id));
 		if (record)
-			this.update(id, update);
+			await this.update(id, update);
 		else
-			this.create(id, update());
+			await this.create(id, update());
 	}
 
 	async delete(id: string): Promise<boolean> {
