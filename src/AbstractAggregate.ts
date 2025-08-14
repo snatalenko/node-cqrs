@@ -108,7 +108,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	}
 
 	/** Pass command to command handler */
-	async handle(command: ICommand) {
+	handle(command: ICommand) {
 		if (!command)
 			throw new TypeError('command argument required');
 		if (!command.type)
@@ -118,29 +118,56 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		if (!handler)
 			throw new Error(`'${command.type}' handler is not defined or not a function`);
 
-		this.command = command;
+		if (this.command)
+			throw new Error('Another command is being processed');
 
-		await handler.call(this, command.payload, command.context);
+		try {
+			this.command = command;
 
-		return this.popChanges();
+			const eventsOffset = this.changes.length;
+
+			const handlerResult = handler.call(this, command.payload, command.context);
+
+			if (handlerResult instanceof Promise) {
+				return handlerResult
+					.then(() => this.getUncommittedEvents(eventsOffset))
+					.finally(() => {
+						this.command = undefined;
+					});
+			}
+			else { // handle synchronous result
+				const events = this.getUncommittedEvents(eventsOffset);
+				this.command = undefined;
+				return events;
+			}
+		}
+		catch (err) {
+			this.command = undefined;
+			throw err;
+		}
 	}
 
-	/** Get events emitted during command(s) handling and reset the `changes` collection */
-	protected popChanges(): IEventSet {
+	/**
+	 * Get the events emitted during commands processing.
+	 * If a snapshot should be taken, the snapshot event is added to the end.
+	 */
+	protected getUncommittedEvents(offset?: number): IEventSet {
 		if (this.shouldTakeSnapshot)
-			this.emit(SNAPSHOT_EVENT_TYPE, this.makeSnapshot());
+			this.takeSnapshot();
 
-		return this.#changes.splice(0);
+		return this.changes.slice(offset);
 	}
 
 	/** Format and register aggregate event and mutate aggregate state */
-	protected emit<TPayload>(type: string, payload?: TPayload) {
+	protected emit<TPayload>(type: string, payload?: TPayload): IEvent<TPayload> {
 		if (typeof type !== 'string' || !type.length)
 			throw new TypeError('type argument must be a non-empty string');
 
 		const event = this.makeEvent<TPayload>(type, payload, this.command);
 
 		this.emitRaw(event);
+
+		return event;
 	}
 
 	/** Format event based on a current aggregate state and a command being executed */
@@ -188,6 +215,12 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 			throw new Error('state property is empty, either define state or override makeSnapshot method');
 
 		return structuredClone(this.state);
+	}
+
+	/** Add snapshot event to the collection of emitted events */
+	protected takeSnapshot() {
+		const snapshotEvent = this.emit(SNAPSHOT_EVENT_TYPE, this.makeSnapshot());
+		this.#snapshotVersion = snapshotEvent.aggregateVersion;
 	}
 
 	/** Restore aggregate state from a snapshot */
