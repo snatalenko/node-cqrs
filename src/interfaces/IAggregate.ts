@@ -4,21 +4,29 @@ import { IEvent } from './IEvent';
 import { IEventSet } from './IEventSet';
 
 /**
- * Minimum aggregate interface, as it's used by default `AggregateCommandHandler`
+ * Core interface representing an Aggregate in a CQRS architecture.
+ * An aggregate encapsulates business logic and state, handling commands
+ * and applying events to transition between states.
  */
 export interface IAggregate {
 
 	/**
-	 * Apply a single event to mutate the aggregate's state.
+	 * Applies a single event to update the aggregate's internal state.
 	 *
-	 * Used by `AggregateCommandHandler` when restoring the aggregate state from the event store.
+	 * This method is used primarily when rehydrating the aggregate
+	 * from the persisted sequence of events
+	 *
+	 * @param event - The event to be applied
 	 */
 	mutate(event: IEvent): void;
 
 	/**
-	 * Process a command sent to the aggregate.
+	 * Processes a command by executing the aggregate's business logic,
+	 * resulting in new events that capture the state changes.
+	 * It serves as the primary entry point for invoking aggregate behavior
 	 *
-	 * This is the main entry point for handling aggregate commands.
+	 * @param command - The command to be processed
+	 * @returns A set of events produced by the command
 	 */
 	handle(command: ICommand): IEventSet | Promise<IEventSet>;
 }

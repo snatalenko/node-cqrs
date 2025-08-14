@@ -87,21 +87,18 @@ describe('AbstractAggregate', function () {
 		});
 	});
 
-	describe('popChanges', () => {
+	describe('protected changes', () => {
 
 		it('contains an EventStream of changes happened in aggregate', async () => {
 
-			const changes0 = agg.popChanges();
+			expect(agg).to.haveOwnProperty('changes').that.has.length(0);
 
-			expect(changes0).to.be.an('Array');
-			expect(changes0).to.be.empty;
+			await agg.handle({ type: 'doSomething' });
 
-			const changes = await agg.handle({ type: 'doSomething' });
-
-			expect(changes).to.not.equal(changes0);
-			expect(changes).to.have.nested.property('[0].type', 'somethingDone');
-			expect(changes).to.have.nested.property('[0].aggregateId', 1);
-			expect(changes).to.have.nested.property('[0].aggregateVersion', 0);
+			expect(agg).to.haveOwnProperty('changes').that.has.length(1);
+			expect(agg).to.have.nested.property('changes.[0].type', 'somethingDone');
+			expect(agg).to.have.nested.property('changes.[0].aggregateId', 1);
+			expect(agg).to.have.nested.property('changes.[0].aggregateVersion', 0);
 		});
 	});
 
@@ -129,7 +126,7 @@ describe('AbstractAggregate', function () {
 		});
 	});
 
-	describe('state', () => {
+	describe('protected state', () => {
 
 		it('is an inner aggregate state', () => {
 
@@ -175,16 +172,78 @@ describe('AbstractAggregate', function () {
 
 			assert(emitSpy.calledOnce, 'emit was not called once');
 		});
+
+		it('throws error if another command is being processed', async () => {
+			try {
+				const p1 = agg.handle({ type: 'doSomething' });
+				const p2 = agg.handle({ type: 'doSomething' });
+
+				await Promise.all([p1, p2]);
+
+				throw new AssertionError('did not fail');
+			}
+			catch (err) {
+				expect(err).to.have.property('message', 'Another command is being processed');
+			}
+		});
+
+		it('appends snapshot event if shouldTakeSnapshot is true', async () => {
+
+			class AggregateWithSnapshot extends Aggregate {
+				protected get shouldTakeSnapshot(): boolean {
+					return true;
+				}
+			}
+
+			agg = new AggregateWithSnapshot({ id: 1 });
+
+			const events = await agg.handle({ type: 'doSomething' });
+
+			expect(events).to.have.length(2);
+
+			expect(events[0]).to.have.property('type', 'somethingDone');
+			expect(events[1]).to.have.property('type', 'snapshot');
+			expect(events[1]).to.have.property('payload').that.deep.equals((agg as any).state);
+		});
+
+		it('increments snapshotVersion to avoid unnecessary snapshots on following commands', async () => {
+
+			class AggregateWithSnapshot extends Aggregate {
+				protected get shouldTakeSnapshot(): boolean {
+					return this.version - (this.snapshotVersion || 0) >= 3;
+				}
+			}
+
+			agg = new AggregateWithSnapshot({ id: 1 });
+
+			const r: Array<{ events: number, version: number, snapshotVersion: number | undefined }> = [];
+
+			for (let i = 0; i < 5; i++) {
+				const events = await agg.handle({ type: 'doSomething' });
+				r.push({
+					events: events.length,
+					version: agg.version,
+					snapshotVersion: agg.snapshotVersion
+				});
+			}
+
+			expect(r).to.eql([
+				{ events: 1, version: 1, snapshotVersion: undefined },
+				{ events: 1, version: 2, snapshotVersion: undefined },
+				{ events: 2, version: 4, snapshotVersion: 3 }, // 2 events on 3rd command: regular + snapshot
+				{ events: 1, version: 5, snapshotVersion: 3 }, // no snapshot on 4th command
+				{ events: 2, version: 7, snapshotVersion: 6 } // 2 events on 5th command: regular + snapshot
+			]);
+		});
 	});
 
-	describe('emit(eventType, eventPayload)', () => {
+	describe('protected emit(eventType, eventPayload)', () => {
 
 		it('pushes new event to #changes', () => {
 
 			(agg as any).emit('eventType', {});
 
-			const changes = agg.popChanges();
-			expect(changes).to.have.nested.property('[0].type', 'eventType');
+			expect(agg).to.have.nested.property('changes[0].type', 'eventType');
 		});
 
 		it('increments aggregate #version', () => {
@@ -269,7 +328,7 @@ describe('AbstractAggregate', function () {
 		});
 	});
 
-	describe('makeSnapshot()', () => {
+	describe('protected makeSnapshot()', () => {
 
 		it('exists', () => {
 			expect(agg).to.respondTo('makeSnapshot');
@@ -295,7 +354,7 @@ describe('AbstractAggregate', function () {
 		});
 	});
 
-	describe('restoreSnapshot(snapshotEvent)', () => {
+	describe('protected restoreSnapshot(snapshotEvent)', () => {
 
 		const snapshotEvent = { type: 'snapshot', payload: { somethingDone: 1 } };
 

@@ -30,9 +30,11 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	}
 
 	#id: Identifier;
-	#changes: IEvent[] = [];
 	#version: number = 0;
 	#snapshotVersion: number | undefined;
+
+	/** List of emitted events */
+	protected changes: IEvent[] = [];
 
 	/** Internal aggregate state */
 	protected state: TState | undefined;
@@ -59,8 +61,9 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	 * Override to define whether an aggregate state snapshot should be taken
 	 *
 	 * @example
-	 * 	// create snapshot every 50 events
-	 * 	return this.version % 50 === 0;
+	 *   // create snapshot every 50 events if new events were emitted
+	 *   return !!this.changes.length
+	 *     && this.version - (this.snapshotVersion ?? 0) > 50;
 	 */
 	// eslint-disable-next-line class-methods-use-this
 	protected get shouldTakeSnapshot(): boolean {
@@ -206,7 +209,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 
 		this.mutate(event);
 
-		this.#changes.push(event);
+		this.changes.push(event);
 	}
 
 	/** Create an aggregate state snapshot */
