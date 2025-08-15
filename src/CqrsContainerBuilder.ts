@@ -4,7 +4,7 @@ import { CommandBus } from './CommandBus';
 import { EventStore } from './EventStore';
 import { SagaEventHandler } from './SagaEventHandler';
 import { EventDispatcher } from './EventDispatcher';
-import { InMemoryEventStorage, InMemoryMessageBus, InMemorySnapshotStorage } from './in-memory';
+import { InMemoryMessageBus } from './in-memory';
 import { EventValidationProcessor } from './EventValidationProcessor';
 import { isClass } from './utils';
 import {
@@ -29,16 +29,10 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		super.register(CommandBus).as('commandBus');
 		super.register(EventDispatcher).as('eventDispatcher');
 
-		super.register(InMemoryEventStorage).as('eventStorageWriter');
-		super.register(InMemorySnapshotStorage).as('snapshotStorage');
-
-		// Register default event dispatch pipeline:
-		// validate events, write to event storage, write to snapshot storage.
-		// If any of the processors is not defined, it will be skipped.
-		super.register((container: IContainer) => [
-			new EventValidationProcessor(),
-			container.eventStorageWriter,
-			container.snapshotStorage
+		// Register default event dispatch pipeline with event validation only;
+		// No storage processors added by default
+		super.register(() => [
+			new EventValidationProcessor()
 		]).as('eventDispatchPipeline');
 	}
 

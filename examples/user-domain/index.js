@@ -9,6 +9,7 @@ const {
 	InMemoryMessageBus,
 	EventDispatcher
 } = require('../..'); // node-cqrs
+const { InMemorySnapshotStorage } = require('../../dist/in-memory/InMemorySnapshotStorage');
 const UserAggregate = require('./UserAggregate');
 const UsersProjection = require('./UsersProjection');
 
@@ -20,6 +21,7 @@ exports.createContainer = () => {
 
 	// register infrastructure services
 	builder.register(InMemoryEventStorage).as('eventStorageReader').as('eventStorageWriter');
+	builder.register(InMemorySnapshotStorage).as('snapshotStorage');
 	builder.register(InMemoryMessageBus).as('eventBus');
 
 	// register domain entities

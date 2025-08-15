@@ -4,7 +4,7 @@ import { IEventDispatcher } from './IEventDispatcher';
 import { IEventStore } from './IEventStore';
 import { IEventBus } from './IEventBus';
 import { IDispatchPipelineProcessor } from './IDispatchPipelineProcessor';
-import { IEventStorageReader, IEventStorageWriter } from './IEventStorage';
+import { IEventStorageReader } from './IEventStorage';
 import { IAggregateSnapshotStorage } from './IAggregateSnapshotStorage';
 import { IIdentifierProvider } from './IIdentifierProvider';
 import { IExtendableLogger, ILogger } from './ILogger';
@@ -13,7 +13,6 @@ export interface IContainer extends Container {
 	eventBus: IEventBus;
 	eventStore: IEventStore
 	eventStorageReader: IEventStorageReader;
-	eventStorageWriter?: IEventStorageWriter;
 	identifierProvider?: IIdentifierProvider;
 	snapshotStorage?: IAggregateSnapshotStorage;
 
