@@ -37,11 +37,6 @@ export default {
 
 	// A map from regular expressions to paths to transformers
 	transform: {
-		'^.+\\.tsx?$': [
-			'ts-jest',
-			{
-				isolatedModules: true
-			}
-		]
+		'^.+\\.tsx?$': ['ts-jest']
 	}
 };
