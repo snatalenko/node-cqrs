@@ -11,7 +11,7 @@ import {
 } from './interfaces';
 import { parallelPipe } from 'async-parallel-pipe';
 import { AsyncIterableBuffer } from 'async-iterable-buffer';
-import { getClassName, notEmpty } from './utils';
+import { getClassName } from './utils';
 import { InMemoryMessageBus } from './in-memory';
 
 type EventBatchEnvelope = {
