@@ -14,7 +14,8 @@ import {
 	IEventReceptor,
 	IProjection,
 	IProjectionConstructor,
-	ISagaConstructor
+	ISagaConstructor,
+	isDispatchPipelineProcessor
 } from './interfaces';
 
 export class CqrsContainerBuilder extends ContainerBuilder {
@@ -29,10 +30,14 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		super.register(CommandBus).as('commandBus');
 		super.register(EventDispatcher).as('eventDispatcher');
 
-		// Register default event dispatch pipeline with event validation only;
-		// No storage processors added by default
-		super.register(() => [
-			new EventValidationProcessor()
+		// Register default event dispatch pipeline with event validation only
+		super.register(c => [
+			new EventValidationProcessor(),
+
+			// automatically add `eventStorageWrite` and `snapshotStorage` to the default dispatch pipeline
+			// if they're registered in the DI container and implement `IDispatchPipelineProcessor` interface
+			...isDispatchPipelineProcessor(c.eventStorageWriter) ? [c.eventStorageWriter] : [],
+			...isDispatchPipelineProcessor(c.snapshotStorage) ? [c.snapshotStorage] : []
 		]).as('eventDispatchPipeline');
 	}
 

@@ -9,7 +9,7 @@ const {
 	InMemoryMessageBus,
 	EventDispatcher
 } = require('../..'); // node-cqrs
-const { InMemorySnapshotStorage } = require('../../dist/in-memory/InMemorySnapshotStorage');
+const { InMemorySnapshotStorage } = require('../..');
 const UserAggregate = require('./UserAggregate');
 const UsersProjection = require('./UsersProjection');
 
@@ -19,7 +19,9 @@ const UsersProjection = require('./UsersProjection');
 exports.createContainer = () => {
 	const builder = new ContainerBuilder();
 
-	// register infrastructure services
+	// register infrastructure services;
+	// eventStorageWriter and snapshotStorage are automatically added to the event dispatch pipeline
+	// if they implement IDispatchPipelineProcessor interface (see src/CqrsContainerBuilder.ts)
 	builder.register(InMemoryEventStorage).as('eventStorageReader').as('eventStorageWriter');
 	builder.register(InMemorySnapshotStorage).as('snapshotStorage');
 	builder.register(InMemoryMessageBus).as('eventBus');
