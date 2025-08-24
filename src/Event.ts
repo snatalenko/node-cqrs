@@ -16,17 +16,3 @@ export function describeMultiple(events: ReadonlyArray<IEvent>): string {
 
 	return `${events.length} events`;
 }
-
-/**
- * Validate event structure
- */
-export function validate(event: IEvent) {
-	if (typeof event !== 'object' || !event)
-		throw new TypeError('event must be an Object');
-	if (typeof event.type !== 'string' || !event.type.length)
-		throw new TypeError('event.type must be a non-empty String');
-	if (!event.aggregateId && !event.sagaId)
-		throw new TypeError('either event.aggregateId or event.sagaId is required');
-	if (event.sagaId && typeof event.sagaVersion === 'undefined')
-		throw new TypeError('event.sagaVersion is required, when event.sagaId is defined');
-}

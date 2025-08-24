@@ -1,7 +1,6 @@
 import { InMemorySnapshotStorage } from '../../dist/in-memory/InMemorySnapshotStorage';
 import {
 	ContainerBuilder,
-	EventValidationProcessor,
 	IContainer,
 	InMemoryEventStorage,
 	InMemoryMessageBus
@@ -25,7 +24,6 @@ describe('eventDispatchPipeline', () => {
 		builder.register(InMemoryEventStorage).as('eventStorageWriter');
 		builder.register(InMemorySnapshotStorage).as('snapshotStorage');
 		builder.register((c: IContainer) => [
-			new EventValidationProcessor(),
 			c.externalEventBus,
 			c.eventStorageWriter,
 			c.snapshotStorage

@@ -5,7 +5,6 @@ import { EventStore } from './EventStore';
 import { SagaEventHandler } from './SagaEventHandler';
 import { EventDispatcher } from './EventDispatcher';
 import { InMemoryMessageBus } from './in-memory';
-import { EventValidationProcessor } from './EventValidationProcessor';
 import { isClass } from './utils';
 import {
 	IAggregateConstructor,
@@ -30,10 +29,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		super.register(CommandBus).as('commandBus');
 		super.register(EventDispatcher).as('eventDispatcher');
 
-		// Register default event dispatch pipeline with event validation only
 		super.register(c => [
-			new EventValidationProcessor(),
-
 			// automatically add `eventStorageWrite` and `snapshotStorage` to the default dispatch pipeline
 			// if they're registered in the DI container and implement `IDispatchPipelineProcessor` interface
 			...isDispatchPipelineProcessor(c.eventStorageWriter) ? [c.eventStorageWriter] : [],
