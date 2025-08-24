@@ -58,7 +58,7 @@
     "build": "tsc --build",
     "prepare": "npm run build",
     "preversion": "npm test",
-    "version": "npm run changelog && git add CHANGELOG.md",
+    "version": "./scripts/cleanup_obsolete_tags.sh v$npm_package_version && npm run changelog && git add CHANGELOG.md",
     "lint": "eslint"
   },
   "author": "@snatalenko",
