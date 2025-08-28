@@ -4,7 +4,7 @@ import { IEventDispatcher } from './IEventDispatcher';
 import { IEventStore } from './IEventStore';
 import { IEventBus } from './IEventBus';
 import { IDispatchPipelineProcessor } from './IDispatchPipelineProcessor';
-import { IEventStorageReader } from './IEventStorage';
+import { IEventStorageReader } from './IEventStorageReader';
 import { IAggregateSnapshotStorage } from './IAggregateSnapshotStorage';
 import { IIdentifierProvider } from './IIdentifierProvider';
 import { IExtendableLogger, ILogger } from './ILogger';

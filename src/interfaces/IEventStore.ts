@@ -1,6 +1,6 @@
 import { IEventDispatcher } from './IEventDispatcher';
 import { IEvent } from './IEvent';
-import { IEventStorageReader } from './IEventStorage';
+import { IEventStorageReader } from './IEventStorageReader';
 import { IIdentifierProvider } from './IIdentifierProvider';
 import { IMessageHandler, IObservable } from './IObservable';
 

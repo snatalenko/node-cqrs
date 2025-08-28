@@ -1,6 +1,5 @@
 import { Identifier } from './Identifier';
 import { IEvent } from './IEvent';
-import { IEventSet } from './IEventSet';
 import { IEventStream } from './IEventStream';
 import { isObject } from './isObject';
 
@@ -34,14 +33,6 @@ export interface IEventStorageReader {
 	getSagaEvents(sagaId: Identifier, options: EventQueryBefore): IEventStream;
 }
 
-export interface IEventStorageWriter {
-
-	/**
-	 * Persists a set of events to the event store.
-	 * Returns the persisted event set (potentially enriched or normalized).
-	 */
-	commitEvents(events: IEventSet): Promise<IEventSet>;
-}
 
 export const isIEventStorageReader = (storage: unknown): storage is IEventStorageReader =>
 	isObject(storage)
