@@ -107,12 +107,14 @@ export class InMemoryMessageBus implements IMessageBus {
 		if (typeof event.type !== 'string' || !event.type.length)
 			throw new TypeError('event.type argument must be a non-empty String');
 
-		const handlers = [
-			...this.handlers.get(event.type) || [],
-			...Array.from(this.queues.values()).map(namedQueue =>
-				(e: IEvent, m?: Record<string, any>) => namedQueue.publish(e, m))
-		];
+		const promises: Promise<any>[] = [];
 
-		return Promise.all(handlers.map(handler => handler(event, meta)));
+		for (const handler of this.handlers.get(event.type) ?? [])
+			promises.push(handler(event, meta));
+
+		for (const namedQueue of this.queues.values())
+			promises.push(namedQueue.publish(event, meta));
+
+		return Promise.all(promises);
 	}
 }
