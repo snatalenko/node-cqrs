@@ -2,8 +2,7 @@ import { InMemorySnapshotStorage } from '../../dist/in-memory/InMemorySnapshotSt
 import {
 	ContainerBuilder,
 	IContainer,
-	InMemoryEventStorage,
-	InMemoryMessageBus
+	InMemoryEventStorage
 } from '../../src';
 
 describe('eventDispatchPipeline', () => {
@@ -20,38 +19,14 @@ describe('eventDispatchPipeline', () => {
 	beforeEach(() => {
 		const builder = new ContainerBuilder();
 
-		builder.register(InMemoryMessageBus).as('externalEventBus');
 		builder.register(InMemoryEventStorage).as('eventStorageWriter');
 		builder.register(InMemorySnapshotStorage).as('snapshotStorage');
 		builder.register((c: IContainer) => [
-			c.externalEventBus,
 			c.eventStorageWriter,
 			c.snapshotStorage
 		]).as('eventDispatchPipeline');
 
 		container = builder.container() as IContainer;
-	});
-
-	it('delivers locally dispatched events to externalEventBus', async () => {
-
-		const { eventDispatcher, externalEventBus } = container;
-
-		jest.spyOn(externalEventBus, 'publish');
-
-		await eventDispatcher.dispatch([testEvent], { origin: 'internal' });
-
-		expect(externalEventBus.publish).toHaveBeenCalledTimes(1);
-	});
-
-	it('does not deliver externally dispatched events to externalEventBus', async () => {
-
-		const { eventDispatcher, externalEventBus } = container;
-
-		jest.spyOn(externalEventBus, 'publish');
-
-		await eventDispatcher.dispatch([testEvent], { origin: 'external' });
-
-		expect(externalEventBus.publish).toHaveBeenCalledTimes(0);
 	});
 
 	it('delivers all events to eventStorageWriter', async () => {
