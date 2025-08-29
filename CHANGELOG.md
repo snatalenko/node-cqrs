@@ -1,3 +1,7 @@
+# [1.0.0-rc.16](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.15...v1.0.0-rc.16) (2025-08-29)
+
+
+
 # [1.0.0-rc.15](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.14...v1.0.0-rc.15) (2025-08-24)
 
 
