@@ -97,4 +97,95 @@ describe('EventDispatcher', () => {
 			'B-end-event-2'
 		]);
 	});
+
+	it('routes events to pipelines based on meta.origin', async () => {
+
+		const internalProcessor: IDispatchPipelineProcessor = { process: jest.fn(async b => b) };
+		const externalProcessor: IDispatchPipelineProcessor = { process: jest.fn(async b => b) };
+
+		dispatcher = new EventDispatcher({
+			eventBus,
+			eventDispatchPipelines: {
+				internal: [internalProcessor],
+				external: [externalProcessor]
+			}
+		});
+
+		const internalEvent: IEvent = { type: 'int' };
+		const externalEvent: IEvent = { type: 'ext' };
+
+		await dispatcher.dispatch([internalEvent], { origin: 'internal' });
+		await dispatcher.dispatch([externalEvent], { origin: 'external' });
+
+		expect(internalProcessor.process).toHaveBeenCalledTimes(1);
+		expect(externalProcessor.process).toHaveBeenCalledTimes(1);
+		expect(eventBus.publish).toHaveBeenCalledWith(internalEvent, { origin: 'internal' });
+		expect(eventBus.publish).toHaveBeenCalledWith(externalEvent, { origin: 'external' });
+	});
+
+	it('routes events according to eventDispatchRouter if provided', async () => {
+		const p1: IDispatchPipelineProcessor = { process: jest.fn(async b => b) };
+		const p2: IDispatchPipelineProcessor = { process: jest.fn(async b => b) };
+
+		dispatcher = new EventDispatcher({
+			eventBus,
+			eventDispatchPipelines: {
+				p1: [p1],
+				p2: [p2]
+			},
+			eventDispatchRouter: (_events, meta) => meta?.route
+		});
+
+		const e1: IEvent = { type: 'r1' };
+		const e2: IEvent = { type: 'r2' };
+
+		await dispatcher.dispatch([e1], { route: 'p1' } as any);
+		await dispatcher.dispatch([e2], { route: 'p2' } as any);
+
+		expect(p1.process).toHaveBeenCalledTimes(1);
+		expect(p2.process).toHaveBeenCalledTimes(1);
+		expect(eventBus.publish).toHaveBeenCalledWith(e1, { route: 'p1' });
+		expect(eventBus.publish).toHaveBeenCalledWith(e2, { route: 'p2' });
+	});
+
+	it('routes events to default pipeline when no router is defined', async () => {
+		const pDefault: IDispatchPipelineProcessor = { process: jest.fn(async b => b) };
+		const pOther: IDispatchPipelineProcessor = { process: jest.fn(async b => b) };
+
+		dispatcher = new EventDispatcher({
+			eventBus,
+			eventDispatchPipelines: {
+				[EventDispatcher.DEFAULT_PIPELINE]: [pDefault],
+				other: [pOther]
+			}
+		});
+
+		const e: IEvent = { type: 'go-default' };
+		await dispatcher.dispatch([e]);
+
+		expect(pDefault.process).toHaveBeenCalledTimes(1);
+		expect(pOther.process).not.toHaveBeenCalled();
+		expect(eventBus.publish).toHaveBeenCalledWith(e, {});
+	});
+
+	it('throws when targeted pipeline is missing (router or default)', async () => {
+		const e: IEvent = { type: 'missing' };
+
+		// Case 1: router selects a non-existent pipeline
+		let d = new EventDispatcher({
+			eventBus,
+			eventDispatchPipelines: {
+				foo: []
+			},
+			eventDispatchRouter: () => 'missing-pipe'
+		});
+		await expect(d.dispatch([e], {})).rejects.toThrow('No "missing-pipe" pipeline configured');
+
+		// Case 2: no router/meta, default pipeline not provided
+		d = new EventDispatcher({
+			eventBus,
+			eventDispatchPipelines: { other: [] }
+		});
+		await expect(d.dispatch([e])).rejects.toThrow('No "default" pipeline configured');
+	});
 });

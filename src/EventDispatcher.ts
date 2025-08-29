@@ -1,174 +1,122 @@
 import {
-	DispatchPipelineBatch,
-	IEvent,
 	IEventDispatcher,
 	IDispatchPipelineProcessor,
 	IEventSet,
 	IEventBus,
 	isEventSet,
-	IContainer,
-	isDispatchPipelineProcessor
+	IContainer
 } from './interfaces';
-import { parallelPipe } from 'async-parallel-pipe';
-import { AsyncIterableBuffer } from 'async-iterable-buffer';
-import { getClassName } from './utils';
 import { InMemoryMessageBus } from './in-memory';
-
-type EventBatchEnvelope = {
-	data: DispatchPipelineBatch<{ event?: IEvent }>;
-	error?: Error;
-	resolve: (event: IEvent[]) => void;
-	reject: (error: Error) => void;
-}
+import { EventBatchEnvelope, EventDispatchPipeline } from './EventDispatchPipeline';
 
 export class EventDispatcher implements IEventDispatcher {
 
-	#pipelineInput = new AsyncIterableBuffer<EventBatchEnvelope>();
-	#processors: Array<IDispatchPipelineProcessor> = [];
-	#pipeline: AsyncIterableIterator<EventBatchEnvelope> | IterableIterator<EventBatchEnvelope> = this.#pipelineInput;
+	/** Default pipeline name */
+	static DEFAULT_PIPELINE = 'default';
+
+	/** Default maximum number of parallel batches for newly created pipelines */
+	static DEFAULT_CONCURRENT_LIMIT = 100;
+
+	/** Default router that uses `meta.origin` as the pipeline name */
+	static DEFAULT_ROUTER = (_e: IEventSet, meta?: Record<string, any>) => meta?.origin;
 
 	/**
 	 * Event bus where dispatched messages are delivered after processing.
-	 *
 	 * If not provided in the constructor, defaults to an instance of `InMemoryMessageBus`.
 	 */
 	eventBus: IEventBus;
 
 	/**
-	 * Maximum number of event batches that each pipeline processor can handle in parallel.
+	 * Default maximum number of parallel batches for newly created pipelines.
 	 */
 	concurrentLimit: number;
+
+	/** Router that selects a pipeline name given events and meta */
+	eventDispatchRouter?: (events: IEventSet, meta?: Record<string, any>) => string | undefined;
+
+	#pipelines = new Map<string, EventDispatchPipeline>();
 
 	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchPipeline'> & {
 		eventDispatcherConfig?: {
 			concurrentLimit?: number
-		}
+		},
+		eventDispatchPipelines?: Record<string, IDispatchPipelineProcessor[]>,
+		eventDispatchRouter?: (events: IEventSet, meta?: Record<string, any>) => string | undefined
 	}) {
 		this.eventBus = o?.eventBus ?? new InMemoryMessageBus();
-		this.concurrentLimit = o?.eventDispatcherConfig?.concurrentLimit ?? 100;
+		this.concurrentLimit = o?.eventDispatcherConfig?.concurrentLimit ?? EventDispatcher.DEFAULT_CONCURRENT_LIMIT;
+		this.eventDispatchRouter = o?.eventDispatchRouter ?? EventDispatcher.DEFAULT_ROUTER;
 
-		if (o?.eventDispatchPipeline)
-			this.addPipelineProcessors(o.eventDispatchPipeline);
+		if (o?.eventDispatchPipelines) {
+			// Initialize pipelines if provided
+			for (const [name, processors] of Object.entries(o.eventDispatchPipelines))
+				this.addPipeline(name, processors);
+		}
+		else if (o?.eventDispatchPipeline) {
+			// Single pipeline provided becomes the default pipeline
+			this.addPipeline(EventDispatcher.DEFAULT_PIPELINE, o.eventDispatchPipeline);
+		}
+		else {
+			// Ensure default pipeline exists at minimum
+			this.addPipeline(EventDispatcher.DEFAULT_PIPELINE, []);
+		}
 	}
 
-	addPipelineProcessors(eventDispatchPipeline: IDispatchPipelineProcessor[]) {
+	/** Add or create the default pipeline processors */
+	addPipelineProcessors(eventDispatchPipeline: IDispatchPipelineProcessor[], pipelineName?: string) {
 		if (!Array.isArray(eventDispatchPipeline))
 			throw new TypeError('eventDispatchPipeline argument must be an Array');
 
-		for (const processor of eventDispatchPipeline) {
-			if (processor)
-				this.addPipelineProcessor(processor);
-		}
+		for (const processor of eventDispatchPipeline)
+			this.addPipelineProcessor(processor, pipelineName);
 	}
 
-	/**
-	 * Adds a preprocessor to the event dispatch pipeline.
-	 *
-	 * Preprocessors run in order they are added but process separate batches in parallel, maintaining FIFO order.
-	 */
-	addPipelineProcessor(preprocessor: IDispatchPipelineProcessor) {
-		if (!isDispatchPipelineProcessor(preprocessor))
-			throw new TypeError(`preprocessor ${getClassName(preprocessor)} does not implement IDispatchPipelineProcessor`);
-		if (this.#pipelineProcessing)
-			throw new Error('pipeline processing already started');
+	/** Adds a single processor to the default pipeline */
+	addPipelineProcessor(preprocessor: IDispatchPipelineProcessor, pipelineName?: string) {
+		const pipeline = this.#pipelines.get(pipelineName ?? EventDispatcher.DEFAULT_PIPELINE);
+		if (!pipeline)
+			throw new Error(`Pipeline "${pipelineName ?? EventDispatcher.DEFAULT_PIPELINE}" does not exist`);
 
-		this.#processors.push(preprocessor);
-
-		// Build a processing pipeline that runs preprocessors concurrently, preserving FIFO ordering
-		this.#pipeline = parallelPipe(this.#pipeline, this.concurrentLimit, async envelope => {
-			if (envelope.error)
-				return envelope;
-
-			try {
-				return {
-					...envelope,
-					data: await preprocessor.process(envelope.data)
-				};
-			}
-			catch (error: any) {
-				return {
-					...envelope,
-					error
-				};
-			}
-		});
+		pipeline.addProcessor(preprocessor);
 	}
 
-	#pipelineProcessing = false;
+	/** Create a named pipeline with processors and optional concurrency limit */
+	addPipeline(name: string, processors: IDispatchPipelineProcessor[] = [], options?: { concurrentLimit?: number }) {
+		if (!name)
+			throw new TypeError('pipeline name required');
+		if (this.#pipelines.has(name))
+			throw new Error(`pipeline "${name}" already exists`);
 
-	/**
-	 * Consume the pipeline, publish events, and resolve/reject each batch
-	 */
-	async #startPipelineProcessing() {
-		if (this.#pipelineProcessing) // should never happen
-			throw new Error('pipeline processing already started');
+		const pipeline = new EventDispatchPipeline(this.eventBus, options?.concurrentLimit ?? this.concurrentLimit);
+		for (const p of processors)
+			pipeline.addProcessor(p);
 
-		this.#pipelineProcessing = true;
+		this.#pipelines.set(name, pipeline);
 
-		for await (const { error, reject, data, resolve } of this.#pipeline) {
-			if (error) { // some of the preprocessors failed
-				await this.#revert(data);
-				reject(error);
-				continue;
-			}
-
-			try {
-				const events: IEvent[] = [];
-
-				for (const batch of data) {
-					const { event, ...meta } = batch;
-					if (event) {
-						await this.eventBus.publish(event, meta);
-						events.push(event);
-					}
-				}
-
-				resolve(events);
-			}
-			catch (publishError: any) {
-				reject(publishError);
-			}
-		}
+		return pipeline;
 	}
 
-	/**
-	 * Revert side effects made by pipeline processors in case of a batch processing failure
-	 */
-	async #revert(batch: DispatchPipelineBatch) {
-		for (const processor of this.#processors)
-			await processor.revert?.(batch);
-	}
-
-	/**
-	 * Dispatch a set of events through the processing pipeline.
-	 *
-	 * Returns a promise that resolves after all events are processed and published.
-	 */
+	/** Dispatch events through a routed pipeline and publish to the shared eventBus */
 	async dispatch(events: IEventSet, meta?: Record<string, any>) {
 		if (!isEventSet(events) || events.length === 0)
 			throw new Error('dispatch requires a non-empty array of events');
 
-		// const { promise, resolve, reject } = Promise.withResolvers<IEventSet>();
 		let resolve!: (value: IEventSet | PromiseLike<IEventSet>) => void;
 		let reject!: (reason?: any) => void;
-		const promise = new Promise<IEventSet>((res, rej) => {
-			resolve = res;
-			reject = rej;
-		});
+		const promise = new Promise<IEventSet>((res, rej) => { resolve = res; reject = rej; });
 
 		const envelope: EventBatchEnvelope = {
-			data: events.map(event => ({
-				event,
-				...meta
-			})),
+			data: events.map(event => ({ event, ...meta })),
 			resolve,
 			reject
 		};
 
-		if (!this.#pipelineProcessing)
-			this.#startPipelineProcessing();
+		const desired = this.eventDispatchRouter?.(events, meta) ?? EventDispatcher.DEFAULT_PIPELINE;
+		const pipeline = this.#pipelines.get(desired) ?? this.#pipelines.get(EventDispatcher.DEFAULT_PIPELINE);
+		if (!pipeline)
+			throw new Error(`No "${desired}" pipeline configured`);
 
-		this.#pipelineInput.push(envelope);
+		pipeline.push(envelope);
 
 		return promise;
 	}

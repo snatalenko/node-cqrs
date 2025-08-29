@@ -18,7 +18,12 @@ export interface IContainer extends Container {
 
 	commandBus: ICommandBus;
 	eventDispatcher: IEventDispatcher;
+
+	/** Default event dispatch pipeline */
 	eventDispatchPipeline?: IDispatchPipelineProcessor[];
+
+	/** Multiple event dispatch pipelines per origin */
+	eventDispatchPipelines?: Record<string, IDispatchPipelineProcessor[]>;
 
 	logger?: ILogger | IExtendableLogger;
 
