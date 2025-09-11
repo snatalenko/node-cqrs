@@ -99,11 +99,14 @@ export class EventDispatcher implements IEventDispatcher {
 	/** Dispatch events through a routed pipeline and publish to the shared eventBus */
 	async dispatch(events: IEventSet, meta?: Record<string, any>) {
 		if (!isEventSet(events) || events.length === 0)
-			throw new Error('dispatch requires a non-empty array of events');
+			throw new TypeError('dispatch requires a non-empty array of events');
 
 		let resolve!: (value: IEventSet | PromiseLike<IEventSet>) => void;
 		let reject!: (reason?: any) => void;
-		const promise = new Promise<IEventSet>((res, rej) => { resolve = res; reject = rej; });
+		const promise = new Promise<IEventSet>((res, rej) => {
+			resolve = res;
+			reject = rej;
+		});
 
 		const envelope: EventBatchEnvelope = {
 			data: events.map(event => ({ event, ...meta })),

@@ -17,7 +17,8 @@ import {
 	IEventBus,
 	isIEventBus,
 	isIEventStorageReader,
-	IContainer
+	IContainer,
+	isEventSet
 } from './interfaces';
 import {
 	getClassName,
@@ -148,8 +149,8 @@ export class EventStore implements IEventStore {
 	 * @returns Signed and committed events
 	 */
 	async dispatch(events: IEventSet): Promise<IEventSet> {
-		if (!Array.isArray(events))
-			throw new TypeError('events argument must be an Array');
+		if (!isEventSet(events) || events.length === 0)
+			throw new TypeError('dispatch requires a non-empty array of events');
 
 		const augmentedEvents = await this.#attachSagaIdToSagaStarterEvents(events);
 
