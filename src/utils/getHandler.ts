@@ -10,11 +10,11 @@ export function getHandler(context: { [key: string]: any }, messageType: string)
 		throw new TypeError('messageType argument must be a non-empty string');
 
 	if (messageType in context && typeof context[messageType] === 'function')
-		return context[messageType].bind(context);
+		return context[messageType];
 
 	const privateHandlerName = `_${messageType}`;
 	if (privateHandlerName in context && typeof context[privateHandlerName] === 'function')
-		return context[privateHandlerName].bind(context);
+		return context[privateHandlerName];
 
 	return null;
 }
