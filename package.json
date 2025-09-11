@@ -54,7 +54,7 @@
     "pretest:integration": "npm run build",
     "test:integration": "jest --verbose examples/user-domain-tests tests/integration",
     "changelog": "conventional-changelog -n ./scripts/changelog -r 0 > CHANGELOG.md",
-    "clean": "tsc --build --clean",
+    "clean": "rm -rf ./dist ./types ./coverage && tsc --build --clean",
     "build": "tsc --build",
     "prepare": "npm run build",
     "preversion": "npm test",
