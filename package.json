@@ -48,13 +48,13 @@
     "node": ">=18.0.0"
   },
   "scripts": {
+    "cleanup": "rm -rf ./dist ./types ./coverage && tsc --build --clean",
     "pretest": "npm run build",
-    "test": "jest tests/unit",
-    "test:coverage": "jest --collect-coverage tests/unit",
-    "pretest:integration": "npm run build",
-    "test:integration": "jest --verbose examples/user-domain-tests tests/integration",
+    "test": "jest tests/unit examples/user-domain-tests",
+    "test:coverage": "npm t -- --collect-coverage",
+    "test:rabbitmq": "jest --verbose tests/integration/rabbitmq",
+    "test:sqlite": "jest --verbose tests/integration/sqlite",
     "changelog": "conventional-changelog -n ./scripts/changelog -r 0 > CHANGELOG.md",
-    "clean": "rm -rf ./dist ./types ./coverage && tsc --build --clean",
     "build": "tsc --build",
     "prepare": "npm run build",
     "preversion": "npm test",
