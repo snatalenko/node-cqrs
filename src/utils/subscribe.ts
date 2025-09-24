@@ -56,10 +56,10 @@ export function subscribe(
 			if (!observable.queue)
 				throw new TypeError('Observer does not support named queues');
 
-			observable.queue(queueName).on(messageType, handler);
+			observable.queue(queueName).on(messageType, (event, meta) => handler.call(observer, event, meta));
 		}
 		else {
-			observable.on(messageType, handler);
+			observable.on(messageType, (event, meta) => handler.call(observer, event, meta));
 		}
 	}
 }

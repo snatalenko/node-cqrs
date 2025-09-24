@@ -115,7 +115,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	/** Subscribe to event store */
 	async subscribe(eventStore: IEventStore): Promise<void> {
 		subscribe(eventStore, this, {
-			masterHandler: (e: IEvent) => this.project(e)
+			masterHandler: this.project
 		});
 
 		await this.restore(eventStore);

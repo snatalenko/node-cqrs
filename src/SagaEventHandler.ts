@@ -83,7 +83,7 @@ export class SagaEventHandler implements IEventReceptor {
 	subscribe(eventStore: IObservable) {
 		subscribe(eventStore, this, {
 			messageTypes: [...this.#startsWith, ...this.#handles],
-			masterHandler: e => this.handle(e),
+			masterHandler: this.handle,
 			queueName: this.#queueName
 		});
 	}
