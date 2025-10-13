@@ -1,3 +1,11 @@
+# [1.0.0-rc.20](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.19...v1.0.0-rc.20) (2025-10-13)
+
+
+### Changes
+
+* Enhance type safety in CqrsContainerBuilder with generics ([025765c](https://github.com/snatalenko/node-cqrs/commit/025765cc31eec5a004142dff5cafd8264af10ea9))
+
+
 # [1.0.0-rc.19](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.18...v1.0.0-rc.19) (2025-09-24)
 
 
