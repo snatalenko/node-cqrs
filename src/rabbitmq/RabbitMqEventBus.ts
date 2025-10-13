@@ -1,5 +1,4 @@
 import { IEvent, IEventBus, IDispatchPipelineProcessor, IMessageHandler, IObservable, DispatchPipelineBatch } from '../interfaces';
-import { DEFAULT_EXCHANGE } from './constants';
 import { RabbitMqGateway } from './RabbitMqGateway';
 
 const ALL_EVENTS_WILDCARD = '*';
@@ -9,6 +8,8 @@ export class RabbitMqEventBus implements IEventBus, IDispatchPipelineProcessor {
 	static get allEventsWildcard(): '*' {
 		return ALL_EVENTS_WILDCARD;
 	}
+
+	static DEFAULT_EXCHANGE = 'node-cqrs.events';
 
 	#gateway: RabbitMqGateway;
 	#queues = new Map<string, RabbitMqEventBus>();
@@ -21,7 +22,7 @@ export class RabbitMqEventBus implements IEventBus, IDispatchPipelineProcessor {
 		queueName?: string
 	}) {
 		this.#gateway = o.rabbitMqGateway;
-		this.#exchange = o.exchange ?? DEFAULT_EXCHANGE;
+		this.#exchange = o.exchange ?? RabbitMqEventBus.DEFAULT_EXCHANGE;
 		this.#queueName = o.queueName;
 	}
 

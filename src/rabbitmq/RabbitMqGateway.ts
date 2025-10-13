@@ -2,7 +2,6 @@ import { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import { IContainer, ILogger, IMessage, isMessage } from '../interfaces';
 import * as Event from '../Event';
 import { delay } from '../utils';
-import { HANDLER_PROCESS_TIMEOUT } from './constants';
 import { TerminationHandler } from './TerminationHandler';
 
 /** Generate a short pseudo-unique identifier using a truncated timestamp and random component */
@@ -46,6 +45,8 @@ const isSystemQueue = (queueName: string) => queueName.startsWith('amq.');
  * all messages delivered to the fanout exchange are also routed to this queue.
  */
 export class RabbitMqGateway {
+
+	static HANDLER_PROCESS_TIMEOUT = 60 * 60 * 1000; // 1 hour
 
 	#connectionFactory: () => Promise<ChannelModel>;
 	#appId: string;
@@ -360,7 +361,7 @@ export class RabbitMqGateway {
 					messageId
 				});
 				channel.nack(msg, false, false);
-			}, HANDLER_PROCESS_TIMEOUT);
+			}, RabbitMqGateway.HANDLER_PROCESS_TIMEOUT);
 
 			try {
 

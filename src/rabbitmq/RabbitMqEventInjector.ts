@@ -3,7 +3,7 @@ import { IMessage } from '../interfaces/IMessage';
 import { RabbitMqGateway } from './RabbitMqGateway';
 import { IEventDispatcher } from '../interfaces';
 import * as Event from '../Event';
-import { DEFAULT_EXCHANGE } from './constants';
+import { RabbitMqEventBus } from './RabbitMqEventBus';
 
 /**
  * Injects events received from a RabbitMQ exchange into the local event dispatcher.
@@ -31,7 +31,7 @@ export class RabbitMqEventInjector {
 			container.logger;
 	}
 
-	async start(exchange: string = DEFAULT_EXCHANGE): Promise<void> {
+	async start(exchange: string = RabbitMqEventBus.DEFAULT_EXCHANGE): Promise<void> {
 		this.#logger?.debug(`Subscribing to messages from exchange "${exchange}"...`);
 
 		await this.#rabbitMqGateway.subscribeToFanout(exchange, this.#messageHandler);
@@ -39,7 +39,7 @@ export class RabbitMqEventInjector {
 		this.#logger?.debug(`Listening to messages from exchange "${exchange}"`);
 	}
 
-	async stop(exchange: string = DEFAULT_EXCHANGE): Promise<void> {
+	async stop(exchange: string = RabbitMqEventBus.DEFAULT_EXCHANGE): Promise<void> {
 		this.#logger?.debug(`Unsubscribing from messages from exchange "${exchange}"...`);
 
 		await this.#rabbitMqGateway.unsubscribe({
