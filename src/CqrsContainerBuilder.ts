@@ -17,7 +17,8 @@ import {
 	isDispatchPipelineProcessor
 } from './interfaces';
 
-export class CqrsContainerBuilder extends ContainerBuilder {
+export class CqrsContainerBuilder<TContainerInterface extends IContainer = IContainer>
+	extends ContainerBuilder<TContainerInterface> {
 
 	constructor(options?: {
 		types: Readonly<TypeConfig<any>[]>,
@@ -38,9 +39,9 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 	}
 
 	/** Register command handler, which will be subscribed to commandBus upon instance creation */
-	registerCommandHandler(typeOrFactory: TClassOrFactory<ICommandHandler>) {
+	registerCommandHandler(typeOrFactory: TClassOrFactory<ICommandHandler, TContainerInterface>) {
 		return super.register(
-			(container: IContainer) => {
+			(container: TContainerInterface) => {
 				const handler = container.createInstance(typeOrFactory);
 				handler.subscribe(container.commandBus);
 				return handler;
@@ -49,9 +50,9 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 	}
 
 	/** Register event receptor, which will be subscribed to eventStore upon instance creation */
-	registerEventReceptor(typeOrFactory: TClassOrFactory<IEventReceptor>) {
+	registerEventReceptor(typeOrFactory: TClassOrFactory<IEventReceptor, TContainerInterface>) {
 		return super.register(
-			(container: IContainer) => {
+			(container: TContainerInterface) => {
 				const receptor = container.createInstance(typeOrFactory);
 				receptor.subscribe(container.eventStore);
 				return receptor;
@@ -63,11 +64,11 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 	 * Register projection, which will expose view and will be subscribed
 	 * to eventStore and will restore its state upon instance creation
 	 */
-	registerProjection(ProjectionType: IProjectionConstructor, exposedViewAlias?: string) {
+	registerProjection(ProjectionType: IProjectionConstructor, exposedViewAlias?: keyof TContainerInterface) {
 		if (!isClass(ProjectionType))
 			throw new TypeError('ProjectionType argument must be a constructor function');
 
-		const projectionFactory = (container: IContainer): IProjection<any> => {
+		const projectionFactory = (container: TContainerInterface): IProjection<any> => {
 			const projection = container.createInstance(ProjectionType);
 			projection.subscribe(container.eventStore);
 
@@ -90,7 +91,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		if (!isClass(AggregateType))
 			throw new TypeError('AggregateType argument must be a constructor function');
 
-		const commandHandlerFactory = (container: IContainer): ICommandHandler =>
+		const commandHandlerFactory = (container: TContainerInterface): ICommandHandler =>
 			container.createInstance(AggregateCommandHandler, {
 				aggregateFactory: (options: any) =>
 					container.createInstance(AggregateType, options),
@@ -106,7 +107,7 @@ export class CqrsContainerBuilder extends ContainerBuilder {
 		if (!isClass(SagaType))
 			throw new TypeError('SagaType argument must be a constructor function');
 
-		const eventReceptorFactory = (container: IContainer): IEventReceptor =>
+		const eventReceptorFactory = (container: TContainerInterface): IEventReceptor =>
 			container.createInstance(SagaEventHandler, {
 				sagaFactory: (options: any) => container.createInstance(SagaType, options),
 				handles: SagaType.handles,

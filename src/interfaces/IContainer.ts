@@ -8,11 +8,13 @@ import { IEventStorageReader } from './IEventStorageReader';
 import { IAggregateSnapshotStorage } from './IAggregateSnapshotStorage';
 import { IIdentifierProvider } from './IIdentifierProvider';
 import { IExtendableLogger, ILogger } from './ILogger';
+import { IEventStorageWriter } from './IEventStorageWriter';
 
 export interface IContainer extends Container {
 	eventBus: IEventBus;
 	eventStore: IEventStore
 	eventStorageReader: IEventStorageReader;
+	eventStorageWriter?: IEventStorageWriter;
 	identifierProvider?: IIdentifierProvider;
 	snapshotStorage?: IAggregateSnapshotStorage;
 
