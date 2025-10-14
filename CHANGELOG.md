@@ -1,3 +1,11 @@
+# [1.0.0-rc.21](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.20...v1.0.0-rc.21) (2025-10-14)
+
+
+### Fixes
+
+* Proper milliseconds calculation for Event Locker ([ca4016a](https://github.com/snatalenko/node-cqrs/commit/ca4016a486a7b2a010f86174140bd21e0a1c0d08))
+
+
 # [1.0.0-rc.20](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.19...v1.0.0-rc.20) (2025-10-13)
 
 
