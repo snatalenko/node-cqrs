@@ -36,6 +36,19 @@ type Subscription = {
 
 const isSystemQueue = (queueName: string) => queueName.startsWith('amq.');
 
+function extractErrorMessage(err: Error | AggregateError | unknown): string {
+	if (!err || typeof err !== 'object')
+		return String(err);
+
+	if (err instanceof AggregateError)
+		return err.errors?.map(e => (e && 'message' in e ? e.message : String(e))).join('; ');
+
+	if (err instanceof Error && err.message)
+		return err.message;
+
+	return String(err);
+}
+
 /**
  * RabbitMqGateway implements the IObservable interface using RabbitMQ.
  *
@@ -113,8 +126,8 @@ export class RabbitMqGateway {
 				for (const subscription of subscriptionsToRestore)
 					await this.subscribe(subscription);
 			}
-			catch (err: any) {
-				this.#logger?.warn(`${this.#appId}: Connection attempt failed: ${err.message}`);
+			catch (err: unknown) {
+				this.#logger?.warn(`${this.#appId}: Connection attempt failed: ${extractErrorMessage(err)}`);
 				await delay(5_000);
 			}
 		}
@@ -135,9 +148,9 @@ export class RabbitMqGateway {
 
 			this.#logger?.debug(`${this.#appId}: Disconnected from RabbitMQ`);
 		}
-		catch (err: any) {
-			this.#logger?.error(`${this.#appId}: Failed to disconnect from RabbitMQ: ${err.message}`, {
-				stack: err.stack
+		catch (err: unknown) {
+			this.#logger?.error(`${this.#appId}: Failed to disconnect from RabbitMQ: ${extractErrorMessage(err)}`, {
+				stack: (err as Error)?.stack
 			});
 		}
 	}
@@ -152,8 +165,8 @@ export class RabbitMqGateway {
 				this.#logger?.debug(`${this.#appId}: Consumer "${consumerTag}" on queue "${queueName}" cancelled successfully`);
 				this.#queueConsumers.delete(queueName);
 			}
-			catch (err: any) {
-				this.#logger?.error(`${this.#appId}: Failed to cancel consumer "${consumerTag}" for queue "${queueName}": ${err.message}`);
+			catch (err: unknown) {
+				this.#logger?.error(`${this.#appId}: Failed to cancel consumer "${consumerTag}" for queue "${queueName}": ${extractErrorMessage(err)}`);
 			}
 		});
 
@@ -161,8 +174,8 @@ export class RabbitMqGateway {
 		this.#logger?.info(`${this.#appId}: All consumers stopped.`);
 	}
 
-	#onConnectionError(err: Error) {
-		this.#logger?.warn(`${this.#appId}: Connection error: ${err.message}`);
+	#onConnectionError(err: unknown) {
+		this.#logger?.warn(`${this.#appId}: Connection error: ${extractErrorMessage(err)}`);
 	}
 
 	#onConnectionClosed() {
@@ -390,8 +403,8 @@ export class RabbitMqGateway {
 
 				channel?.ack(msg);
 			}
-			catch (err: any) {
-				this.#logger?.error(`${this.#appId}: Message processing failed: ${err.message}`);
+			catch (err: unknown) {
+				this.#logger?.error(`${this.#appId}: Message processing failed: ${extractErrorMessage(err)}`);
 
 				// Redirect message to dead letter queue, if `{ noAck: true }` was not set on consumption
 				channel?.nack(msg, false, false);
