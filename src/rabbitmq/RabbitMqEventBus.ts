@@ -1,12 +1,10 @@
-import { IEvent, IEventBus, IDispatchPipelineProcessor, IMessageHandler, IObservable, DispatchPipelineBatch } from '../interfaces';
+import { IEvent, IEventBus, IMessageHandler, IObservable } from '../interfaces';
 import { RabbitMqGateway } from './RabbitMqGateway';
 
-const ALL_EVENTS_WILDCARD = '*';
+export class RabbitMqEventBus implements IEventBus {
 
-export class RabbitMqEventBus implements IEventBus, IDispatchPipelineProcessor {
-
-	static get allEventsWildcard(): '*' {
-		return ALL_EVENTS_WILDCARD;
+	static get allEventsWildcard(): string {
+		return RabbitMqGateway.ALL_EVENTS_WILDCARD;
 	}
 
 	static DEFAULT_EXCHANGE = 'node-cqrs.events';
@@ -81,25 +79,5 @@ export class RabbitMqEventBus implements IEventBus, IDispatchPipelineProcessor {
 			this.#queues.set(name, queue);
 		}
 		return queue;
-	}
-
-	/**
-	 * Processes a batch of events and publishes them to the fanout exchange.
-	 *
-	 * This method is part of the `IDispatchPipelineProcessor` interface.
-	 */
-	async process(batch: DispatchPipelineBatch): Promise<DispatchPipelineBatch> {
-		for (const { event, origin } of batch) {
-			// Skip publishing if the event was dispatched from external source
-			if (origin === 'external')
-				continue;
-
-			if (!event)
-				throw new Error('Event batch does not contain `event`');
-
-			await this.publish(event);
-		}
-
-		return batch;
 	}
 }

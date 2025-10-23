@@ -60,6 +60,7 @@ function extractErrorMessage(err: Error | AggregateError | unknown): string {
 export class RabbitMqGateway {
 
 	static HANDLER_PROCESS_TIMEOUT = 60 * 60 * 1000; // 1 hour
+	static ALL_EVENTS_WILDCARD = '*';
 
 	#connectionFactory: () => Promise<ChannelModel>;
 	#appId: string;
@@ -175,7 +176,9 @@ export class RabbitMqGateway {
 	}
 
 	#onConnectionError(err: unknown) {
-		this.#logger?.warn(`${this.#appId}: Connection error: ${extractErrorMessage(err)}`);
+		this.#logger?.error(`${this.#appId}: Connection error: ${extractErrorMessage(err)}`, {
+			stack: err instanceof Error ? err.stack : undefined
+		});
 	}
 
 	#onConnectionClosed() {
@@ -192,7 +195,7 @@ export class RabbitMqGateway {
 			s.queueGivenName === queueGivenName
 			&& (
 				!s.eventType
-				|| s.eventType === '*'
+				|| s.eventType === RabbitMqGateway.ALL_EVENTS_WILDCARD
 				|| s.eventType === eventType
 			)
 		);
