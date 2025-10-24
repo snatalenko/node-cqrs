@@ -190,7 +190,7 @@ export class RabbitMqGateway {
 		this.#queueConsumers.clear();
 	}
 
-	#getHandlers(queueGivenName: string = '', eventType: string = '*') {
+	#getHandlers(queueGivenName: string = '', eventType: string = RabbitMqGateway.ALL_EVENTS_WILDCARD) {
 		return this.#subscriptions.filter(s =>
 			s.queueGivenName === queueGivenName
 			&& (
@@ -346,7 +346,7 @@ export class RabbitMqGateway {
 	}
 
 	async #assertBinding(channel: Channel, exchange: string, queueGivenName: string, eventType?: string) {
-		if (!eventType || eventType === '*')
+		if (!eventType || eventType === RabbitMqGateway.ALL_EVENTS_WILDCARD)
 			eventType = '#';
 
 		await channel.bindQueue(queueGivenName, exchange, eventType);
