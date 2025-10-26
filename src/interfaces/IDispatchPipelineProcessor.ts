@@ -10,7 +10,7 @@ export type DispatchPipelineEnvelope = {
 	/**
 	 * Origin of the event. Can be used to distinguish between events coming from different sources.
 	 */
-	origin?: 'external' | 'internal';
+	origin?: string;
 
 	event?: IEvent;
 }
