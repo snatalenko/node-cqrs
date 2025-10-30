@@ -32,6 +32,22 @@ type Subscription = {
 
 	/** Optional limit for concurrent message handling */
 	concurrentLimit?: number;
+
+	/**
+	 * If true, the broker won't expect an acknowledgement of messages delivered to this consumer;
+	 * i.e., it will dequeue messages as soon as they've been sent down the wire.
+	 *
+	 * Defaults to `false` - messages are acknowledged after successful handler completion or rejected on exception.
+	 */
+	noAck?: boolean;
+
+	/**
+	 * Handler timeout in milliseconds; if the handler does not complete within this time,
+	 * the message is considered failed and is rejected.
+	 *
+	 * Defaults to 1h (`RabbitMqGateway.HANDLER_PROCESS_TIMEOUT`)
+	 */
+	handlerProcessTimeout?: number;
 };
 
 const isSystemQueue = (queueName: string) => queueName.startsWith('amq.');
@@ -201,8 +217,9 @@ export class RabbitMqGateway {
 		);
 	}
 
-	async subscribeToQueue(exchange: string, queueName: string, handler: MessageHandler) {
-		return this.subscribe({ exchange, queueName, handler });
+	async subscribeToQueue(exchange: string, queueName: string, handler: MessageHandler,
+		options?: Omit<Subscription, 'exchange' | 'queueName' | 'handler'>) {
+		return this.subscribe({ exchange, queueName, handler, ...options });
 	}
 
 	/**
@@ -211,8 +228,9 @@ export class RabbitMqGateway {
 	 * Messages are considered "delivered" upon receipt.
 	 * Failed message processing does not result in redelivery or dead-lettering.
 	 */
-	async subscribeToFanout(exchange: string, handler: MessageHandler) {
-		return this.subscribe({ exchange, handler, ignoreOwn: true });
+	async subscribeToFanout(exchange: string, handler: MessageHandler,
+		options?: Omit<Subscription, 'exchange' | 'handler'>) {
+		return this.subscribe({ exchange, handler, ignoreOwn: true, ...options });
 	}
 
 	/**
@@ -238,8 +256,7 @@ export class RabbitMqGateway {
 		const {
 			exchange,
 			queueName,
-			eventType,
-			concurrentLimit
+			eventType
 		} = subscription;
 
 		const channel = await this.#assertChannel(queueName);
@@ -271,7 +288,7 @@ export class RabbitMqGateway {
 			await this.#assetQueue(channel, exchange, queueGivenName, eventType, { deadLetterExchangeName });
 		}
 
-		await this.#assertConsumer(queueGivenName, channel, concurrentLimit);
+		await this.#assertConsumer(queueGivenName, channel, subscription);
 
 		this.#subscriptions.push({ ...subscription, queueGivenName });
 	}
@@ -354,12 +371,16 @@ export class RabbitMqGateway {
 		this.#logger?.debug(`${this.#appId}: Queue "${queueGivenName}" bound to exchange "${exchange}" with pattern "${eventType}"`);
 	}
 
-	async #assertConsumer(queueGivenName: string, channel: Channel, concurrentLimit?: number) {
+	async #assertConsumer(
+		queueGivenName: string,
+		channel: Channel,
+		options?: Pick<Subscription, 'concurrentLimit' | 'noAck' | 'handlerProcessTimeout'>
+	) {
 		if (this.#queueConsumers.has(queueGivenName))
 			return;
 
-		if (concurrentLimit)
-			await channel.prefetch(concurrentLimit);
+		if (options?.concurrentLimit !== undefined)
+			await channel.prefetch(options.concurrentLimit);
 
 		const c = await channel.consume(queueGivenName, async (msg: ConsumeMessage | null) => {
 			if (!msg)
@@ -369,6 +390,7 @@ export class RabbitMqGateway {
 			const { messageId, correlationId, appId } = msg.properties ?? {};
 
 			// Keep the process alive while waiting for the handler to finish
+			const handlerProcessTimeout = options?.handlerProcessTimeout ?? RabbitMqGateway.HANDLER_PROCESS_TIMEOUT;
 			const keepAliveTimeout = setTimeout(() => {
 				this.#logger?.warn(`${this.#appId}: Message processing timed out`, {
 					queueName: queueGivenName,
@@ -377,10 +399,9 @@ export class RabbitMqGateway {
 					messageId
 				});
 				channel.nack(msg, false, false);
-			}, RabbitMqGateway.HANDLER_PROCESS_TIMEOUT);
+			}, handlerProcessTimeout);
 
 			try {
-
 				this.#logger?.debug(`${this.#appId}: Message received`, {
 					queueName: queueGivenName,
 					consumerTag,
@@ -415,6 +436,8 @@ export class RabbitMqGateway {
 			finally {
 				clearTimeout(keepAliveTimeout);
 			}
+		}, {
+			noAck: options?.noAck
 		});
 
 		this.#logger?.debug(`${this.#appId}: Consumer "${c.consumerTag}" registered on queue "${queueGivenName}"`);
