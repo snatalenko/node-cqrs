@@ -24,4 +24,5 @@ export * from './IObservable';
 export * from './IObserver';
 export * from './IProjection';
 export * from './ISaga';
+export * from './ISnapshotEvent';
 export * from './IViewLocker';

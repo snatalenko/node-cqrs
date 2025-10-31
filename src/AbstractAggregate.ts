@@ -5,12 +5,11 @@ import {
 	Identifier,
 	IEvent,
 	IEventSet,
-	IAggregateConstructorParams
+	IAggregateConstructorParams,
+	SNAPSHOT_EVENT_TYPE
 } from './interfaces';
 
 import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } from './utils';
-
-const SNAPSHOT_EVENT_TYPE = 'snapshot';
 
 /**
  * Base class for Aggregate definition

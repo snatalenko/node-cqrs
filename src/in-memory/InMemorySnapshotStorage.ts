@@ -5,13 +5,10 @@ import {
 	Identifier,
 	IDispatchPipelineProcessor,
 	IEvent,
-	ILogger
+	ILogger,
+	isSnapshotEvent
 } from '../interfaces';
 import * as Event from '../Event';
-
-const SNAPSHOT_EVENT_TYPE = 'snapshot';
-const isSnapshotEvent = (event?: IEvent): event is IEvent & { type: 'snapshot' } =>
-	(!!event && event.type === SNAPSHOT_EVENT_TYPE);
 
 /**
  * In-memory storage for aggregate snapshots.

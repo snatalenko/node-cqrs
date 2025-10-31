@@ -3,7 +3,8 @@ import {
 	IEvent,
 	IDispatchPipelineProcessor,
 	IEventBus,
-	isDispatchPipelineProcessor
+	isDispatchPipelineProcessor,
+	isSnapshotEvent
 } from './interfaces';
 
 import { parallelPipe } from 'async-parallel-pipe';
@@ -73,10 +74,14 @@ export class EventDispatchPipeline {
 					const events: IEvent[] = [];
 					for (const batch of data) {
 						const { event, ...meta } = batch as any;
-						if (event) {
-							await this.eventBus.publish(event, meta);
-							events.push(event);
-						}
+						if (!event)
+							continue;
+						if (isSnapshotEvent(event))
+							continue;
+
+						await this.eventBus.publish(event, meta);
+
+						events.push(event);
 					}
 					resolve(events);
 				}
