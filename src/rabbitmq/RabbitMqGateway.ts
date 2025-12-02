@@ -350,9 +350,13 @@ export class RabbitMqGateway {
 		const { queue: queueGivenName } = await channel.assertQueue(queueName, {
 			exclusive,
 			durable,
-			...deadLetterExchangeName && {
-				arguments: {
+			arguments: {
+				...deadLetterExchangeName && {
 					'x-dead-letter-exchange': deadLetterExchangeName
+				},
+				...durable && {
+					// Use quorum queues (Raft-replicated, HA alternative to classic queues) for durable workloads
+					'x-queue-type': 'quorum'
 				}
 			}
 		});
