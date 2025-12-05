@@ -1,3 +1,21 @@
+# [1.0.0-rc.26](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.25...v1.0.0-rc.26) (2025-12-05)
+
+
+### Changes
+
+* Move reconnect logic to rabbitMqConnectionFactory; re-establish subscriptions on reconnect ([a42d138](https://github.com/snatalenko/node-cqrs/commit/a42d138fc93bc767ae5d7fac75f5582cb3936103))
+
+### Build System
+
+* Update changelog titles and commit message prefixes ([8c6ead0](https://github.com/snatalenko/node-cqrs/commit/8c6ead0a9b4f3feba7bbfba539082eeb0b09b9f9))
+
+### Internal Fixes
+
+* Use "quorum" type for durable queues ([f617149](https://github.com/snatalenko/node-cqrs/commit/f6171498db544d820e876d550421eef75c66088f))
+* Vulnerability in js-yaml dev dependency ([0e9b25e](https://github.com/snatalenko/node-cqrs/commit/0e9b25edd0a81581fb084256638c9ab56afb4115))
+* Ensure proper subscription management in TerminationHandler ([506acc2](https://github.com/snatalenko/node-cqrs/commit/506acc2dde02dd4d83cb8e8d6079dc63fa992651))
+
+
 # [1.0.0-rc.25](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.24...v1.0.0-rc.25) (2025-10-31)
 
 
@@ -68,10 +86,10 @@
 ### Changes
 
 * Cache immediate aggregates to handle concurrent commands ([e193c4c](https://github.com/snatalenko/node-cqrs/commit/e193c4c8dc7b91de6cbc84e2ac668170ddb48bc0))
+
+### Internal Fixes
+
 * Use `structuredClone` for snapshot creation ([1d0e827](https://github.com/snatalenko/node-cqrs/commit/1d0e827da71c760739588a37ae6afe63a4fa8d34))
-
-### Refactoring
-
 * Simplify aggregate interface ([3e141fd](https://github.com/snatalenko/node-cqrs/commit/3e141fd217c4a094a57fefe8788816d474020ffe))
 
 
@@ -110,29 +128,30 @@
 # [1.0.0-rc.6](https://github.com/snatalenko/node-cqrs/compare/v0.16.4...v1.0.0-rc.6) (2025-03-21)
 
 
-### Fixes
-
-* Vulnerability in minimist dependency ([07b8c68](https://github.com/snatalenko/node-cqrs/commit/07b8c682fae4278965aa13a06caa994c037934e9))
-
 ### Changes
 
 * Add `InMemoryView.prototype.getSync` method ([5d4adb9](https://github.com/snatalenko/node-cqrs/commit/5d4adb9109c4c85edae2b0f3dfd995e8c51aef06))
 * Support persistent views; Add SQLite infrastructure ([c235573](https://github.com/snatalenko/node-cqrs/commit/c235573678be349d031d1a696cab3993224979a2))
 
-### Refactoring
+### Fixes
 
-* Migrate to TS and Jest ([6737d55](https://github.com/snatalenko/node-cqrs/commit/6737d5566a9dc6314df0b20a65d32414fc503e54))
+* Vulnerability in minimist dependency ([07b8c68](https://github.com/snatalenko/node-cqrs/commit/07b8c682fae4278965aa13a06caa994c037934e9))
 
 ### Build System
 
 * Add NPM publishing script ([3372990](https://github.com/snatalenko/node-cqrs/commit/3372990ba2549695398e0949e35009396e660005))
 * Suppress audit and test for tags ([574a00c](https://github.com/snatalenko/node-cqrs/commit/574a00cc53af009994ca4dd3278cb764743b4ad6))
 
+### Internal Fixes
+
+* Migrate to TS and Jest ([6737d55](https://github.com/snatalenko/node-cqrs/commit/6737d5566a9dc6314df0b20a65d32414fc503e54))
+* EventStore not subscribing to events emitted by `storage` ([84eaea1](https://github.com/snatalenko/node-cqrs/commit/84eaea17650589717af1720921716246762fec86))
+
 
 ## [0.16.4](https://github.com/snatalenko/node-cqrs/compare/v0.16.3...v0.16.4) (2022-08-28)
 
 
-### Refactoring
+### Internal Fixes
 
 * Use di package from npm ([0e8db91](https://github.com/snatalenko/node-cqrs/commit/0e8db91636541e95f804e2c266e2d8bbf0f49a8b))
 
@@ -157,13 +176,13 @@
 ## [0.16.1](https://github.com/snatalenko/node-cqrs/compare/v0.16.0...v0.16.1) (2021-05-28)
 
 
-### Fixes
-
-* Mark aggregateId optional on command send ([f496ecf](https://github.com/snatalenko/node-cqrs/commit/f496ecfbd5413e8e2a4c69af7848ecc3f1a5365a))
-
 ### Changes
 
 * Postpone view.get responses to next loop iteration ([950c2e4](https://github.com/snatalenko/node-cqrs/commit/950c2e42f62d7388b0cc668e81fb4f6718656fca))
+
+### Fixes
+
+* Mark aggregateId optional on command send ([f496ecf](https://github.com/snatalenko/node-cqrs/commit/f496ecfbd5413e8e2a4c69af7848ecc3f1a5365a))
 
 
 # [0.16.0](https://github.com/snatalenko/node-cqrs/compare/v0.15.1...v0.16.0) (2020-03-18)
@@ -174,22 +193,21 @@
 * Accept logger as an optional dependency ([65fe5ad](https://github.com/snatalenko/node-cqrs/commit/65fe5ad8a9de48d548715a2bd651f6d9c4cb0af1))
 * Detect circular dependencies in DI container ([1490b51](https://github.com/snatalenko/node-cqrs/commit/1490b519c7581b1de6cd084d91f61875751d773b))
 
-### Fixes
-
-* Debug output not using toString in Node 12 ([ca0d32f](https://github.com/snatalenko/node-cqrs/commit/ca0d32f78a676faf45a342f4198ef4a93a3d0702))
-* Debug output on one time subscriptions ([2fd7601](https://github.com/snatalenko/node-cqrs/commit/2fd7601b6b8e8059f0b777af6c1294cc78cb787b))
-* Correctly set type of the extended container builder created from container ([1f2f632](https://github.com/snatalenko/node-cqrs/commit/1f2f6325ceab65c4c81494d145261668125d03b1))
-* Moderate security issue in "minimist" dev dependency ([579d523](https://github.com/snatalenko/node-cqrs/commit/579d523745a6d33902a5245bc7e9f3fe843abc2b))
-
 ### Changes
 
-* Debug, mocha, sinon ([ac80c27](https://github.com/snatalenko/node-cqrs/commit/ac80c27653828904cf7b80d37b0ecade860b7490))
 * Move DI container to a separate package ([350f3f4](https://github.com/snatalenko/node-cqrs/commit/350f3f405a98fea2c7a85ea92f2b0f1aa945c75c))
 * Do not bind masterHandler to observer automatically ([d2ec79d](https://github.com/snatalenko/node-cqrs/commit/d2ec79dced5460f619cf9bed5f34df1bbb8e0132))
 * Remove deprecated InMemoryView..markAsReady method ([23015ec](https://github.com/snatalenko/node-cqrs/commit/23015ec3f5bc69f843cf6815caa1f4cda9fea27c))
 * Remove IProjectionView interface ([eb8e723](https://github.com/snatalenko/node-cqrs/commit/eb8e723385af84d82c8698adafd9c6c2c534c1be))
 * Remove dependency to nodejs EventEmitter ([3fd7cd8](https://github.com/snatalenko/node-cqrs/commit/3fd7cd84bb3c20ec4189bd0083ef83bc07dc62d5))
 * Wrap types in NodeCqrs namespace ([74e9b67](https://github.com/snatalenko/node-cqrs/commit/74e9b67833592c030d67fe605f160f99664d9b6c))
+
+### Fixes
+
+* Debug output not using toString in Node 12 ([ca0d32f](https://github.com/snatalenko/node-cqrs/commit/ca0d32f78a676faf45a342f4198ef4a93a3d0702))
+* Debug output on one time subscriptions ([2fd7601](https://github.com/snatalenko/node-cqrs/commit/2fd7601b6b8e8059f0b777af6c1294cc78cb787b))
+* Correctly set type of the extended container builder created from container ([1f2f632](https://github.com/snatalenko/node-cqrs/commit/1f2f6325ceab65c4c81494d145261668125d03b1))
+* Moderate security issue in "minimist" dev dependency ([579d523](https://github.com/snatalenko/node-cqrs/commit/579d523745a6d33902a5245bc7e9f3fe843abc2b))
 
 ### Documentation
 
