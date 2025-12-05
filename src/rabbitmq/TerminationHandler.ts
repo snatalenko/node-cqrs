@@ -7,6 +7,7 @@ export class TerminationHandler {
 	#process: NodeJS.Process;
 	#cleanupHandler: () => Promise<void>;
 	#terminationHandler: () => Promise<void>;
+	#subscribed = false;
 
 	constructor(process: NodeJS.Process, cleanupHandler: () => Promise<void>) {
 		this.#process = process;
@@ -15,13 +16,18 @@ export class TerminationHandler {
 	}
 
 	on() {
+		if (this.#subscribed)
+			return;
+
 		this.#process.once('SIGINT', this.#terminationHandler);
 		this.#process.once('SIGTERM', this.#terminationHandler);
+		this.#subscribed = true;
 	}
 
 	off() {
 		this.#process.off('SIGINT', this.#terminationHandler);
 		this.#process.off('SIGTERM', this.#terminationHandler);
+		this.#subscribed = false;
 	}
 
 	async #onProcessTermination() {
