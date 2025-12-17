@@ -1,3 +1,11 @@
+# [1.0.0-rc.27](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.26...v1.0.0-rc.27) (2025-12-17)
+
+
+### Internal Fixes
+
+* Close rabbitmq connection on SIGINT/SIGTERM ([21686be](https://github.com/snatalenko/node-cqrs/commit/21686bebb6a0ca5901263f3d382ffe369d62ef85))
+
+
 # [1.0.0-rc.26](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.25...v1.0.0-rc.26) (2025-12-05)
 
 
