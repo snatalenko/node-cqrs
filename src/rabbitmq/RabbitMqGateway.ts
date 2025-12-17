@@ -122,7 +122,7 @@ export class RabbitMqGateway {
 			o.logger;
 
 		if (o.process)
-			this.#terminationHandler = new TerminationHandler(o.process, () => this.#stopConsuming());
+			this.#terminationHandler = new TerminationHandler(o.process, () => this.disconnect());
 	}
 
 	/**
@@ -193,7 +193,7 @@ export class RabbitMqGateway {
 			await this.#stopConsuming();
 			await this.#connection?.close();
 			if (this.#connection) // clean up in case 'close' event was not triggered
-				this.#onConnectionClosed();
+				this.#cleanup();
 
 			this.#logger?.debug(`${this.#appId}: Disconnected from RabbitMQ`);
 		}
@@ -230,7 +230,11 @@ export class RabbitMqGateway {
 	}
 
 	#onConnectionClosed() {
-		this.#logger?.warn('Connection closed');
+		this.#logger?.warn(`${this.#appId}: Connection closed`);
+		this.#cleanup();
+	}
+
+	#cleanup() {
 		this.#connection = undefined;
 		this.#pubChannel = undefined;
 		this.#exclusiveQueueName = undefined;
