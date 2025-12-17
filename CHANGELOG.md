@@ -1,3 +1,11 @@
+# [1.0.0-rc.28](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.27...v1.0.0-rc.28) (2025-12-17)
+
+
+### Internal Fixes
+
+* Refactor subscription handling, improve logging on subscription removing ([72c5370](https://github.com/snatalenko/node-cqrs/commit/72c537092c435fe68e343c33ad46d99a1f474b06))
+
+
 # [1.0.0-rc.27](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.26...v1.0.0-rc.27) (2025-12-17)
 
 
