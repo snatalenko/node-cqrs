@@ -335,11 +335,11 @@ export class RabbitMqGateway {
 			await this.#assetQueue(channel, exchange, queueGivenName, eventType, { deadLetterExchangeName });
 		}
 
-		await this.#assertConsumer(queueGivenName, channel, subscription);
-
 		const subscriptionRecord = this.#findSubscription(subscription);
 		if (subscriptionRecord)
 			subscriptionRecord.queueGivenName = queueGivenName;
+
+		await this.#assertConsumer(queueGivenName, channel, subscription);
 
 		this.#logger?.debug(`Subscription ${describeSub(subscription)} established`);
 	}
