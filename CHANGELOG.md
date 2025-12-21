@@ -1,3 +1,11 @@
+# [1.0.0-rc.29](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.28...v1.0.0-rc.29) (2025-12-21)
+
+
+### Internal Fixes
+
+* Enhance logging in RabbitMqGateway and AbstractProjection for better traceability ([57d3f30](https://github.com/snatalenko/node-cqrs/commit/57d3f3099cc52c19963279a2b4a66c79e5fbd3ee))
+
+
 # [1.0.0-rc.28](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.27...v1.0.0-rc.28) (2025-12-17)
 
 
