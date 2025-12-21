@@ -11,3 +11,4 @@ export * from './notEmpty';
 export * from './setupOneTimeEmitterSubscription';
 export * from './subscribe';
 export * from './validateHandlers';
+export * from './extractErrorDetails';

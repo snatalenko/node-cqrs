@@ -1,7 +1,7 @@
 import { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import { IContainer, ILogger, IMessage, isMessage } from '../interfaces';
 import * as Event from '../Event';
-import { delay } from '../utils';
+import { delay, extractErrorDetails } from '../utils';
 import { TerminationHandler } from './TerminationHandler';
 
 /** Generate a short pseudo-unique identifier using a truncated timestamp and random component */
@@ -62,21 +62,16 @@ type EstablishedSubscription = Subscription & {
 
 const isSystemQueue = (queueName: string) => queueName.startsWith('amq.');
 
-function extractErrorMessage(err: Error | AggregateError | unknown): string {
-	if (!err || typeof err !== 'object')
-		return String(err);
-
-	if (err instanceof AggregateError)
-		return err.errors?.map(e => (e && 'message' in e ? e.message : String(e))).join('; ');
-
-	if (err instanceof Error && err.message)
-		return err.message;
-
-	return String(err);
-}
-
 const describeSub = (s: EstablishedSubscription) =>
 	`to${s.queueName ?? s.queueGivenName ? ` queue "${s.queueName ?? s.queueGivenName}" of` : ''} exchange "${s.exchange}"`;
+
+const extractMessageMeta = (msg: ConsumeMessage) => ({
+	consumerTag: msg.fields?.consumerTag,
+	routingKey: msg.fields?.routingKey,
+	messageId: msg.properties?.messageId,
+	correlationId: msg.properties?.correlationId,
+	appId: msg.properties?.appId
+});
 
 /**
  * RabbitMqGateway implements the IObservable interface using RabbitMQ.
@@ -121,7 +116,7 @@ export class RabbitMqGateway {
 		this.#connectionFactory = o.rabbitMqConnectionFactory;
 		this.#appId = getRandomAppId();
 		this.#logger = o.logger && 'child' in o.logger ?
-			o.logger.child({ service: new.target.name }) :
+			o.logger.child({ service: new.target.name, appId: this.#appId }) :
 			o.logger;
 
 		if (o.process)
@@ -143,7 +138,7 @@ export class RabbitMqGateway {
 			await delay(100);
 
 		if (this.#connection) {
-			this.#logger?.debug(`${this.#appId}: Connection is already established`);
+			this.#logger?.debug('Connection is already established');
 			return this.#connection;
 		}
 
@@ -154,15 +149,15 @@ export class RabbitMqGateway {
 			this.#connection.on('error', err => this.#onConnectionError(err));
 			this.#connection.on('close', () => this.#onConnectionClosed());
 
-			this.#logger?.info(`${this.#appId}: Connection established`);
+			this.#logger?.info('Connection established');
 
 			await this.#restoreSubscriptions();
 
 			return this.#connection;
 		}
 		catch (err: unknown) {
-			this.#logger?.error(`${this.#appId}: Connection attempt failed: ${extractErrorMessage(err)}`, {
-				stack: (err as Error)?.stack
+			this.#logger?.error('Connection attempt failed', {
+				error: extractErrorDetails(err)
 			});
 			throw err;
 		}
@@ -182,7 +177,7 @@ export class RabbitMqGateway {
 				await this.#subscribe(subscriptionToRestore);
 			}
 
-			this.#logger?.debug(`${this.#appId}: ${this.#subscriptions.length} subscription(s) restored`);
+			this.#logger?.debug(`${this.#subscriptions.length} subscription(s) restored`);
 		}
 		finally {
 			this.#restoringSubscriptions = false;
@@ -191,49 +186,51 @@ export class RabbitMqGateway {
 
 	async disconnect() {
 		try {
-			this.#logger?.debug(`${this.#appId}: Disconnecting from RabbitMQ...`);
+			this.#logger?.debug('Disconnecting from RabbitMQ...');
 
 			await this.#stopConsuming();
 			await this.#connection?.close();
 			if (this.#connection) // clean up in case 'close' event was not triggered
 				this.#cleanup();
 
-			this.#logger?.debug(`${this.#appId}: Disconnected from RabbitMQ`);
+			this.#logger?.debug('Disconnected from RabbitMQ');
 		}
 		catch (err: unknown) {
-			this.#logger?.error(`${this.#appId}: Failed to disconnect from RabbitMQ: ${extractErrorMessage(err)}`, {
-				stack: (err as Error)?.stack
+			this.#logger?.error('Failed to disconnect from RabbitMQ', {
+				error: extractErrorDetails(err)
 			});
 		}
 	}
 
 	async #stopConsuming() {
-		this.#logger?.info(`${this.#appId}: Stopping all consumers...`);
+		this.#logger?.info('Stopping all consumers...');
 
 		const cancellations = [...this.#queueConsumers.entries()].map(async ([queueName, { channel, consumerTag }]) => {
-			this.#logger?.debug(`${this.#appId}: Cancelling consumer "${consumerTag}" for queue "${queueName}"`);
+			this.#logger?.debug(`Cancelling consumer "${consumerTag}" for queue "${queueName}"`);
 			try {
 				await channel.cancel(consumerTag);
-				this.#logger?.debug(`${this.#appId}: Consumer "${consumerTag}" on queue "${queueName}" cancelled successfully`);
+				this.#logger?.debug(`Consumer "${consumerTag}" on queue "${queueName}" cancelled successfully`);
 				this.#queueConsumers.delete(queueName);
 			}
 			catch (err: unknown) {
-				this.#logger?.error(`${this.#appId}: Failed to cancel consumer "${consumerTag}" for queue "${queueName}": ${extractErrorMessage(err)}`);
+				this.#logger?.error(`Failed to cancel consumer "${consumerTag}" for queue "${queueName}"`, {
+					error: extractErrorDetails(err)
+				});
 			}
 		});
 
 		await Promise.all(cancellations);
-		this.#logger?.info(`${this.#appId}: All consumers stopped.`);
+		this.#logger?.info('All consumers stopped');
 	}
 
 	#onConnectionError(err: unknown) {
-		this.#logger?.error(`${this.#appId}: Connection error: ${extractErrorMessage(err)}`, {
-			stack: err instanceof Error ? err.stack : undefined
+		this.#logger?.error('Connection error', {
+			error: extractErrorDetails(err)
 		});
 	}
 
 	#onConnectionClosed() {
-		this.#logger?.warn(`${this.#appId}: Connection closed`);
+		this.#logger?.warn('Connection closed');
 		this.#cleanup();
 	}
 
@@ -301,7 +298,7 @@ export class RabbitMqGateway {
 
 		// record subscription details to restore it if connection attempt fails or on reconnect
 		this.#subscriptions.push(subscription);
-		this.#logger?.debug(`${this.#appId}: Subscription ${describeSub(subscription)} recorded`);
+		this.#logger?.debug(`Subscription ${describeSub(subscription)} recorded`);
 
 		const {
 			exchange,
@@ -344,7 +341,7 @@ export class RabbitMqGateway {
 		if (subscriptionRecord)
 			subscriptionRecord.queueGivenName = queueGivenName;
 
-		this.#logger?.debug(`${this.#appId}: Subscription ${describeSub(subscription)} established`);
+		this.#logger?.debug(`Subscription ${describeSub(subscription)} established`);
 	}
 
 	#findSubscription(subscription: Pick<Subscription, 'exchange' | 'queueName' | 'eventType' | 'handler'>) {
@@ -364,7 +361,7 @@ export class RabbitMqGateway {
 
 		await this.#tryDropConsumer(subscriptionToRemove);
 
-		this.#logger?.debug(`${this.#appId}: Subscription ${describeSub(subscriptionToRemove)} removed`);
+		this.#logger?.debug(`Subscription ${describeSub(subscriptionToRemove)} removed`);
 	}
 
 	async #assertConnection() {
@@ -428,7 +425,7 @@ export class RabbitMqGateway {
 
 		await channel.bindQueue(queueGivenName, exchange, eventType);
 
-		this.#logger?.debug(`${this.#appId}: Queue "${queueGivenName}" bound to exchange "${exchange}" with pattern "${eventType}"`);
+		this.#logger?.debug(`Queue "${queueGivenName}" bound to exchange "${exchange}" with pattern "${eventType}"`);
 	}
 
 	async #assertConsumer(
@@ -446,29 +443,20 @@ export class RabbitMqGateway {
 			if (!msg)
 				return;
 
-			const { consumerTag, routingKey } = msg.fields ?? {};
-			const { messageId, correlationId, appId } = msg.properties ?? {};
-
 			// Keep the process alive while waiting for the handler to finish
 			const handlerProcessTimeout = options?.handlerProcessTimeout ?? RabbitMqGateway.HANDLER_PROCESS_TIMEOUT;
 			const keepAliveTimeout = setTimeout(() => {
-				this.#logger?.warn(`${this.#appId}: Message processing timed out`, {
+				this.#logger?.error('Message processing timed out', {
 					queueName: queueGivenName,
-					consumerTag,
-					routingKey,
-					messageId
+					msg: extractMessageMeta(msg)
 				});
-				channel.nack(msg, false, false);
+				this.#rejectMessage(channel, msg);
 			}, handlerProcessTimeout);
 
 			try {
-				this.#logger?.debug(`${this.#appId}: Message received`, {
+				this.#logger?.debug('Message received', {
 					queueName: queueGivenName,
-					consumerTag,
-					routingKey,
-					messageId,
-					correlationId,
-					appId
+					msg: extractMessageMeta(msg)
 				});
 
 				const jsonContent = msg.content.toString();
@@ -479,19 +467,22 @@ export class RabbitMqGateway {
 					throw new Error(`Message from queue "${queueGivenName}" was delivered to a consumer that does not handle type "${message.type}"`);
 
 				for (const { handler, ignoreOwn } of handlers) {
-					if (ignoreOwn && appId === this.#appId)
+					if (ignoreOwn && msg.properties.appId === this.#appId)
 						continue;
 
 					await handler(message);
 				}
 
-				channel?.ack(msg);
+				channel.ack(msg);
 			}
 			catch (err: unknown) {
-				this.#logger?.error(`${this.#appId}: Message processing failed: ${extractErrorMessage(err)}`);
+				this.#logger?.error('Message processing failed', {
+					error: extractErrorDetails(err),
+					queueName: queueGivenName,
+					msg: extractMessageMeta(msg)
+				});
 
-				// Redirect message to dead letter queue, if `{ noAck: true }` was not set on consumption
-				channel?.nack(msg, false, false);
+				this.#rejectMessage(channel, msg);
 			}
 			finally {
 				clearTimeout(keepAliveTimeout);
@@ -500,7 +491,7 @@ export class RabbitMqGateway {
 			noAck: options?.noAck
 		});
 
-		this.#logger?.debug(`${this.#appId}: Consumer "${c.consumerTag}" registered on queue "${queueGivenName}"`);
+		this.#logger?.debug(`Consumer "${c.consumerTag}" registered on queue "${queueGivenName}"`);
 
 		this.#queueConsumers.set(queueGivenName, {
 			channel,
@@ -508,27 +499,40 @@ export class RabbitMqGateway {
 		});
 	}
 
+	/** Reject a message, causing it to be dead-lettered or discarded */
+	#rejectMessage(channel: Channel, msg: ConsumeMessage) {
+		try {
+			channel.nack(msg, false, false);
+		}
+		catch (err: unknown) {
+			this.#logger?.warn('Failed to reject message', {
+				error: extractErrorDetails(err),
+				msg: extractMessageMeta(msg)
+			});
+		}
+	}
+
 	async #tryDropConsumer(subscription: EstablishedSubscription) {
 		if (!subscription.queueGivenName) {
-			this.#logger?.warn(`${this.#appId}: Subscription ${describeSub(subscription)} is not bound to a queue`);
+			this.#logger?.warn(`Subscription ${describeSub(subscription)} is not bound to a queue`);
 			return;
 		}
 		const queueStillUsed = this.#subscriptions.some(s => s.queueGivenName === subscription.queueGivenName);
 		if (queueStillUsed) {
-			this.#logger?.warn(`${this.#appId}: Queue "${subscription.queueGivenName}" has other consumers in this process`);
+			this.#logger?.warn(`Queue "${subscription.queueGivenName}" has other consumers in this process`);
 			return;
 		}
 
 		const consumer = this.#queueConsumers.get(subscription.queueGivenName);
 		if (!consumer) {
-			this.#logger?.warn(`${this.#appId}: Queue "${subscription.queueGivenName}" does not have consumers`);
+			this.#logger?.warn(`Queue "${subscription.queueGivenName}" does not have consumers`);
 			return;
 		}
 
 		this.#queueConsumers.delete(subscription.queueGivenName);
 		await consumer.channel.cancel(consumer.consumerTag);
 
-		this.#logger?.warn(`${this.#appId}: Consumer "${consumer.consumerTag}" removed from subscription ${describeSub(subscription)}`);
+		this.#logger?.info(`Consumer "${consumer.consumerTag}" removed from subscription ${describeSub(subscription)}`);
 	}
 
 	/**
@@ -564,14 +568,14 @@ export class RabbitMqGateway {
 
 		return new Promise<void>((resolve, reject) => {
 			if (!this.#pubChannel)
-				throw new Error(`${this.#appId}: No channel available for publishing`);
+				throw new Error('No channel available for publishing');
 
-			this.#logger?.debug(`${this.#appId}: Publishing message "${Event.describe(message)}" to exchange "${exchange}"`);
+			this.#logger?.debug(`Publishing message "${Event.describe(message)}" to exchange "${exchange}"`);
 
 			const published = this.#pubChannel.publish(exchange, message.type, content, properties, err =>
 				(err ? reject(err) : resolve()));
 			if (!published)
-				throw new Error(`${this.#appId}: Failed to send event ${Event.describe(message)}, channel buffer is full`);
+				throw new Error(`Failed to send event ${Event.describe(message)}, channel buffer is full`);
 		});
 	}
 }
