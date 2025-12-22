@@ -73,6 +73,10 @@ const extractMessageMeta = (msg: ConsumeMessage) => ({
 	appId: msg.properties?.appId
 });
 
+interface RabbitMqGatewayConnected {
+	get connection(): ChannelModel;
+}
+
 /**
  * RabbitMqGateway implements the IObservable interface using RabbitMQ.
  *
@@ -85,12 +89,19 @@ export class RabbitMqGateway {
 
 	static HANDLER_PROCESS_TIMEOUT = 60 * 60 * 1000; // 1 hour
 	static ALL_EVENTS_WILDCARD = '*';
+	static RECONNECT_DELAY = 30_000; // 30 sec
 
 	#connectionFactory: () => Promise<ChannelModel>;
 	#appId: string;
 	#logger: ILogger | undefined;
 
 	#connecting = false;
+	#desiredState: 'connected' | 'disconnected' = 'disconnected';
+
+	/**
+	 * Established connection to RabbitMQ.
+	 * If empty, the gateway is not connected.
+	 */
 	#connection: ChannelModel | undefined;
 	#pubChannel: ConfirmChannel | undefined;
 	#exclusiveQueueName: string | undefined;
@@ -101,8 +112,12 @@ export class RabbitMqGateway {
 
 	#restoringSubscriptions: boolean = false;
 
-	get connection() {
+	get connection(): ChannelModel | undefined {
 		return this.#connection;
+	}
+
+	isConnected(): this is this & RabbitMqGatewayConnected {
+		return !!this.#connection;
 	}
 
 	constructor(o: Partial<Pick<IContainer, 'logger' | 'process'>> & {
@@ -131,6 +146,9 @@ export class RabbitMqGateway {
 	 * @returns A promise that resolves with the ChannelModel representing the established connection.
 	 */
 	async connect(): Promise<ChannelModel> {
+		this.#desiredState = 'connected';
+		this.#clearReconnectTimer();
+
 		while (this.#connecting)
 			await delay(100);
 
@@ -156,11 +174,42 @@ export class RabbitMqGateway {
 			this.#logger?.error('Connection attempt failed', {
 				error: extractErrorDetails(err)
 			});
+
+			if (this.#desiredState === 'connected')
+				this.#scheduleReconnect();
+
 			throw err;
 		}
 		finally {
 			this.#connecting = false;
 		}
+	}
+
+	#reconnectTimeout: NodeJS.Timeout | undefined;
+
+	#clearReconnectTimer() {
+		if (!this.#reconnectTimeout)
+			return;
+
+		clearTimeout(this.#reconnectTimeout);
+		this.#reconnectTimeout = undefined;
+	}
+
+	#scheduleReconnect() {
+		if (this.#desiredState !== 'connected')
+			return;
+
+		this.#clearReconnectTimer();
+
+		this.#logger?.debug(`Scheduling reconnect in ${RabbitMqGateway.RECONNECT_DELAY / 1000} seconds`);
+		this.#reconnectTimeout = setTimeout(() => this.#reconnect(), RabbitMqGateway.RECONNECT_DELAY).unref();
+	}
+
+	#reconnect() {
+		if (this.#desiredState !== 'connected' || this.isConnected() || this.#connecting)
+			return;
+
+		this.connect().catch(() => undefined);
 	}
 
 	async #restoreSubscriptions() {
@@ -182,11 +231,23 @@ export class RabbitMqGateway {
 	}
 
 	async disconnect() {
+		this.#desiredState = 'disconnected';
+		this.#clearReconnectTimer();
+
+		while (this.#connecting)
+			await delay(100);
+
+		if (!this.#connection) {
+			this.#logger?.debug('Connection is not established');
+			return;
+		}
+
 		try {
 			this.#logger?.debug('Disconnecting from RabbitMQ...');
 
 			await this.#stopConsuming();
-			await this.#connection?.close();
+			await this.#connection.close();
+
 			if (this.#connection) // clean up in case 'close' event was not triggered
 				this.#cleanup();
 
@@ -200,7 +261,7 @@ export class RabbitMqGateway {
 	}
 
 	async #stopConsuming() {
-		this.#logger?.info('Stopping all consumers...');
+		this.#logger?.debug('Stopping all consumers...');
 
 		const cancellations = [...this.#queueConsumers.entries()].map(async ([queueName, { channel, consumerTag }]) => {
 			this.#logger?.debug(`Cancelling consumer "${consumerTag}" for queue "${queueName}"`);
@@ -227,8 +288,11 @@ export class RabbitMqGateway {
 	}
 
 	#onConnectionClosed() {
-		this.#logger?.warn('Connection closed');
+		this.#logger?.info('Connection closed');
 		this.#cleanup();
+
+		if (this.#desiredState === 'connected')
+			this.#reconnect();
 	}
 
 	#cleanup() {
