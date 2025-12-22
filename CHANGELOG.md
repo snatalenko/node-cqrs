@@ -1,3 +1,11 @@
+# [1.0.0-rc.31](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.30...v1.0.0-rc.31) (2025-12-22)
+
+
+### Changes
+
+* Auto-reconnect to RabbitMQ ([ba80536](https://github.com/snatalenko/node-cqrs/commit/ba8053697fb271a57fde7fc236d0f15c7d497c8e))
+
+
 # [1.0.0-rc.30](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.29...v1.0.0-rc.30) (2025-12-22)
 
 
