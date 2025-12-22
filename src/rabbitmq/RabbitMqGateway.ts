@@ -2,7 +2,7 @@ import { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import { IContainer, ILogger, IMessage, isMessage } from '../interfaces';
 import * as Event from '../Event';
 import { delay, extractErrorDetails } from '../utils';
-import { TerminationHandler } from './TerminationHandler';
+import { registerExitCleanup } from './utils';
 
 /** Generate a short pseudo-unique identifier using a truncated timestamp and random component */
 const getRandomAppId = () =>
@@ -99,8 +99,6 @@ export class RabbitMqGateway {
 
 	#subscriptions: Array<EstablishedSubscription> = [];
 
-	/** Handles termination signals for graceful shutdown */
-	#terminationHandler: TerminationHandler | undefined;
 	#restoringSubscriptions: boolean = false;
 
 	get connection() {
@@ -119,8 +117,7 @@ export class RabbitMqGateway {
 			o.logger.child({ service: new.target.name, appId: this.#appId }) :
 			o.logger;
 
-		if (o.process)
-			this.#terminationHandler = new TerminationHandler(o.process, () => this.disconnect());
+		registerExitCleanup(o.process, () => this.disconnect());
 	}
 
 	/**
