@@ -1,3 +1,12 @@
+# [1.0.0-rc.30](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.29...v1.0.0-rc.30) (2025-12-22)
+
+
+### Internal Fixes
+
+* MQ consumption starts before handler is properly recorded ([35a974b](https://github.com/snatalenko/node-cqrs/commit/35a974b15ab650728768d1efd655b45a6df052fb))
+* RabbitMQ connection not auto-closing on SIGTERM ([63b4f48](https://github.com/snatalenko/node-cqrs/commit/63b4f48f1abc6936472db66e821de2543dbc874b))
+
+
 # [1.0.0-rc.29](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.28...v1.0.0-rc.29) (2025-12-21)
 
 
