@@ -311,8 +311,20 @@ describe('RabbitMqGateway', () => {
 
 		it('cancels consumer when unsubscribing the last subscription on a queue', async () => {
 
-			const processOnSpy = jest.spyOn(process, 'once');
-			const processOffSpy = jest.spyOn(process, 'off');
+			await gateway1.connect();
+
+			const cancelledConsumerTags: string[] = [];
+			const connection = gateway1.connection!;
+			const originalCreateChannel = connection.createChannel.bind(connection);
+			(connection as any).createChannel = async () => {
+				const ch = await originalCreateChannel();
+				const originalCancel = ch.cancel.bind(ch);
+				(ch as any).cancel = async (consumerTag: string) => {
+					cancelledConsumerTags.push(consumerTag);
+					return originalCancel(consumerTag);
+				};
+				return ch;
+			};
 
 			const received1: IMessage[] = [];
 			const received2: IMessage[] = [];
@@ -326,37 +338,40 @@ describe('RabbitMqGateway', () => {
 
 			const event1 = {
 				type: 'test.unsubscribe',
-				payload: { info: 'event for handler2' },
+				payload: { info: 'event for handlers' },
 				context: { ts: Date.now() }
 			};
 
-			// Subscribe both handlers to the same durable queue
 			await gateway1.subscribe({
 				exchange,
+				queueName,
 				eventType: event1.type,
 				handler: handler1
 			});
 			await gateway1.subscribe({
 				exchange,
+				queueName,
 				eventType: event1.type,
 				handler: handler2
 			});
 
-			expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
-			expect(processOnSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
-			expect(processOnSpy).toHaveBeenCalledTimes(2);
-			expect(processOffSpy).not.toHaveBeenCalled();
+			await gateway1.publish(exchange, event1);
+			await delay(50);
 
-			// Unsubscribe one handler; the queue should still be active
+			expect(received1).toEqual([event1]);
+			expect(received2).toEqual([event1]);
+
 			await gateway1.unsubscribe({
 				exchange,
+				queueName,
 				eventType: event1.type,
 				handler: handler1
 			});
 
-			expect(processOffSpy).not.toHaveBeenCalled();
+			expect(cancelledConsumerTags).toHaveLength(0);
 
-			// Publish an event; only handler2 should receive it
+			received1.length = 0;
+			received2.length = 0;
 
 			await gateway1.publish(exchange, event1);
 			await delay(50);
@@ -364,22 +379,23 @@ describe('RabbitMqGateway', () => {
 			expect(received1).toEqual([]);
 			expect(received2).toEqual([event1]);
 
-			// Now unsubscribe the last handler; this should cancel the consumer for the queue
 			await gateway1.unsubscribe({
 				exchange,
+				queueName,
 				eventType: event1.type,
 				handler: handler2
 			});
 
-			expect(processOffSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+			expect(cancelledConsumerTags).toHaveLength(1);
 
-			// Publish a second event; no handler should receive it because the consumer is cancelled
+			received1.length = 0;
 			received2.length = 0;
 
 			await gateway1.publish(exchange, event1);
 			await delay(50);
 
 			expect(received1).toEqual([]);
+			expect(received2).toEqual([]);
 		});
 	});
 
