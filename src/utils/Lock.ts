@@ -1,5 +1,20 @@
 import { Deferred } from './Deferred';
 
+export class LockLease {
+	constructor(
+		readonly lock: Lock,
+		readonly name?: string
+	) { }
+
+	release() {
+		this.lock.release(this.name);
+	}
+
+	[Symbol.dispose]() {
+		this.release();
+	}
+}
+
 export class Lock {
 
 	/**
@@ -36,7 +51,7 @@ export class Lock {
 	 *
 	 * @returns Promise that resolves once lock is acquired
 	 */
-	async acquire(name?: string): Promise<void> {
+	async acquire(name?: string): Promise<LockLease> {
 
 		while (this.#globalLockAcquiringLock)
 			await this.#globalLockAcquiringLock.promise;
@@ -60,6 +75,8 @@ export class Lock {
 			this.#globalLockAcquiringLock?.resolve();
 			this.#globalLockAcquiringLock = undefined;
 		}
+
+		return new LockLease(this, name);
 	}
 
 	/**

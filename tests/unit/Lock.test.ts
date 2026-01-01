@@ -47,8 +47,8 @@ describe('Lock', () => {
 			await l3; // Wait for l3 to fully complete
 
 			// Ensure both promises associated with acquire calls are resolved
-			await expect(l2).resolves.toBeUndefined();
-			await expect(l3).resolves.toBeUndefined();
+			await expect(l2).resolves.not.toThrow();
+			await expect(l3).resolves.not.toThrow();
 		});
 	});
 
@@ -178,11 +178,11 @@ describe('Lock', () => {
 			await lock.release();
 
 			// Ensure all original promises eventually resolve
-			await expect(p2).resolves.toBeUndefined();
-			await expect(p3).resolves.toBeUndefined();
-			await expect(l4).resolves.toBeUndefined();
-			await expect(p5).resolves.toBeUndefined();
-			await expect(l6).resolves.toBeUndefined();
+			await expect(p2).resolves.not.toThrow();
+			await expect(p3).resolves.not.toThrow();
+			await expect(l4).resolves.not.toThrow();
+			await expect(p5).resolves.not.toThrow();
+			await expect(l6).resolves.not.toThrow();
 		});
 	});
 });
