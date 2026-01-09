@@ -1,3 +1,12 @@
+# [1.0.0-rc.32](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.31...v1.0.0-rc.32) (2026-01-09)
+
+
+### Internal Fixes
+
+* Update Lock interface to support resource management with `using` keyword ([196332e](https://github.com/snatalenko/node-cqrs/commit/196332e1f382880161e0f7192966e2fb4f222be7))
+* Expose connection state events on RabbitMqGateway ([42fe349](https://github.com/snatalenko/node-cqrs/commit/42fe3497ce886bc4e20efa6008b97104380a8ba5))
+
+
 # [1.0.0-rc.31](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.30...v1.0.0-rc.31) (2025-12-22)
 
 
