@@ -1,8 +1,9 @@
 import { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import { IContainer, ILogger, IMessage, isMessage } from '../interfaces';
 import * as Event from '../Event';
-import { delay, extractErrorDetails } from '../utils';
+import { extractErrorDetails, Lock } from '../utils';
 import { registerExitCleanup } from './utils';
+import { EventEmitter } from 'events';
 
 /** Generate a short pseudo-unique identifier using a truncated timestamp and random component */
 const getRandomAppId = () =>
@@ -77,6 +78,11 @@ interface RabbitMqGatewayConnected {
 	get connection(): ChannelModel;
 }
 
+type GatewayEvents = {
+	connected: [];
+	disconnected: [reason?: string];
+};
+
 /**
  * RabbitMqGateway implements the IObservable interface using RabbitMQ.
  *
@@ -94,9 +100,10 @@ export class RabbitMqGateway {
 	#connectionFactory: () => Promise<ChannelModel>;
 	#appId: string;
 	#logger: ILogger | undefined;
+	#emitter: EventEmitter<GatewayEvents>;
 
-	#connecting = false;
 	#desiredState: 'connected' | 'disconnected' = 'disconnected';
+	#stateChangeLock = new Lock();
 
 	/**
 	 * Established connection to RabbitMQ.
@@ -110,8 +117,6 @@ export class RabbitMqGateway {
 
 	#subscriptions: Array<EstablishedSubscription> = [];
 
-	#restoringSubscriptions: boolean = false;
-
 	get connection(): ChannelModel | undefined {
 		return this.#connection;
 	}
@@ -121,11 +126,13 @@ export class RabbitMqGateway {
 	}
 
 	constructor(o: Partial<Pick<IContainer, 'logger' | 'process'>> & {
-		rabbitMqConnectionFactory?: () => Promise<ChannelModel>
+		rabbitMqConnectionFactory?: () => Promise<ChannelModel>,
+		eventEmitterFactory?: () => EventEmitter<GatewayEvents>
 	}) {
 		if (!o.rabbitMqConnectionFactory)
 			throw new TypeError('rabbitMqConnectionFactory argument required');
 
+		this.#emitter = o?.eventEmitterFactory?.() ?? new EventEmitter();
 		this.#connectionFactory = o.rabbitMqConnectionFactory;
 		this.#appId = getRandomAppId();
 		this.#logger = o.logger && 'child' in o.logger ?
@@ -149,24 +156,33 @@ export class RabbitMqGateway {
 		this.#desiredState = 'connected';
 		this.#clearReconnectTimer();
 
-		while (this.#connecting)
-			await delay(100);
-
-		if (this.#connection) {
-			this.#logger?.debug('Connection is already established');
-			return this.#connection;
-		}
-
-		this.#connecting = true;
-
+		const lease = await this.#stateChangeLock.acquire();
 		try {
-			this.#connection = await this.#connectionFactory();
-			this.#connection.on('error', err => this.#onConnectionError(err));
-			this.#connection.on('close', () => this.#onConnectionClosed());
+			if (this.#connection) {
+				this.#logger?.debug('Connection is already established');
+				return this.#connection;
+			}
+
+			return await this.#connect();
+		}
+		finally {
+			lease.release();
+		}
+	}
+
+	async #connect(): Promise<ChannelModel> {
+		try {
+			const connection = await this.#connectionFactory();
+			connection.on('error', err => this.#onConnectionError(err));
+			connection.on('close', () => this.#onConnectionClosed(connection));
+
+			this.#connection = connection;
 
 			this.#logger?.info('Connection established');
 
 			await this.#restoreSubscriptions();
+
+			this.#emitter.emit('connected');
 
 			return this.#connection;
 		}
@@ -179,9 +195,6 @@ export class RabbitMqGateway {
 				this.#scheduleReconnect();
 
 			throw err;
-		}
-		finally {
-			this.#connecting = false;
 		}
 	}
 
@@ -206,43 +219,36 @@ export class RabbitMqGateway {
 	}
 
 	#reconnect() {
-		if (this.#desiredState !== 'connected' || this.isConnected() || this.#connecting)
+		if (this.#desiredState !== 'connected' || this.isConnected())
 			return;
 
 		this.connect().catch(() => undefined);
 	}
 
 	async #restoreSubscriptions() {
-		this.#restoringSubscriptions = true;
-		try {
-			for (let i = 0; i < this.#subscriptions.length; i++) {
-				const subscriptionToRestore = this.#subscriptions.shift();
-				if (!subscriptionToRestore) // should never happen; check is for type consistency
-					continue;
+		for (let i = 0; i < this.#subscriptions.length; i++) {
+			const subscriptionToRestore = this.#subscriptions.shift();
+			if (!subscriptionToRestore) // should never happen; check is for type consistency
+				continue;
 
-				await this.#subscribe(subscriptionToRestore);
-			}
+			await this.#subscribe(subscriptionToRestore);
+		}
 
-			this.#logger?.debug(`${this.#subscriptions.length} subscription(s) restored`);
-		}
-		finally {
-			this.#restoringSubscriptions = false;
-		}
+		this.#logger?.debug(`${this.#subscriptions.length} subscription(s) restored`);
 	}
 
 	async disconnect() {
 		this.#desiredState = 'disconnected';
 		this.#clearReconnectTimer();
 
-		while (this.#connecting)
-			await delay(100);
-
-		if (!this.#connection) {
-			this.#logger?.debug('Connection is not established');
-			return;
-		}
+		const lease = await this.#stateChangeLock.acquire();
 
 		try {
+			if (!this.#connection) {
+				this.#logger?.debug('Connection is not established');
+				return;
+			}
+
 			this.#logger?.debug('Disconnecting from RabbitMQ...');
 
 			await this.#stopConsuming();
@@ -252,11 +258,15 @@ export class RabbitMqGateway {
 				this.#cleanup();
 
 			this.#logger?.debug('Disconnected from RabbitMQ');
+			this.#emitter.emit('disconnected', 'Disconnected by request');
 		}
 		catch (err: unknown) {
 			this.#logger?.error('Failed to disconnect from RabbitMQ', {
 				error: extractErrorDetails(err)
 			});
+		}
+		finally {
+			lease.release();
 		}
 	}
 
@@ -287,12 +297,17 @@ export class RabbitMqGateway {
 		});
 	}
 
-	#onConnectionClosed() {
+	#onConnectionClosed(connection: ChannelModel) {
+		if (connection !== this.#connection)
+			return;
+
 		this.#logger?.info('Connection closed');
 		this.#cleanup();
 
-		if (this.#desiredState === 'connected')
+		if (this.#desiredState === 'connected') {
+			this.#emitter.emit('disconnected', 'Connection closed');
 			this.#reconnect();
+		}
 	}
 
 	#cleanup() {
@@ -346,10 +361,19 @@ export class RabbitMqGateway {
 	 * @returns A promise that resolves when the subscription is successfully set up.
 	 */
 	async subscribe(subscription: Subscription) {
-		while (this.#restoringSubscriptions)
-			await delay(100);
+		this.#desiredState = 'connected';
+		this.#clearReconnectTimer();
 
-		return this.#subscribe(subscription);
+		const lease = await this.#stateChangeLock.acquire();
+		try {
+			if (!this.#connection)
+				await this.#connect();
+
+			await this.#subscribe(subscription);
+		}
+		finally {
+			lease.release();
+		}
 	}
 
 	async #subscribe(subscription: Subscription) {
@@ -367,7 +391,7 @@ export class RabbitMqGateway {
 			eventType
 		} = subscription;
 
-		const channel = await this.#assertChannel(queueName);
+		const channel = await this.#assertQueueChannel(queueName);
 
 		let queueGivenName = queueName;
 		if (!queueGivenName) {
@@ -430,11 +454,13 @@ export class RabbitMqGateway {
 	}
 
 	/** Get existing or open a new channel for a given queue name */
-	async #assertChannel(queueName: string = ''): Promise<Channel> {
-		const connection = await this.#assertConnection();
+	async #assertQueueChannel(queueName: string = ''): Promise<Channel> {
 		let channel = this.#queueChannels.get(queueName);
 		if (!channel) {
-			channel = await connection.createChannel();
+			if (!this.#connection)
+				throw new Error('No connection established to create channel');
+
+			channel = await this.#connection.createChannel();
 			this.#queueChannels.set(queueName, channel);
 		}
 		return channel;
@@ -638,5 +664,20 @@ export class RabbitMqGateway {
 			if (!published)
 				throw new Error(`Failed to send event ${Event.describe(message)}, channel buffer is full`);
 		});
+	}
+
+	on<K extends keyof GatewayEvents>(event: K, fn: (...args: GatewayEvents[K]) => void) {
+		this.#emitter.on<K>(event, fn as any);
+		return this;
+	}
+
+	once<K extends keyof GatewayEvents>(event: K, fn: (...args: GatewayEvents[K]) => void) {
+		this.#emitter.once<K>(event, fn as any);
+		return this;
+	}
+
+	off<K extends keyof GatewayEvents>(event: K, fn: (...args: GatewayEvents[K]) => void) {
+		this.#emitter.off<K>(event, fn as any);
+		return this;
 	}
 }
