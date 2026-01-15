@@ -14,6 +14,9 @@
   "types": "./types/index.d.ts",
   "typesVersions": {
     "*": {
+      "workers": [
+        "types/workers/index.d.ts"
+      ],
       "rabbitmq": [
         "types/rabbitmq/index.d.ts"
       ],
@@ -27,6 +30,11 @@
       "require": "./dist/index.js",
       "import": "./dist/index.js",
       "types": "./types/index.d.ts"
+    },
+    "./workers": {
+      "require": "./dist/workers/index.js",
+      "import": "./dist/workers/index.js",
+      "types": "./types/workers/index.d.ts"
     },
     "./rabbitmq": {
       "require": "./dist/rabbitmq/index.js",
