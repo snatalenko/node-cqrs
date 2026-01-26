@@ -1,4 +1,3 @@
-const { isMainThread } = require('node:worker_threads');
 const { AbstractWorkerProjection } = require('../../dist/workers');
 
 class CounterView {
@@ -26,7 +25,6 @@ class CounterProjection extends AbstractWorkerProjection {
 	}
 }
 
-if (!isMainThread)
-	CounterProjection.createWorkerInstance();
+CounterProjection.createInstanceIfWorkerThread();
 
 module.exports = CounterProjection;

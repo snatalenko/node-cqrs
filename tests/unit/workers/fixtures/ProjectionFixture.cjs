@@ -1,7 +1,6 @@
 /** @type {typeof import('../../../../src/workers')} */
 // @ts-ignore
 const workers = require('../../../../dist/workers');
-const { isMainThread } = require('node:worker_threads');
 
 const { AbstractWorkerProjection } = workers;
 
@@ -117,7 +116,6 @@ class ProjectionFixture extends AbstractWorkerProjection {
 	}
 }
 
-if (!isMainThread)
-	ProjectionFixture.createWorkerInstance();
+ProjectionFixture.createInstanceIfWorkerThread();
 
 module.exports = ProjectionFixture;

@@ -1,5 +1,4 @@
 import { AbstractWorkerProjection } from '../../../../src/workers';
-const { isMainThread } = require('node:worker_threads');
 
 class ViewFixture {
 	counter = 0;
@@ -35,5 +34,4 @@ export class ProjectionFixture extends AbstractWorkerProjection<ViewFixture> {
 	}
 }
 
-if (!isMainThread)
-	ProjectionFixture.createWorkerInstance();
+ProjectionFixture.createInstanceIfWorkerThread();

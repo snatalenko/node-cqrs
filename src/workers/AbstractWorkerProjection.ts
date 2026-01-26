@@ -69,6 +69,22 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 		return workerProjectionInstance;
 	}
 
+	/**
+	 * Convenience wrapper for module-level bootstrapping.
+	 *
+	 * In the main thread, does nothing.
+	 * In a worker thread, creates and exposes the projection singleton (same as createWorkerInstance).
+	 */
+	static createInstanceIfWorkerThread<V, T extends AbstractWorkerProjection<V>>(
+		this: (new (...args: any[]) => T) & { createWorkerInstance: (factory?: () => T) => T },
+		factory?: () => T
+	): T | undefined {
+		if (isMainThread)
+			return undefined;
+
+		return this.createWorkerInstance(factory);
+	}
+
 	async project(event: IEvent): Promise<void> {
 		if (this.#useWorkerThreads && isMainThread) {
 			if (!this.#worker)

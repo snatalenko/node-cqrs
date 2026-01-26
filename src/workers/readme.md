@@ -23,13 +23,13 @@ import { AbstractWorkerProjection } from 'node-cqrs/workers';
 Key points:
 
 - The same projection module is used as the **worker entry point**.
-- In the worker thread, the module must create the worker-side singleton via `YourProjection.createWorkerInstance()`.
+- The module should bootstrap the worker-side singleton via
+  `YourProjection.createInstanceIfWorkerThread()`.
 - In the main thread, `project()` automatically waits for worker startup (so `ensureWorkerReady()` is optional).
 
 Example (CommonJS):
 
 ```js
-const { isMainThread } = require('node:worker_threads');
 const { AbstractWorkerProjection } = require('node-cqrs/workers');
 
 class CounterView {
@@ -51,8 +51,7 @@ class CounterProjection extends AbstractWorkerProjection {
   }
 }
 
-if (!isMainThread)
-  CounterProjection.createWorkerInstance();
+CounterProjection.createInstanceIfWorkerThread();
 
 module.exports = CounterProjection;
 ```
