@@ -92,10 +92,12 @@ class ProjectionFixture extends AbstractWorkerProjection {
 	 */
 	constructor({
 		workerModulePath = __filename,
+		useWorkerThreads,
 		logger
 	} = {}) {
 		super({
 			workerModulePath,
+			useWorkerThreads,
 			view: new ViewFixture(),
 			logger
 		});

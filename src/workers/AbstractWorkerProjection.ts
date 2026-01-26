@@ -1,10 +1,10 @@
-import * as path from 'node:path';
-import { isMainThread, Worker, MessageChannel, parentPort, type MessagePort, workerData } from 'node:worker_threads';
+import { isMainThread, Worker, MessageChannel, parentPort, workerData } from 'node:worker_threads';
 import { AbstractProjection, type AbstractProjectionParams } from '../AbstractProjection';
 import type { IEvent } from '../interfaces';
 import * as Comlink from 'comlink';
-import { nodeEndpoint } from './utils';
+import { nodeEndpoint, createWorker } from './utils';
 import { extractErrorDetails } from '../utils';
+import { isWorkerData, type IWorkerData, type WorkerInitMessage } from './protocol';
 
 export type AbstractWorkerProjectionParams<TView> = AbstractProjectionParams<TView> & {
 
@@ -13,6 +13,12 @@ export type AbstractWorkerProjectionParams<TView> = AbstractProjectionParams<TVi
 	 * Not used in the worker thread.
 	 */
 	workerModulePath?: string;
+
+	/**
+	 * When `false`, runs projection + view in the current thread (no Worker, no RPC).
+	 * Intended for tests and environments where worker threads aren't desired.
+	 */
+	useWorkerThreads?: boolean;
 };
 
 interface IRemoteProjectionApi {
@@ -26,33 +32,13 @@ interface IMainThreadProjection<TView> {
 	get remoteView(): Comlink.Remote<TView>;
 }
 
-interface IWorkerData {
-	projectionPort: MessagePort,
-	viewPort: MessagePort
-}
-
-const isWorkerData = (obj: unknown): obj is IWorkerData =>
-	typeof obj === 'object'
-	&& obj !== null
-	&& 'projectionPort' in obj
-	&& !!obj.projectionPort
-	&& 'viewPort' in obj
-	&& !!obj.viewPort;
-
-type WorkerInitMessage = { type: 'ready' };
-
-const isWorkerInitMessage = (msg: unknown): msg is WorkerInitMessage =>
-	typeof msg === 'object'
-	&& msg !== null
-	&& 'type' in msg
-	&& msg.type === 'ready';
-
 export abstract class AbstractWorkerProjection<TView> extends AbstractProjection<TView> {
 
 	#worker?: Worker;
 	readonly #workerInit?: Promise<Worker>;
 	readonly #remoteProjection?: Comlink.Remote<IRemoteProjectionApi>;
 	readonly #remoteView?: Comlink.Remote<TView>;
+	readonly #useWorkerThreads: boolean;
 
 	/**
 	 * Creates an instance of a class derived from AbstractWorkerProjection in a Worker thread
@@ -84,9 +70,7 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 	}
 
 	async project(event: IEvent): Promise<void> {
-		if (isMainThread) {
-			this.assertMainThread();
-
+		if (this.#useWorkerThreads && isMainThread) {
 			if (!this.#worker)
 				await this.#workerInit;
 
@@ -121,7 +105,7 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 	}
 
 	get view(): TView {
-		if (isMainThread)
+		if (this.#useWorkerThreads && isMainThread)
 			return this.remoteView as unknown as TView;
 
 		return super.view;
@@ -137,6 +121,7 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 
 	constructor({
 		workerModulePath,
+		useWorkerThreads = true,
 		view,
 		viewLocker,
 		eventLocker,
@@ -149,9 +134,11 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 			logger
 		});
 
-		if (isMainThread) {
+		this.#useWorkerThreads = useWorkerThreads;
+
+		if (this.#useWorkerThreads && isMainThread) {
 			if (!workerModulePath)
-				throw new TypeError('workerModulePath parameter is required in the main thread');
+				throw new TypeError('workerModulePath parameter is required in the main thread when useWorkerThreads=true');
 
 			const { port1: projectionPortMain, port2: projectionPort } = new MessageChannel();
 			const { port1: viewPortMain, port2: viewPort } = new MessageChannel();
@@ -174,54 +161,8 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 	}
 
 	// eslint-disable-next-line class-methods-use-this
-	protected async _createWorker(workerModulePath: string, workerData: IWorkerData): Promise<Worker> {
-		const workerEntrypoint = path.isAbsolute(workerModulePath) ?
-			workerModulePath :
-			path.resolve(process.cwd(), workerModulePath);
-
-		const worker = new Worker(workerEntrypoint, {
-			workerData,
-			transferList: [
-				workerData.projectionPort,
-				workerData.viewPort
-			]
-		});
-
-		await new Promise((resolve, reject) => {
-
-			const cleanup = () => {
-				// eslint-disable-next-line no-use-before-define
-				worker.off('error', onError);
-				// eslint-disable-next-line no-use-before-define
-				worker.off('message', onMessage);
-				// eslint-disable-next-line no-use-before-define
-				worker.off('exit', onExit);
-			};
-
-			const onMessage = (msg: unknown) => {
-				if (!isWorkerInitMessage(msg))
-					return;
-
-				cleanup();
-				resolve(undefined);
-			};
-
-			const onError = (err: unknown) => {
-				cleanup();
-				reject(err);
-			};
-
-			const onExit = (exitCode: number) => {
-				cleanup();
-				reject(new Error(`Worker exited prematurely with exit code ${exitCode}`));
-			};
-
-			worker.on('message', onMessage);
-			worker.once('error', onError);
-			worker.once('exit', onExit);
-		});
-
-		return worker;
+	protected async _createWorker(workerModulePath: string, data: IWorkerData): Promise<Worker> {
+		return createWorker(workerModulePath, data);
 	}
 
 	protected _onWorkerError = (error: unknown) => {
@@ -243,6 +184,8 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 	protected assertMainThread(): asserts this is this & IMainThreadProjection<TView> {
 		if (!isMainThread)
 			throw new Error('This method can only be called from the main thread');
+		if (!this.#useWorkerThreads)
+			throw new Error('Worker threads are disabled for this projection instance');
 		if (!this.#workerInit)
 			throw new Error('Worker instance is not initialized');
 		if (!this.#remoteProjection)
@@ -258,14 +201,12 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 	}
 
 	async ensureWorkerReady(): Promise<void> {
-		this.assertMainThread();
-		await this.#workerInit;
+		if (this.#useWorkerThreads && isMainThread)
+			await this.#workerInit;
 	}
 
 	protected async _project(event: IEvent): Promise<void> {
-		if (isMainThread) {
-			this.assertMainThread();
-
+		if (this.#useWorkerThreads && isMainThread) {
 			if (!this.#worker)
 				await this.#workerInit;
 
@@ -276,7 +217,7 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 	}
 
 	dispose() {
-		if (isMainThread) {
+		if (this.#useWorkerThreads && isMainThread) {
 			this.#remoteProjection?.[Comlink.releaseProxy]();
 			this.#remoteView?.[Comlink.releaseProxy]();
 			this.#worker?.terminate();

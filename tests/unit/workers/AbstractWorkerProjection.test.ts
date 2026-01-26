@@ -41,6 +41,34 @@ describe('AbstractWorkerProjection', () => {
 		}
 	});
 
+	it('runs in-thread when workers are disabled', async () => {
+		const projection = new ProjectionFixture({
+			useWorkerThreads: false,
+			workerModulePath: 'tests/unit/workers/fixtures/DOES_NOT_EXIST.cjs'
+		});
+		try {
+			await projection.ensureWorkerReady();
+
+			await projection.project({ id: '1', type: 'somethingHappened' });
+			expect(await projection.view.getCounter()).to.equal(1);
+
+			let error: any;
+			try {
+				// accessing remote API should fail when workers are disabled
+				projection.remoteProjection;
+			}
+			catch (err) {
+				error = err;
+			}
+
+			expect(error).to.be.instanceOf(Error);
+			expect((error as Error).message).to.include('Worker threads are disabled');
+		}
+		finally {
+			projection.dispose();
+		}
+	});
+
 	it('awaits view method calls while restoring', async () => {
 		const projection = new ProjectionFixture();
 		try {
