@@ -41,6 +41,35 @@ describe('AbstractWorkerProjection', () => {
 		}
 	});
 
+	it('awaits view method calls while restoring', async () => {
+		const projection = new ProjectionFixture();
+		try {
+			const eventStore = createEventStore([
+				{ id: '1', type: 'slowHappened' }
+			]);
+
+			const restorePromise = projection.restore(eventStore);
+
+			await new Promise(resolve => setTimeout(resolve, 10));
+
+			const counterPromise = projection.view.getCounter();
+
+			const resolvedEarly = await Promise.race([
+				counterPromise.then(() => true),
+				new Promise(resolve => setTimeout(() => resolve(false), 20))
+			]);
+
+			expect(resolvedEarly).to.equal(false);
+
+			await restorePromise;
+
+			expect(await counterPromise).to.equal(1);
+		}
+		finally {
+			projection.dispose();
+		}
+	});
+
 	it('spawns worker with an instance of projection', async () => {
 		const projection = new ProjectionFixture();
 		try {
@@ -76,8 +105,7 @@ describe('AbstractWorkerProjection', () => {
 			await projection.restore(eventStore);
 
 			await projection.ensureWorkerReady();
-			expect(await projection.view.getLockCalls()).to.equal(1);
-			expect(await projection.view.getUnlockCalls()).to.equal(1);
+			expect(await projection.view.getCalls()).to.deep.equal({ lock: 1, unlock: 1 });
 			expect(await projection.view.isReady()).to.equal(true);
 			expect((await projection.view.getLastEvent())?.id).to.equal('2');
 			expect(await projection.view.getCounter()).to.equal(2);
@@ -102,8 +130,7 @@ describe('AbstractWorkerProjection', () => {
 			]));
 
 			await projection.ensureWorkerReady();
-			expect(await projection.view.getLockCalls()).to.equal(2);
-			expect(await projection.view.getUnlockCalls()).to.equal(2);
+			expect(await projection.view.getCalls()).to.deep.equal({ lock: 2, unlock: 2 });
 			expect((await projection.view.getLastEvent())?.id).to.equal('3');
 			expect(await projection.view.getCounter()).to.equal(3);
 		}
@@ -133,11 +160,10 @@ describe('AbstractWorkerProjection', () => {
 			expect(error).to.have.property('message', 'boom');
 
 			await projection.ensureWorkerReady();
-			expect(await projection.view.getLockCalls()).to.equal(1);
-			expect(await projection.view.getUnlockCalls()).to.equal(0);
+			expect(await projection.view.getCalls()).to.deep.equal({ lock: 1, unlock: 0 });
 			expect(await projection.view.isReady()).to.equal(false);
 			expect((await projection.view.getLastEvent())?.id).to.equal('1');
-			expect(await projection.view.getCounter()).to.equal(1);
+			expect(await projection.view.getCounterNowait()).to.equal(1);
 		}
 		finally {
 			projection.dispose();

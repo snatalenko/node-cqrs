@@ -9,8 +9,10 @@ class ViewFixture {
 	counter = 0;
 	ready = true;
 
-	#lockCalls = 0;
-	#unlockCalls = 0;
+	#calls = {
+		lock: 0,
+		unlock: 0
+	};
 	#lastEvent = null;
 	#skipIds = new Set();
 	#readyPromise = Promise.resolve();
@@ -20,7 +22,13 @@ class ViewFixture {
 		this.counter += 1;
 	}
 
-	getCounter() {
+	async getCounter() {
+		if (!this.ready)
+			await this.once('ready');
+		return this.counter;
+	}
+
+	getCounterNowait() {
 		return this.counter;
 	}
 
@@ -28,12 +36,8 @@ class ViewFixture {
 		this.#skipIds = new Set(ids);
 	}
 
-	getLockCalls() {
-		return this.#lockCalls;
-	}
-
-	getUnlockCalls() {
-		return this.#unlockCalls;
+	getCalls() {
+		return { ...this.#calls };
 	}
 
 	isReady() {
@@ -41,7 +45,7 @@ class ViewFixture {
 	}
 
 	async lock() {
-		this.#lockCalls += 1;
+		this.#calls.lock += 1;
 		this.ready = false;
 		this.#readyPromise = new Promise(resolve => {
 			this.#resolveReady = resolve;
@@ -50,7 +54,7 @@ class ViewFixture {
 	}
 
 	async unlock() {
-		this.#unlockCalls += 1;
+		this.#calls.unlock += 1;
 		this.ready = true;
 		if (this.#resolveReady)
 			this.#resolveReady();
@@ -98,6 +102,11 @@ class ProjectionFixture extends AbstractWorkerProjection {
 	}
 
 	async somethingHappened() {
+		this.view.increment();
+	}
+
+	async slowHappened() {
+		await new Promise(resolve => setTimeout(resolve, 50));
 		this.view.increment();
 	}
 
