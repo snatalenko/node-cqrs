@@ -1,3 +1,11 @@
+# [1.0.0-rc.33](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.32...v1.0.0-rc.33) (2026-01-26)
+
+
+### Fixes
+
+* Concurrent operations handling in SqliteObjectStorage updateEnforcingNew ([bab7807](https://github.com/snatalenko/node-cqrs/commit/bab78078de52bd88bb86c293adb87eeb974241d5))
+
+
 # [1.0.0-rc.32](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.31...v1.0.0-rc.32) (2026-01-09)
 
 
