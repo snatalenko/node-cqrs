@@ -83,6 +83,10 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 
 		await this.assertConnection();
 
+		this.#createSync(id, data);
+	}
+
+	#createSync(id: string, data: TRecord) {
 		const r = this.#insertQuery.run(guid(id), JSON.stringify(data));
 		if (r.changes !== 1)
 			throw new Error(`Record '${id}' could not be created`);
@@ -96,11 +100,20 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 
 		await this.assertConnection();
 
+		this.#updateSync(id, update);
+	}
+
+	#updateSync(id: string, update: (r: TRecord) => TRecord) {
 		const gid = guid(id);
 		const record = this.#getQuery.get(gid);
 		if (!record)
 			throw new Error(`Record '${id}' does not exist`);
 
+		this.#updateExistingSync(id, record, update);
+	}
+
+	#updateExistingSync(id: string, record: { data: string, version: number }, update: (r: TRecord) => TRecord) {
+		const gid = guid(id);
 		const data = JSON.parse(record.data);
 		const updatedData = update(data);
 		const updatedJson = JSON.stringify(updatedData);
@@ -121,13 +134,11 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 
 		await this.assertConnection();
 
-		// Due to better-sqlite3 sync nature,
-		// it's safe to get then modify within this process
 		const record = this.#getQuery.get(guid(id));
 		if (record)
-			await this.update(id, update);
+			this.#updateExistingSync(id, record, update as (r: TRecord) => TRecord);
 		else
-			await this.create(id, update());
+			this.#createSync(id, update());
 	}
 
 	async delete(id: string): Promise<boolean> {
