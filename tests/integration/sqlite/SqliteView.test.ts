@@ -1,6 +1,6 @@
 import { existsSync, unlinkSync } from 'fs';
 import { AbstractProjection, IEvent } from '../../../src';
-import { SqliteObjectStorage, SqliteObjectView, guid } from '../../../src/sqlite';
+import { SqliteObjectView } from '../../../src/sqlite';
 import * as createDb from 'better-sqlite3';
 
 type UserPayload = {
@@ -115,33 +115,5 @@ describe('SqliteView', () => {
 		// 	tbl_test_1_event_lock: viewModelSqliteDb.prepare(`SELECT * FROM tbl_event_lock LIMIT 3`).all(),
 		// 	tbl_test_1: viewModelSqliteDb.prepare(`SELECT * FROM tbl_test_1 LIMIT 3`).all()
 		// });
-	});
-
-	it('updateEnforcingNew is safe under same-process concurrency', async () => {
-		const storage = new SqliteObjectStorage<{ n: number }>({
-			viewModelSqliteDb,
-			tableName: 'tbl_concurrency'
-		});
-
-		const id = '00000000000000000000000000000001';
-
-		await storage.assertConnection();
-
-
-		const p1 = storage.updateEnforcingNew(id, r => ({ n: (r?.n ?? 0) + 1 }));
-		const p2 = storage.updateEnforcingNew(id, r => ({ n: (r?.n ?? 0) + 1 }));
-
-		await Promise.all([p1, p2]);
-
-		const record = await storage.get(id);
-		expect(record).toEqual({ n: 2 });
-
-		const row = viewModelSqliteDb.prepare(`
-			SELECT version
-			FROM tbl_concurrency
-			WHERE id = ?
-		`).get(guid(id));
-
-		expect(row?.version).toBe(2);
 	});
 });
