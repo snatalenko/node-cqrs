@@ -17,6 +17,7 @@ export type AbstractWorkerProjectionParams<TView> = AbstractProjectionParams<TVi
 
 interface IRemoteProjectionApi {
 	project(event: IEvent): Promise<void> | void;
+	_project(event: IEvent): Promise<void> | void;
 	ping(): true;
 }
 
@@ -69,7 +70,8 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 
 		const workerProjectionInstance = factory?.() ?? new this();
 		const workerProjectionInstanceApi: IRemoteProjectionApi = {
-			project: event => workerProjectionInstance._project(event),
+			project: event => workerProjectionInstance.project(event),
+			_project: event => workerProjectionInstance._project(event),
 			ping: () => workerProjectionInstance._pong()
 		};
 
@@ -79,6 +81,19 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 		parentPort.postMessage({ type: 'ready' } satisfies WorkerInitMessage);
 
 		return workerProjectionInstance;
+	}
+
+	async project(event: IEvent): Promise<void> {
+		if (isMainThread) {
+			this.assertMainThread();
+
+			if (!this.#worker)
+				await this.#workerInit;
+
+			return this.remoteProjection.project(event);
+		}
+
+		return super.project(event);
 	}
 
 	/**
@@ -103,6 +118,13 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 	get remoteView(): Comlink.Remote<TView> {
 		this.assertMainThread();
 		return this.#remoteView!;
+	}
+
+	get view(): TView {
+		if (isMainThread)
+			return this.remoteView as unknown as TView;
+
+		return super.view;
 	}
 
 	/**
@@ -247,7 +269,7 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 			if (!this.#worker)
 				await this.#workerInit;
 
-			return this.remoteProjection.project(event);
+			return this.remoteProjection._project(event);
 		}
 
 		return super._project(event);

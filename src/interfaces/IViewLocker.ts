@@ -39,8 +39,16 @@ export interface IViewLocker {
  * @returns `true` if the object implements `IViewLocker`, `false` otherwise.
  */
 export const isViewLocker = (view: unknown): view is IViewLocker =>
-	isObject(view)
-	&& 'ready' in view
-	&& 'lock' in view
-	&& 'unlock' in view
-	&& 'once' in view;
+	(
+		isObject(view)
+		&& 'ready' in view
+		&& 'lock' in view
+		&& 'unlock' in view
+		&& 'once' in view
+	) || (
+		typeof view === 'function'
+		&& typeof (view as any).lock === 'function'
+		&& typeof (view as any).unlock === 'function'
+		&& typeof (view as any).once === 'function'
+		&& (view as any).ready !== undefined
+	);

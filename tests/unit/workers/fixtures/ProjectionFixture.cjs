@@ -7,6 +7,14 @@ const { AbstractWorkerProjection } = workers;
 
 class ViewFixture {
 	counter = 0;
+	ready = true;
+
+	#lockCalls = 0;
+	#unlockCalls = 0;
+	#lastEvent = null;
+	#skipIds = new Set();
+	#readyPromise = Promise.resolve();
+	#resolveReady = null;
 
 	increment() {
 		this.counter += 1;
@@ -14,6 +22,59 @@ class ViewFixture {
 
 	getCounter() {
 		return this.counter;
+	}
+
+	setSkipIds(ids = []) {
+		this.#skipIds = new Set(ids);
+	}
+
+	getLockCalls() {
+		return this.#lockCalls;
+	}
+
+	getUnlockCalls() {
+		return this.#unlockCalls;
+	}
+
+	isReady() {
+		return this.ready;
+	}
+
+	async lock() {
+		this.#lockCalls += 1;
+		this.ready = false;
+		this.#readyPromise = new Promise(resolve => {
+			this.#resolveReady = resolve;
+		});
+		return true;
+	}
+
+	async unlock() {
+		this.#unlockCalls += 1;
+		this.ready = true;
+		if (this.#resolveReady)
+			this.#resolveReady();
+		this.#resolveReady = null;
+	}
+
+	once(event) {
+		if (event !== 'ready')
+			throw new Error(`Unexpected event: ${event}`);
+		return this.#readyPromise;
+	}
+
+	getLastEvent() {
+		return this.#lastEvent;
+	}
+
+	tryMarkAsProjecting(event) {
+		if (event?.id && this.#skipIds.has(event.id))
+			return false;
+		return true;
+	}
+
+	markAsProjected(event) {
+		this.#lastEvent = event;
 	}
 }
 

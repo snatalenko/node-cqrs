@@ -28,7 +28,14 @@ export interface IEventLocker {
 }
 
 export const isEventLocker = (view: unknown): view is IEventLocker =>
-	isObject(view)
-	&& 'getLastEvent' in view
-	&& 'tryMarkAsProjecting' in view
-	&& 'markAsProjected' in view;
+	(
+		isObject(view)
+		&& 'getLastEvent' in view
+		&& 'tryMarkAsProjecting' in view
+		&& 'markAsProjected' in view
+	) || (
+		typeof view === 'function'
+		&& typeof (view as any).getLastEvent === 'function'
+		&& typeof (view as any).tryMarkAsProjecting === 'function'
+		&& typeof (view as any).markAsProjected === 'function'
+	);
