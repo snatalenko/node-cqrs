@@ -123,7 +123,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 
 	/** Pass event to projection event handler */
 	async project(event: IEvent): Promise<void> {
-		if (this._viewLocker && !this._viewLocker?.ready) {
+		if (this._viewLocker && !this._viewLocker.ready) {
 			this._logger?.debug(`view is locked, awaiting until it is ready to process ${describe(event)}`);
 			await this._viewLocker.once('ready');
 			this._logger?.debug(`view is ready, processing ${describe(event)}`);

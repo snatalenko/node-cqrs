@@ -1,8 +1,10 @@
 import * as path from 'node:path';
-import { isMainThread, Worker } from 'node:worker_threads';
-
+import { isMainThread, Worker, MessageChannel, parentPort, type MessagePort, workerData } from 'node:worker_threads';
 import { AbstractProjection, type AbstractProjectionParams } from '../AbstractProjection';
-import type { WorkerInitMessage, WorkerOutboundMessage } from './protocol';
+import type { IEvent } from '../interfaces';
+import * as Comlink from 'comlink';
+import { nodeEndpoint } from './utils';
+import { extractErrorDetails } from '../utils';
 
 export type AbstractWorkerProjectionParams<TView> = AbstractProjectionParams<TView> & {
 
@@ -13,15 +15,102 @@ export type AbstractWorkerProjectionParams<TView> = AbstractProjectionParams<TVi
 	workerModulePath?: string;
 };
 
-export abstract class AbstractWorkerProjection<TView = any> extends AbstractProjection<TView> {
+interface IRemoteProjectionApi {
+	project(event: IEvent): Promise<void> | void;
+	ping(): true;
+}
 
-	readonly #workerModulePath?: string;
+interface IMainThreadProjection<TView> {
+	get remoteProjection(): Comlink.Remote<IRemoteProjectionApi>;
+	get remoteView(): Comlink.Remote<TView>;
+}
+
+interface IWorkerData {
+	projectionPort: MessagePort,
+	viewPort: MessagePort
+}
+
+const isWorkerData = (obj: unknown): obj is IWorkerData =>
+	typeof obj === 'object'
+	&& obj !== null
+	&& 'projectionPort' in obj
+	&& !!obj.projectionPort
+	&& 'viewPort' in obj
+	&& !!obj.viewPort;
+
+type WorkerInitMessage = { type: 'ready' };
+
+const isWorkerInitMessage = (msg: unknown): msg is WorkerInitMessage =>
+	typeof msg === 'object'
+	&& msg !== null
+	&& 'type' in msg
+	&& msg.type === 'ready';
+
+export abstract class AbstractWorkerProjection<TView> extends AbstractProjection<TView> {
 
 	#worker?: Worker;
-	#workerReady?: Promise<Worker>;
+	readonly #workerInit?: Promise<Worker>;
+	readonly #remoteProjection?: Comlink.Remote<IRemoteProjectionApi>;
+	readonly #remoteView?: Comlink.Remote<TView>;
 
-	protected get _worker(): Worker | undefined {
-		return this.#worker;
+	/**
+	 * Creates an instance of a class derived from AbstractWorkerProjection in a Worker thread
+	 *
+	 * @param factory - Optional factory function to create the projection instance
+	 */
+	static createWorkerInstance<V, T extends AbstractWorkerProjection<V>>(
+		this: new (...args: any[]) => T,
+		factory?: () => T
+	): T {
+		if (!parentPort)
+			throw new Error('createWorkerInstance can only be called from a Worker thread');
+		if (!isWorkerData(workerData))
+			throw new Error('workerData does not contain projectionPort and viewPort');
+
+		const workerProjectionInstance = factory?.() ?? new this();
+		const workerProjectionInstanceApi: IRemoteProjectionApi = {
+			project: event => workerProjectionInstance._project(event),
+			ping: () => workerProjectionInstance._pong()
+		};
+
+		Comlink.expose(workerProjectionInstanceApi, nodeEndpoint(workerData.projectionPort));
+		Comlink.expose(workerProjectionInstance.view, nodeEndpoint(workerData.viewPort));
+
+		parentPort.postMessage({ type: 'ready' } satisfies WorkerInitMessage);
+
+		return workerProjectionInstance;
+	}
+
+	/**
+	 * Proxy to the projection instance in the worker thread
+	 */
+	get remoteProjection(): Comlink.Remote<IRemoteProjectionApi> {
+		this.assertMainThread();
+		return this.#remoteProjection!;
+	}
+
+	/**
+	 * Proxy to the projection instance in the worker thread (awaits worker init)
+	 */
+	get remoteProjectionInitializer(): Promise<Comlink.Remote<IRemoteProjectionApi>> {
+		this.assertMainThread();
+		return this.ensureWorkerReady().then(() => this.remoteProjection);
+	}
+
+	/**
+	 * Proxy to the view instance in the worker thread
+	 */
+	get remoteView(): Comlink.Remote<TView> {
+		this.assertMainThread();
+		return this.#remoteView!;
+	}
+
+	/**
+	 * Proxy to the view instance in the worker thread (awaits worker init)
+	 */
+	get remoteViewInitializer(): Promise<Comlink.Remote<TView>> {
+		this.assertMainThread();
+		return this.ensureWorkerReady().then(() => this.remoteView);
 	}
 
 	constructor({
@@ -31,9 +120,6 @@ export abstract class AbstractWorkerProjection<TView = any> extends AbstractProj
 		eventLocker,
 		logger
 	}: AbstractWorkerProjectionParams<TView> = {}) {
-		if (isMainThread && (typeof workerModulePath !== 'string' || !workerModulePath.length))
-			throw new TypeError('workerModulePath parameter is required in the main thread');
-
 		super({
 			view,
 			viewLocker,
@@ -41,95 +127,137 @@ export abstract class AbstractWorkerProjection<TView = any> extends AbstractProj
 			logger
 		});
 
-		this.#workerModulePath = workerModulePath;
+		if (isMainThread) {
+			if (!workerModulePath)
+				throw new TypeError('workerModulePath parameter is required in the main thread');
 
-		if (isMainThread)
-			this.ensureWorkerReady().catch(() => {});
+			const { port1: projectionPortMain, port2: projectionPort } = new MessageChannel();
+			const { port1: viewPortMain, port2: viewPort } = new MessageChannel();
 
+			this.#workerInit = this._createWorker(workerModulePath, {
+				projectionPort,
+				viewPort
+			}).then(worker => {
+				this.#worker = worker;
+				worker.once('error', this._onWorkerError);
+				worker.once('exit', this._onWorkerExit);
+				return worker;
+			});
+
+			this.#workerInit.catch(() => { });
+
+			this.#remoteProjection = Comlink.wrap<IRemoteProjectionApi>(nodeEndpoint(projectionPortMain));
+			this.#remoteView = Comlink.wrap<TView>(nodeEndpoint(viewPortMain));
+		}
 	}
 
-	async ensureWorkerReady(): Promise<Worker> {
-		if (!isMainThread)
-			throw new Error('_ensureWorkerReady can only be called from the main thread');
-
-		this.#workerReady ??= this._startWorkerAndHandshake();
-
-		return this.#workerReady;
-	}
-
-	async dispose(): Promise<void> {
-		const worker = this.#worker;
-		this.#worker = undefined;
-		this.#workerReady = undefined;
-
-		if (worker)
-			await worker.terminate();
-	}
-
-	protected _getWorkerEntrypoint(): string {
-		const workerModulePath = this.#workerModulePath;
-		if (typeof workerModulePath !== 'string' || !workerModulePath.length)
-			throw new Error('workerModulePath is required to start worker');
-
-		return path.isAbsolute(workerModulePath) ?
+	// eslint-disable-next-line class-methods-use-this
+	protected async _createWorker(workerModulePath: string, workerData: IWorkerData): Promise<Worker> {
+		const workerEntrypoint = path.isAbsolute(workerModulePath) ?
 			workerModulePath :
 			path.resolve(process.cwd(), workerModulePath);
-	}
 
-	protected _createWorker(): Worker {
-		const workerEntrypoint = this._getWorkerEntrypoint();
-		return new Worker(workerEntrypoint);
-	}
+		const worker = new Worker(workerEntrypoint, {
+			workerData,
+			transferList: [
+				workerData.projectionPort,
+				workerData.viewPort
+			]
+		});
 
-	private async _startWorkerAndHandshake(): Promise<Worker> {
-		const worker = this._createWorker();
-		this.#worker = worker;
+		await new Promise((resolve, reject) => {
 
-		const initResult = await new Promise<Extract<WorkerOutboundMessage, { kind: 'ready' | 'init.error' }>>((resolve, reject) => {
 			const cleanup = () => {
 				// eslint-disable-next-line no-use-before-define
-				worker.off('message', onMessage);
-				// eslint-disable-next-line no-use-before-define
 				worker.off('error', onError);
+				// eslint-disable-next-line no-use-before-define
+				worker.off('message', onMessage);
 				// eslint-disable-next-line no-use-before-define
 				worker.off('exit', onExit);
 			};
 
-			const onMessage = (message: WorkerOutboundMessage) => {
-				if (message.kind !== 'ready' && message.kind !== 'init.error')
+			const onMessage = (msg: unknown) => {
+				if (!isWorkerInitMessage(msg))
 					return;
+
 				cleanup();
-				resolve(message);
+				resolve(undefined);
 			};
 
-			const onError = (err: Error) => {
+			const onError = (err: unknown) => {
 				cleanup();
 				reject(err);
 			};
-			const onExit = (code: number) => {
+
+			const onExit = (exitCode: number) => {
 				cleanup();
-				reject(new Error(`Worker exited before ready (code=${code})`));
+				reject(new Error(`Worker exited prematurely with exit code ${exitCode}`));
 			};
 
 			worker.on('message', onMessage);
 			worker.once('error', onError);
 			worker.once('exit', onExit);
-
-			worker.postMessage({ kind: 'init' } satisfies WorkerInitMessage);
 		});
 
-		if (initResult.kind === 'init.error') {
-			await worker.terminate();
-			this.#worker = undefined;
+		return worker;
+	}
 
-			const err = new Error(initResult.error.message);
-			err.name = initResult.error.name;
-			if (initResult.error.stack)
-				err.stack = initResult.error.stack;
+	protected _onWorkerError = (error: unknown) => {
+		this._logger?.error('worker error', {
+			error: extractErrorDetails(error)
+		});
+	};
 
-			throw err;
+	protected _onWorkerExit = (exitCode: number) => {
+		if (exitCode !== 0)
+			this._logger?.error(`worker exited with code ${exitCode}`);
+	};
+
+	protected _pong(): true {
+		this.assertWorkerThread();
+		return true;
+	}
+
+	protected assertMainThread(): asserts this is this & IMainThreadProjection<TView> {
+		if (!isMainThread)
+			throw new Error('This method can only be called from the main thread');
+		if (!this.#workerInit)
+			throw new Error('Worker instance is not initialized');
+		if (!this.#remoteProjection)
+			throw new Error('Remote projection instance is not initialized');
+		if (!this.#remoteView)
+			throw new Error('Remote view instance is not initialized');
+	}
+
+	// eslint-disable-next-line class-methods-use-this
+	protected assertWorkerThread() {
+		if (!parentPort)
+			throw new Error('This method can only be called from a Worker thread');
+	}
+
+	async ensureWorkerReady(): Promise<void> {
+		this.assertMainThread();
+		await this.#workerInit;
+	}
+
+	protected async _project(event: IEvent): Promise<void> {
+		if (isMainThread) {
+			this.assertMainThread();
+
+			if (!this.#worker)
+				await this.#workerInit;
+
+			return this.remoteProjection.project(event);
 		}
 
-		return worker;
+		return super._project(event);
+	}
+
+	dispose() {
+		if (isMainThread) {
+			this.#remoteProjection?.[Comlink.releaseProxy]();
+			this.#remoteView?.[Comlink.releaseProxy]();
+			this.#worker?.terminate();
+		}
 	}
 }
