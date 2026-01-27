@@ -83,4 +83,30 @@ describe('SqliteObjectStorage', function () {
 
 		await expect(() => storage.get('0005')).rejects.toThrow();
 	});
+
+	it('updateEnforcingNew is safe under same-process concurrency', async function () {
+		const id = '00000000000000000000000000000001';
+		const concurrency = 50;
+
+		const results = await Promise.allSettled(
+			Array.from({ length: concurrency }, () => storage.updateEnforcingNew(id, r => ({
+				name: 'counter',
+				value: (r?.value ?? 0) + 1
+			})))
+		);
+
+		const rejected = results.filter(r => r.status === 'rejected');
+		expect(rejected).toEqual([]);
+
+		const record = await storage.get(id);
+		expect(record).toEqual({ name: 'counter', value: concurrency });
+
+		const row = db.prepare(`
+			SELECT version
+			FROM test_objects
+			WHERE id = ?
+		`).get(guid(id)) as { version: number } | undefined;
+
+		expect(row?.version).toBe(concurrency);
+	});
 });
