@@ -56,8 +56,8 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	}
 
 	#view?: TView;
-	#viewLocker?: IViewLocker;
-	#eventLocker?: IEventLocker;
+	#viewLocker?: IViewLocker | null;
+	#eventLocker?: IEventLocker | null;
 	protected _logger?: ILogger;
 
 	/**
@@ -76,22 +76,28 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	 * Manages view restoration state to prevent early access to an inconsistent view
 	 * or conflicts from concurrent restoration by other processes.
 	 */
-	protected get _viewLocker(): IViewLocker | undefined {
-		return this.#viewLocker ?? (isViewLocker(this.view) ? this.view : undefined);
+	protected get _viewLocker(): IViewLocker | null {
+		if (this.#viewLocker === undefined)
+this.#viewLocker = isViewLocker(this.view) ? this.view : null;
+
+		return this.#viewLocker;
 	}
 
-	protected set _viewLocker(value: IViewLocker | undefined) {
+	protected set _viewLocker(value: IViewLocker | undefined | null) {
 		this.#viewLocker = value;
 	}
 
 	/**
 	 * Tracks event processing state to prevent concurrent handling by multiple processes.
 	 */
-	protected get _eventLocker(): IEventLocker | undefined {
-		return this.#eventLocker ?? (isEventLocker(this.view) ? this.view : undefined);
+	protected get _eventLocker(): IEventLocker | null {
+		if (this.#eventLocker === undefined)
+this.#eventLocker = isEventLocker(this.view) ? this.view : null;
+
+		return this.#eventLocker;
 	}
 
-	protected set _eventLocker(value: IEventLocker | undefined) {
+	protected set _eventLocker(value: IEventLocker | undefined | null) {
 		this.#eventLocker = value;
 	}
 
