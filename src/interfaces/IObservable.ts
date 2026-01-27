@@ -16,11 +16,6 @@ export interface IObservable {
 	 * Remove previously installed listener
 	 */
 	off(type: string, handler: IMessageHandler): void;
-
-	/**
-	 * Get or create a named queue, which delivers events to a single handler only
-	 */
-	queue?(name: string): IObservable;
 }
 
 export const isIObservable = (obj: unknown): obj is IObservable =>

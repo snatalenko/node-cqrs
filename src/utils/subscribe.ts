@@ -1,4 +1,4 @@
-import { IMessageHandler, IObservable } from '../interfaces';
+import { type IMessageHandler, type IObservable, isIObservableQueueProvider } from '../interfaces';
 import { getHandler } from './getHandler';
 import { getMessageHandlerNames } from './getMessageHandlerNames';
 
@@ -40,8 +40,6 @@ export function subscribe(
 	const { masterHandler, messageTypes, queueName } = options;
 	if (masterHandler && typeof masterHandler !== 'function')
 		throw new TypeError('masterHandler parameter, when provided, must be a Function');
-	if (queueName && typeof observable.queue !== 'function')
-		throw new TypeError('observable.queue, when queueName is specified, must be a Function');
 
 	const subscribeTo = messageTypes || getHandledMessageTypes(observer);
 	if (!Array.isArray(subscribeTo))
@@ -53,7 +51,7 @@ export function subscribe(
 			throw new Error(`'${messageType}' handler is not defined or not a function`);
 
 		if (queueName) {
-			if (!observable.queue)
+			if (!isIObservableQueueProvider(observable))
 				throw new TypeError('Observer does not support named queues');
 
 			observable.queue(queueName).on(messageType, (event, meta) => handler.call(observer, event, meta));

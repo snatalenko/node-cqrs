@@ -1,7 +1,7 @@
-import { IEvent, IEventBus, IMessageHandler, IObservable } from '../interfaces';
+import type { IEvent, IEventBus, IMessageHandler, IObservable, IObservableQueueProvider } from '../interfaces';
 import { RabbitMqGateway } from './RabbitMqGateway';
 
-export class RabbitMqEventBus implements IEventBus {
+export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 
 	static get allEventsWildcard(): string {
 		return RabbitMqGateway.ALL_EVENTS_WILDCARD;

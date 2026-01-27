@@ -18,7 +18,8 @@ import {
 	isIEventBus,
 	isIEventStorageReader,
 	IContainer,
-	isEventSet
+	isEventSet,
+	isIObservableQueueProvider
 } from './interfaces';
 import {
 	getClassName,
@@ -191,7 +192,7 @@ export class EventStore implements IEventStore {
 	}
 
 	queue(name: string): IObservable {
-		if (!this.eventBus.queue)
+		if (!isIObservableQueueProvider(this.eventBus))
 			throw new Error('Injected eventBus does not support named queues');
 
 		return this.eventBus.queue(name);

@@ -1,13 +1,14 @@
 import { describe } from './Event';
 import { InMemoryView } from './in-memory/InMemoryView';
 import {
-	IViewLocker,
-	IEventLocker,
-	IProjection,
-	ILogger,
-	IExtendableLogger,
-	IEventStore,
-	IEvent,
+	type IViewLocker,
+	type IEventLocker,
+	type IProjection,
+	type ILogger,
+	type IExtendableLogger,
+	type IEvent,
+	type IObservable,
+	type IEventStorageReader,
 	isViewLocker,
 	isEventLocker
 } from './interfaces';
@@ -78,7 +79,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	 */
 	protected get _viewLocker(): IViewLocker | null {
 		if (this.#viewLocker === undefined)
-this.#viewLocker = isViewLocker(this.view) ? this.view : null;
+			this.#viewLocker = isViewLocker(this.view) ? this.view : null;
 
 		return this.#viewLocker;
 	}
@@ -92,7 +93,7 @@ this.#viewLocker = isViewLocker(this.view) ? this.view : null;
 	 */
 	protected get _eventLocker(): IEventLocker | null {
 		if (this.#eventLocker === undefined)
-this.#eventLocker = isEventLocker(this.view) ? this.view : null;
+			this.#eventLocker = isEventLocker(this.view) ? this.view : null;
 
 		return this.#eventLocker;
 	}
@@ -118,8 +119,11 @@ this.#eventLocker = isEventLocker(this.view) ? this.view : null;
 			logger;
 	}
 
-	/** Subscribe to event store */
-	async subscribe(eventStore: IEventStore): Promise<void> {
+	/**
+	 * Subscribe to event store
+	 * and restore view state from not yet projected events
+	 */
+	async subscribe(eventStore: IObservable & IEventStorageReader): Promise<void> {
 		subscribe(eventStore, this, {
 			masterHandler: this.project
 		});
@@ -156,10 +160,13 @@ this.#eventLocker = isEventLocker(this.view) ? this.view : null;
 			await this._eventLocker.markAsProjected(event);
 	}
 
-	/** Restore projection view from event store */
-	async restore(eventStore: IEventStore): Promise<void> {
-		// lock the view to ensure same restoring procedure
-		// won't be performed by another projection instance
+	/**
+	 * Restore view state from not-yet-projected events.
+	 *
+	 * Lock the view to ensure same restoring procedure
+	 * won't be performed by another projection instance.
+	 * */
+	async restore(eventStore: IEventStorageReader): Promise<void> {
 		if (this._viewLocker)
 			await this._viewLocker.lock();
 
@@ -169,8 +176,8 @@ this.#eventLocker = isEventLocker(this.view) ? this.view : null;
 			this._viewLocker.unlock();
 	}
 
-	/** Restore projection view from event store */
-	protected async _restore(eventStore: IEventStore): Promise<void> {
+	/** Restore view state from not-yet-projected events */
+	protected async _restore(eventStore: IEventStorageReader): Promise<void> {
 		if (!eventStore)
 			throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getEventsByTypes !== 'function')
@@ -205,12 +212,12 @@ this.#eventLocker = isEventLocker(this.view) ? this.view : null;
 	}
 
 	/**
-* Handle error on restoring.
+	 * Handle error on restoring.
 	 *
 	 * Logs and throws error by default
-*/
+	 */
 	protected _onRestoringError(error: unknown, event: IEvent) {
-const errorMessage = error instanceof Error ? error.message : String(error);
+		const errorMessage = error instanceof Error ? error.message : String(error);
 		this._logger?.error(`view restoring has failed (view remains locked): ${errorMessage}`, {
 			service: getClassName(this),
 			event,
