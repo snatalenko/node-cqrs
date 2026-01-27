@@ -196,7 +196,7 @@ this.#eventLocker = isEventLocker(this.view) ? this.view : null;
 				await this._project(event);
 				eventsCount += 1;
 			}
-			catch (err: any) {
+			catch (err: unknown) {
 				this._onRestoringError(err, event);
 			}
 		}
@@ -204,13 +204,19 @@ this.#eventLocker = isEventLocker(this.view) ? this.view : null;
 		this._logger?.info(`view restored from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}
 
-	/** Handle error on restoring. Logs and throws error by default */
-	protected _onRestoringError(error: Error, event: IEvent) {
-		this._logger?.error(`view restoring has failed (view will remain locked): ${error.message}`, {
+	/**
+* Handle error on restoring.
+	 *
+	 * Logs and throws error by default
+*/
+	protected _onRestoringError(error: unknown, event: IEvent) {
+const errorMessage = error instanceof Error ? error.message : String(error);
+		this._logger?.error(`view restoring has failed (view remains locked): ${errorMessage}`, {
 			service: getClassName(this),
 			event,
-			stack: error.stack
+			error
 		});
+
 		throw error;
 	}
 }
