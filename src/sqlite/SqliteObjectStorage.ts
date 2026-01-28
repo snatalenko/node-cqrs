@@ -1,6 +1,6 @@
-import { Statement, Database } from 'better-sqlite3';
+import type { Statement, Database } from 'better-sqlite3';
 import { guid } from './utils';
-import { IContainer, IObjectStorage } from '../interfaces';
+import type { IContainer, IObjectStorage } from '../interfaces';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
 
 export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor implements IObjectStorage<TRecord> {

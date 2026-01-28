@@ -1,6 +1,6 @@
-import { IContainer } from '../interfaces';
+import type { IContainer } from '../interfaces';
 import { Lock } from '../utils';
-import { Database } from 'better-sqlite3';
+import type { Database } from 'better-sqlite3';
 
 /**
  * Abstract base class for accessing a SQLite database.

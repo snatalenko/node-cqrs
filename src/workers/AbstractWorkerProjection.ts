@@ -32,6 +32,10 @@ interface IMainThreadProjection<TView> {
 	get remoteView(): Comlink.Remote<TView>;
 }
 
+/**
+ * Projection base class that can run projection handlers and the associated view in a worker thread
+ * to isolate CPU-heavy work and keep the main thread responsive
+ */
 export abstract class AbstractWorkerProjection<TView> extends AbstractProjection<TView> {
 
 	#worker?: Worker;

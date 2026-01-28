@@ -1,5 +1,5 @@
-import { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
-import { IContainer, ILogger, IMessage, isMessage } from '../interfaces';
+import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
+import { type IContainer, type ILogger, type IMessage, isMessage } from '../interfaces';
 import * as Event from '../Event';
 import { extractErrorDetails, Lock } from '../utils';
 import { registerExitCleanup } from './utils';

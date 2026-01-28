@@ -1,6 +1,9 @@
 import type { IEvent, IEventBus, IMessageHandler, IObservable, IObservableQueueProvider } from '../interfaces';
 import { RabbitMqGateway } from './RabbitMqGateway';
 
+/**
+ * RabbitMQ-backed `IEventBus` with named queues support
+ */
 export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 
 	static get allEventsWildcard(): string {
