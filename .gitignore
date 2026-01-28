@@ -30,6 +30,7 @@ data/
 mongod
 *.sublime-project
 *.sublime-workspace
+.obsidian/
 
 # OS-specific
 # ===========
