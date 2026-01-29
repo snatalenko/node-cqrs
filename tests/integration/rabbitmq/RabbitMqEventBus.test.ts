@@ -2,11 +2,7 @@ import * as amqplib from 'amqplib';
 import { RabbitMqGateway } from '../../../src/rabbitmq/RabbitMqGateway';
 import { RabbitMqEventBus } from '../../../src/rabbitmq/RabbitMqEventBus';
 import { IMessage, IEvent } from '../../../src/interfaces';
-
-const delay = (ms: number) => new Promise(res => {
-	const t = setTimeout(res, ms);
-	t.unref();
-});
+import { delay } from './utils';
 
 describe('RabbitMqEventBus', () => {
 

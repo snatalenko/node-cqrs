@@ -1,7 +1,7 @@
 import { RabbitMqGateway } from '../../../src/rabbitmq/RabbitMqGateway';
 import { IMessage } from '../../../src/interfaces';
 import * as amqplib from 'amqplib';
-import { delay } from '../../../src/utils';
+import { delay } from './utils';
 import { Deferred } from '../../../src/utils/Deferred';
 import { EventEmitter } from 'stream';
 
