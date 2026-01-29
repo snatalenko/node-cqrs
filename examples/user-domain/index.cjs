@@ -10,8 +10,8 @@ const {
 	EventDispatcher,
 	InMemorySnapshotStorage
 } = require('node-cqrs');
-const UserAggregate = require('./UserAggregate');
-const UsersProjection = require('./UsersProjection');
+const UserAggregate = require('./UserAggregate.cjs');
+const UsersProjection = require('./UsersProjection.cjs');
 
 /**
  * DI container factory
