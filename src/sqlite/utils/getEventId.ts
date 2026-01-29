@@ -1,6 +1,6 @@
-import { IEvent } from '../../interfaces';
-import { guid } from './guid';
-import md5 = require('md5');
+import { IEvent } from '../../interfaces/index.ts';
+import { guid } from './guid.ts';
+import md5 from 'md5';
 
 /**
  * Get assigned or generate new event ID from event content

@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ES2022",
+    "target": "ES2022",
+    "declaration": true,
+    "declarationDir": "./types",
+    "declarationMap": false,
+    "outDir": "./dist/esm",
+    "noEmit": false,
+    "noEmitOnError": true
+  }
+}

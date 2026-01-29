@@ -1,10 +1,10 @@
 import type { Database, Statement } from 'better-sqlite3';
-import type { IContainer, ILogger, IViewLocker } from '../interfaces';
-import { Deferred } from '../utils';
+import type { IContainer, ILogger, IViewLocker } from '../interfaces/index.ts';
+import { Deferred } from '../utils/index.ts';
 import { promisify } from 'util';
-import { viewLockTableInit } from './queries';
-import type { SqliteProjectionDataParams } from './SqliteProjectionDataParams';
-import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
+import { viewLockTableInit } from './queries/index.ts';
+import type { SqliteProjectionDataParams } from './SqliteProjectionDataParams.ts';
+import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
 const delay = promisify(setTimeout);
 
 export type SqliteViewLockerParams = SqliteProjectionDataParams & {

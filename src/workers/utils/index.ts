@@ -1,2 +1,2 @@
-export * from './createWorker';
-export * from './nodeEndpoint';
+export * from './createWorker.ts';
+export * from './nodeEndpoint.ts';

@@ -1,7 +1,7 @@
-import { ICommand } from './ICommand';
-import { IEventSet } from './IEventSet';
-import { IObservable } from './IObservable';
-import { IObserver } from './IObserver';
+import type { ICommand } from './ICommand.ts';
+import type { IEventSet } from './IEventSet.ts';
+import type { IObservable } from './IObservable.ts';
+import type { IObserver } from './IObserver.ts';
 
 export interface ICommandBus extends IObservable {
 	send(commandType: string, aggregateId: string | undefined, options: { payload?: object, context?: object }):

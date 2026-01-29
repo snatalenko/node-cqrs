@@ -1,18 +1,18 @@
-import { getClassName, Lock, MapAssertable } from './utils';
+import { getClassName, Lock, MapAssertable } from './utils/index.ts';
 import {
-	IAggregate,
-	IAggregateConstructor,
-	IAggregateFactory,
-	ICommand,
-	ICommandHandler,
-	IContainer,
-	Identifier,
-	IEventSet,
-	IEventStore,
-	ILogger,
-	IObservable,
+	type IAggregate,
+	type IAggregateConstructor,
+	type IAggregateFactory,
+	type ICommand,
+	type ICommandHandler,
+	type IContainer,
+	type Identifier,
+	type IEventSet,
+	type IEventStore,
+	type ILogger,
+	type IObservable,
 	isIObservable
-} from './interfaces';
+} from './interfaces/index.ts';
 
 /**
  * Aggregate command handler.

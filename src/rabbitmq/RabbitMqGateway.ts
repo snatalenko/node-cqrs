@@ -1,8 +1,8 @@
 import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
-import { type IContainer, type ILogger, type IMessage, isMessage } from '../interfaces';
-import * as Event from '../Event';
-import { extractErrorDetails, Lock } from '../utils';
-import { registerExitCleanup } from './utils';
+import { type IContainer, type ILogger, type IMessage, isMessage } from '../interfaces/index.ts';
+import * as Event from '../Event.ts';
+import { extractErrorDetails, Lock } from '../utils/index.ts';
+import { registerExitCleanup } from './utils/index.ts';
 import { EventEmitter } from 'events';
 
 /** Generate a short pseudo-unique identifier using a truncated timestamp and random component */

@@ -1,7 +1,7 @@
-import { ContainerBuilder, IContainer, InMemoryEventStorage } from '../..';
-import type { ChangePasswordCommandPayload, CreateUserCommandPayload } from './messages';
-import { UserAggregate } from './UserAggregate';
-import { UsersProjection, UsersView } from './UsersProjection';
+import { ContainerBuilder, type IContainer, InMemoryEventStorage } from 'node-cqrs';
+import type { ChangePasswordCommandPayload, CreateUserCommandPayload } from './messages.ts';
+import { UserAggregate } from './UserAggregate.ts';
+import { UsersProjection, type UsersView } from './UsersProjection.ts';
 
 interface MyDiContainer extends IContainer {
 	users: UsersView;

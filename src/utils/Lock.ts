@@ -1,10 +1,14 @@
-import { Deferred } from './Deferred';
+import { Deferred } from './Deferred.ts';
 
 export class LockLease {
-	constructor(
-		readonly lock: Lock,
-		readonly name?: string
-	) { }
+
+	readonly lock: Lock;
+	readonly name?: string;
+
+	constructor(lock: Lock, name?: string) {
+		this.lock = lock;
+		this.name = name;
+	}
 
 	release() {
 		this.lock.release(this.name);

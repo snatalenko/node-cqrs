@@ -1,28 +1,33 @@
 {
-    "compileOnSave": true,
-    "compilerOptions": {
-        "module": "CommonJS",
-        "removeComments": false,
-        "sourceMap": true,
-        "alwaysStrict": false,
-        "outDir": "./dist",
-        "target": "ES2022",
-        "declaration": true,
-        "declarationDir": "./types",
-        "allowSyntheticDefaultImports": true,
-        "resolveJsonModule": true,
-        "strict": true,
-        "strictNullChecks": true,
-        "strictFunctionTypes": true,
-        "strictBindCallApply": true,
-        "strictPropertyInitialization": true,
-        "isolatedModules": true
-    },
-    "include": [
-        "src/**/*"
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "WebWorker"
     ],
-    "exclude": [
-        "node_modules",
-        "**/*.spec.ts"
-    ]
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "isolatedModules": true,
+    "removeComments": false,
+    "sourceMap": true,
+    "alwaysStrict": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts"
+  ]
 }

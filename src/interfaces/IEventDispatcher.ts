@@ -1,5 +1,5 @@
-import { IEventSet } from './IEventSet';
-import { IEventBus } from './IEventBus';
+import type { IEventSet } from './IEventSet.ts';
+import type { IEventBus } from './IEventBus.ts';
 
 export interface IEventDispatcher {
 	readonly eventBus: IEventBus;

@@ -1,2 +1,2 @@
-export * from './RabbitMqEventBus';
-export * from './RabbitMqGateway';
+export * from './RabbitMqEventBus.ts';
+export * from './RabbitMqGateway.ts';

@@ -1,5 +1,5 @@
-import { IEvent } from './IEvent';
-import { isObject } from './isObject';
+import type { IEvent } from './IEvent.ts';
+import { isObject } from './isObject.ts';
 
 /**
  * Interface for tracking event processing state to prevent concurrent processing

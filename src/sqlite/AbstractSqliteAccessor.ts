@@ -1,5 +1,5 @@
-import type { IContainer } from '../interfaces';
-import { Lock } from '../utils';
+import type { IContainer } from '../interfaces/index.ts';
+import { Lock } from '../utils/index.ts';
 import type { Database } from 'better-sqlite3';
 
 /**

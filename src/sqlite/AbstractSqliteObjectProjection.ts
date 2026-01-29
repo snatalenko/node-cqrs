@@ -1,6 +1,6 @@
-import { AbstractProjection } from '../AbstractProjection';
-import { IContainer } from '../interfaces';
-import { SqliteObjectView } from './SqliteObjectView';
+import { AbstractProjection } from '../AbstractProjection.ts';
+import { IContainer } from '../interfaces/index.ts';
+import { SqliteObjectView } from './SqliteObjectView.ts';
 
 export abstract class AbstractSqliteObjectProjection<T> extends AbstractProjection<SqliteObjectView<T>> {
 

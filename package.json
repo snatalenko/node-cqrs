@@ -2,6 +2,7 @@
   "name": "node-cqrs",
   "version": "1.0.0-rc.33",
   "description": "Basic ES6 backbone for CQRS app development",
+  "type": "module",
   "keywords": [
     "cqrs",
     "eventsourcing"
@@ -10,7 +11,7 @@
     "type": "git",
     "url": "https://github.com/snatalenko/node-cqrs.git"
   },
-  "main": "./dist/index.js",
+  "main": "./dist/cjs/index.js",
   "types": "./types/index.d.ts",
   "typesVersions": {
     "*": {
@@ -27,23 +28,23 @@
   },
   "exports": {
     ".": {
-      "require": "./dist/index.js",
-      "import": "./dist/index.js",
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
       "types": "./types/index.d.ts"
     },
     "./workers": {
-      "require": "./dist/workers/index.js",
-      "import": "./dist/workers/index.js",
+      "require": "./dist/cjs/workers/index.js",
+      "import": "./dist/esm/workers/index.js",
       "types": "./types/workers/index.d.ts"
     },
     "./rabbitmq": {
-      "require": "./dist/rabbitmq/index.js",
-      "import": "./dist/rabbitmq/index.js",
+      "require": "./dist/cjs/rabbitmq/index.js",
+      "import": "./dist/esm/rabbitmq/index.js",
       "types": "./types/rabbitmq/index.d.ts"
     },
     "./sqlite": {
-      "require": "./dist/sqlite/index.js",
-      "import": "./dist/sqlite/index.js",
+      "require": "./dist/cjs/sqlite/index.js",
+      "import": "./dist/esm/sqlite/index.js",
       "types": "./types/sqlite/index.d.ts"
     }
   },
@@ -56,14 +57,17 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "cleanup": "rm -rf ./dist ./types ./coverage && tsc --build --clean",
+    "cleanup": "rm -rf ./dist ./types ./coverage",
     "pretest": "npm run build",
     "test": "jest tests/unit examples/user-domain/tests",
     "test:coverage": "npm t -- --collect-coverage",
     "test:rabbitmq": "jest --verbose tests/integration/rabbitmq",
     "test:sqlite": "jest --verbose tests/integration/sqlite",
     "changelog": "conventional-changelog -n ./scripts/changelog -r 0 > CHANGELOG.md",
-    "build": "tsc --build",
+    "build:cjs": "tsc -p ./tsconfig.cjs.json && cp ./scripts/etc/cjs-package.json ./dist/cjs/package.json",
+    "build:esm": "tsc -p ./tsconfig.esm.json",
+    "build:browser": "tsc -p ./tsconfig.browser.json && npx browserify dist/browser/cjs/index.js --standalone Cqrs --outfile ./dist/browser/bundle.iife.js",
+    "build": "npm run build:esm && npm run build:cjs",
     "prepare": "npm run build",
     "preversion": "npm test",
     "version": "./scripts/cleanup_obsolete_tags.sh v$npm_package_version && npm run changelog && git add CHANGELOG.md",

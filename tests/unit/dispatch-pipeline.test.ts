@@ -1,4 +1,4 @@
-import { InMemorySnapshotStorage } from '../../dist/in-memory/InMemorySnapshotStorage';
+import { InMemorySnapshotStorage } from '../../dist/cjs/in-memory/InMemorySnapshotStorage';
 import {
 	ContainerBuilder,
 	IContainer,

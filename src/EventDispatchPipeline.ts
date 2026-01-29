@@ -1,15 +1,15 @@
 import {
-	DispatchPipelineBatch,
-	IEvent,
-	IDispatchPipelineProcessor,
-	IEventBus,
+	type DispatchPipelineBatch,
+	type IEvent,
+	type IDispatchPipelineProcessor,
+	type IEventBus,
 	isDispatchPipelineProcessor,
 	isSnapshotEvent
-} from './interfaces';
+} from './interfaces/index.ts';
 
 import { parallelPipe } from 'async-parallel-pipe';
 import { AsyncIterableBuffer } from 'async-iterable-buffer';
-import { getClassName } from './utils';
+import { getClassName } from './utils/index.ts';
 
 export type EventBatchEnvelope = {
 	data: DispatchPipelineBatch<{ event?: IEvent }>;
@@ -25,7 +25,12 @@ export class EventDispatchPipeline {
 	#pipeline: AsyncIterableIterator<EventBatchEnvelope> | IterableIterator<EventBatchEnvelope> = this.#pipelineInput;
 	#processing = false;
 
-	constructor(private readonly eventBus: IEventBus, private readonly concurrentLimit: number) {
+	readonly #eventBus;
+	readonly #concurrentLimit: number;
+
+	constructor(eventBus: IEventBus, concurrentLimit: number) {
+		this.#eventBus = eventBus;
+		this.#concurrentLimit = concurrentLimit;
 	}
 
 	addProcessor(preprocessor: IDispatchPipelineProcessor) {
@@ -37,7 +42,7 @@ export class EventDispatchPipeline {
 		this.#processors.push(preprocessor);
 
 		// Build a processing pipeline that runs preprocessors concurrently, preserving FIFO ordering
-		this.#pipeline = parallelPipe(this.#pipeline, this.concurrentLimit, async envelope => {
+		this.#pipeline = parallelPipe(this.#pipeline, this.#concurrentLimit, async envelope => {
 			if (envelope.error)
 				return envelope;
 
@@ -79,7 +84,7 @@ export class EventDispatchPipeline {
 						if (isSnapshotEvent(event))
 							continue;
 
-						await this.eventBus.publish(event, meta);
+						await this.#eventBus.publish(event, meta);
 
 						events.push(event);
 					}

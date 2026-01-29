@@ -1,5 +1,5 @@
-import type { IEvent, IEventBus, IMessageHandler, IObservable, IObservableQueueProvider } from '../interfaces';
-import { RabbitMqGateway } from './RabbitMqGateway';
+import type { IEvent, IEventBus, IMessageHandler, IObservable, IObservableQueueProvider } from '../interfaces/index.ts';
+import { RabbitMqGateway } from './RabbitMqGateway.ts';
 
 /**
  * RabbitMQ-backed `IEventBus` with named queues support

@@ -1,6 +1,6 @@
 import { Worker } from 'node:worker_threads';
 import * as path from 'node:path';
-import { isWorkerInitMessage, type IWorkerData } from '../protocol';
+import { isWorkerInitMessage, type IWorkerData } from '../protocol.ts';
 
 /**
  * Create a worker instance, await a handshake or a failure

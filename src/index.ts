@@ -1,21 +1,21 @@
-export { CqrsContainerBuilder as ContainerBuilder } from './CqrsContainerBuilder';
+export { CqrsContainerBuilder as ContainerBuilder } from './CqrsContainerBuilder.ts';
 
-export * from './CommandBus';
-export * from './EventStore';
+export * from './CommandBus.ts';
+export * from './EventStore.ts';
 
-export * from './AbstractAggregate';
-export * from './AggregateCommandHandler';
-export * from './AbstractSaga';
-export * from './SagaEventHandler';
-export * from './AbstractProjection';
-export * from './EventDispatcher';
+export * from './AbstractAggregate.ts';
+export * from './AggregateCommandHandler.ts';
+export * from './AbstractSaga.ts';
+export * from './SagaEventHandler.ts';
+export * from './AbstractProjection.ts';
+export * from './EventDispatcher.ts';
 
-export * from './in-memory';
+export * from './in-memory/index.ts';
 
-export * as Event from './Event';
+export * as Event from './Event.ts';
 export {
 	getMessageHandlerNames,
 	subscribe
-} from './utils';
+} from './utils/index.ts';
 
-export * from './interfaces';
+export * from './interfaces/index.ts';

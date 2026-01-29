@@ -1,13 +1,13 @@
 import {
-	IEventDispatcher,
-	IDispatchPipelineProcessor,
-	IEventSet,
-	IEventBus,
-	isEventSet,
-	IContainer
-} from './interfaces';
-import { InMemoryMessageBus } from './in-memory';
-import { EventBatchEnvelope, EventDispatchPipeline } from './EventDispatchPipeline';
+	type IEventDispatcher,
+	type IDispatchPipelineProcessor,
+	type IEventSet,
+	type IEventBus,
+	type IContainer,
+	isEventSet
+} from './interfaces/index.ts';
+import { InMemoryMessageBus } from './in-memory/index.ts';
+import { type EventBatchEnvelope, EventDispatchPipeline } from './EventDispatchPipeline.ts';
 
 export class EventDispatcher implements IEventDispatcher {
 

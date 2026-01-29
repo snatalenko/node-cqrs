@@ -1,4 +1,4 @@
-import {
+import type {
 	IIdentifierProvider,
 	IEvent,
 	IEventSet,
@@ -9,8 +9,8 @@ import {
 	Identifier,
 	IDispatchPipelineProcessor,
 	DispatchPipelineBatch
-} from '../interfaces';
-import { nextCycle } from './utils';
+} from '../interfaces/index.ts';
+import { nextCycle } from './utils/index.ts';
 
 /**
  * A simple event storage implementation intended to use for tests only.

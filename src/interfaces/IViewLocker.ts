@@ -1,4 +1,4 @@
-import { isObject } from './isObject';
+import { isObject } from './isObject.ts';
 
 /**
  * Interface for managing view restoration state to prevent early access to an inconsistent view

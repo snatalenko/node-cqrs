@@ -69,6 +69,8 @@ Message delivery is handled by the following components (in order of appearance)
 - [examples/worker-projection](examples/worker-projection) projection in a worker thread
 - [examples/user-domain-own-implementation](examples/user-domain-own-implementation/index.ts) minimal, framework-free CQRS/ES example in 1 file
 
+TS examples can be run with `node` without transpiling
+
 ## Installation
 
 ```bash
@@ -76,9 +78,11 @@ npm i node-cqrs
 ```
 
 Tested under
+
 - Node 18
 - Node 20
 - Node 22
+- Browser (through [browserify](https://browserify.org))
 
 ### Peer Dependencies
 

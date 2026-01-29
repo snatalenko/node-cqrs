@@ -1,4 +1,4 @@
-import { IEvent, ILogger, IObservable } from '../interfaces';
+import type { IEvent, ILogger, IObservable } from '../interfaces/index.ts';
 
 /**
  * Create one-time eventEmitter subscription for one or multiple events that match a filter

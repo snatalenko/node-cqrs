@@ -1,10 +1,10 @@
 import type { Database, Statement } from 'better-sqlite3';
-import type { IContainer, IEvent, IEventLocker } from '../interfaces';
-import { getEventId } from './utils';
-import { viewLockTableInit, eventLockTableInit } from './queries';
-import type { SqliteViewLockerParams } from './SqliteViewLocker';
-import type { SqliteProjectionDataParams } from './SqliteProjectionDataParams';
-import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
+import type { IContainer, IEvent, IEventLocker } from '../interfaces/index.ts';
+import { getEventId } from './utils/index.ts';
+import { viewLockTableInit, eventLockTableInit } from './queries/index.ts';
+import type { SqliteViewLockerParams } from './SqliteViewLocker.ts';
+import type { SqliteProjectionDataParams } from './SqliteProjectionDataParams.ts';
+import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
 
 export type SqliteEventLockerParams =
 	SqliteProjectionDataParams

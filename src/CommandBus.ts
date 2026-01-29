@@ -1,5 +1,5 @@
-import { InMemoryMessageBus } from './in-memory';
-import {
+import { InMemoryMessageBus } from './in-memory/index.ts';
+import type {
 	ICommand,
 	ICommandBus,
 	IEventSet,
@@ -7,7 +7,7 @@ import {
 	ILogger,
 	IMessageBus,
 	IMessageHandler
-} from './interfaces';
+} from './interfaces/index.ts';
 
 export class CommandBus implements ICommandBus {
 

@@ -1,4 +1,4 @@
-import { IEvent } from './interfaces';
+import type { IEvent } from './interfaces/IEvent.ts';
 
 /**
  * Get text description of an event for logging purposes

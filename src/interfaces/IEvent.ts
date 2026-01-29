@@ -1,5 +1,5 @@
-import { IMessage } from './IMessage';
-import { isObject } from './isObject';
+import type { IMessage } from './IMessage.ts';
+import { isObject } from './isObject.ts';
 
 export type IEvent<TPayload = any> = IMessage<TPayload> & {
 

@@ -7,9 +7,9 @@ import {
 	type IEventSet,
 	type IAggregateConstructorParams,
 	SNAPSHOT_EVENT_TYPE
-} from './interfaces';
+} from './interfaces/index.ts';
 
-import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } from './utils';
+import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } from './utils/index.ts';
 
 /**
  * Base class for Aggregate definition

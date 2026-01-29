@@ -1,4 +1,4 @@
-import { IEventSet } from './IEventSet';
+import type { IEventSet } from './IEventSet.ts';
 
 export interface IEventStorageWriter {
 

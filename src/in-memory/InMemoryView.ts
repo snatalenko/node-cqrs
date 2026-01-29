@@ -1,6 +1,6 @@
-import { InMemoryLock } from './InMemoryLock';
-import { IViewLocker, Identifier, IObjectStorage } from '../interfaces';
-import { nextCycle } from './utils';
+import { InMemoryLock } from './InMemoryLock.ts';
+import type { IViewLocker, Identifier, IObjectStorage } from '../interfaces/index.ts';
+import { nextCycle } from './utils/index.ts';
 
 /**
  * Update given value with an update Cb and return updated value.

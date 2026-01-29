@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import * as createDb from 'better-sqlite3';
+import createDb from 'better-sqlite3';
 import { SqliteObjectView } from '../../../src/sqlite';
 import { promisify } from 'util';
 const delay = promisify(setTimeout);

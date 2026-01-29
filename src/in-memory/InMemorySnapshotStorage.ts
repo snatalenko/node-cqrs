@@ -1,14 +1,14 @@
 import {
-	DispatchPipelineBatch,
-	IAggregateSnapshotStorage,
-	IContainer,
-	Identifier,
-	IDispatchPipelineProcessor,
-	IEvent,
-	ILogger,
+	type DispatchPipelineBatch,
+	type IAggregateSnapshotStorage,
+	type IContainer,
+	type Identifier,
+	type IDispatchPipelineProcessor,
+	type IEvent,
+	type ILogger,
 	isSnapshotEvent
-} from '../interfaces';
-import * as Event from '../Event';
+} from '../interfaces/index.ts';
+import * as Event from '../Event.ts';
 
 /**
  * In-memory storage for aggregate snapshots.

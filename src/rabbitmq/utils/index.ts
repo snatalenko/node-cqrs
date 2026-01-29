@@ -1,1 +1,1 @@
-export * from './registerExitCleanup';
+export * from './registerExitCleanup.ts';

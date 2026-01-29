@@ -1,21 +1,21 @@
-import { ContainerBuilder, TypeConfig, TClassOrFactory } from 'di0';
-import { AggregateCommandHandler } from './AggregateCommandHandler';
-import { CommandBus } from './CommandBus';
-import { EventStore } from './EventStore';
-import { SagaEventHandler } from './SagaEventHandler';
-import { EventDispatcher } from './EventDispatcher';
-import { InMemoryMessageBus } from './in-memory';
-import { isClass } from './utils';
+import { ContainerBuilder, type TypeConfig, type TClassOrFactory } from 'di0';
+import { AggregateCommandHandler } from './AggregateCommandHandler.ts';
+import { CommandBus } from './CommandBus.ts';
+import { EventStore } from './EventStore.ts';
+import { SagaEventHandler } from './SagaEventHandler.ts';
+import { EventDispatcher } from './EventDispatcher.ts';
+import { InMemoryMessageBus } from './in-memory/index.ts';
+import { isClass } from './utils/isClass.ts';
 import {
-	IAggregateConstructor,
-	ICommandHandler,
-	IContainer,
-	IEventReceptor,
-	IProjection,
-	IProjectionConstructor,
-	ISagaConstructor,
+	type IAggregateConstructor,
+	type ICommandHandler,
+	type IContainer,
+	type IEventReceptor,
+	type IProjection,
+	type IProjectionConstructor,
+	type ISagaConstructor,
 	isDispatchPipelineProcessor
-} from './interfaces';
+} from './interfaces/index.ts';
 
 export class CqrsContainerBuilder<TContainerInterface extends IContainer = IContainer>
 	extends ContainerBuilder<TContainerInterface> {

@@ -1,1 +1,1 @@
-export * from './AbstractWorkerProjection';
+export * from './AbstractWorkerProjection.ts';

@@ -1,6 +1,4 @@
-/** @type {typeof import('../../../../src/workers')} */
-// @ts-ignore
-const workers = require('../../../../dist/workers');
+const workers = require('node-cqrs/workers');
 
 const { AbstractWorkerProjection } = workers;
 

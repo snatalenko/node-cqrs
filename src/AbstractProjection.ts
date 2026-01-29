@@ -1,5 +1,5 @@
-import { describe } from './Event';
-import { InMemoryView } from './in-memory/InMemoryView';
+import { describe } from './Event.ts';
+import { InMemoryView } from './in-memory/InMemoryView.ts';
 import {
 	type IViewLocker,
 	type IEventLocker,
@@ -11,7 +11,7 @@ import {
 	type IEventStorageReader,
 	isViewLocker,
 	isEventLocker
-} from './interfaces';
+} from './interfaces/index.ts';
 
 import {
 	getClassName,
@@ -19,7 +19,7 @@ import {
 	getHandler,
 	subscribe,
 	getMessageHandlerNames
-} from './utils';
+} from './utils/index.ts';
 
 export type AbstractProjectionParams<T> = {
 

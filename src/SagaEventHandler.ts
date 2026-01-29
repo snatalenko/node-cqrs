@@ -1,5 +1,5 @@
-import * as Event from './Event';
-import {
+import * as Event from './Event.ts';
+import type {
 	ICommandBus,
 	IContainer,
 	IEvent,
@@ -10,13 +10,13 @@ import {
 	ISaga,
 	ISagaConstructor,
 	ISagaFactory
-} from './interfaces';
+} from './interfaces/index.ts';
 
 import {
 	subscribe,
 	getClassName,
 	iteratorToArray
-} from './utils';
+} from './utils/index.ts';
 
 /**
  * Listens to Saga events,

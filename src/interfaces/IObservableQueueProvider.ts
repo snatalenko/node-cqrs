@@ -1,5 +1,5 @@
-import type { IObservable } from './IObservable';
-import { isObject } from './isObject';
+import type { IObservable } from './IObservable.ts';
+import { isObject } from './isObject.ts';
 
 export interface IObservableQueueProvider {
 
