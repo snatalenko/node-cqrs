@@ -15,12 +15,18 @@ It favors ES6/TS classes and dependency injection, so you can modify or replace 
 
 CQRS/ES itself can be implemented with surprisingly little code in a single process.
 For a minimal, framework-free example, see [examples/user-domain-own-implementation/index.ts](examples/user-domain-own-implementation/index.ts).
+
 This library exists to cover the "boring but hard" parts that are usually missing from a plain implementation, including:
 
 - async command/event processing and safer wiring/subscriptions
 - persistent views and catch-up on restart (checkpointing, view readiness/locking)
 - aggregate snapshots
 - extensible event dispatching pipelines (encoding, persistence, distribution, etc.)
+
+At a high level, the command/event flow looks like:
+
+![Overview](docs/images/node-cqrs-flow.png)
+
 
 Commands and events are loosely typed objects that implement the [IMessage](src/interfaces/IMessage.ts) interface:
 
@@ -47,29 +53,34 @@ Domain business logic typically lives in aggregates, sagas, and projections:
 
 Message delivery is handled by the following components (in order of appearance):
 
-- **Command Bus** delivers commands to command handlers
-- **Aggregate Command Handler** restores aggregate state and executes the command
-- **Event Store** runs the event dispatching process:
+- **[Command Bus](src/CommandBus.ts)** delivers commands to command handlers
+- **[Aggregate Command Handler](src/AggregateCommandHandler.ts)** restores aggregate state and executes the command
+- **[Event Store](src/EventStore.ts)** runs the event dispatching process:
   - persists events (via the configured dispatch pipeline)
-  - then delivers them to event handlers (saga handlers, projections, custom services)
-- **Saga Event Handler** restores saga state and applies events
-
-At a high level, the command/event flow looks like:
-
-![Overview](docs/images/node-cqrs-flow.png)
+  - then delivers them to event handlers (sagas, projections, custom services)
+- **[Saga Event Handler](src/SagaEventHandler.ts)** restores saga state and applies events
 
 **Tip**: the codebase is intentionally small and readable - `src/`, `tests/`, `examples/` are a good reference if you want to explore behavior in more detail.
+
+### Examples
 
 - [examples/user-domain](examples/user-domain) basic CJS implementation
 - [examples/user-domain-ts](examples/user-domain-ts) similar implementation in TS
 - [examples/worker-projection](examples/worker-projection) projection in a worker thread
-- [examples/user-domain-own-implementation](examples/user-domain-own-implementation) minimal, framework-free, CQRS/ES example
+- [examples/user-domain-own-implementation](examples/user-domain-own-implementation/index.ts) minimal, framework-free CQRS/ES example in 1 file
 
 ## Installation
 
 ```bash
 npm i node-cqrs
 ```
+
+Tested under
+- Node 18
+- Node 20
+- Node 22
+
+### Peer Dependencies
 
 If you want to use SQLite, RabbitMQ, or worker threads, the following peer dependencies may be needed:
 
