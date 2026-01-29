@@ -1,5 +1,5 @@
-import { Identifier } from './Identifier';
-import { IEvent } from './IEvent';
+import type { Identifier } from './Identifier.ts';
+import type { IEvent } from './IEvent.ts';
 
 export interface IAggregateSnapshotStorage {
 	getAggregateSnapshot<TState>(aggregateId: Identifier):

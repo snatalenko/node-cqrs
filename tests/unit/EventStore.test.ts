@@ -1,4 +1,4 @@
-import { EventDispatcher } from '../../dist/EventDispatcher';
+import { EventDispatcher } from '../../dist/cjs/EventDispatcher';
 import { IEventDispatcher, InMemoryMessageBus } from '../../src';
 import { EventStore } from '../../src/EventStore';
 import {

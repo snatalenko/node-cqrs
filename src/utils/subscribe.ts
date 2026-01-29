@@ -1,6 +1,6 @@
-import { type IMessageHandler, type IObservable, isIObservableQueueProvider } from '../interfaces';
-import { getHandler } from './getHandler';
-import { getMessageHandlerNames } from './getMessageHandlerNames';
+import { type IMessageHandler, type IObservable, isIObservableQueueProvider } from '../interfaces/index.ts';
+import { getHandler } from './getHandler.ts';
+import { getMessageHandlerNames } from './getMessageHandlerNames.ts';
 
 const unique = <T>(arr: T[]): T[] => [...new Set(arr)];
 

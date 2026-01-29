@@ -1,4 +1,4 @@
-import { RabbitMqGateway } from './RabbitMqGateway';
+import { RabbitMqGateway } from './RabbitMqGateway.ts';
 
 declare module '../interfaces/IContainer' {
 	interface IContainer {

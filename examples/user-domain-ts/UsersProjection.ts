@@ -1,5 +1,5 @@
-import type { UserCreatedEvent } from './messages';
-import { AbstractProjection } from '../..';
+import { AbstractProjection } from 'node-cqrs';
+import type { UserCreatedEvent } from './messages.ts';
 
 export type UsersView = Map<string, { username: string; }>;
 

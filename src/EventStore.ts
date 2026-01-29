@@ -20,12 +20,12 @@ import {
 	isIEventStorageReader,
 	isEventSet,
 	isIObservableQueueProvider
-} from './interfaces';
+} from './interfaces/index.ts';
 import {
 	getClassName,
 	setupOneTimeEmitterSubscription
-} from './utils';
-import { EventDispatcher } from './EventDispatcher';
+} from './utils/index.ts';
+import { EventDispatcher } from './EventDispatcher.ts';
 
 export class EventStore implements IEventStore {
 

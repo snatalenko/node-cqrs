@@ -1,9 +1,9 @@
-import type { IEventDispatcher } from './IEventDispatcher';
-import type { IEvent } from './IEvent';
-import type { IEventStorageReader } from './IEventStorageReader';
-import type { IIdentifierProvider } from './IIdentifierProvider';
-import type { IMessageHandler, IObservable } from './IObservable';
-import type { IObservableQueueProvider } from './IObservableQueueProvider';
+import type { IEventDispatcher } from './IEventDispatcher.ts';
+import type { IEvent } from './IEvent.ts';
+import type { IEventStorageReader } from './IEventStorageReader.ts';
+import type { IIdentifierProvider } from './IIdentifierProvider.ts';
+import type { IMessageHandler, IObservable } from './IObservable.ts';
+import type { IObservableQueueProvider } from './IObservableQueueProvider.ts';
 
 export interface IEventStore
 	extends IObservable, IObservableQueueProvider, IEventDispatcher, IEventStorageReader, IIdentifierProvider {

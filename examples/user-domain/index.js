@@ -7,9 +7,9 @@ const {
 	EventStore,
 	AggregateCommandHandler,
 	InMemoryMessageBus,
-	EventDispatcher
-} = require('../..'); // node-cqrs
-const { InMemorySnapshotStorage } = require('../..');
+	EventDispatcher,
+	InMemorySnapshotStorage
+} = require('node-cqrs');
 const UserAggregate = require('./UserAggregate');
 const UsersProjection = require('./UsersProjection');
 
@@ -47,14 +47,14 @@ exports.createBaseInstances = () => {
 	const eventStore = new EventStore({ eventStorageReader: storage, eventBus, eventDispatcher });
 	const commandBus = new CommandBus();
 
-	/** @type {import('../..').IAggregateConstructor} */
+	/** @type {import('node-cqrs').IAggregateConstructor} */
 	const aggregateType = UserAggregate;
 
-	/** @type {import('../..').ICommandHandler} */
+	/** @type {import('node-cqrs').ICommandHandler} */
 	const userCommandHandler = new AggregateCommandHandler({ eventStore, aggregateType });
 	userCommandHandler.subscribe(commandBus);
 
-	/** @type {import('../..').IProjection} */
+	/** @type {import('node-cqrs').IProjection} */
 	const usersProjection = new UsersProjection();
 	usersProjection.subscribe(eventStore);
 

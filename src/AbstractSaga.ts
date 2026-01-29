@@ -1,6 +1,6 @@
-import { ICommand, Identifier, IEvent, ISaga, ISagaConstructorParams } from './interfaces';
+import type { ICommand, Identifier, IEvent, ISaga, ISagaConstructorParams } from './interfaces/index.ts';
 
-import { getClassName, validateHandlers, getHandler } from './utils';
+import { getClassName, validateHandlers, getHandler } from './utils/index.ts';
 
 /**
  * Base class for Saga definition

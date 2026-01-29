@@ -1,10 +1,10 @@
 import { isMainThread, Worker, MessageChannel, parentPort, workerData } from 'node:worker_threads';
-import { AbstractProjection, type AbstractProjectionParams } from '../AbstractProjection';
-import type { IEvent } from '../interfaces';
+import { AbstractProjection, type AbstractProjectionParams } from '../AbstractProjection.ts';
+import type { IEvent } from '../interfaces/index.ts';
 import * as Comlink from 'comlink';
-import { nodeEndpoint, createWorker } from './utils';
-import { extractErrorDetails } from '../utils';
-import { isWorkerData, type IWorkerData, type WorkerInitMessage } from './protocol';
+import { nodeEndpoint, createWorker } from './utils/index.ts';
+import { extractErrorDetails } from '../utils/index.ts';
+import { isWorkerData, type IWorkerData, type WorkerInitMessage } from './protocol.ts';
 
 export type AbstractWorkerProjectionParams<TView> = AbstractProjectionParams<TView> & {
 

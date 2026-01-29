@@ -1,7 +1,7 @@
-import { Identifier } from './Identifier';
-import { IEvent } from './IEvent';
-import { IEventStream } from './IEventStream';
-import { isObject } from './isObject';
+import type { Identifier } from './Identifier.ts';
+import type { IEvent } from './IEvent.ts';
+import type { IEventStream } from './IEventStream.ts';
+import { isObject } from './isObject.ts';
 
 export type EventQueryAfter = {
 

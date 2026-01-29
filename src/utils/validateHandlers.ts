@@ -1,4 +1,4 @@
-import { getHandler } from './getHandler';
+import { getHandler } from './getHandler.ts';
 
 /**
  * Ensure instance has handlers declared for all handled message types

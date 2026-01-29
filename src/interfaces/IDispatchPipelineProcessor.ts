@@ -1,5 +1,5 @@
-import { IEvent } from './IEvent';
-import { isObject } from './isObject';
+import type { IEvent } from './IEvent.ts';
+import { isObject } from './isObject.ts';
 
 /**
  * Represents a wrapper for an event that can optionally contain additional metadata.

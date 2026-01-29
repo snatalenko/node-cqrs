@@ -1,14 +1,14 @@
 import { Container } from 'di0';
-import { ICommandBus } from './ICommandBus';
-import { IEventDispatcher } from './IEventDispatcher';
-import { IEventStore } from './IEventStore';
-import { IEventBus } from './IEventBus';
-import { IDispatchPipelineProcessor } from './IDispatchPipelineProcessor';
-import { IEventStorageReader } from './IEventStorageReader';
-import { IAggregateSnapshotStorage } from './IAggregateSnapshotStorage';
-import { IIdentifierProvider } from './IIdentifierProvider';
-import { IExtendableLogger, ILogger } from './ILogger';
-import { IEventStorageWriter } from './IEventStorageWriter';
+import type { ICommandBus } from './ICommandBus.ts';
+import type { IEventDispatcher } from './IEventDispatcher.ts';
+import type { IEventStore } from './IEventStore.ts';
+import type { IEventBus } from './IEventBus.ts';
+import type { IDispatchPipelineProcessor } from './IDispatchPipelineProcessor.ts';
+import type { IEventStorageReader } from './IEventStorageReader.ts';
+import type { IAggregateSnapshotStorage } from './IAggregateSnapshotStorage.ts';
+import type { IIdentifierProvider } from './IIdentifierProvider.ts';
+import type { IExtendableLogger, ILogger } from './ILogger.ts';
+import type { IEventStorageWriter } from './IEventStorageWriter.ts';
 
 export interface IContainer extends Container {
 	eventBus: IEventBus;

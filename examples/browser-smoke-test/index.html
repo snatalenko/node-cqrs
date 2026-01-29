@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>node-cqrs browser smoke test</title>
+	<style>
+		body {
+			font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+			padding: 16px;
+		}
+
+		pre {
+			background: #0b1020;
+			color: #e6e6e6;
+			padding: 12px;
+			border-radius: 8px;
+			overflow: auto;
+		}
+
+		.ok {
+			color: #19c37d;
+		}
+
+		.fail {
+			color: #ff4d4f;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>node-cqrs browser smoke test</h1>
+	<p>Open DevTools console for details.</p>
+	<pre id="out">Running…</pre>
+	<script src="../../dist/browser/bundle.iife.js"></script>
+	<script src="./main.js"></script>
+</body>
+
+</html>

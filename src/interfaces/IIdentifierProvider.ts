@@ -1,5 +1,5 @@
-import { Identifier } from './Identifier';
-import { isObject } from './isObject';
+import type { Identifier } from './Identifier.ts';
+import { isObject } from './isObject.ts';
 
 export interface IIdentifierProvider {
 

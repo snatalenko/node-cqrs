@@ -1,7 +1,7 @@
-import type { IObserver } from './IObserver';
-import type { IObservable } from './IObservable';
-import type { IEventStorageReader } from './IEventStorageReader';
-import type { IEvent } from './IEvent';
+import type { IObserver } from './IObserver.ts';
+import type { IObservable } from './IObservable.ts';
+import type { IEventStorageReader } from './IEventStorageReader.ts';
+import type { IEvent } from './IEvent.ts';
 
 export interface IProjection<TView> extends IObserver {
 	readonly view: TView;

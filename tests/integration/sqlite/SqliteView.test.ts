@@ -1,7 +1,7 @@
 import { existsSync, unlinkSync } from 'fs';
 import { AbstractProjection, IEvent } from '../../../src';
 import { SqliteObjectView } from '../../../src/sqlite';
-import * as createDb from 'better-sqlite3';
+import createDb from 'better-sqlite3';
 
 type UserPayload = {
 	name: string;

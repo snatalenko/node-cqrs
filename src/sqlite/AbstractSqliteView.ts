@@ -1,7 +1,7 @@
-import { IContainer, IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces';
-import { SqliteViewLocker, SqliteViewLockerParams } from './SqliteViewLocker';
-import { SqliteEventLocker, SqliteEventLockerParams } from './SqliteEventLocker';
-import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
+import { IContainer, IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces/index.ts';
+import { SqliteViewLocker, SqliteViewLockerParams } from './SqliteViewLocker.ts';
+import { SqliteEventLocker, SqliteEventLockerParams } from './SqliteEventLocker.ts';
+import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
 
 /**
  * Base class for SQLite-backed projection views with restore locking and last-processed-event tracking

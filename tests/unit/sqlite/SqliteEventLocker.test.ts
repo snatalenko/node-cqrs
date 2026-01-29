@@ -1,4 +1,4 @@
-import * as createDb from 'better-sqlite3';
+import createDb from 'better-sqlite3';
 import { SqliteEventLocker } from '../../../src/sqlite/SqliteEventLocker';
 import { IEvent } from '../../../src/interfaces';
 import { guid } from '../../../src/sqlite';

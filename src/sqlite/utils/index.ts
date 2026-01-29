@@ -1,2 +1,2 @@
-export * from './guid';
-export * from './getEventId';
+export * from './guid.ts';
+export * from './getEventId.ts';

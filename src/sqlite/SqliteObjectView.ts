@@ -1,6 +1,6 @@
-import { AbstractSqliteView } from './AbstractSqliteView';
-import type { IObjectStorage, IEventLocker } from '../interfaces';
-import { SqliteObjectStorage } from './SqliteObjectStorage';
+import { AbstractSqliteView } from './AbstractSqliteView.ts';
+import type { IObjectStorage, IEventLocker } from '../interfaces/index.ts';
+import { SqliteObjectStorage } from './SqliteObjectStorage.ts';
 import type { Database } from 'better-sqlite3';
 
 /**

@@ -1,6 +1,11 @@
-import type { ChangePasswordCommandPayload, CreateUserCommandPayload, PasswordChangedEvent, UserCreatedEvent } from './messages';
-import { AbstractAggregate } from '../..';
-import { md5 } from './utils';
+import { AbstractAggregate } from 'node-cqrs';
+import { md5 } from './utils.ts';
+import type {
+	ChangePasswordCommandPayload,
+	CreateUserCommandPayload,
+	PasswordChangedEvent,
+	UserCreatedEvent
+} from './messages.ts';
 
 class UserAggregateState {
 	passwordHash!: string;

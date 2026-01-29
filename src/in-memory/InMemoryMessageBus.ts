@@ -5,7 +5,7 @@ import type {
 	IMessageHandler,
 	IObservable,
 	IObservableQueueProvider
-} from '../interfaces';
+} from '../interfaces/index.ts';
 
 /**
  * Default implementation of the message bus.

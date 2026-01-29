@@ -1,2 +1,2 @@
-export * from './eventLockTableInit';
-export * from './viewLockTableInit';
+export * from './eventLockTableInit.ts';
+export * from './viewLockTableInit.ts';

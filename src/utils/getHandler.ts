@@ -1,4 +1,4 @@
-import { IMessageHandler } from '../interfaces';
+import type { IMessageHandler } from '../interfaces/index.ts';
 
 /**
  * Gets a handler for a specific message type, prefers a public (w\o _ prefix) method, if available

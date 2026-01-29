@@ -1,4 +1,4 @@
-const { AbstractWorkerProjection } = require('../../dist/workers');
+const { AbstractWorkerProjection } = require('node-cqrs/workers');
 
 class CounterView {
 	counter = 0;

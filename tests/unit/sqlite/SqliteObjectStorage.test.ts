@@ -1,4 +1,4 @@
-import * as createDb from 'better-sqlite3';
+import createDb from 'better-sqlite3';
 import { guid, SqliteObjectStorage } from '../../../src/sqlite';
 
 describe('SqliteObjectStorage', function () {

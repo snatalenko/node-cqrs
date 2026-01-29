@@ -1,7 +1,7 @@
-import { ICommand } from './ICommand';
-import { Identifier } from './Identifier';
-import { IEvent } from './IEvent';
-import { IEventSet } from './IEventSet';
+import type { ICommand } from './ICommand.ts';
+import type { Identifier } from './Identifier.ts';
+import type { IEvent } from './IEvent.ts';
+import type { IEventSet } from './IEventSet.ts';
 
 /**
  * Core interface representing an Aggregate in a CQRS architecture.
