@@ -1,5 +1,4 @@
 export * from './Deferred';
-export * from './delay';
 export * from './getClassName';
 export * from './getHandler';
 export * from './getMessageHandlerNames';

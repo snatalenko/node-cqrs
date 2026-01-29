@@ -1,20 +1,22 @@
-import { IEvent } from './IEvent';
-import { IEventStore } from './IEventStore';
-import { IObserver } from './IObserver';
+import type { IObserver } from './IObserver';
+import type { IObservable } from './IObservable';
+import type { IEventStorageReader } from './IEventStorageReader';
+import type { IEvent } from './IEvent';
 
 export interface IProjection<TView> extends IObserver {
 	readonly view: TView;
 
-	subscribe(eventStore: IEventStore): Promise<void>;
+	/** Subscribe to new events */
+	subscribe(eventStore: IObservable): Promise<void> | void;
 
-	project(event: IEvent): Promise<void>;
+	/** Restore view state from not-yet-projected events */
+	restore(eventStore: IEventStorageReader): Promise<void> | void;
+
+	/** Project new event */
+	project(event: IEvent): Promise<void> | void;
 }
 
 export interface IProjectionConstructor {
 	new(c?: any): IProjection<any>;
 	readonly handles?: string[];
-}
-
-export interface IViewFactory<TView> {
-	(options: { schemaVersion: string }): TView;
 }

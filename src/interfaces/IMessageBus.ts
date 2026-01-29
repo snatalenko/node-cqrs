@@ -1,6 +1,6 @@
-import { ICommand } from './ICommand';
-import { IEvent } from './IEvent';
-import { IObservable } from './IObservable';
+import type { ICommand } from './ICommand';
+import type { IEvent } from './IEvent';
+import type { IObservable } from './IObservable';
 
 export interface IMessageBus extends IObservable {
 	send(command: ICommand): Promise<any>;

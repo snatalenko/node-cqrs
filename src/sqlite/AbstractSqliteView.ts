@@ -3,6 +3,9 @@ import { SqliteViewLocker, SqliteViewLockerParams } from './SqliteViewLocker';
 import { SqliteEventLocker, SqliteEventLockerParams } from './SqliteEventLocker';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
 
+/**
+ * Base class for SQLite-backed projection views with restore locking and last-processed-event tracking
+ */
 export abstract class AbstractSqliteView extends AbstractSqliteAccessor implements IViewLocker, IEventLocker {
 
 	protected readonly schemaVersion: string;

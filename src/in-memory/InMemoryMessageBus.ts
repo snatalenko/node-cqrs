@@ -1,16 +1,17 @@
-import {
+import type {
 	ICommand,
 	IEvent,
 	IMessageBus,
 	IMessageHandler,
-	IObservable
+	IObservable,
+	IObservableQueueProvider
 } from '../interfaces';
 
 /**
  * Default implementation of the message bus.
  * Keeps all subscriptions and messages in memory.
  */
-export class InMemoryMessageBus implements IMessageBus {
+export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider {
 
 	protected handlers: Map<string, Set<IMessageHandler>> = new Map();
 	protected uniqueEventHandlers: boolean;

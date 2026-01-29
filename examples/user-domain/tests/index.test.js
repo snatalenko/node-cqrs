@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const { createContainer, createBaseInstances } = require('../user-domain');
+const { createContainer, createBaseInstances } = require('..');
 
 describe('user-domain example', () => {
 

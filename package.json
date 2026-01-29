@@ -14,6 +14,9 @@
   "types": "./types/index.d.ts",
   "typesVersions": {
     "*": {
+      "workers": [
+        "types/workers/index.d.ts"
+      ],
       "rabbitmq": [
         "types/rabbitmq/index.d.ts"
       ],
@@ -27,6 +30,11 @@
       "require": "./dist/index.js",
       "import": "./dist/index.js",
       "types": "./types/index.d.ts"
+    },
+    "./workers": {
+      "require": "./dist/workers/index.js",
+      "import": "./dist/workers/index.js",
+      "types": "./types/workers/index.d.ts"
     },
     "./rabbitmq": {
       "require": "./dist/rabbitmq/index.js",
@@ -50,7 +58,7 @@
   "scripts": {
     "cleanup": "rm -rf ./dist ./types ./coverage && tsc --build --clean",
     "pretest": "npm run build",
-    "test": "jest tests/unit examples/user-domain-tests",
+    "test": "jest tests/unit examples/user-domain/tests",
     "test:coverage": "npm t -- --collect-coverage",
     "test:rabbitmq": "jest --verbose tests/integration/rabbitmq",
     "test:sqlite": "jest --verbose tests/integration/sqlite",
@@ -71,30 +79,49 @@
   },
   "devDependencies": {
     "@stylistic/eslint-plugin-ts": "^4.4.1",
-    "@types/amqplib": "^0.10.7",
+    "@types/amqplib": "^0.10.8",
     "@types/better-sqlite3": "^7.6.13",
     "@types/chai": "^4.3.20",
     "@types/jest": "^29.5.14",
-    "@types/md5": "^2.3.5",
-    "@types/node": "^20.19.21",
+    "@types/md5": "^2.3.6",
+    "@types/node": "^20.19.30",
     "@types/sinon": "^17.0.4",
     "@typescript-eslint/eslint-plugin": "^8.29.0",
     "@typescript-eslint/parser": "^8.29.0",
+    "amqplib": "^0.10.9",
+    "better-sqlite3": "^11.10.0",
     "chai": "^4.5.0",
+    "comlink": "^4.4.2",
     "conventional-changelog": "^3.1.25",
-    "eslint": "^9.37.0",
+    "eslint": "^9.39.2",
     "eslint-plugin-jest": "^28.14.0",
-    "globals": "^16.4.0",
+    "globals": "^16.5.0",
     "jest": "^29.7.0",
+    "md5": "^2.3.0",
     "sinon": "^19.0.5",
-    "ts-jest": "^29.4.5",
+    "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.1"
+    "typescript-eslint": "^8.53.1"
   },
   "peerDependencies": {
     "amqplib": "^0.10.9",
     "better-sqlite3": "^11.10.0",
+    "comlink": "^4.4.2",
     "md5": "^2.3.0"
+  },
+  "peerDependenciesMeta": {
+    "better-sqlite3": {
+      "optional": true
+    },
+    "amqplib": {
+      "optional": true
+    },
+    "comlink": {
+      "optional": true
+    },
+    "md5": {
+      "optional": true
+    }
   }
 }

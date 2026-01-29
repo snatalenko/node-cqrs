@@ -1,24 +1,25 @@
 import {
-	IAggregateSnapshotStorage,
-	IEvent,
-	IEventStorageReader,
-	IEventSet,
-	ILogger,
-	IMessageHandler,
-	IObservable,
-	IEventStream,
-	IEventStore,
-	EventQueryAfter,
-	EventQueryBefore,
-	Identifier,
-	IIdentifierProvider,
+	type IAggregateSnapshotStorage,
+	type IEvent,
+	type IEventStorageReader,
+	type IEventSet,
+	type ILogger,
+	type IMessageHandler,
+	type IObservable,
+	type IEventStream,
+	type IEventStore,
+	type EventQueryAfter,
+	type EventQueryBefore,
+	type Identifier,
+	type IIdentifierProvider,
+	type IEventDispatcher,
+	type IEventBus,
+	type IContainer,
 	isIdentifierProvider,
-	IEventDispatcher,
-	IEventBus,
 	isIEventBus,
 	isIEventStorageReader,
-	IContainer,
-	isEventSet
+	isEventSet,
+	isIObservableQueueProvider
 } from './interfaces';
 import {
 	getClassName,
@@ -191,7 +192,7 @@ export class EventStore implements IEventStore {
 	}
 
 	queue(name: string): IObservable {
-		if (!this.eventBus.queue)
+		if (!isIObservableQueueProvider(this.eventBus))
 			throw new Error('Injected eventBus does not support named queues');
 
 		return this.eventBus.queue(name);

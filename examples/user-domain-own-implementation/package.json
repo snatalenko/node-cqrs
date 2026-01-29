@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "scripts": {
+    "start": "node index.ts",
+    "test": "node index.ts"
+  }
+}

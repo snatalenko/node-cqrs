@@ -1,11 +1,12 @@
-import { IEventDispatcher } from './IEventDispatcher';
-import { IEvent } from './IEvent';
-import { IEventStorageReader } from './IEventStorageReader';
-import { IIdentifierProvider } from './IIdentifierProvider';
-import { IMessageHandler, IObservable } from './IObservable';
+import type { IEventDispatcher } from './IEventDispatcher';
+import type { IEvent } from './IEvent';
+import type { IEventStorageReader } from './IEventStorageReader';
+import type { IIdentifierProvider } from './IIdentifierProvider';
+import type { IMessageHandler, IObservable } from './IObservable';
+import type { IObservableQueueProvider } from './IObservableQueueProvider';
 
 export interface IEventStore
-	extends IObservable, IEventDispatcher, IEventStorageReader, IIdentifierProvider {
+	extends IObservable, IObservableQueueProvider, IEventDispatcher, IEventStorageReader, IIdentifierProvider {
 
 	registerSagaStarters(startsWith: string[] | undefined): void;
 

@@ -1,13 +1,14 @@
 import { describe } from './Event';
 import { InMemoryView } from './in-memory/InMemoryView';
 import {
-	IViewLocker,
-	IEventLocker,
-	IProjection,
-	ILogger,
-	IExtendableLogger,
-	IEventStore,
-	IEvent,
+	type IViewLocker,
+	type IEventLocker,
+	type IProjection,
+	type ILogger,
+	type IExtendableLogger,
+	type IEvent,
+	type IObservable,
+	type IEventStorageReader,
 	isViewLocker,
 	isEventLocker
 } from './interfaces';
@@ -56,8 +57,8 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	}
 
 	#view?: TView;
-	#viewLocker?: IViewLocker;
-	#eventLocker?: IEventLocker;
+	#viewLocker?: IViewLocker | null;
+	#eventLocker?: IEventLocker | null;
 	protected _logger?: ILogger;
 
 	/**
@@ -76,22 +77,28 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	 * Manages view restoration state to prevent early access to an inconsistent view
 	 * or conflicts from concurrent restoration by other processes.
 	 */
-	protected get _viewLocker(): IViewLocker | undefined {
-		return this.#viewLocker ?? (isViewLocker(this.view) ? this.view : undefined);
+	protected get _viewLocker(): IViewLocker | null {
+		if (this.#viewLocker === undefined)
+			this.#viewLocker = isViewLocker(this.view) ? this.view : null;
+
+		return this.#viewLocker;
 	}
 
-	protected set _viewLocker(value: IViewLocker | undefined) {
+	protected set _viewLocker(value: IViewLocker | undefined | null) {
 		this.#viewLocker = value;
 	}
 
 	/**
 	 * Tracks event processing state to prevent concurrent handling by multiple processes.
 	 */
-	protected get _eventLocker(): IEventLocker | undefined {
-		return this.#eventLocker ?? (isEventLocker(this.view) ? this.view : undefined);
+	protected get _eventLocker(): IEventLocker | null {
+		if (this.#eventLocker === undefined)
+			this.#eventLocker = isEventLocker(this.view) ? this.view : null;
+
+		return this.#eventLocker;
 	}
 
-	protected set _eventLocker(value: IEventLocker | undefined) {
+	protected set _eventLocker(value: IEventLocker | undefined | null) {
 		this.#eventLocker = value;
 	}
 
@@ -112,8 +119,11 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 			logger;
 	}
 
-	/** Subscribe to event store */
-	async subscribe(eventStore: IEventStore): Promise<void> {
+	/**
+	 * Subscribe to event store
+	 * and restore view state from not yet projected events
+	 */
+	async subscribe(eventStore: IObservable & IEventStorageReader): Promise<void> {
 		subscribe(eventStore, this, {
 			masterHandler: this.project
 		});
@@ -123,7 +133,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 
 	/** Pass event to projection event handler */
 	async project(event: IEvent): Promise<void> {
-		if (this._viewLocker && !this._viewLocker?.ready) {
+		if (this._viewLocker && !this._viewLocker.ready) {
 			this._logger?.debug(`view is locked, awaiting until it is ready to process ${describe(event)}`);
 			await this._viewLocker.once('ready');
 			this._logger?.debug(`view is ready, processing ${describe(event)}`);
@@ -150,10 +160,13 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 			await this._eventLocker.markAsProjected(event);
 	}
 
-	/** Restore projection view from event store */
-	async restore(eventStore: IEventStore): Promise<void> {
-		// lock the view to ensure same restoring procedure
-		// won't be performed by another projection instance
+	/**
+	 * Restore view state from not-yet-projected events.
+	 *
+	 * Lock the view to ensure same restoring procedure
+	 * won't be performed by another projection instance.
+	 * */
+	async restore(eventStore: IEventStorageReader): Promise<void> {
 		if (this._viewLocker)
 			await this._viewLocker.lock();
 
@@ -163,8 +176,8 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 			this._viewLocker.unlock();
 	}
 
-	/** Restore projection view from event store */
-	protected async _restore(eventStore: IEventStore): Promise<void> {
+	/** Restore view state from not-yet-projected events */
+	protected async _restore(eventStore: IEventStorageReader): Promise<void> {
 		if (!eventStore)
 			throw new TypeError('eventStore argument required');
 		if (typeof eventStore.getEventsByTypes !== 'function')
@@ -190,7 +203,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 				await this._project(event);
 				eventsCount += 1;
 			}
-			catch (err: any) {
+			catch (err: unknown) {
 				this._onRestoringError(err, event);
 			}
 		}
@@ -198,13 +211,19 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 		this._logger?.info(`view restored from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}
 
-	/** Handle error on restoring. Logs and throws error by default */
-	protected _onRestoringError(error: Error, event: IEvent) {
-		this._logger?.error(`view restoring has failed (view will remain locked): ${error.message}`, {
+	/**
+	 * Handle error on restoring.
+	 *
+	 * Logs and throws error by default
+	 */
+	protected _onRestoringError(error: unknown, event: IEvent) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		this._logger?.error(`view restoring has failed (view remains locked): ${errorMessage}`, {
 			service: getClassName(this),
 			event,
-			stack: error.stack
+			error
 		});
+
 		throw error;
 	}
 }

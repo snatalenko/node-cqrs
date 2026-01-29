@@ -1,8 +1,11 @@
 import { AbstractSqliteView } from './AbstractSqliteView';
-import { IObjectStorage, IEventLocker } from '../interfaces';
+import type { IObjectStorage, IEventLocker } from '../interfaces';
 import { SqliteObjectStorage } from './SqliteObjectStorage';
-import { Database } from 'better-sqlite3';
+import type { Database } from 'better-sqlite3';
 
+/**
+ * SQLite-backed object view with restore locking and last-processed-event tracking
+ */
 export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IObjectStorage<TRecord>, IEventLocker {
 
 	#sqliteObjectStorage: SqliteObjectStorage<TRecord>;

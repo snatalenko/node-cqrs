@@ -1,9 +1,9 @@
-import { Database, Statement } from 'better-sqlite3';
-import { IContainer, ILogger, IViewLocker } from '../interfaces';
+import type { Database, Statement } from 'better-sqlite3';
+import type { IContainer, ILogger, IViewLocker } from '../interfaces';
 import { Deferred } from '../utils';
 import { promisify } from 'util';
 import { viewLockTableInit } from './queries';
-import { SqliteProjectionDataParams } from './SqliteProjectionDataParams';
+import type { SqliteProjectionDataParams } from './SqliteProjectionDataParams';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor';
 const delay = promisify(setTimeout);
 

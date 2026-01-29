@@ -1,11 +1,11 @@
 import {
-	IAggregate,
-	IMutableAggregateState,
-	ICommand,
-	Identifier,
-	IEvent,
-	IEventSet,
-	IAggregateConstructorParams,
+	type IAggregate,
+	type IMutableAggregateState,
+	type ICommand,
+	type Identifier,
+	type IEvent,
+	type IEventSet,
+	type IAggregateConstructorParams,
 	SNAPSHOT_EVENT_TYPE
 } from './interfaces';
 
@@ -14,7 +14,8 @@ import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } fr
 /**
  * Base class for Aggregate definition
  */
-export abstract class AbstractAggregate<TState extends IMutableAggregateState | object | void> implements IAggregate {
+export abstract class AbstractAggregate<TState extends IMutableAggregateState | object | void = void> implements
+	IAggregate {
 
 	/**
 	 * List of command names handled by the Aggregate.

@@ -21,6 +21,7 @@ export * from './IMessage';
 export * from './IMessageBus';
 export * from './IObjectStorage';
 export * from './IObservable';
+export * from './IObservableQueueProvider';
 export * from './IObserver';
 export * from './IProjection';
 export * from './ISaga';
