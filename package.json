@@ -74,7 +74,7 @@
     "lint": "eslint"
   },
   "author": "@snatalenko",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
   "dependencies": {
     "async-iterable-buffer": "^1.1.0",

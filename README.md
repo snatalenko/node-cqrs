@@ -451,4 +451,4 @@ npm run lint
 
 ## License
 
-* [MIT License](https://github.com/snatalenko/node-cqrs/blob/master/LICENSE)
+* [Apache-2.0](LICENSE)
