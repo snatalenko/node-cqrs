@@ -4,7 +4,7 @@ import type { IObservable } from './IObservable.ts';
 import type { IObserver } from './IObserver.ts';
 
 export interface ICommandBus extends IObservable {
-	send(commandType: string, aggregateId: string | undefined, options: { payload?: object, context?: object }):
+	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object }):
 		Promise<IEventSet>;
 
 	sendRaw(command: ICommand):

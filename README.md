@@ -7,28 +7,29 @@ node-cqrs
 [![Coverage Status](https://coveralls.io/repos/github/snatalenko/node-cqrs/badge.svg?branch=master)](https://coveralls.io/github/snatalenko/node-cqrs?branch=master)
 [![NPM Downloads](https://img.shields.io/npm/dm/node-cqrs.svg)](https://www.npmjs.com/package/node-cqrs)
 
+Infrastructure-agnostic building blocks for CQRS/ES, inspired by Lokad.CQRS.
+
+CQRS/ES can be simple in a single process. Minimal code, no framework:
+[examples/user-domain-own-implementation/index.ts](examples/user-domain-own-implementation/index.ts)
+
+This library focuses on the "boring but hard" parts often missing from plain CQRS/ES implementations, but required in distributed environments:
+
+- asynchronous command and event processing with safer wiring  
+- persistent views with restart catch-up (checkpointing, readiness, locking)  
+- aggregate snapshots  
+- extensible event dispatching pipelines (encoding, persistence, distribution)
+
+It is built around ES6/TypeScript classes and dependency injection, making components easy to replace or customize without patching the library.
+
+
 ## Overview
 
-This package provides building blocks for CQRS/ES applications. It was inspired by Lokad.CQRS,
-but it isn’t tied to any specific storage implementation or infrastructure.
-It favors ES6/TS classes and dependency injection, so you can modify or replace components with your own implementations without patching the library.
-
-CQRS/ES itself can be implemented with surprisingly little code in a single process.
-For a minimal, framework-free example, see [examples/user-domain-own-implementation/index.ts](examples/user-domain-own-implementation/index.ts).
-
-This library exists to cover the "boring but hard" parts that are usually missing from a plain implementation, including:
-
-- async command/event processing and safer wiring/subscriptions
-- persistent views and catch-up on restart (checkpointing, view readiness/locking)
-- aggregate snapshots
-- extensible event dispatching pipelines (encoding, persistence, distribution, etc.)
-
-At a high level, the command/event flow looks like:
+At a high level, the command and event flow looks like this:
 
 ![Overview](docs/images/node-cqrs-flow.png)
 
 
-Commands and events are loosely typed objects that implement the [IMessage](src/interfaces/IMessage.ts) interface:
+Commands and events are loosely typed objects implementing the [`IMessage`](src/interfaces/IMessage.ts) interface:
 
 ```ts
 interface IMessage<TPayload = any> {
@@ -45,65 +46,118 @@ interface IMessage<TPayload = any> {
 }
 ```
 
-Domain business logic typically lives in aggregates, sagas, and projections:
+Domain logic is split across three core building blocks:
 
-- **[Aggregates](#aggregates-write-model)** handle commands and emit events
-- **[Projections](#projections-and-views-read-model)** listen to events and update views
-- **Sagas** handle events and enqueue commands
+- **[Aggregates](#aggregates-write-model)** - handle commands and emit events
+- **[Projections](#projections-and-views-read-model)** - consume events and update views
+- **Sagas** - manage processes by reacting to events and enqueueing follow-up commands
 
-Message delivery is handled by the following components (in order of appearance):
+Message delivery is handled by the following components, in order:
 
-- **[Command Bus](src/CommandBus.ts)** delivers commands to command handlers
-- **[Aggregate Command Handler](src/AggregateCommandHandler.ts)** restores aggregate state and executes the command
-- **[Event Store](src/EventStore.ts)** runs the event dispatching process:
-  - persists events (via the configured dispatch pipeline)
-  - then delivers them to event handlers (sagas, projections, custom services)
-- **[Saga Event Handler](src/SagaEventHandler.ts)** restores saga state and applies events
+- **[Command Bus](src/CommandBus.ts)** - routes commands to handlers
+- **[Aggregate Command Handler](src/AggregateCommandHandler.ts)** - restores aggregate state and executes commands
+- **[Event Store](src/EventStore.ts)** — runs the event dispatch pipeline (e.g. encoding, persistence), then publishes events to the event bus for delivery to all subscribers
+- **[Saga Event Handler](src/SagaEventHandler.ts)** - restores saga state and applies events
 
-**Tip**: the codebase is intentionally small and readable - `src/`, `tests/`, `examples/` are a good reference if you want to explore behavior in more detail.
+**Tip**: the codebase is intentionally small and readable. `src/`, `tests/`, and `examples/` are good entry points for exploring behavior.
 
 ### Examples
 
-- [examples/user-domain](examples/user-domain) basic CJS implementation
-- [examples/user-domain-ts](examples/user-domain-ts) similar implementation in TS
-- [examples/worker-projection](examples/worker-projection) projection in a worker thread
+- [examples/browser-smoke-test](examples/browser-smoke-test) - browser smoke test with in-memory storage and buses
+- [examples/user-domain](examples/user-domain) - basic CJS implementation
 - [examples/user-domain-own-implementation](examples/user-domain-own-implementation/index.ts) minimal, framework-free CQRS/ES example in 1 file
+- [examples/user-domain-ts](examples/user-domain-ts) - basic TypeScript implementation
+- [examples/worker-projection](examples/worker-projection) - projection in a worker thread
 
-TS examples can be run with `node` without transpiling
+TS examples can be run with `node` without transpiling.
+
 
 ## Installation
 
 ```bash
-npm i node-cqrs
+npm install node-cqrs
 ```
 
-Tested under
+### Supported environments
 
-- Node 18
-- Node 20
-- Node 22
-- Browser (through [browserify](https://browserify.org))
+- Node.js 18+
+- Browser (via [browserify](https://browserify.org))
 
-### Peer Dependencies
+### Optional peer dependencies
 
-If you want to use SQLite, RabbitMQ, or worker threads, the following peer dependencies may be needed:
+Required only if you use the corresponding infrastructure modules:
 
-- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)
-- [amqplib](https://github.com/amqp-node/amqplib)
-- [comlink](https://github.com/GoogleChromeLabs/comlink)
+- SQLite: [better-sqlite3](https://www.npmjs.com/package/better-sqlite3), [md5](https://www.npmjs.com/package/md5)
+- RabbitMQ: [amqplib](https://www.npmjs.com/package/amqplib)
+- Worker threads: [comlink](https://www.npmjs.com/package/comlink)
+
+
+## ContainerBuilder
+
+The recommended approach is to use dependency injection to wire buses, the event store,
+and your aggregates, projections, and sagas:
+
+```ts
+const builder = new ContainerBuilder<MyDiContainer>();
+
+// In-memory implementations for local dev/tests
+builder.register(InMemoryEventStorage)
+	.as('identifierProvider') // EventStore dependency to generate new aggregate and saga ID's
+	.as('eventStorageReader') // EventStore dependency to read events from
+	.as('eventStorageWriter'); // eventStorageWriter, when provided, is automatically added to the dispatch pipeline
+
+builder.registerAggregate(UserAggregate);
+builder.registerProjection(UsersProjection, 'users');
+
+const container = builder.container();
+```
+
+Once created, the container exposes `commandBus` for sending commands and the `users` view managed by the projection.
+
+If you prefer not to use the DI container, the same wiring can be done manually:
+
+<details>
+<summary>Manual setup (without DI container)</summary>
+
+```ts
+const inMemoryMessageBus = new InMemoryMessageBus();
+const eventStorage = new InMemoryEventStorage();
+const eventStore = new EventStore({
+  eventStorageReader: eventStorage,
+  identifierProvider: eventStorage,
+  eventDispatchPipeline: [eventStorage],
+  eventBus: inMemoryMessageBus
+});
+
+const commandBus = new CommandBus();
+
+const aggregateCommandHandler = new AggregateCommandHandler({
+  eventStore,
+  aggregateType: UserAggregate
+});
+aggregateCommandHandler.subscribe(commandBus);
+
+const projection = new UsersProjection();
+await projection.subscribe(eventStore);
+
+const users = projection.view;
+```
+
+</details>
 
 ## Commands
 
-* sent to CommandBus manually
-* being handled by [Aggregates](#aggregates-write-model)
-* may be enqueued by Sagas
+Commands represent intent and are sent to the `CommandBus`:
 
-Command example:
+- sent to the CommandBus explicitly
+- handled by [Aggregates](#aggregates-write-model)
+- may be enqueued by Sagas
+
+Command example (raw form):
 
 ```json
 {
   "type": "signupUser",
-  "aggregateId": null,
   "payload": {
     "profile": {
       "name": "John Doe",
@@ -118,11 +172,27 @@ Command example:
 }
 ```
 
+The `commandBus` exposed by the container is an instance of [CommandBus](src/CommandBus.ts) and provides two methods:
+
+- `sendRaw(command)` - sends a fully constructed command object
+- `send(type, aggregateId, { payload, context })` - a shorthand helper for common cases
+
+Example:
+
+```ts
+commandBus.send('signupUser', undefined, {
+  payload: { profile, password }
+});
+```
+
+
 ## Events
 
-* produced by [Aggregates](#aggregates-write-model)
-* persisted to EventStore
-* may be handled by [Projections](#projections-and-views-read-model), Sagas and Event Receptors
+Events represent facts that have already happened:
+
+- produced by [Aggregates](#aggregates-write-model)
+- persisted by the Event Store
+- delivered to [Projections](#projections-and-views-read-model), Sagas, and Event Receptors
 
 Event example:
 
@@ -135,7 +205,7 @@ Event example:
     "profile": {
       "name": "John Doe",
       "email": "john@example.com"
-    }, 
+    },
     "passwordHash": "098f6bcd4621d373cade4e832627b4f6"
   },
   "context": {
@@ -145,61 +215,6 @@ Event example:
 }
 ```
 
-## ContainerBuilder
-
-The "happy path" is to use `ContainerBuilder` to wire buses, the event store, and your aggregates/projections/sagas.
-
-All named component instances are exposed on container through getters and get created upon accessing a getter.
-Default `EventStore` and `CommandBus` components are registered upon container instance creation:
-
-```ts
-import { ContainerBuilder, InMemoryEventStorage, type IContainer } from 'node-cqrs';
-
-interface MyDiContainer extends IContainer {
-	/* Any custom services or projection view for typing purposes */
-}
-
-const builder = new ContainerBuilder<MyDiContainer>();
-
-// In-memory implementations for local dev/tests
-builder.register(InMemoryEventStorage)
-	.as('eventStorageReader')
-	.as('eventStorageWriter');
-
-const container = builder.container();
-
-container.eventStore; // instance of EventStore
-container.commandBus; // instance of CommandBus
-```
-
-Other components can be registered either as classes or as factories:
-
-```ts
-// class with automatic dependency injection
-builder.register(SomeService).as('someService');
-
-// OR factory with more precise control
-builder.register(container => new SomeService(container.commandBus)).as('someService');
-```
-
-Components that aren't going to be accessed directly by name can also be registered in the builder.
-Their instances will be created after invoking `container()` method:
-
-```js
-builder.register(SomeEventObserver);
-// at this point the registered observer does not exist
-
-const container = builder.container();
-// now it exists and got all its constructor dependencies
-```
-
-DI container has a set of methods for CQRS components registration:
-
-* `registerAggregate(AggregateType)` - registers aggregateCommandHandler, subscribes it to commandBus and wires Aggregate dependencies
-* `registerSaga(SagaType)` - registers sagaEventHandler, subscribes it to eventStore and wires Saga dependencies
-* `registerProjection(ProjectionType, exposedViewName)` - registers projection, subscribes it to eventStore and exposes associated projection view on the container
-* `registerCommandHandler(typeOrFactory)` - registers command handler and subscribes it to commandBus
-* `registerEventReceptor(typeOrFactory)` - registers event receptor and subscribes it to eventStore
 
 ## Aggregates (write model)
 
@@ -234,7 +249,8 @@ export interface IAggregate {
 
 ### AbstractAggregate
 
-[AbstractAggregate](src/AbstractAggregate.ts) is optional but recommended base class that provides the CQRS/ES wiring and covers common edge cases: state restoring, command routing, validation, snapshots. 
+[AbstractAggregate](src/AbstractAggregate.ts) is optional but recommended base class that provides the CQRS/ES wiring 
+and covers common edge cases: state restoring, command routing, validation, snapshots.
 
 Without an internal state it can be as simple as this:
 
@@ -426,7 +442,7 @@ Cross-process event distribution.
 import { RabbitMqEventBus, RabbitMqGateway } from 'node-cqrs/rabbitmq';
 ```
 
-- [RabbitMqGateway](src/rabbitmq/RabbitMqGateway.ts) - implements the IObservable interface using RabbitMQ
+- [RabbitMqGateway](src/rabbitmq/RabbitMqGateway.ts) — RabbitMQ-based publish/subscribe gateway for commands and events, with durable and transient queue support
 - [RabbitMqEventBus](src/rabbitmq/RabbitMqEventBus.ts) - RabbitMQ-backed `IEventBus` with named queues support
 
 ### Workers
@@ -442,9 +458,14 @@ import { AbstractWorkerProjection } from 'node-cqrs/workers';
 ## Testing and Contribution
 
 ```bash
+git clone git@github.com:snatalenko/node-cqrs.git
+cd node-cqrs
+npm install
 npm test
 npm run lint
 ```
+
+Code style and formatting are enforced via:
 
 - [editorconfig](http://editorconfig.org)
 - [eslint](http://eslint.org)

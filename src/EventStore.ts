@@ -43,6 +43,8 @@ export class EventStore implements IEventStore {
 		snapshotStorage,
 		eventBus,
 		eventDispatcher,
+		eventDispatchPipeline,
+		eventDispatchPipelines,
 		logger
 	}: Pick<IContainer,
 		'identifierProvider' |
@@ -50,7 +52,9 @@ export class EventStore implements IEventStore {
 		'snapshotStorage' |
 		'eventBus' |
 		'eventDispatcher' |
-		'logger'
+		'logger' |
+		'eventDispatchPipeline' |
+		'eventDispatchPipelines'
 	>) {
 		if (!eventStorageReader)
 			throw new TypeError('eventStorageReader argument required');
@@ -64,7 +68,11 @@ export class EventStore implements IEventStore {
 		this.#eventStorageReader = eventStorageReader;
 		this.#identifierProvider = identifierProvider;
 		this.#snapshotStorage = snapshotStorage;
-		this.#eventDispatcher = eventDispatcher ?? new EventDispatcher({ eventBus });
+		this.#eventDispatcher = eventDispatcher ?? new EventDispatcher({
+			eventBus,
+			eventDispatchPipeline,
+			eventDispatchPipelines
+		});
 		this.eventBus = eventBus ?? this.#eventDispatcher.eventBus;
 		this.#logger = logger && 'child' in logger ?
 			logger.child({ service: getClassName(this) }) :

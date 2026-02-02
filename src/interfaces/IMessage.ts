@@ -12,7 +12,7 @@ export interface IMessage<TPayload = any> {
 	 */
 	aggregateId?: Identifier;
 
-	/** Aggregate version at the time of the message (usually set on events, optional on commands) */
+	/** Aggregate version at the time of the message */
 	aggregateVersion?: number;
 
 	/** Saga identifier (used when a saga coordinates multiple steps/commands) */

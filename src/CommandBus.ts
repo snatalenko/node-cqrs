@@ -54,24 +54,48 @@ export class CommandBus implements ICommandBus {
 	 */
 	send<TPayload>(
 		type: string,
-		aggregateId: string,
-		options: { payload: TPayload, context: object },
-		...otherArgs: object[]
+		aggregateId?: string,
+		options?: {
+			payload?: TPayload,
+			context?: object
+		}
+	): Promise<IEventSet>;
+
+	/**
+	 * Format and send a command for execution (obsolete signature)
+	 *
+	 * @deprecated Use `send(type, aggregateId, { context, payload })`
+	 */
+	send<TPayload>(
+		type: string,
+		aggregateId?: string,
+		context?: object,
+		payload?: TPayload
+	): Promise<IEventSet>;
+
+	send<TPayload>(
+		type: string,
+		aggregateId?: string,
+		options?: {
+			payload?: TPayload,
+			context?: object
+		} | object,
+		payload?: TPayload
 	): Promise<IEventSet> {
 		if (typeof type !== 'string' || !type.length)
 			throw new TypeError('type argument must be a non-empty String');
-		if (options && typeof options !== 'object')
+		if (options !== undefined && (options === null || typeof options !== 'object'))
 			throw new TypeError('options argument, when defined, must be an Object');
-		if (otherArgs.length > 1)
-			throw new TypeError('more than expected arguments supplied');
 
 		// obsolete. left for backward compatibility
-		const optionsContainContext = options && !('context' in options) && !('payload' in options);
-		if (otherArgs.length || optionsContainContext) {
+		const isOptionsObject = !!options && ('context' in options || 'payload' in options);
+		if (!isOptionsObject) {
 			const context = options;
-			const payload = otherArgs.length ? otherArgs[0] : undefined;
 			return this.sendRaw({ type, aggregateId, context, payload });
 		}
+
+		if (payload !== undefined)
+			throw new TypeError('more than expected arguments supplied');
 
 		return this.sendRaw<TPayload>({ type, aggregateId, ...options });
 	}

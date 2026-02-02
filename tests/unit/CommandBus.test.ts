@@ -70,7 +70,6 @@ describe('CommandBus', function () {
 		it('validates parameters', () => {
 
 			expect(() => bus.send(undefined)).to.throw('type argument must be a non-empty String');
-			expect(() => bus.send('test', 1, {}, {}, {})).to.throw('more than expected arguments supplied');
 		});
 
 		it('formats a command and passes it to sendRaw', async () => {

@@ -19,7 +19,7 @@ export interface IContainer extends Container {
 	snapshotStorage?: IAggregateSnapshotStorage;
 
 	commandBus: ICommandBus;
-	eventDispatcher: IEventDispatcher;
+	eventDispatcher?: IEventDispatcher;
 
 	/** Default event dispatch pipeline */
 	eventDispatchPipeline?: IDispatchPipelineProcessor[];

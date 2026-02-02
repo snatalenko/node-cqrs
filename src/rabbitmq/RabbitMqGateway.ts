@@ -84,7 +84,7 @@ type GatewayEvents = {
 };
 
 /**
- * RabbitMqGateway implements the IObservable interface using RabbitMQ.
+ * RabbitMqGateway provides RabbitMQ-based publish/subscribe for ICommand/IEvent-style messages.
  *
  * It uses a fanout exchange to broadcast messages to all connected subscribers.
  * The `on` and `off` methods allow you to register and remove handlers for specific event types.
