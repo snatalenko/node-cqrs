@@ -1,4 +1,10 @@
-const workers = require('node-cqrs/workers');
+const { isMainThread } = require('node:worker_threads');
+
+// In Jest (main thread), import from src/ so coverage is collected from instrumented sources.
+// In worker threads, use the built CJS entrypoint because Node can't execute TS without a loader.
+const workers = isMainThread ?
+	require('../../../../src/workers/index.ts') :
+	require('node-cqrs/workers');
 
 const { AbstractWorkerProjection } = workers;
 
