@@ -36,6 +36,29 @@ class MyAggregate extends AbstractAggregate<any> {
 	}
 }
 
+class SelectiveRestoreAggregate extends AbstractAggregate<any> {
+	static get handles() {
+		return ['do'];
+	}
+
+	static get restoresFrom() {
+		return ['stateEvent'];
+	}
+
+	constructor({ id }: { id: Identifier }) {
+		super({
+			id,
+			state: {
+				stateEvent() { }
+			}
+		});
+	}
+
+	do() {
+		this.emit('newEvent');
+	}
+}
+
 class CommandBus {
 	handlers: any = {};
 	on(messageType, listener) {
@@ -129,7 +152,29 @@ describe('AggregateCommandHandler', function () {
 		assert(getAggregateEventsSpy.calledOnce, 'getAggregateEvents was not called');
 
 		const { args } = getAggregateEventsSpy.lastCall;
-		expect(args).to.have.length(1);
+		expect(args[0]).to.eql(1);
+	});
+
+	it('can restore from filtered event types while keeping aggregate version via tail event', async () => {
+		const aggregateId = 'restore-filter-test-id';
+
+		await eventStore.dispatch([
+			{ aggregateId, aggregateVersion: 0, type: 'stateEvent' },
+			{ aggregateId, aggregateVersion: 1, type: 'irrelevant' },
+			{ aggregateId, aggregateVersion: 2, type: 'irrelevant' }
+		] as any);
+
+		const handler = new AggregateCommandHandler({ eventStore, aggregateType: SelectiveRestoreAggregate });
+
+		const events = await handler.execute({ type: 'do', aggregateId });
+
+		assert(getAggregateEventsSpy.called, 'getAggregateEvents was not called');
+		expect(getAggregateEventsSpy.lastCall.args).to.eql([
+			aggregateId,
+			{ eventTypes: ['stateEvent'], tail: 'last' }
+		]);
+
+		expect(events[0]).to.have.property('aggregateVersion', 3);
 	});
 
 	it('passes commands to aggregate.handle(cmd)', async () => {
