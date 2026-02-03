@@ -9,7 +9,7 @@ import {
 	SNAPSHOT_EVENT_TYPE
 } from './interfaces/index.ts';
 
-import { getClassName, validateHandlers, getHandler, getMessageHandlerNames } from './utils/index.ts';
+import { getClassName, validateHandlers, getHandler, getMessageHandlerNames, clone } from './utils/index.ts';
 
 /**
  * Base class for Aggregate definition
@@ -217,7 +217,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		if (!this.state)
 			throw new Error('state property is empty, either define state or override makeSnapshot method');
 
-		return structuredClone(this.state);
+		return clone(this.state);
 	}
 
 	/** Add snapshot event to the collection of emitted events */
@@ -240,7 +240,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		if (!this.state)
 			throw new Error('state property is empty, either defined state or override restoreSnapshot method');
 
-		Object.assign(this.state, structuredClone(snapshotEvent.payload));
+		Object.assign(this.state, clone(snapshotEvent.payload));
 	}
 
 	/** Get human-readable aggregate identifier */

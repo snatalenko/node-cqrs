@@ -1,4 +1,6 @@
+export * from './clone.ts';
 export * from './Deferred.ts';
+export * from './extractErrorDetails.ts';
 export * from './getClassName.ts';
 export * from './getHandler.ts';
 export * from './getMessageHandlerNames.ts';
@@ -10,4 +12,3 @@ export * from './notEmpty.ts';
 export * from './setupOneTimeEmitterSubscription.ts';
 export * from './subscribe.ts';
 export * from './validateHandlers.ts';
-export * from './extractErrorDetails.ts';
