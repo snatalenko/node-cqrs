@@ -50,7 +50,7 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 	 * @param factory - Optional factory function to create the projection instance
 	 */
 	static createWorkerInstance<V, T extends AbstractWorkerProjection<V>>(
-		this: new (...args: any[]) => T,
+		this: new () => T,
 		factory?: () => T
 	): T {
 		if (!parentPort)
@@ -80,7 +80,7 @@ export abstract class AbstractWorkerProjection<TView> extends AbstractProjection
 	 * In a worker thread, creates and exposes the projection singleton (same as createWorkerInstance).
 	 */
 	static createInstanceIfWorkerThread<V, T extends AbstractWorkerProjection<V>>(
-		this: (new (...args: any[]) => T) & { createWorkerInstance: (factory?: () => T) => T },
+		this: (new () => T) & { createWorkerInstance: (factory?: () => T) => T },
 		factory?: () => T
 	): T | undefined {
 		if (isMainThread)
