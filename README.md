@@ -80,7 +80,7 @@ npm install node-cqrs
 
 ### Supported environments
 
-- Node.js 18+
+- Node.js 16+
 - Browser (via [browserify](https://browserify.org))
 
 ### Optional peer dependencies
