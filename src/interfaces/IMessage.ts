@@ -22,7 +22,7 @@ export interface IMessage<TPayload = any> {
 	sagaVersion?: number;
 
 	/** Business data */
-	payload?: TPayload;
+	payload: TPayload;
 
 	/**
 	 * Optional metadata/context (e.g. auth info, request id);

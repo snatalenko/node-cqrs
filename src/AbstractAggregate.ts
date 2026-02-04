@@ -162,11 +162,13 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	}
 
 	/** Format and register aggregate event and mutate aggregate state */
+	protected emit(type: string): IEvent<void>;
+	protected emit<TPayload>(type: string, payload: TPayload): IEvent<TPayload>;
 	protected emit<TPayload>(type: string, payload?: TPayload): IEvent<TPayload> {
 		if (typeof type !== 'string' || !type.length)
 			throw new TypeError('type argument must be a non-empty string');
 
-		const event = this.makeEvent<TPayload>(type, payload, this.command);
+		const event = this.makeEvent<TPayload>(type, payload as TPayload, this.command);
 
 		this.emitRaw(event);
 
@@ -174,7 +176,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	}
 
 	/** Format event based on a current aggregate state and a command being executed */
-	protected makeEvent<TPayload>(type: string, payload?: TPayload, sourceCommand?: ICommand): IEvent<TPayload> {
+	protected makeEvent<TPayload>(type: string, payload: TPayload, sourceCommand?: ICommand): IEvent<TPayload> {
 		const event: IEvent<TPayload> = {
 			aggregateId: this.id,
 			aggregateVersion: this.version,
