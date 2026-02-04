@@ -26,7 +26,7 @@ It is built around ES6/TypeScript classes and dependency injection, making compo
 
 At a high level, the command and event flow looks like this:
 
-![Overview](docs/images/node-cqrs-flow.png)
+![Overview](docs/images/node-cqrs-flow.svg)
 
 
 Commands and events are loosely typed objects implementing the [`IMessage`](src/interfaces/IMessage.ts) interface:
