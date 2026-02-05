@@ -7,6 +7,19 @@ on:
   pull_request:
 
 jobs:
+  audit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [24.x]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+    - run: npm audit --parseable --production --audit-level=moderate
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -18,7 +31,23 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-    - run: npm ci --no-optional
+    - run: npm ci --omit=optional
       env:
         CI: true
     - run: npm run test
+
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [24.x]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+    - run: npm ci --omit=optional
+      env:
+        CI: true
+    - run: npm run lint

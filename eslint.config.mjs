@@ -25,8 +25,6 @@ export default defineConfig([
 			"@typescript-eslint": tsPlugin,
 		},
 		"rules": {
-			"no-explicit-any": "off",
-			"no-unused-vars": "off",
 			"no-use-before-define": "warn",
 			"strict": "off",
 			"@typescript-eslint/no-unused-vars": [
@@ -38,9 +36,6 @@ export default defineConfig([
 					"argsIgnorePattern": "^(_|err)"
 				}
 			],
-			"@typescript-eslint/no-explicit-any": "off",
-			"@typescript-eslint/no-require-imports": "off",
-			"@typescript-eslint/no-empty-object-type": "off",
 			"padding-line-between-statements": [
 				"warn",
 				{
@@ -68,13 +63,8 @@ export default defineConfig([
 				"error",
 				"below"
 			],
-			"accessor-pairs": "off",
 			"array-callback-return": "error",
 			"block-scoped-var": "error",
-			"complexity": [
-				"off",
-				11
-			],
 			"class-methods-use-this": "warn",
 			"consistent-return": "error",
 			"curly": [
@@ -106,8 +96,6 @@ export default defineConfig([
 			"no-alert": "error",
 			"no-caller": "error",
 			"no-case-declarations": "error",
-			"no-div-regex": "off",
-			"no-else-return": "off",
 			"no-empty-function": [
 				"error",
 				{
@@ -119,7 +107,6 @@ export default defineConfig([
 				}
 			],
 			"no-empty-pattern": "error",
-			"no-eq-null": "off",
 			"no-eval": "error",
 			"no-extend-native": "error",
 			"no-extra-bind": "error",
@@ -132,19 +119,7 @@ export default defineConfig([
 					"exceptions": []
 				}
 			],
-			"no-native-reassign": "off",
-			"no-implicit-coercion": [
-				"off",
-				{
-					"boolean": false,
-					"number": true,
-					"string": true,
-					"allow": []
-				}
-			],
-			"no-implicit-globals": "off",
 			"no-implied-eval": "error",
-			"no-invalid-this": "off",
 			"no-iterator": "error",
 			"no-labels": [
 				"error",
@@ -155,15 +130,6 @@ export default defineConfig([
 			],
 			"no-lone-blocks": "error",
 			"no-loop-func": "error",
-			"no-magic-numbers": [
-				"off",
-				{
-					"ignore": [],
-					"ignoreArrayIndexes": true,
-					"enforceConst": true,
-					"detectObjects": false
-				}
-			],
 			"no-multi-spaces": "error",
 			"no-multi-str": "error",
 			"no-new": "error",
@@ -171,12 +137,6 @@ export default defineConfig([
 			"no-new-wrappers": "error",
 			"no-octal": "error",
 			"no-octal-escape": "error",
-			"no-param-reassign": [
-				"off",
-				{
-					"props": true
-				}
-			],
 			"no-proto": "error",
 			"no-redeclare": "error",
 			"no-restricted-properties": [
@@ -207,22 +167,18 @@ export default defineConfig([
 			"no-self-compare": "error",
 			"no-sequences": "error",
 			"no-throw-literal": "error",
-			"no-unmodified-loop-condition": "off",
-			"no-unused-expressions": "off",
 			"no-unused-labels": "error",
-			"no-useless-call": "off",
 			"no-useless-concat": "error",
 			"no-useless-escape": "error",
 			"no-useless-return": "error",
-			"no-void": "error",
+			"no-void": [
+				"warn",
+				{ "allowAsStatement": true }
+			],
 			"no-warning-comments": [
-				"off",
+				"warn",
 				{
-					"terms": [
-						"todo",
-						"fixme",
-						"xxx"
-					],
+					"terms": ["todo", "fixme", "hack"],
 					"location": "start"
 				}
 			],
@@ -238,15 +194,9 @@ export default defineConfig([
 			],
 			"yoda": "error",
 			"no-mixed-requires": "error",
-			"callback-return": "off",
 			"global-require": "error",
-			"handle-callback-err": "off",
 			"no-new-require": "error",
 			"no-path-concat": "error",
-			"no-process-env": "off",
-			"no-process-exit": "off",
-			"no-restricted-modules": "off",
-			"no-sync": "off",
 			"arrow-body-style": [
 				"error",
 				"as-needed"
@@ -281,7 +231,6 @@ export default defineConfig([
 			"no-dupe-class-members": "error",
 			"no-duplicate-imports": "error",
 			"no-new-symbol": "error",
-			"no-restricted-imports": "off",
 			"no-this-before-super": "error",
 			"no-useless-computed-key": "error",
 			"no-useless-constructor": "error",
@@ -302,7 +251,6 @@ export default defineConfig([
 					"avoidQuotes": true
 				}
 			],
-			"prefer-arrow-callback": "off",
 			"prefer-const": [
 				"error",
 				{
@@ -311,7 +259,6 @@ export default defineConfig([
 				}
 			],
 			"prefer-numeric-literals": "error",
-			"prefer-reflect": "off",
 			"prefer-rest-params": "error",
 			"prefer-spread": "error",
 			"prefer-template": "error",
@@ -319,19 +266,6 @@ export default defineConfig([
 			"rest-spread-spacing": [
 				"error",
 				"never"
-			],
-			"sort-imports": [
-				"off",
-				{
-					"ignoreCase": false,
-					"ignoreMemberSort": false,
-					"memberSyntaxSortOrder": [
-						"none",
-						"all",
-						"multiple",
-						"single"
-					]
-				}
 			],
 			"symbol-description": "error",
 			"template-curly-spacing": "error",
@@ -358,15 +292,6 @@ export default defineConfig([
 			"no-empty-character-class": "error",
 			"no-ex-assign": "error",
 			"no-extra-boolean-cast": "error",
-			"no-extra-parens": [
-				"off",
-				"all",
-				{
-					"conditionalAssign": true,
-					"nestedBinaryExpressions": false,
-					"returnAssign": false
-				}
-			],
 			"no-extra-semi": "error",
 			"no-func-assign": "error",
 			"no-inner-declarations": "error",
@@ -380,9 +305,7 @@ export default defineConfig([
 			"no-unexpected-multiline": "error",
 			"no-unsafe-finally": "error",
 			"no-unsafe-negation": "error",
-			"no-negated-in-lhs": "off",
 			"use-isnan": "error",
-			"valid-jsdoc": "off",
 			"valid-typeof": [
 				"error",
 				{
@@ -425,7 +348,6 @@ export default defineConfig([
 				"error",
 				"never"
 			],
-			"consistent-this": "off",
 			"eol-last": [
 				"error",
 				"always"
@@ -434,20 +356,6 @@ export default defineConfig([
 				"error",
 				"never"
 			],
-			"func-name-matching": [
-				"off",
-				"always",
-				{
-					"includeCommonJSModuleExports": false
-				}
-			],
-			"func-style": [
-				"off",
-				"expression"
-			],
-			"id-blacklist": "off",
-			"id-length": "off",
-			"id-match": "off",
 			"indent": [
 				"error",
 				"tab",
@@ -464,10 +372,6 @@ export default defineConfig([
 						"body": 1
 					}
 				}
-			],
-			"jsx-quotes": [
-				"off",
-				"prefer-double"
 			],
 			"key-spacing": [
 				"error",
@@ -494,14 +398,6 @@ export default defineConfig([
 					}
 				}
 			],
-			"line-comment-position": [
-				"off",
-				{
-					"position": "above",
-					"ignorePattern": "",
-					"applyDefaultPatterns": true
-				}
-			],
 			"linebreak-style": [
 				"error",
 				"unix"
@@ -525,10 +421,6 @@ export default defineConfig([
 					"after": "always"
 				}
 			],
-			"max-depth": [
-				"off",
-				4
-			],
 			"max-len": [
 				"warn",
 				120,
@@ -541,32 +433,9 @@ export default defineConfig([
 					"ignoreTemplateLiterals": true
 				}
 			],
-			"max-lines": [
-				"off",
-				{
-					"max": 300,
-					"skipBlankLines": true,
-					"skipComments": true
-				}
-			],
-			"max-nested-callbacks": "off",
 			"max-params": [
 				"warn",
 				5
-			],
-			"max-statements": [
-				"off",
-				10
-			],
-			"max-statements-per-line": [
-				"off",
-				{
-					"max": 1
-				}
-			],
-			"multiline-ternary": [
-				"off",
-				"never"
 			],
 			"new-cap": [
 				"error",
@@ -582,8 +451,6 @@ export default defineConfig([
 				}
 			],
 			"new-parens": "error",
-			"newline-after-var": "off",
-			"newline-before-return": "off",
 			"newline-per-chained-call": [
 				"error",
 				{
@@ -592,8 +459,6 @@ export default defineConfig([
 			],
 			"no-array-constructor": "error",
 			"no-bitwise": "error",
-			"no-continue": "off",
-			"no-inline-comments": "off",
 			"no-lonely-if": "error",
 			"no-mixed-operators": [
 				"error",
@@ -646,7 +511,6 @@ export default defineConfig([
 					"maxEOF": 1
 				}
 			],
-			"no-negated-condition": "off",
 			"no-nested-ternary": "error",
 			"no-new-object": "error",
 			"no-restricted-syntax": [
@@ -656,14 +520,7 @@ export default defineConfig([
 				"WithStatement"
 			],
 			"no-spaced-func": "error",
-			"no-ternary": "off",
 			"no-trailing-spaces": "error",
-			"no-underscore-dangle": [
-				"off",
-				{
-					"allowAfterThis": true
-				}
-			],
 			"no-unneeded-ternary": [
 				"error",
 				{
@@ -674,19 +531,6 @@ export default defineConfig([
 			"object-curly-spacing": [
 				"error",
 				"always"
-			],
-			"object-curly-newline": [
-				"off",
-				{
-					"ObjectExpression": {
-						"minProperties": 0,
-						"multiline": true
-					},
-					"ObjectPattern": {
-						"minProperties": 0,
-						"multiline": true
-					}
-				}
 			],
 			"object-property-newline": [
 				"error",
@@ -706,11 +550,6 @@ export default defineConfig([
 				"error",
 				"always"
 			],
-			"operator-linebreak": "off",
-			"padded-blocks": [
-				"off",
-				"never"
-			],
 			"quote-props": [
 				"error",
 				"as-needed",
@@ -727,7 +566,6 @@ export default defineConfig([
 					"avoidEscape": true
 				}
 			],
-			"require-jsdoc": "off",
 			"semi": [
 				"error",
 				"always"
@@ -737,14 +575,6 @@ export default defineConfig([
 				{
 					"before": false,
 					"after": true
-				}
-			],
-			"sort-keys": [
-				"off",
-				"asc",
-				{
-					"caseSensitive": false,
-					"natural": true
 				}
 			],
 			"sort-vars": "off",
