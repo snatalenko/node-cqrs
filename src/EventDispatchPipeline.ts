@@ -84,7 +84,7 @@ export class EventDispatchPipeline {
 						if (isSnapshotEvent(event))
 							continue;
 
-						await this.#eventBus.publish(event, meta);
+						void this.#eventBus.publish(event, meta);
 
 						events.push(event);
 					}
