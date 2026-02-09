@@ -42,7 +42,9 @@ async function main() {
 	const commandBus = new CommandBus();
 
 	let resolveWelcomeEmail!: () => void;
-	const welcomeEmailSent = new Promise<void>(resolve => { resolveWelcomeEmail = resolve; });
+	const welcomeEmailSent = new Promise<void>(resolve => {
+		resolveWelcomeEmail = resolve;
+	});
 
 	commandBus.on('sendWelcomeEmail', command => {
 		console.log('sendWelcomeEmail command:', command);
