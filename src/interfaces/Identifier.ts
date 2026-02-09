@@ -1,1 +1,1 @@
-export type Identifier = string | number;
+export type Identifier = string | number | object;
