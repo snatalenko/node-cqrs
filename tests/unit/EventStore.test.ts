@@ -54,29 +54,40 @@ describe('EventStore', () => {
 			await expect(store.dispatch(null as any)).rejects.toThrow(TypeError);
 		});
 
-		it('augments saga starter events with new sagaId and version', async () => {
-
-			store.registerSagaStarters(['StartSaga']);
-			const event: IEvent = { type: 'StartSaga' } as IEvent;
+		it('forwards events unchanged to dispatcher', async () => {
+			const event: IEvent<void> = Object.freeze({
+				id: 'event-1',
+				type: 'StartSaga',
+				sagaOrigins: { SagaA: 'event-1' },
+				payload: undefined
+			});
 			const dispatchSpy = jest.spyOn(eventDispatcher, 'dispatch');
 
-			await store.dispatch([event]);
+			const [processed] = await store.dispatch([event]);
 
-			expect(event.sagaId).toBe(mockId);
-			expect(event.sagaVersion).toBe(0);
+			expect(processed).toBe(event);
 			expect(dispatchSpy).toHaveBeenCalledWith([event], { origin: 'internal' });
 		});
 
-		it('does not modify non-saga starter events', async () => {
-
+		it('does not assign id to events when missing', async () => {
 			const event: IEvent = { type: 'RegularEvent' } as IEvent;
-			const dispatchSpy = jest.spyOn(eventDispatcher, 'dispatch');
+			const [processed] = await store.dispatch([event]);
 
-			await store.dispatch([event]);
+			expect(processed.id).toBeUndefined();
+			expect(event.id).toBeUndefined();
+		});
 
-			expect(event.sagaId).toBeUndefined();
-			expect(event.sagaVersion).toBeUndefined();
-			expect(dispatchSpy).toHaveBeenCalledWith([event], { origin: 'internal' });
+		it('does not modify sagaOrigins when dispatching', async () => {
+			const event: IEvent = {
+				id: 'event-2',
+				type: 'RegularEvent',
+				sagaOrigins: { SagaA: 'starter-1' },
+				payload: undefined
+			} as IEvent;
+
+			const [processed] = await store.dispatch([event]);
+
+			expect(processed.sagaOrigins).toEqual({ SagaA: 'starter-1' });
 		});
 	});
 
@@ -104,15 +115,15 @@ describe('EventStore', () => {
 		it('retrieves saga events with provided filter', async () => {
 			const sagaEvents = [{ type: 'SagaEvent1' }] as IEvent[];
 			mockStorage.getSagaEvents.mockResolvedValueOnce(sagaEvents);
-			const filter = { beforeEvent: { sagaVersion: 1 } };
+			const filter = { beforeEvent: { id: 'before-1', sagaOrigins: { SagaA: 'origin-1' } } };
 
 			const result: IEvent[] = [];
-			for await (const event of store.getSagaEvents('saga-1', filter))
+			for await (const event of store.getSagaEvents('SagaA:origin-1', filter as any))
 				result.push(event);
 
 
 			expect(result).toEqual(sagaEvents);
-			expect(mockStorage.getSagaEvents).toHaveBeenCalledWith('saga-1', filter);
+			expect(mockStorage.getSagaEvents).toHaveBeenCalledWith('SagaA:origin-1', filter);
 		});
 	});
 
@@ -156,7 +167,7 @@ describe('EventStore', () => {
 
 			await store.dispatch([testEvent]);
 
-			await expect(promise).resolves.toBe(testEvent);
+			await expect(promise).resolves.toMatchObject(testEvent);
 			expect(callCount).toBe(1);
 		});
 
@@ -171,7 +182,7 @@ describe('EventStore', () => {
 			await store.dispatch([testEvent, testEvent2]);
 			await store.dispatch([testEvent2]);
 
-			await expect(promise).resolves.toBe(testEvent);
+			await expect(promise).resolves.toMatchObject(testEvent);
 			expect(callCount).toBe(1);
 		});
 	});

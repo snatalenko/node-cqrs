@@ -33,6 +33,7 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 		super.register(c => [
 			// automatically add `eventStorageWrite` and `snapshotStorage` to the default dispatch pipeline
 			// if they're registered in the DI container and implement `IDispatchPipelineProcessor` interface
+			...isDispatchPipelineProcessor(c.eventIdAugmenter) ? [c.eventIdAugmenter] : [],
 			...isDispatchPipelineProcessor(c.eventStorageWriter) ? [c.eventStorageWriter] : [],
 			...isDispatchPipelineProcessor(c.snapshotStorage) ? [c.snapshotStorage] : []
 		]).as('eventDispatchPipeline');
@@ -110,6 +111,7 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 		const eventReceptorFactory = (container: TContainerInterface): IEventReceptor =>
 			container.createInstance(SagaEventHandler, {
 				sagaFactory: (options: any) => container.createInstance(SagaType, options),
+				sagaDescriptor: SagaType.sagaDescriptor ?? SagaType.name,
 				handles: SagaType.handles,
 				startsWith: SagaType.startsWith,
 				queueName: SagaType.name

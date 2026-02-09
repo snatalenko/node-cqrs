@@ -9,6 +9,7 @@ import {
 	type Identifier,
 	type IEventSet,
 	type IEventStore,
+	type ILocker,
 	type ILogger,
 	type IObservable,
 	isIObservable
@@ -32,15 +33,16 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 	#aggregatesCache: MapAssertable<Identifier, Promise<TAggregate>> = new MapAssertable();
 
 	/** Lock for sequential aggregate command execution */
-	#executionLock = new Lock();
+	#executionLock: ILocker;
 
 	constructor({
 		eventStore,
 		aggregateType,
 		aggregateFactory,
 		handles,
+		executionLocker = new Lock(),
 		logger
-	}: Pick<IContainer, 'eventStore' | 'logger'> & {
+	}: Pick<IContainer, 'eventStore' | 'executionLocker' | 'logger'> & {
 		aggregateType?: IAggregateConstructor<TAggregate, any>,
 		aggregateFactory?: IAggregateFactory<TAggregate, any>,
 		handles?: string[]
@@ -49,6 +51,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			throw new TypeError('eventStore argument required');
 
 		this.#eventStore = eventStore;
+		this.#executionLock = executionLocker;
 		this.#logger = logger && 'child' in logger ?
 			logger.child({ service: getClassName(this) }) :
 			logger;
@@ -127,11 +130,12 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		// multiple concurrent calls to #getAggregateInstance will return the same promise
 		const aggregate = await this.#getAggregateInstance(cmd.aggregateId);
 
-		try {
-			// multiple concurrent commands to a same aggregateId will execute sequentially
-			if (cmd.aggregateId)
-				await this.#executionLock.acquire(String(cmd.aggregateId));
+		// multiple concurrent commands to a same aggregateId will execute sequentially
+		const lease = cmd.aggregateId ?
+			await this.#executionLock.acquire(String(cmd.aggregateId)) :
+			undefined;
 
+		try {
 			// pass command to aggregate instance
 			const events = await aggregate.handle(cmd);
 
@@ -143,10 +147,9 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			return events;
 		}
 		finally {
-			if (cmd.aggregateId) {
-				this.#executionLock.release(String(cmd.aggregateId));
+			lease?.release();
+			if (cmd.aggregateId)
 				this.#aggregatesCache.release(cmd.aggregateId);
-			}
 		}
 	}
 }

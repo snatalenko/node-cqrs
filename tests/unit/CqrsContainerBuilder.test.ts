@@ -59,7 +59,7 @@ describe('CqrsContainerBuilder', function () {
 		});
 	});
 
-	describe('registerSaga(sagaType) extension', () => {
+	describe('registerSaga(saga) extension', () => {
 
 		it('sets up saga event handler', done => {
 
@@ -78,7 +78,7 @@ describe('CqrsContainerBuilder', function () {
 			container.commandBus.on('doSomething', () => done());
 
 			const events = [
-				{ type: 'somethingHappened', aggregateId: 1 }
+				{ id: 'event-1', type: 'somethingHappened', aggregateId: 1 }
 			];
 
 			container.eventStore.dispatch(events).catch(done);

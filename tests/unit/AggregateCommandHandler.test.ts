@@ -150,23 +150,24 @@ describe('AggregateCommandHandler', function () {
 		expect(args[0]).to.have.property('payload', 'test');
 	});
 
-	it('attaches command context, sagaId, sagaVersion to produced events', async () => {
+	it('attaches command context and sagaOrigins to produced events', async () => {
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
 			aggregateType: MyAggregate
 		});
 
-		const sagaId = 'saga-1';
-		const sagaVersion = 1;
+		const sagaOrigins = {
+			SagaA: 'origin-a',
+			SagaB: 'origin-b'
+		};
 		const context = { ip: 'localhost' };
-		const command = { type: 'doSomething', payload: 'test', context, sagaId, sagaVersion };
+		const command = { type: 'doSomething', payload: 'test', context, sagaOrigins };
 
 		const events = await handler.execute(command);
 
 		expect(events[0]).to.have.property('context', context);
-		expect(events[0]).to.have.property('sagaId', sagaId);
-		expect(events[0]).to.have.property('sagaVersion', sagaVersion);
+		expect(events[0]).to.have.property('sagaOrigins').that.eqls(sagaOrigins);
 	});
 
 	it('resolves to produced events', async () => {

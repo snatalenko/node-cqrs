@@ -9,6 +9,7 @@ import type { IAggregateSnapshotStorage } from './IAggregateSnapshotStorage.ts';
 import type { IIdentifierProvider } from './IIdentifierProvider.ts';
 import type { IExtendableLogger, ILogger } from './ILogger.ts';
 import type { IEventStorageWriter } from './IEventStorageWriter.ts';
+import type { ILocker } from './ILocker.ts';
 
 export interface IContainer extends Container {
 	eventBus: IEventBus;
@@ -17,6 +18,7 @@ export interface IContainer extends Container {
 	eventStorageWriter?: IEventStorageWriter;
 	identifierProvider?: IIdentifierProvider;
 	snapshotStorage?: IAggregateSnapshotStorage;
+	eventIdAugmenter?: IDispatchPipelineProcessor;
 
 	commandBus: ICommandBus;
 	eventDispatcher?: IEventDispatcher;
@@ -26,6 +28,8 @@ export interface IContainer extends Container {
 
 	/** Multiple event dispatch pipelines per origin */
 	eventDispatchPipelines?: Record<string, IDispatchPipelineProcessor[]>;
+
+	executionLocker?: ILocker;
 
 	logger?: ILogger | IExtendableLogger;
 

@@ -10,7 +10,7 @@ node-cqrs
 Infrastructure-agnostic building blocks for CQRS/ES, inspired by Lokad.CQRS.
 
 CQRS/ES can be simple in a single process. Minimal code, no framework:
-[examples/user-domain-own-implementation/index.ts](examples/user-domain-own-implementation/index.ts)
+[examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts)
 
 This library focuses on the "boring but hard" parts often missing from plain CQRS/ES implementations, but required in distributed environments:
 
@@ -37,11 +37,9 @@ interface IMessage<TPayload = any> {
 
 	aggregateId?: string | number;
 	aggregateVersion?: number;
+	sagaOrigins?: Record<string, string>;
 
-	sagaId?: string | number;
-	sagaVersion?: number;
-
-	payload?: TPayload;
+	payload: TPayload;
 	context?: any;
 }
 ```
@@ -63,11 +61,11 @@ Message delivery is handled by the following components, in order:
 
 ### Examples
 
-- [examples/browser-smoke-test](examples/browser-smoke-test) - browser smoke test with in-memory storage and buses
-- [examples/user-domain](examples/user-domain) - basic CJS implementation
-- [examples/user-domain-own-implementation](examples/user-domain-own-implementation/index.ts) minimal, framework-free CQRS/ES example in 1 file
-- [examples/user-domain-ts](examples/user-domain-ts) - basic TypeScript implementation
-- [examples/worker-projection](examples/worker-projection) - projection in a worker thread
+- [examples/browser/smoke-test](examples/browser/smoke-test) - browser smoke test with in-memory storage and buses
+- [examples/user-domain/cjs](examples/user-domain/cjs) - basic CJS implementation
+- [examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts) - minimal, framework-free CQRS/ES example in 1 file
+- [examples/user-domain/ts](examples/user-domain/ts) - basic TypeScript implementation
+- [examples/workers/worker-projection](examples/workers/worker-projection) - projection in a worker thread
 
 TS examples can be run with `node` without transpiling.
 
@@ -153,7 +151,8 @@ Commands represent intent and are sent to the `CommandBus`:
 - handled by [Aggregates](#aggregates-write-model)
 - may be enqueued by Sagas
 
-Command example (raw form):
+<details>
+<summary>Command example</summary>
 
 ```json
 {
@@ -171,6 +170,8 @@ Command example (raw form):
   }
 }
 ```
+
+</details>
 
 The `commandBus` exposed by the container is an instance of [CommandBus](src/CommandBus.ts) and provides two methods:
 
@@ -194,7 +195,9 @@ Events represent facts that have already happened:
 - persisted by the Event Store
 - delivered to [Projections](#projections-and-views-read-model), Sagas, and Event Receptors
 
-Event example:
+<details>
+<summary>Event example</summary>
+
 
 ```json
 {
@@ -215,6 +218,7 @@ Event example:
 }
 ```
 
+</details>
 
 ## Aggregates (write model)
 
@@ -412,6 +416,106 @@ builder.registerProjection(UsersProjection).as('usersProjection');
 builder.register(c => c.usersProjection.users).as('usersView');
 builder.register(c => c.usersProjection.connections).as('connectionsView');
 ```
+
+## Sagas
+
+Sagas coordinate multi-step processes by reacting to events and enqueueing follow-up commands.
+
+Examples:
+
+- Simple saga: [`examples/sagas/simple`](examples/sagas/simple/index.ts)
+- Overlapping sagas + multi-step flow: [`examples/sagas/overlaps`](examples/sagas/overlaps/index.ts)
+
+### Quick start
+
+1. Implement a saga by extending [`AbstractSaga`](src/AbstractSaga.ts):
+   - declare `static startsWith` (starter events)
+   - optionally declare `static handles` (additional events)
+   - implement handler methods named after event types
+2. Ensure events have `event.id` (starter events use it as the saga origin). The simplest option is [`EventIdAugmentor`](src/EventIdAugmentor.ts) in the `EventStore` dispatch pipeline.
+3. Wire handlers via `YourAggregate.register(eventStore, commandBus)` and `YourSaga.register(eventStore, commandBus)`.
+
+<details>
+<summary><strong>Minimal runnable wiring (in-memory)</strong></summary>
+
+```ts
+import {
+	AbstractAggregate,
+	AbstractSaga,
+	CommandBus,
+	EventIdAugmentor,
+	EventStore,
+	InMemoryEventStorage,
+	InMemoryMessageBus
+} from 'node-cqrs';
+
+class SignupAggregate extends AbstractAggregate<void> {
+	signupUser(payload: { email: string }) {
+		this.emit('userSignedUp', { email: payload.email });
+	}
+}
+
+class WelcomeEmailSaga extends AbstractSaga {
+	static get startsWith() { return ['userSignedUp']; }
+
+	userSignedUp(event: any) {
+		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload.email });
+	}
+}
+
+const eventBus = new InMemoryMessageBus();
+const eventStorage = new InMemoryEventStorage();
+const eventStore = new EventStore({
+	eventStorageReader: eventStorage,
+	identifierProvider: eventStorage,
+	eventDispatchPipeline: [
+		new EventIdAugmentor({ identifierProvider: eventStorage }),
+		eventStorage
+	],
+	eventBus
+});
+const commandBus = new CommandBus();
+
+SignupAggregate.register(eventStore, commandBus);
+WelcomeEmailSaga.register(eventStore, commandBus);
+
+commandBus.on('sendWelcomeEmail', command => {
+	console.log(command);
+	return [];
+});
+
+await commandBus.send('signupUser', undefined, { payload: { email: 'john@example.com' } });
+```
+</details>
+
+### ISaga (minimal contract)
+
+The minimal saga contract is [`ISaga`](src/interfaces/ISaga.ts):
+
+- `mutate(event)` - apply historical events to restore saga state (must not emit commands)
+- `handle(event)` - process an incoming event and return produced commands
+
+### AbstractSaga (recommended)
+
+[`AbstractSaga`](src/AbstractSaga.ts) is the recommended base class:
+
+- `static sagaDescriptor` (optional) - stable key used in `message.sagaOrigins` (defaults to Saga class name)
+- `static startsWith` - event types that start a new saga instance
+- `static handles` (optional) - extra event types handled by the saga
+- handler methods named after event types (e.g. `userSignedUp(event)`) run business logic and enqueue commands
+- use `this.enqueue(commandType, aggregateId, payload)` to produce commands
+- optional `state` - an object that is mutated by `mutate(event)` (similar to `AbstractAggregate.state`)
+
+`AbstractSaga.handle(event)` runs the saga event handler first (so it can see previous state), then calls `mutate(event)` to update the saga state.
+
+Saga context is carried in [`message.sagaOrigins`](src/interfaces/IMessage.ts), keyed by saga descriptor (`SagaType.sagaDescriptor ?? SagaType.name`). Each entry stores the starter event id.
+
+Starter event rules:
+
+- A saga can only start from an event that has `event.id` (the saga origin is `event.id`).
+- For a starter event, `event.sagaOrigins[sagaDescriptor]` must not already exist (it is treated as an error).
+
+A single event type can start multiple sagas (one handler per saga). Continuation events/commands must include the saga origin in `message.sagaOrigins[sagaDescriptor]`.
 
 ## Infrastructure modules
 

@@ -28,7 +28,7 @@ export interface IEventStorageReader {
 	getAggregateEvents(aggregateId: Identifier, options?: { snapshot?: IEvent }): IEventStream;
 
 	/**
-	 * Retrieves events associated with a saga, with optional filtering by version or timestamp.
+	 * Retrieves events associated with a saga instance.
 	 */
 	getSagaEvents(sagaId: Identifier, options: EventQueryBefore): IEventStream;
 }

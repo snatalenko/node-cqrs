@@ -10,6 +10,7 @@ import type {
 	IDispatchPipelineProcessor,
 	DispatchPipelineBatch
 } from '../interfaces/index.ts';
+import { parseSagaId } from '../utils/index.ts';
 import { nextCycle } from './utils/index.ts';
 
 /**
@@ -59,11 +60,24 @@ export class InMemoryEventStorage implements
 	async* getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
 		await nextCycle();
 
-		const results = this.#events.filter(e =>
-			e.sagaId === sagaId &&
-			e.sagaVersion !== undefined &&
-			beforeEvent.sagaVersion !== undefined &&
-			e.sagaVersion < beforeEvent.sagaVersion);
+		if (typeof beforeEvent?.id !== 'string' || !beforeEvent.id.length)
+			throw new TypeError('beforeEvent.id is required');
+
+		const { sagaDescriptor, originEventId } = parseSagaId(sagaId);
+		if (beforeEvent.sagaOrigins?.[sagaDescriptor] !== originEventId)
+			throw new TypeError('beforeEvent.sagaOrigins does not match sagaId');
+
+		const originOffset = this.#events.findIndex(e => e.id === originEventId);
+		if (originOffset === -1)
+			throw new Error(`origin event ${originEventId} not found`);
+
+		const beforeEventOffset = this.#events.findIndex(e => e.id === beforeEvent.id);
+		if (beforeEventOffset === -1)
+			throw new Error(`beforeEvent ${beforeEvent.id} not found`);
+
+		const results = this.#events
+			.slice(originOffset, beforeEventOffset)
+			.filter(e => e.sagaOrigins?.[sagaDescriptor] === originEventId);
 
 		await nextCycle();
 

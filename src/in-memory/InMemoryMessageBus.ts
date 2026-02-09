@@ -102,13 +102,13 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 	/**
 	 * Publish event to all subscribers (if any)
 	 */
-	async publish(event: IEvent, meta?: Record<string, any>): Promise<any> {
+	async publish(event: IEvent, meta?: Record<string, any>): Promise<unknown[]> {
 		if (typeof event !== 'object' || !event)
 			throw new TypeError('event argument must be an Object');
 		if (typeof event.type !== 'string' || !event.type.length)
 			throw new TypeError('event.type argument must be a non-empty String');
 
-		const promises: Promise<any>[] = [];
+		const promises: (unknown | Promise<unknown>)[] = [];
 
 		for (const handler of this.handlers.get(event.type) ?? [])
 			promises.push(handler(event, meta));

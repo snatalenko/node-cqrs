@@ -138,7 +138,6 @@ export default defineConfig([
 			"no-octal": "error",
 			"no-octal-escape": "error",
 			"no-proto": "error",
-			"no-redeclare": "error",
 			"no-restricted-properties": [
 				"error",
 				{
@@ -646,7 +645,8 @@ export default defineConfig([
 		}
 	}, {
 		files: [
-			'tests/**/*.ts'
+			'tests/**/*.ts',
+			'examples/**/*.{ts,cjs}'
 		],
 		plugins: {
 			jest: jestPlugin,

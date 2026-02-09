@@ -37,12 +37,6 @@ describe('AbstractSaga', function () {
 
 			expect(() => s = new SagaWithoutHandler({ id: 1 })).to.throw('\'somethingHappened\' handler is not defined or not a function');
 		});
-
-		it('sets \'restored\' flag, after saga restored from eventStore', () => {
-
-			const s2 = new Saga({ id: 1, events: [{ type: 'somethingHappened', payload: 'test' }] });
-			expect(s2).to.have.property('restored', true);
-		});
 	});
 
 	describe('id', () => {
@@ -63,69 +57,159 @@ describe('AbstractSaga', function () {
 		});
 	});
 
-	describe('uncommittedMessages', () => {
+	describe('mutate(event)', () => {
 
-		it('returns immutable list of uncommitted commands enqueued by saga', () => {
-
-			expect(s).to.have.property('uncommittedMessages');
-			expect(() => {
-				s.uncommittedMessages = null;
-			}).to.throw();
-
-			expect(s.uncommittedMessages).to.be.an('Array');
-			expect(s.uncommittedMessages).to.be.empty;
-
-			s.uncommittedMessages.push({});
-			expect(s.uncommittedMessages).to.be.empty;
-		});
-	});
-
-	describe('apply(event)', () => {
-
-		it('passes event to saga event handler', () => {
+		it('delegates state mutation to "state"', () => {
 
 			let receivedEvent;
-			s._somethingHappened = event => {
-				receivedEvent = event;
-			};
+			s.state = {
+				somethingHappened: (event: any) => {
+					receivedEvent = event;
+				}
+			} as any;
 
-			s.apply({ type: 'somethingHappened', payload: 'test' });
+			s.mutate({ type: 'somethingHappened', payload: 'test' });
 
 			expect(receivedEvent).to.be.not.empty;
 			expect(receivedEvent).to.have.nested.property('type', 'somethingHappened');
 		});
 
-		it('throws exception if no handler defined', () => {
+		it('prefers state.mutate(event) over a named handler', () => {
+			let mutateCalled = 0;
+			let namedHandlerCalled = 0;
 
-			expect(() => s.apply({ type: 'anotherHappened' })).to.throw('\'anotherHappened\' handler is not defined or not a function');
+			s.state = {
+				count: 0,
+				mutate(_event: any) {
+					mutateCalled += 1;
+					this.count += 1;
+				},
+				somethingHappened(_event: any) {
+					namedHandlerCalled += 1;
+					this.count += 10;
+				}
+			} as any;
+
+			s.mutate({ type: 'somethingHappened' } as any);
+
+			expect(mutateCalled).to.equal(1);
+			expect(namedHandlerCalled).to.equal(0);
+			expect((s.state as any).count).to.equal(1);
+		});
+
+		it('does not throw when state handler is missing', () => {
+
+			expect(() => s.mutate({ type: 'anotherHappened' } as any)).not.to.throw();
+		});
+
+		it('does not affect command diff returned from later handle(event)', () => {
+			class DiffSaga extends AbstractSaga {
+				static get startsWith() {
+					return ['somethingHappened'];
+				}
+				static get handles(): string[] {
+					return ['followingHappened'];
+				}
+				somethingHappened() {
+					super.enqueue('fromMutate', undefined, { ok: true });
+				}
+				followingHappened() {
+					super.enqueue('fromHandle', undefined, { ok: true });
+				}
+			}
+
+			const saga = new DiffSaga({ id: 1 });
+			saga.mutate({ type: 'somethingHappened' } as any);
+
+			const commands = saga.handle({ type: 'followingHappened' } as any);
+			expect(commands).to.be.an('Array');
+			expect(commands).to.have.length(1);
+			expect(commands[0]).to.have.property('type', 'fromHandle');
+		});
+
+		it('increments version even if no state is set', () => {
+			expect(s).to.have.property('version', 0);
+			s.mutate({ type: 'somethingHappened' } as any);
+			expect(s).to.have.property('version', 1);
 		});
 	});
 
-	describe('enqueue(commandType, aggregateId, commandPayload)', () => {
+	describe('handle(event)', () => {
 
-		it('adds command to saga.uncommittedMessages list', () => {
-
-			s.apply({ type: 'somethingHappened' });
-
-			const { uncommittedMessages } = s;
-
-			expect(uncommittedMessages).to.have.length(1);
-			expect(uncommittedMessages[0]).to.have.property('sagaId', s.id);
-			expect(uncommittedMessages[0]).to.have.property('sagaVersion', s.version - 1);
-			expect(uncommittedMessages[0]).to.have.property('type', 'doSomething');
-			expect(uncommittedMessages[0]).to.have.nested.property('payload.foo', 'bar');
+		it('returns commands produced by the handler', () => {
+			const commands = s.handle({ type: 'somethingHappened' });
+			expect(commands).to.be.an('Array');
+			expect(commands).to.have.length(1);
+			expect(commands[0]).to.have.property('type', 'doSomething');
+			expect(commands[0]).to.have.nested.property('payload.foo', 'bar');
 		});
-	});
 
-	describe('resetUncommittedMessages()', () => {
+		it('calls saga handler before mutating state', () => {
+			class OrderSaga extends AbstractSaga {
+				static get startsWith() {
+					return ['somethingHappened'];
+				}
 
-		it('clears saga.uncommittedMessages list', () => {
+				constructor(o: any) {
+					super(o);
+					this.state = { seen: 0,
+						somethingHappened() {
+							this.seen += 1;
+						} };
+				}
 
-			s.apply({ type: 'somethingHappened' });
-			expect(s.uncommittedMessages).to.have.length(1);
+				somethingHappened() {
+					const seen = (this.state as any).seen;
+					this.enqueue('seenBefore', undefined, { seen });
+				}
+			}
 
-			s.resetUncommittedMessages();
-			expect(s.uncommittedMessages).to.be.empty;
+			const saga = new OrderSaga({ id: 1 });
+
+			const commands = saga.handle({ type: 'somethingHappened' } as any);
+			expect(commands).to.have.length(1);
+			expect(commands[0]).to.have.nested.property('payload.seen', 0);
+			expect((saga.state as any).seen).to.equal(1);
+		});
+
+		it('throws on concurrent handle calls on the same saga instance and resets after completion', async () => {
+			let allowFinish!: () => void;
+			const gate = new Promise<void>(resolve => {
+				allowFinish = resolve;
+			});
+
+			class ConcurrencySaga extends AbstractSaga {
+				static get startsWith() {
+					return ['somethingHappened'];
+				}
+				async somethingHappened() {
+					await gate;
+					this.enqueue('done', undefined, { ok: true });
+				}
+			}
+
+			const saga = new ConcurrencySaga({ id: 1 });
+			const p1 = saga.handle({ type: 'somethingHappened' } as any) as Promise<any>;
+
+			let thrown: any;
+			try {
+				saga.handle({ type: 'somethingHappened' } as any);
+			}
+			catch (err: any) {
+				thrown = err;
+			}
+
+			expect(thrown).to.be.instanceOf(Error);
+			expect(thrown).to.have.property('message', 'Another event is being processed, concurrent handling is not allowed');
+
+			allowFinish();
+			const commands = await p1;
+			expect(commands).to.be.an('Array');
+			expect(commands).to.have.length(1);
+
+			// after first finishes, subsequent handle should work
+			const commands2 = await saga.handle({ type: 'somethingHappened' } as any);
+			expect(commands2).to.be.an('Array');
 		});
 	});
 });

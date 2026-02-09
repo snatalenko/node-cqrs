@@ -5,4 +5,5 @@ import md5 from 'md5';
 /**
  * Get assigned or generate new event ID from event content
  */
-export const getEventId = (event: IEvent): Buffer => guid(event.id ?? md5(JSON.stringify(event)));
+export const getEventId = (event: IEvent): Buffer =>
+	guid(typeof event.id === 'string' ? event.id : md5(JSON.stringify(event)));

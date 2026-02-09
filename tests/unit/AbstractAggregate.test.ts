@@ -375,7 +375,8 @@ describe('AbstractAggregate', function () {
 				}).to.throw(TypeError);
 			}
 
-			expect(() => (agg as any).restoreSnapshot({ aggregateVersion: 1, type: 'somethingHappened', payload: {} })).to.throw('snapshot event type expected');
+			expect(() => (agg as any).restoreSnapshot({ aggregateVersion: 1, type: 'somethingHappened', payload: {} }))
+				.to.throw('snapshotEvent argument must be a valid ISnapshotEvent');
 
 			expect(() => (agg as any).restoreSnapshot(snapshotEvent)).to.not.throw();
 		});

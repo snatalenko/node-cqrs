@@ -1,10 +1,11 @@
+import type { Identifier } from './Identifier.ts';
 import type { IMessage } from './IMessage.ts';
 import { isObject } from './isObject.ts';
 
 export type IEvent<TPayload = any> = IMessage<TPayload> & {
 
 	/** Unique event identifier */
-	id?: string;
+	id?: Identifier;
 };
 
 export const isEvent = (event: unknown): event is IEvent =>
