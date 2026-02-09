@@ -181,6 +181,98 @@ describe('SagaEventHandler', function () {
 		expect(thrown).to.have.property('message', 'Starter event "somethingHappened" already contains saga origin for "Saga"');
 	});
 
+	it('propagates event context to commands when command.context is not set', async () => {
+		const deferred = new Deferred<any>();
+
+		commandBus.on('doSomething', command => deferred.resolve(command));
+
+		await sagaEventHandler.handle({
+			id: 'starter-ctx-1',
+			type: 'somethingHappened',
+			aggregateId: 1,
+			context: { requestId: 'r1' }
+		} as any);
+
+		const command = await deferred.promise;
+		expect(command).to.have.property('context');
+		expect(command.context).to.deep.equal({ requestId: 'r1' });
+	});
+
+	it('supports sagaFactory wiring and requires sagaDescriptor', async () => {
+		let thrown: any;
+		try {
+			// eslint-disable-next-line no-new
+			new SagaEventHandler({
+				sagaFactory: () => ({ mutate: () => undefined, handle: () => [] } as any),
+				eventStore,
+				commandBus,
+				startsWith: ['somethingHappened'],
+				handles: []
+			} as any);
+		}
+		catch (err: any) {
+			thrown = err;
+		}
+
+		expect(thrown).to.be.instanceOf(TypeError);
+		expect(thrown).to.have.property('message', 'options.sagaDescriptor argument required when sagaFactory is provided');
+
+		const factoryHandler = new SagaEventHandler({
+			sagaFactory: () => ({ mutate: () => undefined, handle: () => [] } as any),
+			eventStore,
+			commandBus,
+			startsWith: ['somethingHappened'],
+			handles: [],
+			sagaDescriptor: 'MySaga'
+		} as any);
+
+		await factoryHandler.handle({ id: 'starter-factory-1', type: 'somethingHappened', aggregateId: 1 } as any);
+	});
+
+	it('awaits async mutate() when restoring saga state', async () => {
+		const allowMutateFinish = new Deferred<void>();
+		let handleCalled = false;
+
+		const handler = new SagaEventHandler({
+			sagaFactory: () => ({
+				async mutate(_event: any) {
+					await allowMutateFinish.promise;
+				},
+				async handle(_event: any) {
+					handleCalled = true;
+					return [];
+				}
+			} as any),
+			eventStore,
+			commandBus,
+			startsWith: ['somethingHappened'],
+			handles: ['followingHappened'],
+			sagaDescriptor: 'AsyncRestoreSaga'
+		} as any);
+
+		const sagaOrigin = 'starter-async-1';
+		await eventStorage.commitEvents([
+			{ id: sagaOrigin, type: 'somethingHappened', aggregateId: 1, sagaOrigins: { AsyncRestoreSaga: sagaOrigin } },
+			{ id: 'evt-old-1', type: 'followingHappened', aggregateId: 1, sagaOrigins: { AsyncRestoreSaga: sagaOrigin } },
+			{ id: 'evt-current-1', type: 'followingHappened', aggregateId: 1, sagaOrigins: { AsyncRestoreSaga: sagaOrigin } }
+		] as any);
+
+		const p = handler.handle({
+			id: 'evt-current-1',
+			type: 'followingHappened',
+			aggregateId: 1,
+			sagaOrigins: { AsyncRestoreSaga: sagaOrigin }
+		} as any);
+
+		await new Promise(setImmediate);
+		expect(handleCalled).to.equal(false);
+
+		allowMutateFinish.resolve(undefined);
+		await p;
+
+		expect(handleCalled).to.equal(true);
+	});
+
 	it('executes concurrent events for the same saga id sequentially on the same saga instance', async () => {
 
 		const instances = new Set<any>();
