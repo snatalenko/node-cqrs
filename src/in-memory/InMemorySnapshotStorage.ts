@@ -4,7 +4,7 @@ import {
 	type IContainer,
 	type Identifier,
 	type IDispatchPipelineProcessor,
-	type IEvent,
+	type ISnapshotEvent,
 	type ILogger,
 	isSnapshotEvent
 } from '../interfaces/index.ts';
@@ -16,26 +16,26 @@ import * as Event from '../Event.ts';
  */
 export class InMemorySnapshotStorage implements IAggregateSnapshotStorage, IDispatchPipelineProcessor {
 
-	#snapshots: Map<Identifier, IEvent> = new Map();
+	#snapshots: Map<Identifier, ISnapshotEvent> = new Map();
 	#logger: ILogger | undefined;
 
 	constructor(c?: Partial<Pick<IContainer, 'logger'>>) {
-		this.#logger = c?.logger && 'child' in c?.logger ?
-			c?.logger.child({ service: new.target.name }) :
+		this.#logger = c?.logger && 'child' in c.logger ?
+			c.logger.child({ service: new.target.name }) :
 			c?.logger;
 	}
 
 	/**
 	 * Get latest aggregate snapshot
 	 */
-	async getAggregateSnapshot(aggregateId: string): Promise<IEvent | undefined> {
+	async getAggregateSnapshot(aggregateId: string): Promise<ISnapshotEvent | undefined> {
 		return this.#snapshots.get(aggregateId);
 	}
 
 	/**
 	 * Save new aggregate snapshot
 	 */
-	async saveAggregateSnapshot(snapshotEvent: IEvent) {
+	async saveAggregateSnapshot(snapshotEvent: ISnapshotEvent) {
 		if (!snapshotEvent.aggregateId)
 			throw new TypeError('event.aggregateId is required');
 
@@ -47,7 +47,7 @@ export class InMemorySnapshotStorage implements IAggregateSnapshotStorage, IDisp
 	/**
 	 * Delete aggregate snapshot
 	 */
-	deleteAggregateSnapshot<TState>(snapshotEvent: IEvent<TState>): Promise<void> | void {
+	deleteAggregateSnapshot<TState>(snapshotEvent: ISnapshotEvent<TState>): Promise<void> | void {
 		if (!snapshotEvent.aggregateId)
 			throw new TypeError('snapshotEvent.aggregateId argument required');
 

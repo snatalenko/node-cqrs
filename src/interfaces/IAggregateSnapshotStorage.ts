@@ -1,11 +1,11 @@
 import type { Identifier } from './Identifier.ts';
-import type { IEvent } from './IEvent.ts';
+import type { ISnapshotEvent } from './ISnapshotEvent.ts';
 
 export interface IAggregateSnapshotStorage {
 	getAggregateSnapshot<TState>(aggregateId: Identifier):
-		Promise<IEvent<TState> | undefined> | IEvent<TState> | undefined;
+		Promise<ISnapshotEvent<TState> | undefined> | ISnapshotEvent<TState> | undefined;
 
-	saveAggregateSnapshot<TState>(snapshotEvent: IEvent<TState>): Promise<void> | void;
+	saveAggregateSnapshot<TState>(snapshotEvent: ISnapshotEvent<TState>): Promise<void> | void;
 
-	deleteAggregateSnapshot<TState>(snapshotEvent: IEvent<TState>): Promise<void> | void;
+	deleteAggregateSnapshot<TState>(snapshotEvent: ISnapshotEvent<TState>): Promise<void> | void;
 }

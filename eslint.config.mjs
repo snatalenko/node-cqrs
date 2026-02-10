@@ -409,6 +409,7 @@ export default defineConfig([
 					"afterBlockComment": false,
 					"beforeLineComment": true,
 					"afterLineComment": false,
+					"allowClassStart": true,
 					"allowBlockStart": true,
 					"allowObjectStart": true,
 					"allowArrayStart": true

@@ -1,5 +1,6 @@
 import { getClassName, Lock, MapAssertable } from './utils/index.ts';
 import {
+	type AggregateEventsQueryParams,
 	type IAggregate,
 	type IAggregateConstructor,
 	type IAggregateFactory,
@@ -23,10 +24,11 @@ import {
  */
 export class AggregateCommandHandler<TAggregate extends IAggregate> implements ICommandHandler {
 
-	#eventStore: IEventStore;
-	#logger?: ILogger;
-	#aggregateFactory: IAggregateFactory<TAggregate, any>;
-	#handles: string[];
+	readonly #eventStore: IEventStore;
+	readonly #logger?: ILogger;
+	readonly #aggregateFactory: IAggregateFactory<TAggregate, any>;
+	readonly #handles: Readonly<string[]>;
+	readonly #restoresFrom?: Readonly<string[]>;
 
 	/** Aggregate instances cache for concurrent command handling */
 	#aggregatesCache: MapAssertable<Identifier, Promise<TAggregate>> = new MapAssertable();
@@ -39,11 +41,13 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		aggregateType,
 		aggregateFactory,
 		handles,
+		restoresFrom,
 		logger
 	}: Pick<IContainer, 'eventStore' | 'logger'> & {
 		aggregateType?: IAggregateConstructor<TAggregate, any>,
 		aggregateFactory?: IAggregateFactory<TAggregate, any>,
-		handles?: string[]
+		handles?: Readonly<string[]>,
+		restoresFrom?: Readonly<string[]>
 	}) {
 		if (!eventStore)
 			throw new TypeError('eventStore argument required');
@@ -57,6 +61,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			const AggregateType = aggregateType;
 			this.#aggregateFactory = params => new AggregateType(params);
 			this.#handles = AggregateType.handles;
+			this.#restoresFrom = AggregateType.restoresFrom;
 		}
 		else if (aggregateFactory) {
 			if (!Array.isArray(handles) || !handles.length)
@@ -64,6 +69,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 			this.#aggregateFactory = aggregateFactory;
 			this.#handles = handles;
+			this.#restoresFrom = restoresFrom;
 		}
 		else {
 			throw new TypeError('either aggregateType or aggregateFactory is required');
@@ -86,8 +92,13 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		if (!id)
 			throw new TypeError('id argument required');
 
-		const eventsIterable = this.#eventStore.getAggregateEvents(id);
 		const aggregate = this.#aggregateFactory({ id });
+
+		const queryOptions = this.#restoresFrom?.length ?
+			{ eventTypes: this.#restoresFrom, tail: 'last' } satisfies AggregateEventsQueryParams :
+			undefined;
+
+		const eventsIterable = this.#eventStore.getAggregateEvents(id, queryOptions);
 
 		let eventCount = 0;
 		for await (const event of eventsIterable) {
