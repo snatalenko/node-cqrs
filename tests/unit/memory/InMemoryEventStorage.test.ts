@@ -50,16 +50,39 @@ describe('InMemoryEventStorage', () => {
 
 	describe('getSagaEvents', () => {
 
-		it('yields saga events with sagaVersion less than beforeEvent.sagaVersion', async () => {
+		it('yields saga events from origin up to beforeEvent', async () => {
 
-			const event1 = { id: '1', sagaId: 'saga1', sagaVersion: 1, type: 'SagaEvent' };
-			const event2 = { id: '2', sagaId: 'saga1', sagaVersion: 2, type: 'SagaEvent' };
-			const event3 = { id: '3', sagaId: 'saga1', sagaVersion: 3, type: 'SagaEvent' };
+			const event1 = { id: '1', sagaOrigins: { SagaA: '1' }, type: 'SagaStarted' };
+			const event2 = { id: '2', sagaOrigins: { SagaA: '1' }, type: 'SagaProgressed' };
+			const event3 = { id: '3', sagaOrigins: { SagaA: '1' }, type: 'SagaProgressed' };
 			await storage.commitEvents([event1, event2, event3]);
 
-			const beforeEvent = { sagaVersion: 3 };
+			const beforeEvent = { id: '3', sagaOrigins: { SagaA: '1' } };
 			const results = [];
-			for await (const event of storage.getSagaEvents('saga1', { beforeEvent }))
+			for await (const event of storage.getSagaEvents('SagaA:1', { beforeEvent } as any))
+				results.push(event);
+
+			expect(results).to.deep.equal([event1, event2]);
+		});
+
+		it('supports events participating in multiple sagas', async () => {
+
+			const event1 = {
+				id: '1',
+				sagaOrigins: {
+					SagaA: '1',
+					SagaB: '1'
+				},
+				type: 'SagaEvent'
+			};
+			const event2 = { id: '2', sagaOrigins: { SagaB: '1' }, type: 'SagaEvent' };
+			const event3 = { id: '3', sagaOrigins: { SagaB: '1' }, type: 'SagaEvent' };
+
+			await storage.commitEvents([event1, event2, event3]);
+
+			const beforeEvent = { id: '3', sagaOrigins: { SagaB: '1' } };
+			const results = [];
+			for await (const event of storage.getSagaEvents('SagaB:1', { beforeEvent } as any))
 				results.push(event);
 
 			expect(results).to.deep.equal([event1, event2]);

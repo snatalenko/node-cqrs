@@ -1,20 +1,34 @@
+import { AggregateCommandHandler } from './AggregateCommandHandler.ts';
 import {
 	type IAggregate,
-	type IMutableAggregateState,
+	type IMutableState,
 	type ICommand,
 	type Identifier,
 	type IEvent,
 	type IEventSet,
 	type IAggregateConstructorParams,
-	SNAPSHOT_EVENT_TYPE
+	type ISnapshotEvent,
+	type IAggregateConstructor,
+	type IEventStore,
+	type ICommandBus,
+	SNAPSHOT_EVENT_TYPE,
+	isSnapshotEvent,
+	isEvent
 } from './interfaces/index.ts';
 
-import { getClassName, validateHandlers, getHandler, getMessageHandlerNames, clone } from './utils/index.ts';
+import {
+	getClassName,
+	validateHandlers,
+	getHandler,
+	getMessageHandlerNames,
+	clone,
+	promiseOrSync
+} from './utils/index.ts';
 
 /**
  * Base class for Aggregate definition
  */
-export abstract class AbstractAggregate<TState extends IMutableAggregateState | object | void = void> implements
+export abstract class AbstractAggregate<TState extends IMutableState | object | void = void> implements
 	IAggregate {
 
 	/**
@@ -27,6 +41,20 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	 */
 	static get handles(): string[] {
 		return getMessageHandlerNames(this);
+	}
+
+	/**
+	 * Convenience helper to create an `AggregateCommandHandler` for this aggregate type and
+	 * subscribe it to the provided `commandBus`.
+	 */
+	static register<T extends AbstractAggregate, S extends IMutableState | object | void>(
+		this: IAggregateConstructor<T, S> & (new (options: IAggregateConstructorParams<S>) => T),
+		eventStore: IEventStore,
+		commandBus: ICommandBus
+	): AggregateCommandHandler<T> {
+		const handler = new AggregateCommandHandler({ aggregateType: this, eventStore });
+		handler.subscribe(commandBus);
+		return handler;
 	}
 
 	#id: Identifier;
@@ -97,7 +125,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 
 		if (event.type === SNAPSHOT_EVENT_TYPE) {
 			this.#snapshotVersion = event.aggregateVersion;
-			this.restoreSnapshot(event);
+			this.restoreSnapshot(event as ISnapshotEvent<TState>);
 		}
 		else if (this.state) {
 			const handler = 'mutate' in this.state ?
@@ -111,7 +139,7 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	}
 
 	/** Pass command to command handler */
-	handle(command: ICommand) {
+	handle(command: ICommand): IEventSet | Promise<IEventSet> {
 		if (!command)
 			throw new TypeError('command argument required');
 		if (!command.type)
@@ -124,30 +152,17 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 		if (this.command)
 			throw new Error('Another command is being processed');
 
-		try {
-			this.command = command;
+		this.command = command;
 
-			const eventsOffset = this.changes.length;
+		const eventsOffset = this.changes.length;
 
-			const handlerResult = handler.call(this, command.payload, command.context);
+		const handlerResult = handler.call(this, command.payload, command.context);
 
-			if (handlerResult instanceof Promise) {
-				return handlerResult
-					.then(() => this.getUncommittedEvents(eventsOffset))
-					.finally(() => {
-						this.command = undefined;
-					});
-			}
-			else { // handle synchronous result
-				const events = this.getUncommittedEvents(eventsOffset);
+		return promiseOrSync(handlerResult,
+			() => this.getUncommittedEvents(eventsOffset),
+			() => {
 				this.command = undefined;
-				return events;
-			}
-		}
-		catch (err) {
-			this.command = undefined;
-			throw err;
-		}
+			});
 	}
 
 	/**
@@ -186,13 +201,11 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 
 		if (sourceCommand) {
 			// augment event with command context
-			const { context, sagaId, sagaVersion } = sourceCommand;
+			const { context, sagaOrigins } = sourceCommand;
 			if (context !== undefined)
 				event.context = context;
-			if (sagaId !== undefined)
-				event.sagaId = sagaId;
-			if (sagaVersion !== undefined)
-				event.sagaVersion = sagaVersion;
+			if (sagaOrigins !== undefined)
+				event.sagaOrigins = { ...sagaOrigins };
 		}
 
 		return event;
@@ -200,14 +213,12 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 
 	/** Register aggregate event and mutate aggregate state */
 	protected emitRaw<TPayload>(event: IEvent<TPayload>): void {
-		if (!event)
-			throw new TypeError('event argument required');
+		if (!isEvent(event))
+			throw new TypeError('event argument must be a valid IEvent');
 		if (!event.aggregateId)
 			throw new TypeError('event.aggregateId argument required');
 		if (typeof event.aggregateVersion !== 'number')
 			throw new TypeError('event.aggregateVersion argument must be a Number');
-		if (typeof event.type !== 'string' || !event.type.length)
-			throw new TypeError('event.type argument must be a non-empty String');
 
 		this.mutate(event);
 
@@ -229,16 +240,11 @@ export abstract class AbstractAggregate<TState extends IMutableAggregateState | 
 	}
 
 	/** Restore aggregate state from a snapshot */
-	protected restoreSnapshot(snapshotEvent: IEvent<TState>) {
-		if (!snapshotEvent)
-			throw new TypeError('snapshotEvent argument required');
-		if (!snapshotEvent.type)
-			throw new TypeError('snapshotEvent.type argument required');
+	protected restoreSnapshot(snapshotEvent: ISnapshotEvent<TState>) {
+		if (!isSnapshotEvent(snapshotEvent))
+			throw new TypeError('snapshotEvent argument must be a valid ISnapshotEvent');
 		if (!snapshotEvent.payload)
 			throw new TypeError('snapshotEvent.payload argument required');
-
-		if (snapshotEvent.type !== SNAPSHOT_EVENT_TYPE)
-			throw new Error(`${SNAPSHOT_EVENT_TYPE} event type expected`);
 		if (!this.state)
 			throw new Error('state property is empty, either defined state or override restoreSnapshot method');
 

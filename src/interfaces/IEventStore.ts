@@ -7,8 +7,5 @@ import type { IObservableQueueProvider } from './IObservableQueueProvider.ts';
 
 export interface IEventStore
 	extends IObservable, IObservableQueueProvider, IEventDispatcher, IEventStorageReader, IIdentifierProvider {
-
-	registerSagaStarters(startsWith: string[] | undefined): void;
-
 	once(messageTypes: string | string[], handler?: IMessageHandler, filter?: (e: IEvent) => boolean): Promise<IEvent>;
 }

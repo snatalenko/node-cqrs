@@ -640,6 +640,17 @@ export class RabbitMqGateway {
 		}
 
 		const content = Buffer.from(JSON.stringify(message), 'utf8');
+		const sagaCorrelationId = (() => {
+			const sagaOrigins = message.sagaOrigins;
+			if (!sagaOrigins || typeof sagaOrigins !== 'object')
+				return undefined;
+
+			const sagaDescriptors = Object.keys(sagaOrigins);
+			if (sagaDescriptors.length !== 1)
+				return undefined;
+
+			return sagaOrigins[sagaDescriptors[0]];
+		})();
 		const properties = {
 			contentType: 'application/json',
 			contentEncoding: 'utf8',
@@ -650,7 +661,7 @@ export class RabbitMqGateway {
 			messageId: 'id' in message && typeof message.id === 'string' ?
 				message.id :
 				undefined,
-			correlationId: message.sagaId?.toString()
+			correlationId: sagaCorrelationId
 		};
 
 		return new Promise<void>((resolve, reject) => {

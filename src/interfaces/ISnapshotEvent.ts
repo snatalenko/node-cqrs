@@ -7,4 +7,5 @@ export interface ISnapshotEvent<TState = any> extends IEvent<TState> {
 }
 
 export const isSnapshotEvent = (event?: unknown): event is ISnapshotEvent =>
-	isEvent(event) && event.type === SNAPSHOT_EVENT_TYPE;
+	isEvent(event)
+	&& event.type === SNAPSHOT_EVENT_TYPE;

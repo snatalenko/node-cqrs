@@ -5,7 +5,6 @@ const {
 	InMemoryEventStorage,
 	CommandBus,
 	EventStore,
-	AggregateCommandHandler,
 	InMemoryMessageBus,
 	EventDispatcher,
 	InMemorySnapshotStorage
@@ -47,12 +46,7 @@ exports.createBaseInstances = () => {
 	const eventStore = new EventStore({ eventStorageReader: storage, eventBus, eventDispatcher });
 	const commandBus = new CommandBus();
 
-	/** @type {import('node-cqrs').IAggregateConstructor} */
-	const aggregateType = UserAggregate;
-
-	/** @type {import('node-cqrs').ICommandHandler} */
-	const userCommandHandler = new AggregateCommandHandler({ eventStore, aggregateType });
-	userCommandHandler.subscribe(commandBus);
+	UserAggregate.register(eventStore, commandBus);
 
 	/** @type {import('node-cqrs').IProjection} */
 	const usersProjection = new UsersProjection();
@@ -64,3 +58,30 @@ exports.createBaseInstances = () => {
 		users: usersProjection.view
 	};
 };
+
+// Run as a standalone example script
+if (require.main === module) {
+	(async () => {
+		const { commandBus, users } = exports.createBaseInstances();
+
+		const [userCreated] = await commandBus.send('createUser', undefined, {
+			payload: {
+				username: 'john',
+				password: 'magic'
+			}
+		});
+
+		await commandBus.send('changeUserPassword', userCreated.aggregateId, {
+			payload: {
+				oldPassword: 'magic',
+				password: 'no magic'
+			}
+		});
+
+		const user = await users.get(userCreated.aggregateId);
+		console.log(user);
+	})().catch(err => {
+		console.error(err);
+		process.exitCode = 1;
+	});
+}

@@ -2,6 +2,7 @@ import { InMemoryMessageBus } from './in-memory/index.ts';
 import type {
 	ICommand,
 	ICommandBus,
+	Identifier,
 	IEventSet,
 	IExtendableLogger,
 	ILogger,
@@ -75,7 +76,7 @@ export class CommandBus implements ICommandBus {
 
 	send<TPayload>(
 		type: string,
-		aggregateId?: string,
+		aggregateId?: Identifier,
 		options?: {
 			payload?: TPayload,
 			context?: object

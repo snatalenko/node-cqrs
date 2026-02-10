@@ -2,6 +2,7 @@ import type { ICommand } from './ICommand.ts';
 import type { Identifier } from './Identifier.ts';
 import type { IEvent } from './IEvent.ts';
 import type { IEventSet } from './IEventSet.ts';
+import type { IMutableState } from './IMutableState.ts';
 
 /**
  * Core interface representing an Aggregate in a CQRS architecture.
@@ -31,23 +32,7 @@ export interface IAggregate {
 	handle(command: ICommand): IEventSet | Promise<IEventSet>;
 }
 
-export interface IMutableAggregateState {
-
-	/**
-	 * Optional list of event types that are required to restore this state.
-	 *
-	 * Exposed by AbstractAggregate as `restoresFrom` and may be used by the command handler
-	 * to load only the state-relevant events when rehydrating an aggregate.
-	 */
-	handles?: Readonly<string[]>;
-
-	/**
-	 * Apply a single event to mutate the aggregate's state.
-	 */
-	mutate(event: IEvent): void;
-}
-
-export type IAggregateConstructorParams<TState extends IMutableAggregateState | object | void> = {
+export type IAggregateConstructorParams<TState extends IMutableState | object | void> = {
 
 	/** Unique aggregate identifier */
 	id: Identifier,
@@ -64,7 +49,7 @@ export type IAggregateConstructorParams<TState extends IMutableAggregateState | 
 
 export interface IAggregateConstructor<
 	TAggregate extends IAggregate,
-	TState extends IMutableAggregateState | object | void
+	TState extends IMutableState | object | void
 > {
 
 	/**
@@ -87,5 +72,5 @@ export interface IAggregateConstructor<
 
 export type IAggregateFactory<
 	TAggregate extends IAggregate,
-	TState extends IMutableAggregateState | object | void
+	TState extends IMutableState | object | void
 > = (options: IAggregateConstructorParams<TState>) => TAggregate;

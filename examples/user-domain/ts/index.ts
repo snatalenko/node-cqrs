@@ -1,6 +1,5 @@
 import {
 	type IContainer,
-	AggregateCommandHandler,
 	CommandBus,
 	ContainerBuilder,
 	EventStore,
@@ -46,7 +45,6 @@ import { UsersProjection, type UsersView } from './UsersProjection.ts';
 
 	const user = users.get(userCreated.aggregateId as string);
 
-	// eslint-disable-next-line no-console
 	console.log(user); // { username: 'john' }
 }
 
@@ -63,11 +61,7 @@ import { UsersProjection, type UsersView } from './UsersProjection.ts';
 	});
 
 	const commandBus = new CommandBus();
-	const aggregateCommandHandler = new AggregateCommandHandler({
-		eventStore,
-		aggregateType: UserAggregate
-	});
-	aggregateCommandHandler.subscribe(commandBus);
+	UserAggregate.register(eventStore, commandBus);
 
 	const projection = new UsersProjection();
 	await projection.subscribe(eventStore);
@@ -90,6 +84,5 @@ import { UsersProjection, type UsersView } from './UsersProjection.ts';
 
 	const user = await users.get(userCreatedEvent.aggregateId as string);
 
-	// eslint-disable-next-line no-console
 	console.log(user);
 }

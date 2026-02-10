@@ -13,7 +13,7 @@ import crypto from 'crypto';
 import type {
 	IAggregate, ICommand, ICommandHandler, Identifier, IEvent, IEventSet, IEventStorageReader, IEventStorageWriter,
 	IObservable, IProjection
-} from '../../types';
+} from '../../../types';
 
 const md5 = (v: string): string => crypto.createHash('md5').update(v).digest('hex');
 
@@ -121,8 +121,15 @@ class EventStore extends EventEmitter implements IObservable, IEventStorageReade
 		yield* this.#events.filter(e => e.aggregateId === aggregateId);
 	}
 
-	async* getSagaEvents(sagaId: Identifier) {
-		yield* this.#events.filter(e => e.sagaId === sagaId);
+	async* getSagaEvents(sagaId: Identifier, _options?: any) {
+		if (typeof sagaId !== 'string' || !sagaId.includes(':'))
+			return;
+
+		const separatorOffset = sagaId.indexOf(':');
+		const sagaDescriptor = sagaId.slice(0, separatorOffset);
+		const originEventId = sagaId.slice(separatorOffset + 1);
+
+		yield* this.#events.filter(e => e.sagaOrigins?.[sagaDescriptor] === originEventId);
 	}
 }
 
@@ -192,7 +199,6 @@ class CommandHandler implements ICommandHandler {
 
 	const userRecord = projection.view.get('1');
 
-	// eslint-disable-next-line no-console
 	console.log(userRecord); // { username: 'John' }
 
 }());

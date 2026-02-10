@@ -24,6 +24,7 @@ import {
 } from './interfaces/index.ts';
 import {
 	getClassName,
+	parseSagaId,
 	setupOneTimeEmitterSubscription
 } from './utils/index.ts';
 import { EventDispatcher } from './EventDispatcher.ts';
@@ -35,7 +36,6 @@ export class EventStore implements IEventStore {
 	#snapshotStorage: IAggregateSnapshotStorage | undefined;
 	eventBus: IEventBus;
 	#eventDispatcher: IEventDispatcher;
-	#sagaStarters: Set<string> = new Set();
 	#logger?: ILogger;
 
 	constructor({
@@ -135,25 +135,20 @@ export class EventStore implements IEventStore {
 			throw new TypeError('filter argument required');
 		if (!filter.beforeEvent)
 			throw new TypeError('filter.beforeEvent argument required');
-		if (filter.beforeEvent.sagaVersion === undefined)
-			throw new TypeError('filter.beforeEvent.sagaVersion argument required');
+		if (typeof filter.beforeEvent.id !== 'string' || !filter.beforeEvent.id.length)
+			throw new TypeError('filter.beforeEvent.id argument required');
 
-		this.#logger?.debug(`retrieving event stream for saga ${sagaId}, v${filter.beforeEvent.sagaVersion}...`);
+		const { sagaDescriptor, originEventId } = parseSagaId(sagaId);
+		if (filter.beforeEvent.sagaOrigins?.[sagaDescriptor] !== originEventId)
+			throw new TypeError('filter.beforeEvent.sagaOrigins does not match sagaId');
+
+		this.#logger?.debug(`retrieving event stream for saga ${sagaId} before event ${filter.beforeEvent.id}...`);
 
 		const eventsIterable = await this.#eventStorageReader.getSagaEvents(sagaId, filter);
 
 		yield* eventsIterable;
 
 		this.#logger?.debug(`all events for saga ${sagaId} retrieved`);
-	}
-
-	/**
-	 * Register event types that start sagas.
-	 * Upon such event commit a new sagaId will be assigned
-	 */
-	registerSagaStarters(eventTypes: string[] = []) {
-		for (const eventType of eventTypes)
-			this.#sagaStarters.add(eventType);
 	}
 
 	/**
@@ -166,34 +161,7 @@ export class EventStore implements IEventStore {
 		if (!isEventSet(events) || events.length === 0)
 			throw new TypeError('dispatch requires a non-empty array of events');
 
-		const augmentedEvents = await this.#attachSagaIdToSagaStarterEvents(events);
-
-		return this.#eventDispatcher.dispatch(augmentedEvents, { origin: 'internal' });
-	}
-
-	/**
-	 * Generate and attach sagaId to events that start new sagas
-	 */
-	async #attachSagaIdToSagaStarterEvents(events: IEventSet): Promise<IEventSet> {
-		if (!this.#sagaStarters.size)
-			return events;
-
-		const augmentedEvents: IEvent[] = [];
-		for (const event of events) {
-			if (this.#sagaStarters.has(event.type)) {
-				if (event.sagaId)
-					throw new Error(`Event "${event.type}" already contains sagaId. Multiple sagas with same event type are not supported`);
-
-				(event as IEvent).sagaId = await this.getNewId();
-				(event as IEvent).sagaVersion = 0;
-
-				augmentedEvents.push(event);
-			}
-			else {
-				augmentedEvents.push(event);
-			}
-		}
-		return augmentedEvents;
+		return this.#eventDispatcher.dispatch(events, { origin: 'internal' });
 	}
 
 	on(messageType: string, handler: IMessageHandler) {

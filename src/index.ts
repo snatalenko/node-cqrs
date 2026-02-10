@@ -2,6 +2,7 @@ export { CqrsContainerBuilder as ContainerBuilder } from './CqrsContainerBuilder
 
 export * from './CommandBus.ts';
 export * from './EventStore.ts';
+export * from './EventIdAugmentor.ts';
 
 export * from './AbstractAggregate.ts';
 export * from './AggregateCommandHandler.ts';

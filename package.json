@@ -59,7 +59,8 @@
   "scripts": {
     "cleanup": "rm -rf ./dist ./types ./coverage",
     "pretest": "npm run build",
-    "test": "jest tests/unit examples/user-domain/tests",
+    "test": "jest tests/unit examples/user-domain/cjs/tests",
+    "test:examples": "bash scripts/test-examples.sh",
     "test:coverage": "npm t -- --collect-coverage",
     "test:rabbitmq": "jest --verbose tests/integration/rabbitmq",
     "test:sqlite": "jest --verbose tests/integration/sqlite",

@@ -1,27 +1,25 @@
-import type { ICommand } from './ICommand.ts';
-import type { Identifier } from './Identifier.ts';
 import type { IEvent } from './IEvent.ts';
 import type { IEventSet } from './IEventSet.ts';
+import type { ICommand } from './ICommand.ts';
+import type { Identifier } from './Identifier.ts';
 
 export interface ISaga {
 
-	/** Unique Saga ID */
-	readonly id: Identifier;
+	/**
+	 * Apply a historical event to restore saga state.
+	 */
+	mutate(event: IEvent): unknown | Promise<unknown>;
 
-	/** List of commands emitted by Saga */
-	readonly uncommittedMessages: ICommand[];
-
-	/** Main entry point for Saga events */
-	apply(event: IEvent): void | Promise<void>;
-
-	/** Reset emitted commands when they are not longer needed */
-	resetUncommittedMessages(): void;
-
-	onError?(error: Error, options: { event: IEvent, command: ICommand }): void;
+	/**
+	 * Process an incoming event and return produced commands.
+	 */
+	handle(event: IEvent): ReadonlyArray<ICommand> | Promise<ReadonlyArray<ICommand>>;
 }
 
 export type ISagaConstructorParams = {
 	id: Identifier,
+
+	/** @deprecated Past events will be passed to the `mutate` method */
 	events?: IEventSet
 };
 
@@ -30,8 +28,18 @@ export type ISagaFactory = (options: ISagaConstructorParams) => ISaga;
 export interface ISagaConstructor {
 	new(options: ISagaConstructorParams): ISaga;
 
-	/** List of event types that trigger new saga start */
-	readonly startsWith: string[];
+	/**
+	 * Override to provide a stable saga descriptor used as a key in `message.sagaOrigins`.
+	 * Defaults to the Saga class name.
+	 */
+	readonly sagaDescriptor?: string;
+
+	/**
+	 * Optional list of event types that trigger new saga start.
+	 *
+	 * When not defined, saga start is inferred by the absence of `message.sagaOrigins[sagaDescriptor]`.
+	 */
+	readonly startsWith?: string[];
 
 	/** List of events being handled by Saga */
 	readonly handles: string[];

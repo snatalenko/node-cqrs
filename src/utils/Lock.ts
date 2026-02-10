@@ -1,6 +1,7 @@
+import type { ILocker, ILockerLease } from '../interfaces/ILocker.ts';
 import { Deferred } from './Deferred.ts';
 
-export class LockLease {
+export class LockLease implements ILockerLease {
 
 	readonly lock: Lock;
 	readonly name?: string;
@@ -19,7 +20,7 @@ export class LockLease {
 	}
 }
 
-export class Lock {
+export class Lock implements ILocker {
 
 	/**
 	 * Indicates that global lock acquiring is started,

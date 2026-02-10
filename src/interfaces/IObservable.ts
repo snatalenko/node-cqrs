@@ -2,7 +2,7 @@ import type { IMessage } from './IMessage.ts';
 import { isObject } from './isObject.ts';
 
 export interface IMessageHandler {
-	(message: IMessage, meta?: Record<string, any>): any | Promise<any>
+	(message: IMessage, meta?: Record<string, any>): unknown | Promise<unknown>
 }
 
 export interface IObservable {

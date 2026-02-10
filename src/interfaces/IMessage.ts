@@ -1,6 +1,8 @@
 import type { Identifier } from './Identifier.ts';
 import { isObject } from './isObject.ts';
 
+export type SagaOriginsMap = Record<string, string>;
+
 export interface IMessage<TPayload = any> {
 
 	/** Event or command type */
@@ -15,11 +17,8 @@ export interface IMessage<TPayload = any> {
 	/** Aggregate version at the time of the message */
 	aggregateVersion?: number;
 
-	/** Saga identifier (used when a saga coordinates multiple steps/commands) */
-	sagaId?: Identifier;
-
-	/** Saga version for ordering saga events */
-	sagaVersion?: number;
+	/** Starter event ids of sagas associated with this message, keyed by saga descriptor */
+	sagaOrigins?: SagaOriginsMap;
 
 	/** Business data */
 	payload: TPayload;
