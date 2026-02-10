@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -51,3 +51,21 @@ jobs:
       env:
         CI: true
     - run: npm run lint
+
+  coveralls:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+    - run: npm ci --no-optional
+      env:
+        CI: true
+    - run: npm run test:coverage
+    - name: Submit to Coveralls
+      uses: coverallsapp/github-action@v2

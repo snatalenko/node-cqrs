@@ -1,22 +1,21 @@
 node-cqrs
 =========
 
-[![NPM Version](https://img.shields.io/npm/v/node-cqrs.svg)](https://www.npmjs.com/package/node-cqrs)
-[![Audit Status](https://github.com/snatalenko/node-cqrs/actions/workflows/audit.yml/badge.svg)](https://github.com/snatalenko/node-cqrs/actions/workflows/audit.yml)
-[![Tests Status](https://github.com/snatalenko/node-cqrs/actions/workflows/tests.yml/badge.svg)](https://github.com/snatalenko/node-cqrs/actions/workflows/tests.yml)
-[![Coverage Status](https://coveralls.io/repos/github/snatalenko/node-cqrs/badge.svg?branch=master)](https://coveralls.io/github/snatalenko/node-cqrs?branch=master)
-[![NPM Downloads](https://img.shields.io/npm/dm/node-cqrs.svg)](https://www.npmjs.com/package/node-cqrs)
+[![Version](https://img.shields.io/npm/v/node-cqrs.svg)](https://www.npmjs.com/package/node-cqrs)
+[![CI](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml/badge.svg)](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml)
+[![Coverage](https://coveralls.io/repos/github/snatalenko/node-cqrs/badge.svg)](https://coveralls.io/github/snatalenko/node-cqrs)
+[![Downloads](https://img.shields.io/npm/dm/node-cqrs.svg)](https://www.npmjs.com/package/node-cqrs)
+[![License](https://img.shields.io/github/license/snatalenko/node-cqrs.svg)](https://github.com/snatalenko/node-cqrs)
 
 Infrastructure-agnostic building blocks for CQRS/ES, inspired by Lokad.CQRS.
 
 CQRS/ES can be simple in a single process. Minimal code, no framework:
-[examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts)
-
+[examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts).
 This library focuses on the "boring but hard" parts often missing from plain CQRS/ES implementations, but required in distributed environments:
 
-- asynchronous command and event processing with safer wiring  
-- persistent views with restart catch-up (checkpointing, readiness, locking)  
-- aggregate snapshots  
+- asynchronous command and event processing with safer wiring
+- persistent views with restart catch-up (checkpointing, readiness, locking)
+- aggregate snapshots
 - extensible event dispatching pipelines (encoding, persistence, distribution)
 
 It is built around ES6/TypeScript classes and dependency injection, making components easy to replace or customize without patching the library.
@@ -48,7 +47,7 @@ Domain logic is split across three core building blocks:
 
 - **[Aggregates](#aggregates-write-model)** - handle commands and emit events
 - **[Projections](#projections-and-views-read-model)** - consume events and update views
-- **Sagas** - manage processes by reacting to events and enqueueing follow-up commands
+- **[Sagas](#sagas)** - manage processes by reacting to events and enqueueing follow-up commands
 
 Message delivery is handled by the following components, in order:
 
