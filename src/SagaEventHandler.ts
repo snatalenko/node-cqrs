@@ -35,7 +35,7 @@ export class SagaEventHandler implements IEventReceptor {
 	readonly #queueName?: string;
 	readonly #logger?: ILogger;
 	readonly #sagaFactory: (params: any) => ISaga;
-	readonly #startsWith: string[];
+	readonly #startsWith?: string[];
 	readonly #handles: string[];
 	readonly #sagaDescriptor: string;
 	readonly #executionLock: ILocker;
@@ -73,8 +73,6 @@ export class SagaEventHandler implements IEventReceptor {
 			this.#sagaDescriptor = SagaType.sagaDescriptor ?? SagaType.name;
 		}
 		else if (options.sagaFactory) {
-			if (!Array.isArray(options.startsWith))
-				throw new TypeError('options.startsWith argument must be an Array');
 			if (!Array.isArray(options.handles))
 				throw new TypeError('options.handles argument must be an Array');
 
@@ -93,7 +91,7 @@ export class SagaEventHandler implements IEventReceptor {
 	/** Overrides observer subscribe method */
 	subscribe(eventStore: IObservable) {
 		subscribe(eventStore, this, {
-			messageTypes: [...this.#startsWith, ...this.#handles],
+			messageTypes: [...this.#startsWith ?? [], ...this.#handles],
 			masterHandler: this.handle,
 			queueName: this.#queueName
 		});
@@ -108,11 +106,12 @@ export class SagaEventHandler implements IEventReceptor {
 		if (typeof event.id !== 'string' || !event.id.length)
 			throw new TypeError('event.id argument required');
 
-		const isStarterEvent = this.#startsWith.includes(event.type);
-		if (isStarterEvent && event.sagaOrigins?.[this.#sagaDescriptor])
+		const sagaOriginFromEvent = event.sagaOrigins?.[this.#sagaDescriptor];
+		const isStarterEvent = this.#startsWith?.includes(event.type) ?? !sagaOriginFromEvent;
+		if (isStarterEvent && sagaOriginFromEvent)
 			throw new Error(`Starter event "${event.type}" already contains saga origin for "${this.#sagaDescriptor}"`);
 
-		const sagaOrigin = isStarterEvent ? event.id : event.sagaOrigins?.[this.#sagaDescriptor];
+		const sagaOrigin = isStarterEvent ? event.id : sagaOriginFromEvent;
 		if (!sagaOrigin)
 			throw new Error(`Event "${event.type}" does not contain saga origin for "${this.#sagaDescriptor}"`);
 

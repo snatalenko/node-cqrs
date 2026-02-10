@@ -20,11 +20,13 @@ describe('AbstractSaga', function () {
 
 	describe('constructor', () => {
 
-		it('throws exception if "static get handles" is not overridden', () => {
+		it('does not require startsWith to be overridden', () => {
 
-			class SagaWithoutHandles extends AbstractSaga { }
+			class SagaWithoutStartsWith extends AbstractSaga {
+				_somethingHappened() { }
+			}
 
-			expect(() => s = new SagaWithoutHandles({ id: 1 })).to.throw('startsWith must be overridden to return a list of event types that start saga');
+			expect(() => s = new SagaWithoutStartsWith({ id: 1 })).to.not.throw();
 		});
 
 		it('throws exception if event handler is not defined', () => {

@@ -229,6 +229,59 @@ describe('SagaEventHandler', function () {
 		await factoryHandler.handle({ id: 'starter-factory-1', type: 'somethingHappened', aggregateId: 1 } as any);
 	});
 
+	it('starts saga for handled events when startsWith is not defined and saga origin is absent', async () => {
+		class OriginDrivenSaga extends AbstractSaga {
+			somethingHappened(_event: any) {
+				super.enqueue('doOriginDriven');
+			}
+		}
+
+		const handler = new SagaEventHandler({ sagaType: OriginDrivenSaga, eventStore, commandBus });
+
+		const deferred = new Deferred<any>();
+		commandBus.on('doOriginDriven', command => deferred.resolve(command));
+
+		await handler.handle({ id: 'od-1', type: 'somethingHappened', aggregateId: 1 } as any);
+
+		const cmd = await deferred.promise;
+		expect(cmd).to.have.nested.property('sagaOrigins.OriginDrivenSaga', 'od-1');
+	});
+
+	it('restores saga for handled events when startsWith is not defined and saga origin is present', async () => {
+		class OriginDrivenSaga extends AbstractSaga {
+			static get handles(): string[] {
+				return ['somethingHappened', 'followingHappened'];
+			}
+			somethingHappened() { }
+			followingHappened() {
+				super.enqueue('completeOriginDriven');
+			}
+		}
+
+		const handler = new SagaEventHandler({ sagaType: OriginDrivenSaga, eventStore, commandBus });
+		sinon.spy(eventStore, 'getSagaEvents');
+
+		const origin = 'od-origin-1';
+		await eventStorage.commitEvents([
+			{ id: origin, type: 'somethingHappened', aggregateId: 1, sagaOrigins: { OriginDrivenSaga: origin } },
+			{ id: 'od-follow-1', type: 'followingHappened', aggregateId: 1, sagaOrigins: { OriginDrivenSaga: origin } }
+		] as any);
+
+		const deferred = new Deferred<void>();
+		commandBus.on('completeOriginDriven', () => deferred.resolve(undefined));
+
+		await handler.handle({
+			id: 'od-follow-1',
+			type: 'followingHappened',
+			aggregateId: 1,
+			sagaOrigins: { OriginDrivenSaga: origin },
+			payload: undefined
+		} as any);
+
+		expect(eventStore.getSagaEvents).to.have.property('callCount', 1);
+		await deferred.promise;
+	});
+
 	it('awaits async mutate() when restoring saga state', async () => {
 		const allowMutateFinish = new Deferred<void>();
 		let handleCalled = false;

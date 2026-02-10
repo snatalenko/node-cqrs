@@ -429,14 +429,58 @@ Examples:
 ### Quick start
 
 1. Implement a saga by extending [`AbstractSaga`](src/AbstractSaga.ts):
-   - declare `static startsWith` (starter events)
-   - optionally declare `static handles` (additional events)
-   - implement handler methods named after event types
+   - implement handler methods named after event types (e.g. `userSignedUp(event)`)
+   - optionally set `static sagaDescriptor` to a stable key for `message.sagaOrigins`
 2. Ensure events have `event.id` (starter events use it as the saga origin). The simplest option is [`EventIdAugmentor`](src/EventIdAugmentor.ts) in the `EventStore` dispatch pipeline.
 3. Wire handlers via `YourAggregate.register(eventStore, commandBus)` and `YourSaga.register(eventStore, commandBus)`.
 
 <details>
-<summary><strong>Minimal runnable wiring (in-memory)</strong></summary>
+<summary><strong>Minimal runnable wiring with DI container (recommended)</strong></summary>
+
+```ts
+import {
+	AbstractAggregate,
+	AbstractSaga,
+	ContainerBuilder,
+	EventIdAugmentor,
+	InMemoryEventStorage
+} from 'node-cqrs';
+
+class SignupAggregate extends AbstractAggregate<void> {
+	signupUser(payload: { email: string }) {
+		this.emit('userSignedUp', { email: payload.email });
+	}
+}
+
+class WelcomeEmailSaga extends AbstractSaga {
+	userSignedUp(event: any) {
+		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload.email });
+	}
+}
+
+const builder = new ContainerBuilder();
+builder.register(InMemoryEventStorage)
+	.as('identifierProvider')
+	.as('eventStorageReader')
+	.as('eventStorageWriter');
+builder.register(EventIdAugmentor)
+	.as('eventIdAugmenter');
+builder.registerAggregate(SignupAggregate);
+builder.registerSaga(WelcomeEmailSaga);
+
+const { commandBus } = builder.container();
+
+commandBus.on('sendWelcomeEmail', command => {
+	console.log(command);
+	return [];
+});
+
+await commandBus.send('signupUser', undefined, { payload: { email: 'john@example.com' } });
+```
+</details>
+
+<details>
+<summary><strong>Manual wiring (without DI container)</strong></summary>
 
 ```ts
 import {
@@ -456,8 +500,6 @@ class SignupAggregate extends AbstractAggregate<void> {
 }
 
 class WelcomeEmailSaga extends AbstractSaga {
-	static get startsWith() { return ['userSignedUp']; }
-
 	userSignedUp(event: any) {
 		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload.email });
 	}
@@ -500,8 +542,6 @@ The minimal saga contract is [`ISaga`](src/interfaces/ISaga.ts):
 [`AbstractSaga`](src/AbstractSaga.ts) is the recommended base class:
 
 - `static sagaDescriptor` (optional) - stable key used in `message.sagaOrigins` (defaults to Saga class name)
-- `static startsWith` - event types that start a new saga instance
-- `static handles` (optional) - extra event types handled by the saga
 - handler methods named after event types (e.g. `userSignedUp(event)`) run business logic and enqueue commands
 - use `this.enqueue(commandType, aggregateId, payload)` to produce commands
 - optional `state` - an object that is mutated by `mutate(event)` (similar to `AbstractAggregate.state`)
@@ -516,6 +556,17 @@ Starter event rules:
 - For a starter event, `event.sagaOrigins[sagaDescriptor]` must not already exist (it is treated as an error).
 
 A single event type can start multiple sagas (one handler per saga). Continuation events/commands must include the saga origin in `message.sagaOrigins[sagaDescriptor]`.
+
+<details>
+<summary><strong>Optional: explicit startsWith/handles</strong></summary>
+
+By default, when `startsWith` is not defined, the saga starts on any handled event that does not have `sagaOrigins[sagaDescriptor]` and continues when it does.
+
+If you prefer strict, explicit routing, define:
+
+- `static startsWith`: event types that are allowed to start a saga (starter events must not already contain an origin for this saga)
+- `static handles`: event types that should be subscribed to (in addition to starter events)
+</details>
 
 ## Infrastructure modules
 

@@ -15,7 +15,8 @@ import {
 	validateHandlers,
 	getHandler,
 	promiseOrSync,
-	getClassName
+	getClassName,
+	getMessageHandlerNames
 } from './utils/index.ts';
 
 /**
@@ -23,14 +24,18 @@ import {
  */
 export abstract class AbstractSaga implements ISaga {
 
-	/** List of events that start new saga, must be overridden in Saga implementation */
-	static get startsWith(): string[] {
-		throw new Error('startsWith must be overridden to return a list of event types that start saga');
+	/**
+	 * Optional list of events that start new saga.
+	 *
+	 * When not defined, saga start is inferred by the absence of `message.sagaOrigins[sagaDescriptor]`.
+	 */
+	static get startsWith(): string[] | undefined {
+		return undefined;
 	}
 
 	/** List of event types being handled by Saga, can be overridden in Saga implementation */
 	static get handles(): string[] {
-		return [];
+		return getMessageHandlerNames(this);
 	}
 
 	/**

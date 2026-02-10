@@ -34,8 +34,12 @@ export interface ISagaConstructor {
 	 */
 	readonly sagaDescriptor?: string;
 
-	/** List of event types that trigger new saga start */
-	readonly startsWith: string[];
+	/**
+	 * Optional list of event types that trigger new saga start.
+	 *
+	 * When not defined, saga start is inferred by the absence of `message.sagaOrigins[sagaDescriptor]`.
+	 */
+	readonly startsWith?: string[];
 
 	/** List of events being handled by Saga */
 	readonly handles: string[];

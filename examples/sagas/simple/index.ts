@@ -17,10 +17,6 @@ class SignupAggregate extends AbstractAggregate<void> {
 }
 
 class WelcomeEmailSaga extends AbstractSaga {
-	static get startsWith() {
-		return ['userSignedUp'];
-	}
-
 	userSignedUp(event: any) {
 		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload.email });
 	}

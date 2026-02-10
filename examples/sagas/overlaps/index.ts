@@ -26,21 +26,12 @@ class TrialAggregate extends AbstractAggregate<void> {
 }
 
 class WelcomeEmailSaga extends AbstractSaga {
-	static get startsWith() {
-		return ['userSignedUp'];
-	}
 	userSignedUp(event: any) {
 		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload.email });
 	}
 }
 
 class ProvisionTrialSaga extends AbstractSaga {
-	static get startsWith() {
-		return ['userSignedUp'];
-	}
-	static get handles() {
-		return ['trialProvisioned'];
-	}
 	userSignedUp(event: any) {
 		this.enqueue('provisionTrial', undefined, { email: event.payload.email });
 	}
