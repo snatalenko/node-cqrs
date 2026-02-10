@@ -613,25 +613,3 @@ import { AbstractWorkerProjection } from 'node-cqrs/workers';
 ```
 
 - [AbstractWorkerProjection](src/workers/AbstractWorkerProjection.ts) - Projection base class that can run projection handlers and the associated view in a worker thread.
-
-## Testing and Contribution
-
-```bash
-git clone git@github.com:snatalenko/node-cqrs.git
-
-cd node-cqrs
-npm install
-
-npm test
-npm run test:examples
-npm run lint
-```
-
-Code style and formatting are enforced via:
-
-- [editorconfig](http://editorconfig.org)
-- [eslint](http://eslint.org)
-
-## License
-
-* [Apache-2.0](LICENSE)
