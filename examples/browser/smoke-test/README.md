@@ -10,8 +10,6 @@ From the repo root:
 npm run build:browser
 ```
 
-Then open `examples/browser-smoke-test/index.html` directly (e.g. double-click it).
+The bundle is written to `dist/browser/node-cqrs.iife.js`.
 
-Notes:
-- The bundle is written to `dist/browser/node-cqrs.iife.js`.
-- If you don’t have Browserify installed locally, run `npm i -D browserify`.
+Then open `examples/browser-smoke-test/index.html` in a browser (e.g. double-click it).

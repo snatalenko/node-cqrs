@@ -61,11 +61,18 @@ Message delivery is handled by the following components, in order:
 
 ### Examples
 
-- [examples/browser/smoke-test](examples/browser/smoke-test) - browser smoke test with in-memory storage and buses
-- [examples/user-domain/cjs](examples/user-domain/cjs) - basic CJS implementation
-- [examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts) - minimal, framework-free CQRS/ES example in 1 file
-- [examples/user-domain/ts](examples/user-domain/ts) - basic TypeScript implementation
-- [examples/workers/worker-projection](examples/workers/worker-projection) - projection in a worker thread
+- [examples/](examples/)
+  - [browser/](examples/browser/)
+    - [smoke-test/](examples/browser/smoke-test) - browser smoke test with in-memory storage and buses
+  - [sagas/](examples/sagas/)
+    - [simple/](examples/sagas/simple/index.ts) - simple saga example with a single-step flow
+    - [overlaps/](examples/sagas/overlaps/index.ts) - example with overlapping sagas and a multi-step flow
+  - [user-domain/](examples/user-domain/)
+    - [cjs/](examples/user-domain/cjs) - basic CJS implementation
+    - [framework-free/](examples/user-domain/framework-free/index.ts) - minimal, framework-free CQRS/ES example in 1 file
+    - [ts/](examples/user-domain/ts) - basic TypeScript implementation
+  - [workers/](examples/workers/)
+    - [worker-projection/](examples/workers/worker-projection) - projection in a worker thread
 
 TS examples can be run with `node` without transpiling.
 
@@ -149,7 +156,7 @@ Commands represent intent and are sent to the `CommandBus`:
 
 - sent to the CommandBus explicitly
 - handled by [Aggregates](#aggregates-write-model)
-- may be enqueued by Sagas
+- may be enqueued by [Sagas](#sagas)
 
 <details>
 <summary>Command example</summary>
@@ -193,7 +200,7 @@ Events represent facts that have already happened:
 
 - produced by [Aggregates](#aggregates-write-model)
 - persisted by the Event Store
-- delivered to [Projections](#projections-and-views-read-model), Sagas, and Event Receptors
+- delivered to [Projections](#projections-and-views-read-model), [Sagas](#sagas), and other Event Receptors
 
 <details>
 <summary>Event example</summary>
@@ -438,13 +445,7 @@ Examples:
 <summary><strong>Minimal runnable wiring with DI container (recommended)</strong></summary>
 
 ```ts
-import {
-	AbstractAggregate,
-	AbstractSaga,
-	ContainerBuilder,
-	EventIdAugmentor,
-	InMemoryEventStorage
-} from 'node-cqrs';
+import { AbstractAggregate, AbstractSaga, ContainerBuilder, EventIdAugmentor, InMemoryEventStorage } from 'node-cqrs';
 
 class SignupAggregate extends AbstractAggregate<void> {
 	signupUser(payload: { email: string }) {
@@ -475,7 +476,9 @@ commandBus.on('sendWelcomeEmail', command => {
 	return [];
 });
 
-await commandBus.send('signupUser', undefined, { payload: { email: 'john@example.com' } });
+await commandBus.send('signupUser', undefined, {
+	payload: { email: 'john@example.com' }
+});
 ```
 </details>
 
@@ -526,7 +529,9 @@ commandBus.on('sendWelcomeEmail', command => {
 	return [];
 });
 
-await commandBus.send('signupUser', undefined, { payload: { email: 'john@example.com' } });
+await commandBus.send('signupUser', undefined, {
+	payload: { email: 'john@example.com' }
+});
 ```
 </details>
 
@@ -614,9 +619,12 @@ import { AbstractWorkerProjection } from 'node-cqrs/workers';
 
 ```bash
 git clone git@github.com:snatalenko/node-cqrs.git
+
 cd node-cqrs
 npm install
+
 npm test
+npm run test:examples
 npm run lint
 ```
 
