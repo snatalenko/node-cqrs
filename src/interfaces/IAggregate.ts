@@ -51,7 +51,22 @@ export interface IAggregateConstructor<
 	TAggregate extends IAggregate,
 	TState extends IMutableState | object | void
 > {
+
+	/**
+	 * List of command types handled by the aggregate.
+	 *
+	 * Used to subscribe AggregateCommandHandler to the command bus.
+	 */
 	readonly handles: string[];
+
+	/**
+	 * Optional list of event types that are required to restore the aggregate state.
+	 *
+	 * If provided, AggregateCommandHandler can request only these events from storage
+	 * (typically together with a `tail: 'last'` marker to restore the version).
+	 */
+	readonly restoresFrom?: Readonly<string[]>;
+
 	new(options: IAggregateConstructorParams<TState>): TAggregate;
 }
 

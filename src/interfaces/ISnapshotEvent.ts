@@ -2,7 +2,7 @@ import { type IEvent, isEvent } from './IEvent.ts';
 
 export const SNAPSHOT_EVENT_TYPE: 'snapshot' = 'snapshot';
 
-export interface ISnapshotEvent<T = any> extends IEvent<T> {
+export interface ISnapshotEvent<TState = any> extends IEvent<TState> {
 	type: typeof SNAPSHOT_EVENT_TYPE
 }
 

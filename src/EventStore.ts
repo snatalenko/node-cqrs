@@ -15,6 +15,7 @@ import {
 	type IEventDispatcher,
 	type IEventBus,
 	type IContainer,
+	type AggregateEventsQueryParams,
 	isIdentifierProvider,
 	isIEventBus,
 	isIEventStorageReader,
@@ -102,20 +103,24 @@ export class EventStore implements IEventStore {
 	}
 
 	/** Retrieve all events of specific Aggregate */
-	async* getAggregateEvents(aggregateId: Identifier): IEventStream {
+	async* getAggregateEvents(aggregateId: Identifier, options?: AggregateEventsQueryParams): IEventStream {
 		if (!aggregateId)
 			throw new TypeError('aggregateId argument required');
 
 		this.#logger?.debug(`retrieving event stream for aggregate ${aggregateId}...`);
 
-		const snapshot = this.#snapshotStorage ?
-			await this.#snapshotStorage.getAggregateSnapshot(aggregateId) :
-			undefined;
+		// Get snapshot from snapshot storage if not provided in options
+		let snapshot = options?.snapshot;
+		if (!snapshot && this.#snapshotStorage)
+			snapshot = await this.#snapshotStorage.getAggregateSnapshot(aggregateId);
 
 		if (snapshot)
 			yield snapshot;
 
-		const eventsIterable = await this.#eventStorageReader.getAggregateEvents(aggregateId, { snapshot });
+		const eventsIterable = await this.#eventStorageReader.getAggregateEvents(aggregateId, {
+			...options,
+			snapshot
+		});
 
 		yield* eventsIterable;
 

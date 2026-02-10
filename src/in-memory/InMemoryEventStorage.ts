@@ -8,7 +8,8 @@ import type {
 	IEventStorageWriter,
 	Identifier,
 	IDispatchPipelineProcessor,
-	DispatchPipelineBatch
+	DispatchPipelineBatch,
+	AggregateEventsQueryParams
 } from '../interfaces/index.ts';
 import { parseSagaId } from '../utils/index.ts';
 import { nextCycle } from './utils/index.ts';
@@ -41,20 +42,31 @@ export class InMemoryEventStorage implements
 		return events;
 	}
 
-	async* getAggregateEvents(aggregateId: Identifier, options?: { snapshot: IEvent }): IEventStream {
+	async* getAggregateEvents(aggregateId: Identifier, options?: AggregateEventsQueryParams): IEventStream {
 		await nextCycle();
 
 		const afterVersion = options?.snapshot?.aggregateVersion;
-		const results = !afterVersion ?
+		const allAfterSnapshot = !afterVersion ?
 			this.#events.filter(e => e.aggregateId === aggregateId) :
 			this.#events.filter(e =>
 				e.aggregateId === aggregateId &&
 				e.aggregateVersion !== undefined &&
 				e.aggregateVersion > afterVersion);
 
+		const results = options?.eventTypes === undefined ?
+			allAfterSnapshot :
+			allAfterSnapshot.filter(e => options.eventTypes!.includes(e.type));
+
 		await nextCycle();
 
 		yield* results;
+
+		if (options?.tail === 'last' && allAfterSnapshot.length) {
+			const tailEvent = allAfterSnapshot[allAfterSnapshot.length - 1];
+			const alreadyYieldedTail = results.length && results[results.length - 1] === tailEvent;
+			if (!alreadyYieldedTail)
+				yield tailEvent;
+		}
 	}
 
 	async* getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {

@@ -96,7 +96,8 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 			container.createInstance(AggregateCommandHandler, {
 				aggregateFactory: (options: any) =>
 					container.createInstance(AggregateType, options),
-				handles: AggregateType.handles
+				handles: AggregateType.handles,
+				restoresFrom: AggregateType.restoresFrom
 			});
 
 		return this.registerCommandHandler(commandHandlerFactory);
