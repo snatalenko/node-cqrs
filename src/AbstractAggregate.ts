@@ -21,8 +21,7 @@ import {
 	validateHandlers,
 	getHandler,
 	getMessageHandlerNames,
-	clone,
-	promiseOrSync
+	clone
 } from './utils/index.ts';
 
 /**
@@ -139,7 +138,7 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 	}
 
 	/** Pass command to command handler */
-	handle(command: ICommand): IEventSet | Promise<IEventSet> {
+	async handle(command: ICommand): Promise<IEventSet> {
 		if (!command)
 			throw new TypeError('command argument required');
 		if (!command.type)
@@ -153,16 +152,16 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 			throw new Error('Another command is being processed');
 
 		this.command = command;
-
 		const eventsOffset = this.changes.length;
 
-		const handlerResult = handler.call(this, command.payload, command.context);
+		try {
+			await handler.call(this, command.payload, command.context);
 
-		return promiseOrSync(handlerResult,
-			() => this.getUncommittedEvents(eventsOffset),
-			() => {
-				this.command = undefined;
-			});
+			return this.getUncommittedEvents(eventsOffset);
+		}
+		finally {
+			this.command = undefined;
+		}
 	}
 
 	/**

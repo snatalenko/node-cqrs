@@ -14,7 +14,6 @@ import { SagaEventHandler } from './SagaEventHandler.ts';
 import {
 	validateHandlers,
 	getHandler,
-	promiseOrSync,
 	getClassName,
 	getMessageHandlerNames
 } from './utils/index.ts';
@@ -107,7 +106,7 @@ export abstract class AbstractSaga implements ISaga {
 	}
 
 	/** Process saga event and return produced commands */
-	handle(event: IEvent): ReadonlyArray<ICommand> | Promise<ReadonlyArray<ICommand>> {
+	async handle(event: IEvent): Promise<ReadonlyArray<ICommand>> {
 		if (!isEvent(event))
 			throw new TypeError('event argument must be a valid IEvent');
 		if (this.#handling)
@@ -121,18 +120,12 @@ export abstract class AbstractSaga implements ISaga {
 		this.#messages.length = 0;
 
 		try {
-			const r = handler.call(this, event);
-
-			return promiseOrSync(r, () => {
-				this.mutate(event);
-				return this.#messages.splice(0);
-			}, () => {
-				this.#handling = false;
-			});
+			await handler.call(this, event);
+			this.mutate(event);
+			return this.#messages.splice(0);
 		}
-		catch (err) {
+		finally {
 			this.#handling = false;
-			throw err;
 		}
 	}
 

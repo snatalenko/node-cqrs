@@ -104,7 +104,7 @@ describe('AbstractSaga', function () {
 			expect(() => s.mutate({ type: 'anotherHappened' } as any)).not.to.throw();
 		});
 
-		it('does not affect command diff returned from later handle(event)', () => {
+		it('does not affect command diff returned from later handle(event)', async () => {
 			class DiffSaga extends AbstractSaga {
 				static get startsWith() {
 					return ['somethingHappened'];
@@ -123,7 +123,7 @@ describe('AbstractSaga', function () {
 			const saga = new DiffSaga({ id: 1 });
 			saga.mutate({ type: 'somethingHappened' } as any);
 
-			const commands = saga.handle({ type: 'followingHappened' } as any);
+			const commands = await saga.handle({ type: 'followingHappened' } as any);
 			expect(commands).to.be.an('Array');
 			expect(commands).to.have.length(1);
 			expect(commands[0]).to.have.property('type', 'fromHandle');
@@ -138,15 +138,15 @@ describe('AbstractSaga', function () {
 
 	describe('handle(event)', () => {
 
-		it('returns commands produced by the handler', () => {
-			const commands = s.handle({ type: 'somethingHappened' });
+		it('returns commands produced by the handler', async () => {
+			const commands = await s.handle({ type: 'somethingHappened' });
 			expect(commands).to.be.an('Array');
 			expect(commands).to.have.length(1);
 			expect(commands[0]).to.have.property('type', 'doSomething');
 			expect(commands[0]).to.have.nested.property('payload.foo', 'bar');
 		});
 
-		it('calls saga handler before mutating state', () => {
+		it('calls saga handler before mutating state', async () => {
 			class OrderSaga extends AbstractSaga {
 				static get startsWith() {
 					return ['somethingHappened'];
@@ -168,7 +168,7 @@ describe('AbstractSaga', function () {
 
 			const saga = new OrderSaga({ id: 1 });
 
-			const commands = saga.handle({ type: 'somethingHappened' } as any);
+			const commands = await saga.handle({ type: 'somethingHappened' } as any);
 			expect(commands).to.have.length(1);
 			expect(commands[0]).to.have.nested.property('payload.seen', 0);
 			expect((saga.state as any).seen).to.equal(1);
@@ -195,7 +195,7 @@ describe('AbstractSaga', function () {
 
 			let thrown: any;
 			try {
-				saga.handle({ type: 'somethingHappened' } as any);
+				await saga.handle({ type: 'somethingHappened' } as any);
 			}
 			catch (err: any) {
 				thrown = err;

@@ -21,7 +21,7 @@ export interface IMessage<TPayload = any> {
 	sagaOrigins?: SagaOriginsMap;
 
 	/** Business data */
-	payload: TPayload;
+	payload?: TPayload;
 
 	/**
 	 * Optional metadata/context (e.g. auth info, request id);

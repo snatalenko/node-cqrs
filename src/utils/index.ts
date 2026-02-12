@@ -8,7 +8,6 @@ export * from './isClass.ts';
 export * from './Lock.ts';
 export * from './MapAssertable.ts';
 export * from './notEmpty.ts';
-export * from './promiseOrSync.ts';
 export * from './setupOneTimeEmitterSubscription.ts';
 export * from './sagaId.ts';
 export * from './subscribe.ts';

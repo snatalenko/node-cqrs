@@ -1,4 +1,4 @@
-import type { IEvent } from './IEvent';
+import type { IEvent } from './IEvent.ts';
 
 export interface IMutableState {
 
