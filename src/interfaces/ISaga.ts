@@ -11,7 +11,9 @@ export interface ISaga {
 	mutate(event: IEvent): unknown | Promise<unknown>;
 
 	/**
-	 * Process an incoming event and return produced commands.
+	 * Process an incoming event.
+	 *
+	 * @returns Commands produced by the saga in response to the event
 	 */
 	handle(event: IEvent): ReadonlyArray<ICommand> | Promise<ReadonlyArray<ICommand>>;
 }

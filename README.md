@@ -233,7 +233,7 @@ Events represent facts that have already happened:
 Aggregates handle commands and emit events. The minimal aggregate contract is [IAggregate](src/interfaces/IAggregate.ts):
 
 ```ts
-export interface IAggregate {
+interface IAggregate {
 
 	/**
 	 * Applies a single event to update the aggregate's internal state.
@@ -538,8 +538,21 @@ await commandBus.send('signupUser', undefined, {
 
 The minimal saga contract is [`ISaga`](src/interfaces/ISaga.ts):
 
-- `mutate(event)` - apply historical events to restore saga state (must not emit commands)
-- `handle(event)` - process an incoming event and return produced commands
+```ts
+interface ISaga {
+
+	/**
+	 * Apply a historical event to restore saga state.
+	 */
+	mutate(event: IEvent): unknown | Promise<unknown>;
+
+	/**
+	 * Process an incoming event.
+	 *
+	 * @returns Commands produced by the saga in response to the event
+	 */
+	handle(event: IEvent): ReadonlyArray<ICommand> | Promise<ReadonlyArray<ICommand>>;
+}```
 
 ### AbstractSaga (recommended)
 
