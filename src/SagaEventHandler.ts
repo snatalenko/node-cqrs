@@ -133,13 +133,12 @@ export class SagaEventHandler implements IEventReceptor {
 				if (command.context === undefined && event.context !== undefined)
 					command.context = event.context;
 
-				command.sagaOrigins = {
-					...event.sagaOrigins,
-					[this.#sagaDescriptor]: sagaOrigin,
-
-					// `sagaOrigins` returned in a command has the highest priority
-					...command.sagaOrigins
-				};
+				if (command.sagaOrigins === undefined) {
+					command.sagaOrigins = {
+						...event.sagaOrigins,
+						[this.#sagaDescriptor]: sagaOrigin
+					};
+				}
 
 				await this.#commandBus.sendRaw(command);
 			}
