@@ -7,7 +7,7 @@ const unique = <T>(arr: T[]): T[] => [...new Set(arr)];
 /**
  * Get a list of message types handled by observer
  */
-export function getHandledMessageTypes(observerInstanceOrClass: (object | Function)): string[] {
+function getHandledMessageTypes(observerInstanceOrClass: (object | Function)): string[] {
 	if (!observerInstanceOrClass)
 		throw new TypeError('observerInstanceOrClass argument required');
 
