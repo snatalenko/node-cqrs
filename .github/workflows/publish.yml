@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -16,20 +20,19 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm
+        run: npm i -g npm@latest
 
       - name: Install dependencies
         run: npm ci --no-optional
 
       - name: Publish pre-release to NPM
         if: contains(github.ref_name, '-')
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --tag next
+        run: npm publish --provenance --tag next
 
       - name: Publish release to NPM
         if: "!contains(github.ref_name, '-')"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish
+        run: npm publish --provenance
