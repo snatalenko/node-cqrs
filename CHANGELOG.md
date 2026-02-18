@@ -1,3 +1,30 @@
+# [1.0.0-rc.34](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.33...v1.0.0-rc.34) (2026-02-18)
+
+
+### Features
+
+* Run projections derived from AbstractWorkerProjection in worker threads with remote view access ([3d4c56a](https://github.com/snatalenko/node-cqrs/commit/3d4c56ac978f0ee11e98c8575befa2796755dc74))
+* Support selective restore event loading ([3a74da6](https://github.com/snatalenko/node-cqrs/commit/3a74da6807a0250bff0e05ae57f922922d8847be))
+* Multi-saga correlation via `message.sagaOrigins` + simplified ISaga (mutate/handle) with AbstractSaga state support ([ae67594](https://github.com/snatalenko/node-cqrs/commit/ae675944faa2b01aefed23d7c0e456e2581f066f))
+
+### Changes
+
+* Apache-2.0 License ([576869b](https://github.com/snatalenko/node-cqrs/commit/576869bb6cc567745cc7a61f4c80bbf4428362e3))
+* Publish events asynchronously without awaiting for subscribers to complete ([025edb8](https://github.com/snatalenko/node-cqrs/commit/025edb8833d65ea07760ac7b8a1a416df5972955))
+* Make saga `startsWith` optional to reduce boilerplate ([34cc162](https://github.com/snatalenko/node-cqrs/commit/34cc162e02e2241956abfc18cb3ce5947e25c2e1))
+* Exclude `getHandledMessageTypes` from export ([afa1cf6](https://github.com/snatalenko/node-cqrs/commit/afa1cf6231ce00e1f992758b201cdd2d6928e797))
+
+### Build System
+
+* Add ESM, CJS, and Browser builds ([e83018f](https://github.com/snatalenko/node-cqrs/commit/e83018f3a9eb247db31ca447c2157bcf2ff71497))
+* Add pull_request trigger to Coveralls workflow ([8c7b95a](https://github.com/snatalenko/node-cqrs/commit/8c7b95a7fbdf68858841de5d89721d13f0d84c9b))
+* Add eslint to github actions; cleanup eslint rules ([405efb0](https://github.com/snatalenko/node-cqrs/commit/405efb06bdceeed723d8f30f3fd98e398cf7a6ec))
+
+
+# [0.17.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.12...v0.17.0) (2025-08-12)
+
+
+
 # [1.0.0-rc.33](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.32...v1.0.0-rc.33) (2026-01-26)
 
 
@@ -130,7 +157,65 @@
 
 
 
-# [1.0.0-rc.13](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.12...v1.0.0-rc.13) (2025-08-14)
+# [1.0.0-rc.13](https://github.com/snatalenko/node-cqrs/compare/v0.17.0...v1.0.0-rc.13) (2025-08-14)
+
+
+
+# [1.0.0-rc.12](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.11...v1.0.0-rc.12) (2025-08-11)
+
+
+
+# [1.0.0-rc.11](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.10...v1.0.0-rc.11) (2025-05-09)
+
+
+### Changes
+
+* Cache immediate aggregates to handle concurrent commands ([e193c4c](https://github.com/snatalenko/node-cqrs/commit/e193c4c8dc7b91de6cbc84e2ac668170ddb48bc0))
+
+### Internal Fixes
+
+* Use `structuredClone` for snapshot creation ([1d0e827](https://github.com/snatalenko/node-cqrs/commit/1d0e827da71c760739588a37ae6afe63a4fa8d34))
+* Simplify aggregate interface ([3e141fd](https://github.com/snatalenko/node-cqrs/commit/3e141fd217c4a094a57fefe8788816d474020ffe))
+
+
+# [1.0.0-rc.10](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.9...v1.0.0-rc.10) (2025-04-13)
+
+
+### Fixes
+
+* Asserting db connection in prolongLock and unlock methods ([b272473](https://github.com/snatalenko/node-cqrs/commit/b2724739b3ff483b13c0cfeea30c73c7d8ab8b94))
+
+
+# [1.0.0-rc.9](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.8...v1.0.0-rc.9) (2025-04-13)
+
+
+
+# [1.0.0-rc.8](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.7...v1.0.0-rc.8) (2025-04-13)
+
+
+
+# [1.0.0-rc.7](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.6...v1.0.0-rc.7) (2025-04-13)
+
+
+### Features
+
+* RabbitMQ integration classes to support event publishing and subscription ([991c223](https://github.com/snatalenko/node-cqrs/commit/991c2233185d3610a2b8930f6930a03c0cdea01d))
+
+### Changes
+
+* Move validation, snapshot and event persistence to EventDispatcher pipeline ([e781f7c](https://github.com/snatalenko/node-cqrs/commit/e781f7c6c2e4f7c9f8c4615b170d0d29d3e8f133))
+
+
+# [1.0.0-rc.6](https://github.com/snatalenko/node-cqrs/compare/v0.16.4...v1.0.0-rc.6) (2025-03-21)
+
+
+### Changes
+
+* Remove `publishAsync` setting, simplify publishing sequence ([79257e5](https://github.com/snatalenko/node-cqrs/commit/79257e59d322df5dd8e41bedf5273c97ae77b609))
+* Support persistent views; Add SQLite infrastructure ([c235573](https://github.com/snatalenko/node-cqrs/commit/c235573678be349d031d1a696cab3993224979a2))
+
+
+# [0.17.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.12...v0.17.0) (2025-08-12)
 
 
 
