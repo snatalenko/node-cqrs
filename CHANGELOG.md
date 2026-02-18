@@ -1,3 +1,11 @@
+# [1.0.0-rc.35](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.34...v1.0.0-rc.35) (2026-02-18)
+
+
+### Build System
+
+* Update the CI workflow to request an OIDC ID token ([f4f86c7](https://github.com/snatalenko/node-cqrs/commit/f4f86c7fa30276d1dcf39e1e59b0d9b50678db1f))
+
+
 # [1.0.0-rc.34](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.33...v1.0.0-rc.34) (2026-02-18)
 
 
