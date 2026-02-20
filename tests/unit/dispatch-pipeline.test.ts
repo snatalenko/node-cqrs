@@ -1,5 +1,5 @@
-import { InMemorySnapshotStorage } from '../../dist/cjs/in-memory/InMemorySnapshotStorage';
 import {
+	InMemorySnapshotStorage,
 	ContainerBuilder,
 	IContainer,
 	InMemoryEventStorage

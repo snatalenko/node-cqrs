@@ -67,6 +67,17 @@ export interface IAggregateConstructor<
 	 */
 	readonly restoresFrom?: Readonly<string[]>;
 
+	/**
+	 * Defines retry behavior when a ConcurrencyError is thrown during event dispatch.
+	 *
+	 * - `undefined` (default): retry up to 5 times on ConcurrencyError
+	 * - `false`: no retry
+	 * - `true`: retry up to 5 times on ConcurrencyError
+	 * - `number`: retry up to the specified number of times
+	 * - `(err, attempt) => boolean`: custom function to decide whether to retry
+	 */
+	readonly retryOnConcurrencyError?: boolean | number | ((err: unknown, attempt: number) => boolean);
+
 	new(options: IAggregateConstructorParams<TState>): TAggregate;
 }
 

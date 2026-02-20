@@ -1,4 +1,5 @@
 import { getClassName, Lock, MapAssertable } from './utils/index.ts';
+import { ConcurrencyError } from './errors/index.ts';
 import {
 	type AggregateEventsQueryParams,
 	type IAggregate,
@@ -16,6 +17,22 @@ import {
 	isIObservable
 } from './interfaces/index.ts';
 
+const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
+
+type RetryResolver = (err: unknown, attempt: number) => boolean;
+
+function normalizeRetryResolver(value: boolean | number | RetryResolver | undefined): RetryResolver {
+	if (typeof value === 'function')
+		return value;
+	if (value === false)
+		return () => false;
+	if (typeof value === 'number')
+		return (_err, attempt) => attempt < value;
+
+	// undefined or true — default behavior
+	return (err, attempt) => err instanceof ConcurrencyError && attempt < DEFAULT_MAX_RETRY_ATTEMPTS;
+}
+
 /**
  * Aggregate command handler.
  *
@@ -30,6 +47,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 	readonly #aggregateFactory: IAggregateFactory<TAggregate, any>;
 	readonly #handles: Readonly<string[]>;
 	readonly #restoresFrom?: Readonly<string[]>;
+	readonly #shouldRetry: RetryResolver;
 
 	/** Aggregate instances cache for concurrent command handling */
 	#aggregatesCache: MapAssertable<Identifier, Promise<TAggregate>> = new MapAssertable();
@@ -44,12 +62,14 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		handles,
 		executionLocker = new Lock(),
 		restoresFrom,
+		retryOnConcurrencyError,
 		logger
 	}: Pick<IContainer, 'eventStore' | 'executionLocker' | 'logger'> & {
 		aggregateType?: IAggregateConstructor<TAggregate, any>,
 		aggregateFactory?: IAggregateFactory<TAggregate, any>,
 		handles?: Readonly<string[]>,
-		restoresFrom?: Readonly<string[]>
+		restoresFrom?: Readonly<string[]>,
+		retryOnConcurrencyError?: boolean | number | RetryResolver
 	}) {
 		if (!eventStore)
 			throw new TypeError('eventStore argument required');
@@ -65,6 +85,8 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			this.#aggregateFactory = params => new AggregateType(params);
 			this.#handles = AggregateType.handles;
 			this.#restoresFrom = AggregateType.restoresFrom;
+			this.#shouldRetry = normalizeRetryResolver(retryOnConcurrencyError ??
+				AggregateType.retryOnConcurrencyError);
 		}
 		else if (aggregateFactory) {
 			if (!Array.isArray(handles) || !handles.length)
@@ -73,6 +95,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			this.#aggregateFactory = aggregateFactory;
 			this.#handles = handles;
 			this.#restoresFrom = restoresFrom;
+			this.#shouldRetry = normalizeRetryResolver(retryOnConcurrencyError);
 		}
 		else {
 			throw new TypeError('either aggregateType or aggregateFactory is required');
@@ -123,13 +146,6 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		return aggregate;
 	}
 
-	async #getAggregateInstance(aggregateId?: Identifier) {
-		if (!aggregateId)
-			return this.#createAggregate();
-		else
-			return this.#aggregatesCache.assert(aggregateId, () => this.#restoreAggregate(aggregateId));
-	}
-
 	/** Pass a command to corresponding aggregate */
 	async execute(cmd: ICommand): Promise<IEventSet> {
 		if (!cmd)
@@ -137,30 +153,60 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		if (!cmd.type)
 			throw new TypeError('cmd.type argument required');
 
-		// create new or get cached aggregate instance promise
-		// multiple concurrent calls to #getAggregateInstance will return the same promise
-		const aggregate = await this.#getAggregateInstance(cmd.aggregateId);
+		const { aggregateId } = cmd;
 
-		// multiple concurrent commands to a same aggregateId will execute sequentially
-		const lease = cmd.aggregateId ?
-			await this.#executionLock.acquire(String(cmd.aggregateId)) :
+		// Register interest in the cache entry before acquiring the lock, so concurrent
+		// callers for the same aggregateId share one restoration promise instead of each
+		// triggering a separate event-store read.
+		if (aggregateId)
+			this.#aggregatesCache.assert(aggregateId, () => this.#restoreAggregate(aggregateId));
+
+		// Serialize execution per aggregate — commands for the same id queue here.
+		const lease = aggregateId ?
+			await this.#executionLock.acquire(String(aggregateId)) :
 			undefined;
 
 		try {
-			// pass command to aggregate instance
-			const events = await aggregate.handle(cmd);
+			for (let attempt = 0; ; attempt++) {
+				if (attempt > 0)
+					this.#logger?.info(`retrying "${cmd.type}" command on aggregate ${aggregateId}, attempt ${attempt + 1}`);
 
-			this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
+				// Read the current cache entry after acquiring the lock. On the first attempt
+				// this is the pre-warmed (possibly shared) instance; on retries it is the
+				// fresh instance placed into the cache by the error handler below.
+				const aggregate = aggregateId ?
+					await this.#aggregatesCache.get(aggregateId)! :
+					await this.#createAggregate();
 
-			if (events.length)
-				await this.#eventStore.dispatch(events);
+				try {
+					const events = await aggregate.handle(cmd);
 
-			return events;
+					this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
+
+					if (events.length)
+						await this.#eventStore.dispatch(events);
+
+					return events;
+				}
+				catch (err: unknown) {
+					// The aggregate is now dirty (mutated by handle). Replace the cache entry
+					// with a fresh restoration promise so both the retry below and any commands
+					// queued on the lock start from a clean state.
+					if (aggregateId)
+						this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
+
+					if (!this.#shouldRetry(err, attempt))
+						throw err;
+				}
+			}
 		}
 		finally {
 			lease?.release();
-			if (cmd.aggregateId)
-				this.#aggregatesCache.release(cmd.aggregateId);
+
+			// Decrement the usage counter registered above; deletes the entry when
+			// the last concurrent caller for this aggregateId is done.
+			if (aggregateId)
+				this.#aggregatesCache.release(aggregateId);
 		}
 	}
 }

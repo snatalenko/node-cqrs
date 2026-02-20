@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { InMemoryEventStorage } from '../../../src';
+import { InMemoryEventStorage, ConcurrencyError } from '../../../src';
 
 describe('InMemoryEventStorage', () => {
 	let storage;
@@ -15,6 +15,22 @@ describe('InMemoryEventStorage', () => {
 			];
 			const result = await storage.commitEvents(events);
 			expect(result).to.deep.equal(events);
+		});
+
+		it('throws ConcurrencyError when committing a duplicate aggregateVersion for the same aggregate', async () => {
+			await storage.commitEvents([
+				{ id: '1', aggregateId: 'agg1', aggregateVersion: 0, type: 'Created' }
+			]);
+
+			try {
+				await storage.commitEvents([
+					{ id: '2', aggregateId: 'agg1', aggregateVersion: 0, type: 'Created' }
+				]);
+				throw new Error('Expected ConcurrencyError was not thrown');
+			}
+			catch (err) {
+				expect(err).to.be.instanceOf(ConcurrencyError);
+			}
 		});
 	});
 
