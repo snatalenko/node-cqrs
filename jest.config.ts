@@ -22,6 +22,7 @@ export default {
 		'/examples/',
 		'/node_modules/',
 		'/src/rabbitmq/',
+		'/src/workers/',
 		'/tests/'
 	],
 
