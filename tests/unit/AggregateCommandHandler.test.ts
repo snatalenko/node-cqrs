@@ -12,7 +12,8 @@ import {
 	AbstractAggregate,
 	InMemoryEventStorage,
 	EventStore,
-	InMemorySnapshotStorage
+	InMemorySnapshotStorage,
+	ConcurrencyError
 } from '../../src';
 
 function delay(ms) {
@@ -351,5 +352,298 @@ describe('AggregateCommandHandler', function () {
 		// Check that restore and factory were called again for the subsequent command
 		assert(getAggregateEventsSpy.calledOnce, 'getAggregateEvents should be called again for the subsequent command');
 		expect(factoryCallCount).to.equal(1, 'Aggregate factory should be called again for the subsequent command');
+	});
+
+	describe('retryOnConcurrencyError', () => {
+
+		it('retries on ConcurrencyError and succeeds on retry (default behavior)', async () => {
+
+			const aggregateId = 'retry-test-id';
+			let dispatchCallCount = 0;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: MyAggregate
+			});
+
+			// Ensure aggregate exists
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			// Make dispatch fail once with ConcurrencyError, then succeed
+			const originalDispatch = eventStore.dispatch.bind(eventStore);
+			commitSpy.restore();
+			commitSpy = sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?) => {
+				dispatchCallCount++;
+				if (dispatchCallCount === 1) // fail on first attempt
+					throw new ConcurrencyError();
+
+				return originalDispatch(events, meta);
+			});
+
+			const events = await handler.execute({ type: 'doSomething', aggregateId });
+
+			expect(events).to.have.length(1);
+			expect(events[0]).to.have.property('type', 'somethingDone');
+			expect(dispatchCallCount).to.equal(2); // failed once, succeeded on retry
+		});
+
+		it('stops retrying after max attempts and throws ConcurrencyError', async () => {
+
+			const aggregateId = 'retry-max-test-id';
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: MyAggregate
+			});
+
+			// Ensure aggregate exists
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			// Make dispatch always fail with ConcurrencyError
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').rejects(new ConcurrencyError());
+
+			try {
+				await handler.execute({ type: 'doSomething', aggregateId });
+				assert.fail('Expected ConcurrencyError to be thrown');
+			}
+			catch (err) {
+				expect(err).to.be.instanceOf(ConcurrencyError);
+			}
+		});
+
+		it('does not retry when retryOnConcurrencyError is false', async () => {
+
+			class NoRetryAggregate extends MyAggregate {
+				static retryOnConcurrencyError = false as const;
+			}
+
+			const aggregateId = 'no-retry-test-id';
+			let dispatchCallCount = 0;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: NoRetryAggregate
+			});
+
+			// Ensure aggregate exists
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+				dispatchCallCount++;
+				throw new ConcurrencyError();
+			});
+
+			try {
+				await handler.execute({ type: 'doSomething', aggregateId });
+				assert.fail('Expected ConcurrencyError to be thrown');
+			}
+			catch (err) {
+				expect(err).to.be.instanceOf(ConcurrencyError);
+				expect(dispatchCallCount).to.equal(1);
+			}
+		});
+
+		it('retries up to specified number when retryOnConcurrencyError is a number', async () => {
+
+			class LimitedRetryAggregate extends MyAggregate {
+				static retryOnConcurrencyError = 2;
+			}
+
+			const aggregateId = 'limited-retry-test-id';
+			let dispatchCallCount = 0;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: LimitedRetryAggregate
+			});
+
+			// Ensure aggregate exists
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+				dispatchCallCount++;
+				throw new ConcurrencyError();
+			});
+
+			try {
+				await handler.execute({ type: 'doSomething', aggregateId });
+				assert.fail('Expected ConcurrencyError to be thrown');
+			}
+			catch (err) {
+				expect(err).to.be.instanceOf(ConcurrencyError);
+
+				// retryOnConcurrencyError=2 means 2 retry attempts = 3 total dispatch calls
+				expect(dispatchCallCount).to.equal(3);
+			}
+		});
+
+		it('uses custom function resolver for retry decision', async () => {
+
+			const retryDecisions: Array<{ err: unknown, attempt: number }> = [];
+
+			class CustomRetryAggregate extends MyAggregate {
+				static retryOnConcurrencyError = (err: unknown, attempt: number) => {
+					retryDecisions.push({ err, attempt });
+					return attempt < 1; // retry once (allow on attempt 0 only)
+				};
+			}
+
+			const aggregateId = 'custom-retry-test-id';
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: CustomRetryAggregate
+			});
+
+			// Ensure aggregate exists
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').rejects(new ConcurrencyError('test conflict'));
+
+			try {
+				await handler.execute({ type: 'doSomething', aggregateId });
+				assert.fail('Expected ConcurrencyError to be thrown');
+			}
+			catch (err) {
+				expect(err).to.be.instanceOf(ConcurrencyError);
+				expect(retryDecisions).to.have.length(2);
+				expect(retryDecisions[0].attempt).to.equal(0);
+				expect(retryDecisions[1].attempt).to.equal(1);
+			}
+		});
+
+		it('does not retry non-ConcurrencyError errors', async () => {
+
+			const aggregateId = 'non-concurrency-error-test-id';
+			let dispatchCallCount = 0;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: MyAggregate
+			});
+
+			// Ensure aggregate exists
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+				dispatchCallCount++;
+				throw new Error('some other error');
+			});
+
+			try {
+				await handler.execute({ type: 'doSomething', aggregateId });
+				assert.fail('Expected error to be thrown');
+			}
+			catch (err: any) {
+				expect(err.message).to.equal('some other error');
+				expect(dispatchCallCount).to.equal(1);
+			}
+		});
+
+		it('commits events produced before failure; 2nd+3rd execute against same re-created aggregate instance', async () => {
+
+			const aggregateId = 'concurrent-retry-test-id';
+			let nextInstanceId = 0;
+
+			class TrackedAggregate extends MyAggregate {
+				readonly instanceId = nextInstanceId++;
+
+				override async doSomething(payload?: { cmdId: string }) {
+					await delay(5);
+					this.emit('somethingDone', { instanceId: this.instanceId, cmdId: payload?.cmdId });
+				}
+			}
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: TrackedAggregate
+			});
+
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			// Fail only dispatch for the 2nd command (attempt 0), then let all others through
+			const originalDispatch = eventStore.dispatch.bind(eventStore);
+			let dispatchCallCount = 0;
+			let failedDispatchCmdId: string | undefined;
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?) => {
+				dispatchCallCount++;
+				if (dispatchCallCount === 2) {
+					failedDispatchCmdId = (events as any)?.[0]?.payload?.cmdId;
+					throw new ConcurrencyError();
+				}
+
+				return originalDispatch(events, meta);
+			});
+
+			const cmd1Id = 'cmd-1';
+			const cmd2Id = 'cmd-2';
+			const cmd3Id = 'cmd-3';
+
+			const cmd1 = { type: 'doSomething', aggregateId, payload: { cmdId: cmd1Id } };
+			const cmd2 = { type: 'doSomething', aggregateId, payload: { cmdId: cmd2Id } };
+			const cmd3 = { type: 'doSomething', aggregateId, payload: { cmdId: cmd3Id } };
+
+			await Promise.all([handler.execute(cmd1), handler.execute(cmd2), handler.execute(cmd3)]);
+
+			// cmd2 failed once, retried, cmd1+cmd3 executed — 4 dispatch calls total
+			expect(dispatchCallCount).to.equal(4);
+			expect(failedDispatchCmdId).to.equal(cmd2Id, 'the failed dispatch must correspond to the 2nd command');
+
+			// Collect committed somethingDone events
+			const allEvents = [];
+			for await (const event of eventStore.getAggregateEvents(aggregateId))
+				allEvents.push(event);
+			const doneEvents = allEvents.filter(e => e.type === 'somethingDone');
+			expect(doneEvents).to.have.length(3);
+
+			// Verify events produced before failure were committed (cmd1 stays committed when cmd2 fails and retries)
+			const cmdIds = doneEvents.map(e => e.payload.cmdId);
+			expect(cmdIds).to.deep.equal([cmd1Id, cmd2Id, cmd3Id], 'events must be committed sequentially for cmd1, cmd2, cmd3');
+
+			const emittedEventVersions = doneEvents.map(e => e.aggregateVersion);
+			expect(emittedEventVersions).to.deep.equal([1, 2, 3], 'somethingDone events must have sequential versions');
+
+			// 1st event comes from the 1st restored instance, 2nd+3rd from the re-created instance after retry
+			const instanceIds = doneEvents.map(e => e.payload.instanceId);
+			expect(instanceIds).to.deep.equal([1, 2, 2], 'cmd2 retry and cmd3 must execute against the same re-created instance');
+			expect(nextInstanceId).to.equal(3, 'only 2 instances should be created for cmd1+cmd2/cmd3 (initial + retry)');
+		});
+
+		it('accepts retryOnConcurrencyError via constructor options with aggregateFactory', async () => {
+
+			const aggregateId = 'factory-retry-test-id';
+			let dispatchCallCount = 0;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateFactory: params => new MyAggregate(params),
+				handles: MyAggregate.handles,
+				retryOnConcurrencyError: false
+			});
+
+			// Ensure aggregate exists
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+				dispatchCallCount++;
+				throw new ConcurrencyError();
+			});
+
+			try {
+				await handler.execute({ type: 'doSomething', aggregateId });
+				assert.fail('Expected ConcurrencyError to be thrown');
+			}
+			catch (err) {
+				expect(err).to.be.instanceOf(ConcurrencyError);
+				expect(dispatchCallCount).to.equal(1);
+			}
+		});
 	});
 });

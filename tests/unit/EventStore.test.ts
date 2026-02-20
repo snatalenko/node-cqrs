@@ -1,7 +1,10 @@
-import { EventDispatcher } from '../../dist/cjs/EventDispatcher';
-import { IEventDispatcher, InMemoryMessageBus } from '../../src';
-import { EventStore } from '../../src/EventStore';
 import {
+	type IEventDispatcher,
+	EventDispatcher,
+	InMemoryMessageBus,
+	EventStore
+} from '../../src';
+import type {
 	IEvent,
 	IEventBus,
 	IEventStorageReader,

@@ -13,6 +13,7 @@ import type {
 } from '../interfaces/index.ts';
 import { parseSagaId } from '../utils/index.ts';
 import { nextCycle } from './utils/index.ts';
+import { ConcurrencyError } from '../errors/index.ts';
 
 /**
  * A simple event storage implementation intended to use for tests only.
@@ -34,6 +35,16 @@ export class InMemoryEventStorage implements
 
 	async commitEvents(events: IEventSet): Promise<IEventSet> {
 		await nextCycle();
+
+		for (const event of events) {
+			if (event.aggregateId !== undefined && event.aggregateVersion !== undefined) {
+				const conflict = this.#events.find(e =>
+					e.aggregateId === event.aggregateId &&
+					e.aggregateVersion === event.aggregateVersion);
+				if (conflict)
+					throw new ConcurrencyError(`Duplicate aggregateVersion ${event.aggregateVersion} for aggregate ${event.aggregateId}`);
+			}
+		}
 
 		this.#events = this.#events.concat(events);
 
