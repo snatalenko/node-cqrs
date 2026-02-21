@@ -18,10 +18,8 @@ import { UsersProjection, type UsersView } from './UsersProjection.ts';
 
 	const builder = new ContainerBuilder<MyDiContainer>();
 
-	builder.register(InMemoryEventStorage) // In-memory implementations for local dev/tests
-		.as('identifierProvider') // EventStore dependency to generate new aggregate and saga ID's
-		.as('eventStorageReader') // EventStore dependency to read events from
-		.as('eventStorageWriter'); // eventStorageWriter, when provided, is automatically added to the dispatch pipeline
+	// auto-resolved as eventStorageReader, eventStorageWriter, and identifierProvider
+	builder.register(InMemoryEventStorage);
 
 	builder.registerAggregate(UserAggregate);
 	builder.registerProjection(UsersProjection, 'users');

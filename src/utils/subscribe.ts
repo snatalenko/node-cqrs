@@ -1,4 +1,4 @@
-import { type IMessageHandler, type IObservable, isIObservableQueueProvider } from '../interfaces/index.ts';
+import { type IMessageHandler, type IObservable, isObservableQueueProvider } from '../interfaces/index.ts';
 import { getHandler } from './getHandler.ts';
 import { getMessageHandlerNames } from './getMessageHandlerNames.ts';
 
@@ -51,7 +51,7 @@ export function subscribe(
 			throw new Error(`'${messageType}' handler is not defined or not a function`);
 
 		if (queueName) {
-			if (!isIObservableQueueProvider(observable))
+			if (!isObservableQueueProvider(observable))
 				throw new TypeError('Observer does not support named queues');
 
 			observable.queue(queueName).on(messageType, (event, meta) => handler.call(observer, event, meta));

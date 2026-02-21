@@ -88,10 +88,8 @@ Wire buses, the event store, and your domain components with dependency injectio
 ```ts
 const builder = new ContainerBuilder<MyDiContainer>();
 
-builder.register(InMemoryEventStorage)
-	.as('identifierProvider') // generates aggregate and saga IDs
-	.as('eventStorageReader')
-	.as('eventStorageWriter'); // automatically added to the dispatch pipeline
+// auto-resolved as eventStorageReader, eventStorageWriter, and identifierProvider
+builder.register(InMemoryEventStorage);
 
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'usersView');

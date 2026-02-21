@@ -18,7 +18,7 @@ export interface IObservable {
 	off(type: string, handler: IMessageHandler): void;
 }
 
-export const isIObservable = (obj: unknown): obj is IObservable =>
+export const isObservable = (obj: unknown): obj is IObservable =>
 	isObject(obj)
 	&& 'on' in obj
 	&& typeof obj.on === 'function'

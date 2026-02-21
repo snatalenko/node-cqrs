@@ -1,4 +1,5 @@
 import type { IEventSet } from './IEventSet.ts';
+import { isObject } from './isObject.ts';
 
 export interface IEventStorageWriter {
 
@@ -8,3 +9,8 @@ export interface IEventStorageWriter {
 	 */
 	commitEvents(events: IEventSet): Promise<IEventSet>;
 }
+
+export const isEventStorageWriter = (obj: unknown): obj is IEventStorageWriter =>
+	isObject(obj)
+	&& 'commitEvents' in obj
+	&& typeof obj.commitEvents === 'function';

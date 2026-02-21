@@ -19,8 +19,8 @@ describe('eventDispatchPipeline', () => {
 	beforeEach(() => {
 		const builder = new ContainerBuilder();
 
-		builder.register(InMemoryEventStorage).as('eventStorageWriter');
-		builder.register(InMemorySnapshotStorage).as('snapshotStorage');
+		builder.register(InMemoryEventStorage);
+		builder.register(InMemorySnapshotStorage);
 		builder.register((c: IContainer) => [
 			c.eventStorageWriter,
 			c.snapshotStorage

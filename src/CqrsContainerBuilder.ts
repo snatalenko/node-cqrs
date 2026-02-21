@@ -1,4 +1,4 @@
-import { ContainerBuilder, type TypeConfig, type TClassOrFactory } from 'di0';
+import { ContainerBuilder, type TypeConfig, type ClassOrFactory } from 'di0';
 import { AggregateCommandHandler } from './AggregateCommandHandler.ts';
 import { CommandBus } from './CommandBus.ts';
 import { EventStore } from './EventStore.ts';
@@ -14,7 +14,12 @@ import {
 	type IProjection,
 	type IProjectionConstructor,
 	type ISagaConstructor,
-	isDispatchPipelineProcessor
+	isDispatchPipelineProcessor,
+	isExecutionLocker,
+	isAggregateSnapshotStorage,
+	isIdentifierProvider,
+	isEventStorageReader,
+	isEventStorageWriter
 } from './interfaces/index.ts';
 
 export class CqrsContainerBuilder<TContainerInterface extends IContainer = IContainer>
@@ -25,6 +30,13 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 		singletones: object
 	}) {
 		super(options);
+
+		super.addResolver(isIdentifierProvider, 'identifierProvider');
+		super.addResolver(isEventStorageReader, 'eventStorageReader');
+		super.addResolver(isEventStorageWriter, 'eventStorageWriter');
+		super.addResolver(isAggregateSnapshotStorage, 'snapshotStorage');
+		super.addResolver(isExecutionLocker, 'executionLocker');
+
 		super.register(InMemoryMessageBus).as('eventBus');
 		super.register(EventStore).as('eventStore');
 		super.register(CommandBus).as('commandBus');
@@ -40,25 +52,23 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 	}
 
 	/** Register command handler, which will be subscribed to commandBus upon instance creation */
-	registerCommandHandler(typeOrFactory: TClassOrFactory<ICommandHandler, TContainerInterface>) {
+	registerCommandHandler(typeOrFactory: ClassOrFactory<ICommandHandler, TContainerInterface>) {
 		return super.register(
 			(container: TContainerInterface) => {
 				const handler = container.createInstance(typeOrFactory);
 				handler.subscribe(container.commandBus);
 				return handler;
-			})
-			.asSingleInstance();
+			});
 	}
 
 	/** Register event receptor, which will be subscribed to eventStore upon instance creation */
-	registerEventReceptor(typeOrFactory: TClassOrFactory<IEventReceptor, TContainerInterface>) {
+	registerEventReceptor(typeOrFactory: ClassOrFactory<IEventReceptor, TContainerInterface>) {
 		return super.register(
 			(container: TContainerInterface) => {
 				const receptor = container.createInstance(typeOrFactory);
 				receptor.subscribe(container.eventStore);
 				return receptor;
-			})
-			.asSingleInstance();
+			});
 	}
 
 	/**

@@ -17,10 +17,10 @@ import {
 	type IContainer,
 	type AggregateEventsQueryParams,
 	isIdentifierProvider,
-	isIEventBus,
-	isIEventStorageReader,
+	isEventBus,
+	isEventStorageReader,
 	isEventSet,
-	isIObservableQueueProvider
+	isObservableQueueProvider
 } from './interfaces/index.ts';
 import {
 	getClassName,
@@ -61,9 +61,9 @@ export class EventStore implements IEventStore {
 			throw new TypeError('eventStorageReader argument required');
 		if (!identifierProvider)
 			throw new TypeError('identifierProvider argument required');
-		if (!isIEventStorageReader(eventStorageReader))
+		if (!isEventStorageReader(eventStorageReader))
 			throw new TypeError('storage does not implement IEventStorage interface');
-		if (eventBus && !isIEventBus(eventBus))
+		if (eventBus && !isEventBus(eventBus))
 			throw new TypeError('eventBus does not implement IMessageBus interface');
 
 		this.#eventStorageReader = eventStorageReader;
@@ -173,7 +173,7 @@ export class EventStore implements IEventStore {
 	}
 
 	queue(name: string): IObservable {
-		if (!isIObservableQueueProvider(this.eventBus))
+		if (!isObservableQueueProvider(this.eventBus))
 			throw new Error('Injected eventBus does not support named queues');
 
 		return this.eventBus.queue(name);

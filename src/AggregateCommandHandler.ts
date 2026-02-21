@@ -14,7 +14,7 @@ import {
 	type ILocker,
 	type ILogger,
 	type IObservable,
-	isIObservable
+	isObservable
 } from './interfaces/index.ts';
 
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
@@ -106,7 +106,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 	subscribe(commandBus: IObservable) {
 		if (!commandBus)
 			throw new TypeError('commandBus argument required');
-		if (!isIObservable(commandBus))
+		if (!isObservable(commandBus))
 			throw new TypeError('commandBus argument must implement IObservable interface');
 
 		for (const commandType of this.#handles)

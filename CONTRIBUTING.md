@@ -137,6 +137,8 @@ Code style and formatting are enforced via [EditorConfig](https://editorconfig.o
 - **No `console.log`** in production code
 - **No trailing commas**
 - **Line length:** Warn at 120 chars
+- **Type-only imports:** Use the `type` keyword for imports that are only used as types
+- **`.ts` file extensions in imports:** Always use explicit `.ts` extensions in relative import paths
 
 Please run `npm run lint` before opening a PR.
 

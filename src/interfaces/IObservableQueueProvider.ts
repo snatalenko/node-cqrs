@@ -9,7 +9,7 @@ export interface IObservableQueueProvider {
 	queue(name: string): IObservable;
 }
 
-export const isIObservableQueueProvider = (obj: unknown): obj is IObservableQueueProvider =>
+export const isObservableQueueProvider = (obj: unknown): obj is IObservableQueueProvider =>
 	isObject(obj)
 	&& 'queue' in obj
 	&& typeof obj.queue === 'function';

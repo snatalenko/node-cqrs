@@ -74,9 +74,9 @@
 		write('Building container…');
 
 		const builder = new ContainerBuilder();
-		builder.register(InMemoryEventStorage)
-			.as('eventStorageReader')
-			.as('eventStorageWriter');
+
+		// auto-resolved as eventStorageReader, eventStorageWriter, and identifierProvider
+		builder.register(InMemoryEventStorage);
 		builder.registerAggregate(UserAggregate);
 		builder.registerProjection(UsersProjection, 'users');
 

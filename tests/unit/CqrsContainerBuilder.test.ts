@@ -1,12 +1,14 @@
 import { expect } from 'chai';
 import {
 	InMemoryEventStorage,
-	InMemoryMessageBus,
 	InMemoryView,
 	ContainerBuilder,
 	AbstractAggregate,
 	AbstractSaga,
-	AbstractProjection
+	AbstractProjection,
+	type IAggregateSnapshotStorage,
+	type ILocker,
+	type ILockerLease
 } from '../../src';
 
 describe('CqrsContainerBuilder', function () {
@@ -15,8 +17,7 @@ describe('CqrsContainerBuilder', function () {
 
 	beforeEach(() => {
 		builder = new ContainerBuilder();
-		builder.register(InMemoryEventStorage).as('eventStorageWriter').as('eventStorageReader').as('identifierProvider');
-		builder.register(InMemoryMessageBus).as('eventBus');
+		builder.register(InMemoryEventStorage);
 	});
 
 	describe('registerAggregate(aggregateType) extension', () => {
@@ -82,6 +83,60 @@ describe('CqrsContainerBuilder', function () {
 			];
 
 			container.eventStore.dispatch(events).catch(done);
+		});
+	});
+
+	describe('resolvers', () => {
+
+		let b: ContainerBuilder;
+
+		beforeEach(() => {
+			b = new ContainerBuilder();
+		});
+
+		it('resolves identifierProvider from an unaliased type implementing IIdentifierProvider', () => {
+			b.register(InMemoryEventStorage);
+			expect(b.container().identifierProvider).to.be.instanceOf(InMemoryEventStorage);
+		});
+
+		it('resolves eventStorageReader from an unaliased type implementing IEventStorageReader', () => {
+			b.register(InMemoryEventStorage);
+			expect(b.container().eventStorageReader).to.be.instanceOf(InMemoryEventStorage);
+		});
+
+		it('resolves eventStorageWriter from an unaliased type implementing IEventStorageWriter', () => {
+			b.register(InMemoryEventStorage);
+			expect(b.container().eventStorageWriter).to.be.instanceOf(InMemoryEventStorage);
+		});
+
+		it('resolves snapshotStorage from an unaliased type implementing IAggregateSnapshotStorage', () => {
+			class MockSnapshotStorage implements IAggregateSnapshotStorage {
+				getAggregateSnapshot() {
+					return undefined;
+				}
+				saveAggregateSnapshot() { }
+				deleteAggregateSnapshot() { }
+			}
+			b.register(MockSnapshotStorage);
+			expect(b.container().snapshotStorage).to.be.instanceOf(MockSnapshotStorage);
+		});
+
+		it('resolves executionLocker from an unaliased type implementing ILocker', () => {
+			class MockLocker implements ILocker {
+				async acquire(): Promise<ILockerLease> {
+					return { release() { }, [Symbol.dispose]() { } };
+				}
+			}
+			b.register(MockLocker);
+			expect(b.container().executionLocker).to.be.instanceOf(MockLocker);
+		});
+
+		it('the same unaliased instance satisfies all three storage resolvers', () => {
+			b.register(InMemoryEventStorage);
+			const container = b.container();
+			const storage = container.eventStorageWriter;
+			expect(container.eventStorageReader).to.equal(storage);
+			expect(container.identifierProvider).to.equal(storage);
 		});
 	});
 

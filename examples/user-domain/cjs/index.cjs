@@ -18,12 +18,11 @@ const UsersProjection = require('./UsersProjection.cjs');
 exports.createContainer = () => {
 	const builder = new ContainerBuilder();
 
-	// register infrastructure services;
-	// eventStorageWriter and snapshotStorage are automatically added to the event dispatch pipeline
-	// if they implement IDispatchPipelineProcessor interface (see src/CqrsContainerBuilder.ts)
-	builder.register(InMemoryEventStorage).as('eventStorageReader').as('eventStorageWriter');
-	builder.register(InMemorySnapshotStorage).as('snapshotStorage');
-	builder.register(InMemoryMessageBus).as('eventBus');
+	// auto-resolved as eventStorageReader, eventStorageWriter, and identifierProvider
+	builder.register(InMemoryEventStorage);
+
+	// auto-resolved as snapshotStorage
+	builder.register(InMemorySnapshotStorage);
 
 	// register domain entities
 	builder.registerAggregate(UserAggregate);

@@ -60,7 +60,7 @@ export interface IEventStorageReader {
 }
 
 
-export const isIEventStorageReader = (storage: unknown): storage is IEventStorageReader =>
+export const isEventStorageReader = (storage: unknown): storage is IEventStorageReader =>
 	isObject(storage)
 	&& 'getEventsByTypes' in storage
 	&& typeof storage.getEventsByTypes === 'function'
