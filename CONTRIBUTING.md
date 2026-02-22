@@ -2,11 +2,15 @@
 
 Thanks for taking the time to contribute!
 
+This library is used in production environments, so please be mindful of breaking changes.
+Avoid them wherever possible; when a breaking change is unavoidable, ensure it is properly communicated
+and reflected in the version bump.
+
 ## Development setup
 
 Prerequisites:
 
-- Node.js 16+ (see `package.json#engines`)
+- Node.js 16+
 - npm
 
 Clone and install:
@@ -19,43 +23,28 @@ npm install
 
 ## Project structure
 
-```
-node-cqrs/
-├── dist/                             # Build output (generated)
-│   ├── browser/
-│   ├── cjs/
-│   └── esm/
-├── examples/                         # Runnable examples (TS, CJS, sagas, browser, workers)
-├── src/
-│   ├── in-memory/                    # InMemoryEventStorage, InMemoryMessageBus, InMemoryView
-│   ├── interfaces/                   # TypeScript contracts (IMessage, IEvent, IAggregate…)
-│   ├── rabbitmq/                     # RabbitMQ event bus (node-cqrs/rabbitmq)
-│   ├── sqlite/                       # SQLite-backed views (node-cqrs/sqlite)
-│   ├── workers/                      # Worker thread projections (node-cqrs/workers)
-│   ├── AbstractAggregate.ts          # Base class; auto-routes commands by method name
-│   ├── AbstractProjection.ts         # Base class; auto-routes events by method name
-│   ├── AbstractSaga.ts               # Base class; enqueue() produces follow-up commands
-│   ├── AggregateCommandHandler.ts    # Restores aggregate from events, executes commands
-│   ├── CommandBus.ts                 # Routes commands to registered handlers
-│   ├── CqrsContainerBuilder.ts       # DI container — registerAggregate/Projection/Saga()
-│   ├── EventDispatcher.ts            # Chains IEventDispatchPipeline[] processors
-│   ├── EventIdAugmentor.ts           # Adds event.id — required in pipeline for sagas
-│   ├── EventStore.ts                 # Runs dispatch pipeline, publishes to event bus
-│   ├── index.ts                      # Public exports
-│   └── SagaEventHandler.ts           # Restores saga state, dispatches events to sagas
-├── tests/
-│   ├── unit/                         # Jest unit tests
-│   └── integration/
-│       ├── rabbitmq/                 # Requires local RabbitMQ (see docker-compose.yml inside)
-│       ├── sqlite/                   # Requires better-sqlite3
-│       └── workers/                  # Requires built CJS
-├── types/                            # Type declarations (generated)
-├── tsconfig.json                     # Base TypeScript config
-├── tsconfig.esm.json                 # ESM build (outputs dist/esm/ and types/)
-├── tsconfig.cjs.json                 # CJS build (outputs dist/cjs/)
-├── jest.config.ts
-└── eslint.config.mjs
-```
+| Path | Description |
+|------|-------------|
+| **examples/** | Runnable examples (TS, CJS, sagas, browser, workers) |
+| **src/interfaces/** | TypeScript contracts (`IEvent`, `IAggregate`, `ISaga`, etc.) |
+| **src/in-memory/** | Default in-process implementations |
+| **src/rabbitmq/** | RabbitMQ event bus (`node-cqrs/rabbitmq`) |
+| **src/sqlite/** | SQLite-backed views (`node-cqrs/sqlite`) |
+| **src/workers/** | Worker thread projections (`node-cqrs/workers`) |
+| src/AbstractAggregate.ts | Base class for aggregates; auto-routes commands to methods by name |
+| src/AbstractProjection.ts | Base class for projections; auto-routes events to methods by name |
+| src/AbstractSaga.ts | Base class for sagas; `enqueue()` produces follow-up commands |
+| src/AggregateCommandHandler.ts | Restores aggregate from events, executes command |
+| src/CommandBus.ts | |
+| src/CqrsContainerBuilder.ts | DI container, implements `registerAggregate/Projection/Saga()` |
+| src/EventDispatcher.ts | `dispatch(events)`, chains `IEventDispatchPipeline[]` processors |
+| src/EventIdAugmentor.ts | Adds `event.id`; required in pipeline for sagas |
+| src/EventStore.ts | Facade for `IEventDispatcher`, `IEventStorageReader`, `IIdentifierProvider` |
+| src/SagaEventHandler.ts | Restores saga state, dispatches events to sagas |
+| **tests/unit/** | Jest unit tests; one test suite per class |
+| **tests/integration/rabbitmq/** | Requires local RabbitMQ (see docker-compose.yml) |
+| **tests/integration/sqlite/** | Requires better-sqlite3 |
+| **tests/integration/workers/** | |
 
 ## Common tasks
 
@@ -65,18 +54,19 @@ npm run build:esm      # Build ESM only (generates types/ and dist/esm/)
 npm run build:cjs      # Build CJS only (generates dist/cjs/)
 npm run cleanup        # Remove dist/, types/, coverage/
 npm test               # Run unit tests
+npm run test:examples  # Run unit tests of examples/user-domain/cjs
 npm run test:coverage  # Run tests with coverage report
 npm run test:rabbitmq  # Integration tests (requires RabbitMQ running)
 npm run test:sqlite    # Integration tests (requires better-sqlite3)
 npm run test:workers   # Integration tests (builds CJS)
-npm run test:examples  # Run examples
+npm run examples       # Run examples with console output
 npm run lint           # Run ESLint
 ```
 
 ### Running a single test file
 
 ```bash
-npx jest tests/unit/CommandBus.test.ts
+npm t tests/unit/CommandBus.test.ts
 ```
 
 ## Browser bundle

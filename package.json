@@ -1,10 +1,11 @@
 {
   "name": "node-cqrs",
   "version": "1.0.0-rc.35",
-  "description": "Basic ES6 backbone for CQRS app development",
+  "description": "Infrastructure-agnostic building blocks for CQRS/ES",
   "type": "module",
   "keywords": [
     "cqrs",
+    "ddd",
     "eventsourcing"
   ],
   "repository": {
@@ -58,13 +59,15 @@
   },
   "scripts": {
     "cleanup": "rm -rf ./dist ./types ./coverage",
-    "test": "jest tests/unit examples/user-domain/cjs/tests",
-    "test:examples": "bash scripts/test-examples.sh",
+    "test": "jest",
+    "examples": "bash scripts/test-examples.sh",
+    "pretest:examples": "npm run build:cjs",
+    "test:examples": "jest --roots='<rootDir>/examples'",
     "test:coverage": "npm t -- --collect-coverage",
-    "test:rabbitmq": "jest --verbose tests/integration/rabbitmq",
-    "test:sqlite": "jest --verbose tests/integration/sqlite",
+    "test:rabbitmq": "jest --verbose --roots='<rootDir>/tests/integration/rabbitmq'",
+    "test:sqlite": "jest --verbose --roots='<rootDir>/tests/integration/sqlite'",
     "pretest:workers": "npm run build:cjs",
-    "test:workers": "jest --verbose tests/integration/workers",
+    "test:workers": "jest --verbose --roots='<rootDir>/tests/integration/workers'",
     "changelog": "conventional-changelog -n ./scripts/changelog/index.cjs -r 0 > CHANGELOG.md",
     "build:cjs": "tsc -p ./tsconfig.cjs.json && cp ./scripts/etc/cjs-package.json ./dist/cjs/package.json",
     "build:esm": "tsc -p ./tsconfig.esm.json",

@@ -27,6 +27,28 @@ This library handles the "boring but hard" parts required in distributed environ
 
 Built around ES6/TypeScript classes and dependency injection - swap implementations without patching the library.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Installation](#installation)
+- [ContainerBuilder](#containerbuilder)
+- [Commands](#commands)
+- [Aggregates (write model)](#aggregates-write-model)
+  - [AbstractAggregate](#abstractaggregate)
+  - [Aggregate State](#aggregate-state)
+  - [External Dependencies](#external-dependencies)
+- [Projections and Views (read model)](#projections-and-views-read-model)
+  - [AbstractProjection](#abstractprojection)
+  - [View restoring on start](#view-restoring-on-start)
+  - [Accessing views](#accessing-views)
+- [Sagas](#sagas)
+- [Infrastructure modules](#infrastructure-modules)
+  - [In-memory](#in-memory)
+  - [SQLite](#sqlite)
+  - [RabbitMQ](#rabbitmq)
+  - [Workers](#workers)
+- [Examples](#examples)
+
 
 ## Overview
 
@@ -86,16 +108,14 @@ Optional peer dependencies:
 Wire buses, the event store, and your domain components with dependency injection:
 
 ```ts
-const builder = new ContainerBuilder<MyDiContainer>();
+const builder = new ContainerBuilder();
 
-// auto-resolved as eventStorageReader, eventStorageWriter, and identifierProvider
-builder.register(InMemoryEventStorage);
-
+builder.register(InMemoryEventStorage); // implements IEventStorageReader, IEventStorageWriter, and IIdentifierProvider
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'usersView');
 builder.registerSaga(WelcomeEmailSaga);
 
-const { commandBus, usersView } = builder.container();
+const { commandBus, eventStore, usersView } = builder.container();
 ```
 
 <details>
@@ -274,17 +294,17 @@ For persistent views and safe restarts, implement [IViewLocker](src/interfaces/I
 ### Accessing views
 
 ```ts
-interface MyDiContainer extends IContainer {
+interface IMyContainer extends IContainer { // optional interface for container typing
 	usersView: UsersView;
 }
 
-const builder = new ContainerBuilder<MyDiContainer>();
+const builder = new ContainerBuilder<IMyContainer>();
 builder.registerProjection(UsersProjection, 'usersView');
 
 const { usersView } = builder.container();
 ```
 
-For projections that manage multiple views:
+For projections that manage and need to expose multiple views:
 
 ```ts
 builder.registerProjection(UsersProjection).as('usersProjection');
