@@ -1,21 +1,17 @@
-import {
-	type ICommand,
-	type ICommandBus,
-	type Identifier,
-	type IEvent,
-	type IEventStore,
-	type IMutableState,
-	type ISaga,
-	type ISagaConstructor,
-	type ISagaConstructorParams,
-	isEvent
+import type {
+	ICommand, ICommandBus, Identifier, IEvent, IEventStore, IMutableState, ISaga, ISagaConstructor,
+	ISagaConstructorParams
 } from './interfaces/index.ts';
 import { SagaEventHandler } from './SagaEventHandler.ts';
 import {
 	validateHandlers,
 	getHandler,
 	getClassName,
-	getMessageHandlerNames
+	getMessageHandlerNames,
+	assertDefined,
+	assertString,
+	assertMessage,
+	assertEvent
 } from './utils/index.ts';
 
 /**
@@ -76,10 +72,8 @@ export abstract class AbstractSaga implements ISaga {
 	 * Creates an instance of AbstractSaga
 	 */
 	constructor(options: ISagaConstructorParams) {
-		if (!options)
-			throw new TypeError('options argument required');
-		if (!options.id)
-			throw new TypeError('options.id argument required');
+		assertDefined(options, 'options');
+		assertDefined(options.id, 'options.id');
 		if (options.events)
 			throw new TypeError('options.events argument is deprecated');
 
@@ -91,8 +85,7 @@ export abstract class AbstractSaga implements ISaga {
 
 	/** Modify saga state by applying an event */
 	mutate(event: IEvent): void {
-		if (!isEvent(event))
-			throw new TypeError('event argument must be a valid IEvent');
+		assertEvent(event, 'event');
 
 		if (this.state) {
 			const handler = 'mutate' in this.state ?
@@ -107,8 +100,8 @@ export abstract class AbstractSaga implements ISaga {
 
 	/** Process saga event and return produced commands */
 	async handle(event: IEvent): Promise<ReadonlyArray<ICommand>> {
-		if (!isEvent(event))
-			throw new TypeError('event argument must be a valid IEvent');
+		assertEvent(event, 'event');
+
 		if (this.#handling)
 			throw new Error('Another event is being processed, concurrent handling is not allowed');
 
@@ -134,10 +127,7 @@ export abstract class AbstractSaga implements ISaga {
 	protected enqueue(commandType: string, aggregateId: Identifier): void;
 	protected enqueue<T>(commandType: string, aggregateId: Identifier | undefined, payload: T): void;
 	protected enqueue<T>(commandType: string, aggregateId?: Identifier, payload?: T) {
-		if (typeof commandType !== 'string' || !commandType.length)
-			throw new TypeError('commandType argument must be a non-empty String');
-		if (!['string', 'number', 'undefined'].includes(typeof aggregateId))
-			throw new TypeError('aggregateId argument must be either string, number or undefined');
+		assertString(commandType, 'commandType');
 
 		this.enqueueRaw({
 			aggregateId,
@@ -148,10 +138,7 @@ export abstract class AbstractSaga implements ISaga {
 
 	/** Put a command to the execution queue */
 	protected enqueueRaw(command: ICommand) {
-		if (typeof command !== 'object' || !command)
-			throw new TypeError('command argument must be an Object');
-		if (typeof command.type !== 'string' || !command.type.length)
-			throw new TypeError('command.type argument must be a non-empty String');
+		assertMessage(command, 'command');
 
 		this.#messages.push(command);
 	}

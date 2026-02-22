@@ -1,21 +1,21 @@
-import { getClassName, Lock, MapAssertable } from './utils/index.ts';
+import { assertArray, assertDefined, assertMessage, assertObservable, Lock, MapAssertable } from './utils/index.ts';
 import { ConcurrencyError } from './errors/index.ts';
-import {
-	type AggregateEventsQueryParams,
-	type IAggregate,
-	type IAggregateConstructor,
-	type IAggregateFactory,
-	type ICommand,
-	type ICommandHandler,
-	type IContainer,
-	type Identifier,
-	type IEventSet,
-	type IEventStore,
-	type ILocker,
-	type ILogger,
-	type IObservable,
-	isObservable
+import type {
+	AggregateEventsQueryParams,
+	IAggregate,
+	IAggregateConstructor,
+	IAggregateFactory,
+	ICommand,
+	ICommandHandler,
+	IContainer,
+	Identifier,
+	IEventSet,
+	IEventStore,
+	ILocker,
+	ILogger,
+	IObservable
 } from './interfaces/index.ts';
+
 
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 
@@ -71,13 +71,12 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		restoresFrom?: Readonly<string[]>,
 		retryOnConcurrencyError?: boolean | number | RetryResolver
 	}) {
-		if (!eventStore)
-			throw new TypeError('eventStore argument required');
+		assertDefined(eventStore, 'eventStore');
 
 		this.#eventStore = eventStore;
 		this.#executionLock = executionLocker;
 		this.#logger = logger && 'child' in logger ?
-			logger.child({ service: getClassName(this) }) :
+			logger.child({ service: new.target.name }) :
 			logger;
 
 		if (aggregateType) {
@@ -89,8 +88,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 				AggregateType.retryOnConcurrencyError);
 		}
 		else if (aggregateFactory) {
-			if (!Array.isArray(handles) || !handles.length)
-				throw new TypeError('handles argument must be an non-empty Array');
+			assertArray(handles, 'handles');
 
 			this.#aggregateFactory = aggregateFactory;
 			this.#handles = handles;
@@ -104,10 +102,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 	/** Subscribe to all command types handled by aggregateType */
 	subscribe(commandBus: IObservable) {
-		if (!commandBus)
-			throw new TypeError('commandBus argument required');
-		if (!isObservable(commandBus))
-			throw new TypeError('commandBus argument must implement IObservable interface');
+		assertObservable(commandBus, 'commandBus');
 
 		for (const commandType of this.#handles)
 			commandBus.on(commandType, (cmd: ICommand) => this.execute(cmd));
@@ -115,8 +110,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 	/** Restore aggregate from event store events */
 	async #restoreAggregate(id: Identifier): Promise<TAggregate> {
-		if (!id)
-			throw new TypeError('id argument required');
+		assertDefined(id, 'id');
 
 		const aggregate = this.#aggregateFactory({ id });
 
@@ -148,10 +142,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 	/** Pass a command to corresponding aggregate */
 	async execute(cmd: ICommand): Promise<IEventSet> {
-		if (!cmd)
-			throw new TypeError('cmd argument required');
-		if (!cmd.type)
-			throw new TypeError('cmd.type argument required');
+		assertMessage(cmd, 'cmd');
 
 		const { aggregateId } = cmd;
 

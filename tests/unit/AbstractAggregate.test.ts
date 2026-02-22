@@ -376,7 +376,7 @@ describe('AbstractAggregate', function () {
 			}
 
 			expect(() => (agg as any).restoreSnapshot({ aggregateVersion: 1, type: 'somethingHappened', payload: {} }))
-				.to.throw('snapshotEvent argument must be a valid ISnapshotEvent');
+				.to.throw('snapshotEvent must be a valid ISnapshotEvent');
 
 			expect(() => (agg as any).restoreSnapshot(snapshotEvent)).to.not.throw();
 		});
@@ -398,6 +398,13 @@ describe('AbstractAggregate', function () {
 			(agg as any).restoreSnapshot(snapshotEvent);
 
 			expect(agg).to.have.property('state').that.deep.equals(snapshotEvent.payload);
+		});
+	});
+
+	describe('toString()', () => {
+
+		it('returns human-readable aggregate name', () => {
+			expect(agg.toString()).to.equal('Aggregate 1 (v0)');
 		});
 	});
 });

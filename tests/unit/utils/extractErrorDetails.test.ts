@@ -14,6 +14,19 @@ describe('extractErrorDetails', () => {
 		expect(typeof details.stack === 'string' || details.stack === undefined).toBe(true);
 	});
 
+	it('extracts name from class instances', () => {
+		class MyError {
+			message = 'oops';
+		}
+		const err = new MyError();
+
+		const details = extractErrorDetails(err);
+		expect(details).toMatchObject({
+			name: 'MyError',
+			message: 'oops'
+		});
+	});
+
 	it('extracts message/name/code from plain objects', () => {
 		const err = { name: 'PlainError', message: 'bad', code: 'E_BAD' };
 

@@ -18,7 +18,8 @@ import {
 	validateHandlers,
 	getHandler,
 	subscribe,
-	getMessageHandlerNames
+	getMessageHandlerNames,
+	assertFunction
 } from './utils/index.ts';
 
 export type AbstractProjectionParams<T> = {
@@ -178,10 +179,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 
 	/** Restore view state from not-yet-projected events */
 	protected async _restore(eventStore: IEventStorageReader): Promise<void> {
-		if (!eventStore)
-			throw new TypeError('eventStore argument required');
-		if (typeof eventStore.getEventsByTypes !== 'function')
-			throw new TypeError('eventStore.getEventsByTypes must be a Function');
+		assertFunction(eventStore?.getEventsByTypes, 'eventStore.getEventsByTypes');
 
 		let lastEvent: IEvent | undefined;
 

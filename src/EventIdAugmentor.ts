@@ -5,6 +5,7 @@ import type {
 	IDispatchPipelineProcessor,
 	IIdentifierProvider
 } from './interfaces/index.ts';
+import { assertDefined } from './utils/assert.ts';
 
 /**
  * Dispatch-pipeline processor that ensures each event has an `id`.
@@ -17,8 +18,7 @@ export class EventIdAugmentor implements IDispatchPipelineProcessor {
 	#identifierProvider: IIdentifierProvider;
 
 	constructor({ identifierProvider }: Pick<IContainer, 'identifierProvider'>) {
-		if (!identifierProvider)
-			throw new TypeError('identifierProvider argument required');
+		assertDefined(identifierProvider, 'identifierProvider');
 
 		this.#identifierProvider = identifierProvider;
 	}

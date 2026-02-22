@@ -149,7 +149,7 @@ describe('InMemoryEventStorage', () => {
 			}
 			catch (err) {
 				expect(err).to.be.instanceOf(TypeError);
-				expect(err.message).to.equal('options.afterEvent.id is required');
+				expect(err.message).to.equal('options.afterEvent.id must be a non-empty String');
 			}
 		});
 	});

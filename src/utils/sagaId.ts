@@ -1,17 +1,15 @@
 import type { Identifier } from '../interfaces/Identifier.ts';
+import { assertString } from './assert.ts';
 
 export const makeSagaId = (sagaDescriptor: string, originEventId: string): string => {
-	if (typeof sagaDescriptor !== 'string' || !sagaDescriptor.length)
-		throw new TypeError('sagaDescriptor argument must be a non-empty String');
-	if (typeof originEventId !== 'string' || !originEventId.length)
-		throw new TypeError('originEventId argument must be a non-empty String');
+	assertString(sagaDescriptor, 'sagaDescriptor');
+	assertString(originEventId, 'originEventId');
 
 	return `${sagaDescriptor}:${originEventId}`;
 };
 
 export const parseSagaId = (sagaId: Identifier): { sagaDescriptor: string, originEventId: string } => {
-	if (typeof sagaId !== 'string' || !sagaId.length)
-		throw new TypeError('sagaId argument must be a non-empty String');
+	assertString(sagaId, 'sagaId');
 
 	// Use lastIndexOf so sagaDescriptor can contain ':' safely.
 	const separatorOffset = sagaId.lastIndexOf(':');

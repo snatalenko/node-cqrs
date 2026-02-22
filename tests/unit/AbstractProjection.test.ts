@@ -54,7 +54,8 @@ describe('AbstractProjection', function () {
 				getEventsByTypes() {
 					return [];
 				},
-				on() { }
+				on() { },
+				off() { }
 			};
 			sinon.spy(observable, 'on');
 		});

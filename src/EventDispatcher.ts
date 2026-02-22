@@ -8,6 +8,7 @@ import {
 } from './interfaces/index.ts';
 import { InMemoryMessageBus } from './in-memory/index.ts';
 import { type EventBatchEnvelope, EventDispatchPipeline } from './EventDispatchPipeline.ts';
+import { assertDefined, assertArray } from './utils/index.ts';
 
 export class EventDispatcher implements IEventDispatcher {
 
@@ -64,8 +65,7 @@ export class EventDispatcher implements IEventDispatcher {
 
 	/** Add or create the default pipeline processors */
 	addPipelineProcessors(eventDispatchPipeline: IDispatchPipelineProcessor[], pipelineName?: string) {
-		if (!Array.isArray(eventDispatchPipeline))
-			throw new TypeError('eventDispatchPipeline argument must be an Array');
+		assertArray(eventDispatchPipeline, 'eventDispatchPipeline');
 
 		for (const processor of eventDispatchPipeline)
 			this.addPipelineProcessor(processor, pipelineName);
@@ -82,8 +82,7 @@ export class EventDispatcher implements IEventDispatcher {
 
 	/** Create a named pipeline with processors and optional concurrency limit */
 	addPipeline(name: string, processors: IDispatchPipelineProcessor[] = [], options?: { concurrentLimit?: number }) {
-		if (!name)
-			throw new TypeError('pipeline name required');
+		assertDefined(name, 'pipeline name');
 		if (this.#pipelines.has(name))
 			throw new Error(`pipeline "${name}" already exists`);
 

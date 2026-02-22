@@ -120,7 +120,7 @@ describe('SagaEventHandler', function () {
 		}
 
 		expect(thrown).to.be.instanceOf(TypeError);
-		expect(thrown).to.have.property('message', 'event.id argument required');
+		expect(thrown).to.have.property('message', 'event.id must be a non-empty String');
 	});
 
 	it('does not mutate starter event when saga origin is absent', async () => {
@@ -215,7 +215,7 @@ describe('SagaEventHandler', function () {
 		}
 
 		expect(thrown).to.be.instanceOf(TypeError);
-		expect(thrown).to.have.property('message', 'options.sagaDescriptor argument required when sagaFactory is provided');
+		expect(thrown).to.have.property('message', 'options.sagaDescriptor must be a non-empty String');
 
 		const factoryHandler = new SagaEventHandler({
 			sagaFactory: () => ({ mutate: () => undefined, handle: () => [] } as any),

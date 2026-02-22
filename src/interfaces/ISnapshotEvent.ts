@@ -3,9 +3,11 @@ import { type IEvent, isEvent } from './IEvent.ts';
 export const SNAPSHOT_EVENT_TYPE: 'snapshot' = 'snapshot';
 
 export interface ISnapshotEvent<TState = any> extends IEvent<TState> {
-	type: typeof SNAPSHOT_EVENT_TYPE
+	type: typeof SNAPSHOT_EVENT_TYPE;
+	payload: TState;
 }
 
 export const isSnapshotEvent = (event?: unknown): event is ISnapshotEvent =>
 	isEvent(event)
-	&& event.type === SNAPSHOT_EVENT_TYPE;
+	&& event.type === SNAPSHOT_EVENT_TYPE
+	&& !!event.payload;

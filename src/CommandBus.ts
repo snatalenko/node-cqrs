@@ -9,6 +9,7 @@ import type {
 	IMessageBus,
 	IMessageHandler
 } from './interfaces/index.ts';
+import { assertString, assertFunction, assertMessage, assertObject } from './utils/index.ts';
 
 export class CommandBus implements ICommandBus {
 
@@ -30,10 +31,8 @@ export class CommandBus implements ICommandBus {
 	 * Set up a command handler
 	 */
 	on(commandType: string, handler: IMessageHandler) {
-		if (typeof commandType !== 'string' || !commandType.length)
-			throw new TypeError('commandType argument must be a non-empty String');
-		if (typeof handler !== 'function')
-			throw new TypeError('handler argument must be a Function');
+		assertString(commandType, 'commandType');
+		assertFunction(handler, 'handler');
 
 		return this.#bus.on(commandType, handler);
 	}
@@ -42,10 +41,8 @@ export class CommandBus implements ICommandBus {
 	 * Remove previously installed command handler
 	 */
 	off(commandType: string, handler: IMessageHandler) {
-		if (typeof commandType !== 'string' || !commandType.length)
-			throw new TypeError('commandType argument must be a non-empty String');
-		if (typeof handler !== 'function')
-			throw new TypeError('handler argument must be a Function');
+		assertString(commandType, 'commandType');
+		assertFunction(handler, 'handler');
 
 		return this.#bus.off(commandType, handler);
 	}
@@ -83,10 +80,9 @@ export class CommandBus implements ICommandBus {
 		} | object,
 		payload?: TPayload
 	): Promise<IEventSet> {
-		if (typeof type !== 'string' || !type.length)
-			throw new TypeError('type argument must be a non-empty String');
-		if (options !== undefined && (options === null || typeof options !== 'object'))
-			throw new TypeError('options argument, when defined, must be an Object');
+		assertString(type, 'type');
+		if (options !== undefined)
+			assertObject(options, 'options');
 
 		// obsolete. left for backward compatibility
 		const isOptionsObject = !!options && ('context' in options || 'payload' in options);
@@ -105,10 +101,7 @@ export class CommandBus implements ICommandBus {
 	 * Send a command for execution
 	 */
 	sendRaw<TPayload>(command: ICommand<TPayload>): Promise<IEventSet> {
-		if (!command)
-			throw new TypeError('command argument required');
-		if (!command.type)
-			throw new TypeError('command.type argument required');
+		assertMessage(command, 'command');
 
 		this.#logger?.debug(`sending '${command.type}' command${command.aggregateId ? ` to ${command.aggregateId}` : ''}...`);
 

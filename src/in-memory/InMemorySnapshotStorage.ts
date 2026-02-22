@@ -9,6 +9,7 @@ import {
 	isSnapshotEvent
 } from '../interfaces/index.ts';
 import * as Event from '../Event.ts';
+import { assertDefined } from '../utils/assert.ts';
 
 /**
  * In-memory storage for aggregate snapshots.
@@ -36,8 +37,7 @@ export class InMemorySnapshotStorage implements IAggregateSnapshotStorage, IDisp
 	 * Save new aggregate snapshot
 	 */
 	async saveAggregateSnapshot(snapshotEvent: ISnapshotEvent) {
-		if (!snapshotEvent.aggregateId)
-			throw new TypeError('event.aggregateId is required');
+		assertDefined(snapshotEvent.aggregateId, 'snapshotEvent.aggregateId');
 
 		this.#logger?.debug(`Persisting ${Event.describe(snapshotEvent)}`);
 
@@ -48,8 +48,7 @@ export class InMemorySnapshotStorage implements IAggregateSnapshotStorage, IDisp
 	 * Delete aggregate snapshot
 	 */
 	deleteAggregateSnapshot<TState>(snapshotEvent: ISnapshotEvent<TState>): Promise<void> | void {
-		if (!snapshotEvent.aggregateId)
-			throw new TypeError('snapshotEvent.aggregateId argument required');
+		assertDefined(snapshotEvent.aggregateId, 'snapshotEvent.aggregateId');
 
 		this.#logger?.debug(`Removing ${Event.describe(snapshotEvent)}`);
 

@@ -11,7 +11,7 @@ import type {
 	DispatchPipelineBatch,
 	AggregateEventsQueryParams
 } from '../interfaces/index.ts';
-import { parseSagaId } from '../utils/index.ts';
+import { assertString, parseSagaId } from '../utils/index.ts';
 import { nextCycle } from './utils/index.ts';
 import { ConcurrencyError } from '../errors/index.ts';
 
@@ -83,8 +83,7 @@ export class InMemoryEventStorage implements
 	async* getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
 		await nextCycle();
 
-		if (typeof beforeEvent?.id !== 'string' || !beforeEvent.id.length)
-			throw new TypeError('beforeEvent.id is required');
+		assertString(beforeEvent?.id, 'beforeEvent.id');
 
 		const { sagaDescriptor, originEventId } = parseSagaId(sagaId);
 		if (beforeEvent.sagaOrigins?.[sagaDescriptor] !== originEventId)
@@ -111,8 +110,8 @@ export class InMemoryEventStorage implements
 		await nextCycle();
 
 		const lastEventId = options?.afterEvent?.id;
-		if (options?.afterEvent && !lastEventId)
-			throw new TypeError('options.afterEvent.id is required');
+		if (options?.afterEvent)
+			assertString(options.afterEvent.id, 'options.afterEvent.id');
 
 		let offsetFound = !lastEventId;
 		for (const event of this.#events) {

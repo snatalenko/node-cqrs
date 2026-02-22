@@ -2,6 +2,7 @@ import type { Statement, Database } from 'better-sqlite3';
 import { guid } from './utils/index.ts';
 import type { IContainer, IObjectStorage } from '../interfaces/index.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
+import { assertFunction, assertString } from '../utils/assert.ts';
 
 export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor implements IObjectStorage<TRecord> {
 
@@ -54,8 +55,7 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 	}
 
 	async get(id: string): Promise<TRecord | undefined> {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
+		assertString(id, 'id');
 
 		await this.assertConnection();
 
@@ -67,8 +67,7 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 	}
 
 	getSync(id: string): TRecord | undefined {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
+		assertString(id, 'id');
 
 		const r = this.#getQuery.get(guid(id));
 		if (!r)
@@ -78,8 +77,7 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 	}
 
 	async create(id: string, data: TRecord) {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
+		assertString(id, 'id');
 
 		await this.assertConnection();
 
@@ -93,10 +91,8 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 	}
 
 	async update(id: string, update: (r: TRecord) => TRecord) {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
-		if (typeof update !== 'function')
-			throw new TypeError('update argument must be a Function');
+		assertString(id, 'id');
+		assertFunction(update, 'update');
 
 		await this.assertConnection();
 
@@ -127,10 +123,8 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 	}
 
 	async updateEnforcingNew(id: string, update: (r?: TRecord) => TRecord) {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
-		if (typeof update !== 'function')
-			throw new TypeError('update argument must be a Function');
+		assertString(id, 'id');
+		assertFunction(update, 'update');
 
 		await this.assertConnection();
 
@@ -142,8 +136,7 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 	}
 
 	async delete(id: string): Promise<boolean> {
-		if (typeof id !== 'string' || !id.length)
-			throw new TypeError('id argument must be a non-empty String');
+		assertString(id, 'id');
 
 		await this.assertConnection();
 

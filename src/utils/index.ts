@@ -1,3 +1,4 @@
+export * from './assert.ts';
 export * from './clone.ts';
 export * from './Deferred.ts';
 export * from './extractErrorDetails.ts';
@@ -7,7 +8,6 @@ export * from './getMessageHandlerNames.ts';
 export * from './isClass.ts';
 export * from './Lock.ts';
 export * from './MapAssertable.ts';
-export * from './notEmpty.ts';
 export * from './setupOneTimeEmitterSubscription.ts';
 export * from './sagaId.ts';
 export * from './subscribe.ts';

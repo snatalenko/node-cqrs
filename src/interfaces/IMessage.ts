@@ -33,4 +33,5 @@ export interface IMessage<TPayload = any> {
 export const isMessage = (obj: unknown): obj is IMessage =>
 	isObject(obj)
 	&& 'type' in obj
-	&& typeof obj.type === 'string';
+	&& typeof obj.type === 'string'
+	&& obj.type.length > 0;

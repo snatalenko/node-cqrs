@@ -1,6 +1,6 @@
 import type { Database, Statement } from 'better-sqlite3';
 import type { IContainer, ILogger, IViewLocker } from '../interfaces/index.ts';
-import { Deferred } from '../utils/index.ts';
+import { assertString, Deferred } from '../utils/index.ts';
 import { promisify } from 'util';
 import { viewLockTableInit } from './queries/index.ts';
 import type { SqliteProjectionDataParams } from './SqliteProjectionDataParams.ts';
@@ -44,10 +44,8 @@ export class SqliteViewLocker extends AbstractSqliteAccessor implements IViewLoc
 		& SqliteViewLockerParams) {
 		super(o);
 
-		if (!o.projectionName)
-			throw new TypeError('projectionName argument required');
-		if (!o.schemaVersion)
-			throw new TypeError('schemaVersion argument required');
+		assertString(o?.projectionName, 'o.projectionName');
+		assertString(o?.schemaVersion, 'o.schemaVersion');
 
 		this.#projectionName = o.projectionName;
 		this.#schemaVersion = o.schemaVersion;

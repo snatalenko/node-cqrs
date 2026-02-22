@@ -6,6 +6,12 @@ import type {
 	IObservable,
 	IObservableQueueProvider
 } from '../interfaces/index.ts';
+import {
+	assertEvent,
+	assertFunction,
+	assertMessage,
+	assertString
+} from '../utils/assert.ts';
 
 /**
  * Default implementation of the message bus.
@@ -30,12 +36,8 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 	 * Subscribe to message type
 	 */
 	on(messageType: string, handler: IMessageHandler) {
-		if (typeof messageType !== 'string' || !messageType.length)
-			throw new TypeError('messageType argument must be a non-empty String');
-		if (typeof handler !== 'function')
-			throw new TypeError('handler argument must be a Function');
-		if (arguments.length !== 2)
-			throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
+		assertString(messageType, 'messageType');
+		assertFunction(handler, 'handler');
 
 		// Events published to a named queue must be consumed only once.
 		// For example, for sending a welcome email, NotificationReceptor will subscribe to "notifications:userCreated".
@@ -67,12 +69,8 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 	 * Remove subscription
 	 */
 	off(messageType: string, handler: IMessageHandler) {
-		if (typeof messageType !== 'string' || !messageType.length)
-			throw new TypeError('messageType argument must be a non-empty String');
-		if (typeof handler !== 'function')
-			throw new TypeError('handler argument must be a Function');
-		if (arguments.length !== 2)
-			throw new TypeError(`2 arguments are expected, but ${arguments.length} received`);
+		assertString(messageType, 'messageType');
+		assertFunction(handler, 'handler');
 		if (!this.handlers.has(messageType))
 			throw new Error(`No ${messageType} subscribers found`);
 
@@ -83,10 +81,7 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 	 * Send command to exactly 1 command handler
 	 */
 	async send(command: ICommand): Promise<any> {
-		if (typeof command !== 'object' || !command)
-			throw new TypeError('command argument must be an Object');
-		if (typeof command.type !== 'string' || !command.type.length)
-			throw new TypeError('command.type argument must be a non-empty String');
+		assertMessage(command, 'command');
 
 		const handlers = this.handlers.get(command.type);
 		if (!handlers || !handlers.size)
@@ -103,10 +98,7 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 	 * Publish event to all subscribers (if any)
 	 */
 	async publish(event: IEvent, meta?: Record<string, any>): Promise<unknown[]> {
-		if (typeof event !== 'object' || !event)
-			throw new TypeError('event argument must be an Object');
-		if (typeof event.type !== 'string' || !event.type.length)
-			throw new TypeError('event.type argument must be a non-empty String');
+		assertEvent(event, 'event');
 
 		const promises: (unknown | Promise<unknown>)[] = [];
 

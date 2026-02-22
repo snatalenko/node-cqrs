@@ -41,8 +41,8 @@ describe('CommandBus', function () {
 
 		it('briefly validates parameters', () => {
 
-			expect(() => bus.sendRaw()).to.throw('command argument required');
-			expect(() => bus.sendRaw({})).to.throw('command.type argument required');
+			expect(() => bus.sendRaw()).to.throw('command must be a valid IMessage');
+			expect(() => bus.sendRaw({})).to.throw('command must be a valid IMessage');
 		});
 
 		it('passes a formatted command to messageBus', () => {
@@ -69,7 +69,7 @@ describe('CommandBus', function () {
 
 		it('validates parameters', () => {
 
-			expect(() => bus.send(undefined)).to.throw('type argument must be a non-empty String');
+			expect(() => bus.send(undefined)).to.throw('type must be a non-empty String');
 		});
 
 		it('formats a command and passes it to sendRaw', async () => {

@@ -2,6 +2,7 @@ import { AbstractSqliteView } from './AbstractSqliteView.ts';
 import type { IObjectStorage, IEventLocker } from '../interfaces/index.ts';
 import { SqliteObjectStorage } from './SqliteObjectStorage.ts';
 import type { Database } from 'better-sqlite3';
+import { assertString } from '../utils/assert.ts';
 
 /**
  * SQLite-backed object view with restore locking and last-processed-event tracking
@@ -13,10 +14,8 @@ export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IOb
 	constructor(options: ConstructorParameters<typeof AbstractSqliteView>[0] & {
 		tableNamePrefix: string
 	}) {
-		if (typeof options.tableNamePrefix !== 'string' || !options.tableNamePrefix.length)
-			throw new TypeError('tableNamePrefix argument must be a non-empty String');
-		if (typeof options.schemaVersion !== 'string' || !options.schemaVersion.length)
-			throw new TypeError('schemaVersion argument must be a non-empty String');
+		assertString(options?.tableNamePrefix, 'options.tableNamePrefix');
+		assertString(options?.schemaVersion, 'options.schemaVersion');
 
 		super(options);
 

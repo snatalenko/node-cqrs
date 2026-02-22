@@ -16,20 +16,20 @@ describe('InMemorySnapshotStorage', () => {
 
 	it('throws on saving snapshot without aggregateId', async () => {
 		const storage = new InMemorySnapshotStorage();
-		await expect(storage.saveAggregateSnapshot({ type: 'snapshot' } as any)).rejects.toThrow('event.aggregateId is required');
+		await expect(storage.saveAggregateSnapshot({ type: 'snapshot' } as any)).rejects.toThrow('snapshotEvent.aggregateId is required');
 	});
 
 	it('throws on deleting snapshot without aggregateId', async () => {
 		const storage = new InMemorySnapshotStorage();
-		expect(() => storage.deleteAggregateSnapshot({ type: 'snapshot' } as any)).toThrow('snapshotEvent.aggregateId argument required');
+		expect(() => storage.deleteAggregateSnapshot({ type: 'snapshot' } as any)).toThrow('snapshotEvent.aggregateId is required');
 	});
 
 	it('process() persists snapshot events and filters them out from the batch', async () => {
 		const storage = new InMemorySnapshotStorage();
 
-		const snapshot1 = { type: 'snapshot', aggregateId: 'a1', aggregateVersion: 1 };
+		const snapshot1 = { type: 'snapshot', aggregateId: 'a1', aggregateVersion: 1, payload: {} };
 		const event = { type: 'somethingHappened', aggregateId: 'a1', aggregateVersion: 2 };
-		const snapshot2 = { type: 'snapshot', aggregateId: 'a2', aggregateVersion: 1 };
+		const snapshot2 = { type: 'snapshot', aggregateId: 'a2', aggregateVersion: 1, payload: {} };
 
 		const batch = [
 			{ event: snapshot1, origin: 'internal' },
@@ -49,7 +49,7 @@ describe('InMemorySnapshotStorage', () => {
 	it('revert() removes snapshots for snapshot events', async () => {
 		const storage = new InMemorySnapshotStorage();
 
-		const snapshot = { type: 'snapshot', aggregateId: 'a1', aggregateVersion: 1 };
+		const snapshot = { type: 'snapshot', aggregateId: 'a1', aggregateVersion: 1, payload: {} };
 		await storage.saveAggregateSnapshot(snapshot as any);
 		expect(await storage.getAggregateSnapshot('a1')).toBeDefined();
 

@@ -39,6 +39,10 @@ describe('AbstractSaga', function () {
 
 			expect(() => s = new SagaWithoutHandler({ id: 1 })).to.throw('\'somethingHappened\' handler is not defined or not a function');
 		});
+
+		it('throws when events option is provided', () => {
+			expect(() => new Saga({ id: 1, events: [] })).to.throw('options.events argument is deprecated');
+		});
 	});
 
 	describe('id', () => {
@@ -154,10 +158,12 @@ describe('AbstractSaga', function () {
 
 				constructor(o: any) {
 					super(o);
-					this.state = { seen: 0,
+					this.state = {
+						seen: 0,
 						somethingHappened() {
 							this.seen += 1;
-						} };
+						}
+					};
 				}
 
 				somethingHappened() {
@@ -212,6 +218,12 @@ describe('AbstractSaga', function () {
 			// after first finishes, subsequent handle should work
 			const commands2 = await saga.handle({ type: 'somethingHappened' } as any);
 			expect(commands2).to.be.an('Array');
+		});
+	});
+
+	describe('toString()', () => {
+		it('returns human-readable saga name', () => {
+			expect(s.toString()).to.equal('Saga 1 (v0)');
 		});
 	});
 });

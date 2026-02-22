@@ -16,10 +16,12 @@ import type {
 
 import {
 	subscribe,
-	getClassName,
 	Lock,
 	makeSagaId,
-	MapAssertable
+	MapAssertable,
+	assertDefined,
+	assertString,
+	assertOptionalArray
 } from './utils/index.ts';
 
 /**
@@ -49,19 +51,16 @@ export class SagaEventHandler implements IEventReceptor {
 		startsWith?: string[],
 		handles?: string[]
 	}) {
-		if (!options)
-			throw new TypeError('options argument required');
-		if (!options.eventStore)
-			throw new TypeError('options.eventStore argument required');
-		if (!options.commandBus)
-			throw new TypeError('options.commandBus argument required');
+		assertDefined(options, 'options');
+		assertDefined(options.eventStore, 'options.eventStore');
+		assertDefined(options.commandBus, 'options.commandBus');
 
 		this.#eventStore = options.eventStore;
 		this.#commandBus = options.commandBus;
 		this.#queueName = options.queueName;
 		this.#executionLock = options.executionLocker ?? new Lock();
 		this.#logger = options.logger && 'child' in options.logger ?
-			options.logger.child({ service: getClassName(this) }) :
+			options.logger.child({ service: new.target.name }) :
 			options.logger;
 
 		if (options.sagaType) {
@@ -73,15 +72,13 @@ export class SagaEventHandler implements IEventReceptor {
 			this.#sagaDescriptor = SagaType.sagaDescriptor ?? SagaType.name;
 		}
 		else if (options.sagaFactory) {
-			if (!Array.isArray(options.handles))
-				throw new TypeError('options.handles argument must be an Array');
+			assertOptionalArray(options.handles, 'options.handles');
+			assertString(options.sagaDescriptor, 'options.sagaDescriptor');
 
 			this.#sagaFactory = options.sagaFactory;
 			this.#startsWith = options.startsWith;
 			this.#handles = options.handles;
-			this.#sagaDescriptor = options.sagaDescriptor ?? options.queueName ?? '';
-			if (!this.#sagaDescriptor)
-				throw new TypeError('options.sagaDescriptor argument required when sagaFactory is provided');
+			this.#sagaDescriptor = options.sagaDescriptor;
 		}
 		else {
 			throw new Error('Either sagaType or sagaFactory is required');
@@ -99,12 +96,9 @@ export class SagaEventHandler implements IEventReceptor {
 
 	/** Handle saga event */
 	async handle(event: IEvent): Promise<void> {
-		if (!event)
-			throw new TypeError('event argument required');
-		if (!event.type)
-			throw new TypeError('event.type argument required');
-		if (typeof event.id !== 'string' || !event.id.length)
-			throw new TypeError('event.id argument required');
+		assertDefined(event, 'event');
+		assertDefined(event.type, 'event.type');
+		assertString(event.id, 'event.id');
 
 		const sagaOriginFromEvent = event.sagaOrigins?.[this.#sagaDescriptor];
 		const isStarterEvent = this.#startsWith?.includes(event.type) ?? !sagaOriginFromEvent;

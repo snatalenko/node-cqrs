@@ -32,7 +32,7 @@ describe('EventIdAugmentor', function () {
 		}
 
 		expect(thrown).to.be.instanceOf(TypeError);
-		expect(thrown).to.have.property('message', 'identifierProvider argument required');
+		expect(thrown).to.have.property('message', 'identifierProvider is required');
 	});
 });
 

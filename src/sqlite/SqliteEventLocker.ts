@@ -5,6 +5,7 @@ import { viewLockTableInit, eventLockTableInit } from './queries/index.ts';
 import type { SqliteViewLockerParams } from './SqliteViewLocker.ts';
 import type { SqliteProjectionDataParams } from './SqliteProjectionDataParams.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
+import { assertString } from '../utils/assert.ts';
 
 export type SqliteEventLockerParams =
 	SqliteProjectionDataParams
@@ -43,10 +44,8 @@ export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventL
 	constructor(o: Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory'> & SqliteEventLockerParams) {
 		super(o);
 
-		if (!o.projectionName)
-			throw new TypeError('projectionName argument required');
-		if (!o.schemaVersion)
-			throw new TypeError('schemaVersion argument required');
+		assertString(o?.projectionName, 'o.projectionName');
+		assertString(o?.schemaVersion, 'o.schemaVersion');
 
 		this.#projectionName = o.projectionName;
 		this.#schemaVersion = o.schemaVersion;

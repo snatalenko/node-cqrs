@@ -1,4 +1,5 @@
 import type { IEvent, ILogger, IObservable } from '../interfaces/index.ts';
+import { assertArray, assertFunction, assertObservable } from './assert.ts';
 
 /**
  * Create one-time eventEmitter subscription for one or multiple events that match a filter
@@ -17,14 +18,12 @@ export function setupOneTimeEmitterSubscription(
 	handler?: (e: IEvent) => void,
 	logger?: ILogger
 ): Promise<IEvent> {
-	if (typeof emitter !== 'object' || !emitter)
-		throw new TypeError('emitter argument must be an Object');
-	if (!Array.isArray(messageTypes) || messageTypes.some(m => !m || typeof m !== 'string'))
-		throw new TypeError('messageTypes argument must be an Array of non-empty Strings');
-	if (handler && typeof handler !== 'function')
-		throw new TypeError('handler argument, when specified, must be a Function');
-	if (filter && typeof filter !== 'function')
-		throw new TypeError('filter argument, when specified, must be a Function');
+	assertObservable(emitter, 'emitter');
+	assertArray(messageTypes, 'messageTypes');
+	if (handler)
+		assertFunction(handler, 'handler');
+	if (filter)
+		assertFunction(filter, 'filter');
 
 	return new Promise(resolve => {
 

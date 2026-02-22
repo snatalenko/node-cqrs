@@ -1,4 +1,4 @@
-import { Lock } from '../../src/utils';
+import { Lock, LockLease } from '../../src/utils';
 import { promisify } from 'util';
 const delay = promisify(setTimeout);
 
@@ -20,6 +20,23 @@ describe('Lock', () => {
 		it('acquires lock if it is not taken by another process', async () => {
 			// Check if acquire() resolves quickly
 			await expect(isResolved(lock.acquire())).resolves.toBe(true);
+		});
+
+		it('returns a LockLease with release() and [Symbol.dispose]()', async () => {
+			const lease = await lock.acquire();
+
+			expect(lease).toBeInstanceOf(LockLease);
+			expect(lease).toHaveProperty('release');
+			expect(lease[Symbol.dispose]).toBeInstanceOf(Function);
+
+			expect(lock.isLocked()).toBe(true);
+			lease.release();
+			expect(lock.isLocked()).toBe(false);
+
+			const lease2 = await lock.acquire();
+			expect(lock.isLocked()).toBe(true);
+			lease2[Symbol.dispose]();
+			expect(lock.isLocked()).toBe(false);
 		});
 
 		it('waits until previously acquired lock is released', async () => {

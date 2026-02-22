@@ -17,13 +17,12 @@ import {
 	type IContainer,
 	type AggregateEventsQueryParams,
 	isIdentifierProvider,
-	isEventBus,
-	isEventStorageReader,
-	isEventSet,
 	isObservableQueueProvider
 } from './interfaces/index.ts';
 import {
-	getClassName,
+	assertArray,
+	assertDefined,
+	assertObservable,
 	parseSagaId,
 	setupOneTimeEmitterSubscription
 } from './utils/index.ts';
@@ -57,14 +56,9 @@ export class EventStore implements IEventStore {
 		'eventDispatchPipeline' |
 		'eventDispatchPipelines'
 	>) {
-		if (!eventStorageReader)
-			throw new TypeError('eventStorageReader argument required');
-		if (!identifierProvider)
-			throw new TypeError('identifierProvider argument required');
-		if (!isEventStorageReader(eventStorageReader))
-			throw new TypeError('storage does not implement IEventStorage interface');
-		if (eventBus && !isEventBus(eventBus))
-			throw new TypeError('eventBus does not implement IMessageBus interface');
+		assertDefined(eventStorageReader, 'eventStorageReader');
+		assertDefined(identifierProvider, 'identifierProvider');
+		assertObservable(eventBus, 'eventBus');
 
 		this.#eventStorageReader = eventStorageReader;
 		this.#identifierProvider = identifierProvider;
@@ -76,7 +70,7 @@ export class EventStore implements IEventStore {
 		});
 		this.eventBus = eventBus ?? this.#eventDispatcher.eventBus;
 		this.#logger = logger && 'child' in logger ?
-			logger.child({ service: getClassName(this) }) :
+			logger.child({ service: new.target.name }) :
 			logger;
 	}
 
@@ -90,8 +84,7 @@ export class EventStore implements IEventStore {
 	}
 
 	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
-		if (!Array.isArray(eventTypes))
-			throw new TypeError('eventTypes argument must be an Array');
+		assertArray(eventTypes, 'eventTypes');
 
 		this.#logger?.debug(`retrieving ${eventTypes.join(', ')} events...`);
 
@@ -104,8 +97,7 @@ export class EventStore implements IEventStore {
 
 	/** Retrieve all events of specific Aggregate */
 	async* getAggregateEvents(aggregateId: Identifier, options?: AggregateEventsQueryParams): IEventStream {
-		if (!aggregateId)
-			throw new TypeError('aggregateId argument required');
+		assertDefined(aggregateId, 'aggregateId');
 
 		this.#logger?.debug(`retrieving event stream for aggregate ${aggregateId}...`);
 
@@ -129,14 +121,8 @@ export class EventStore implements IEventStore {
 
 	/** Retrieve events of specific Saga */
 	async* getSagaEvents(sagaId: Identifier, filter: EventQueryBefore) {
-		if (!sagaId)
-			throw new TypeError('sagaId argument required');
-		if (!filter)
-			throw new TypeError('filter argument required');
-		if (!filter.beforeEvent)
-			throw new TypeError('filter.beforeEvent argument required');
-		if (typeof filter.beforeEvent.id !== 'string' || !filter.beforeEvent.id.length)
-			throw new TypeError('filter.beforeEvent.id argument required');
+		assertDefined(sagaId, 'sagaId');
+		assertDefined(filter?.beforeEvent?.id, 'filter.beforeEvent.id');
 
 		const { sagaDescriptor, originEventId } = parseSagaId(sagaId);
 		if (filter.beforeEvent.sagaOrigins?.[sagaDescriptor] !== originEventId)
@@ -158,8 +144,7 @@ export class EventStore implements IEventStore {
 	 * @returns Signed and committed events
 	 */
 	async dispatch(events: IEventSet): Promise<IEventSet> {
-		if (!isEventSet(events) || events.length === 0)
-			throw new TypeError('dispatch requires a non-empty array of events');
+		assertArray(events, 'events');
 
 		return this.#eventDispatcher.dispatch(events, { origin: 'internal' });
 	}

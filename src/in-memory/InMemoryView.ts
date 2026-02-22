@@ -1,6 +1,7 @@
 import { InMemoryLock } from './InMemoryLock.ts';
 import type { IViewLocker, Identifier, IObjectStorage } from '../interfaces/index.ts';
 import { nextCycle } from './utils/index.ts';
+import { assertDefined, assertFunction } from '../utils/assert.ts';
 
 /**
  * Update given value with an update Cb and return updated value.
@@ -76,8 +77,7 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 
 	/** Get record with a given key; await until the view is restored */
 	async get(key: Identifier, options?: { nowait?: boolean }): Promise<TRecord | undefined> {
-		if (!key)
-			throw new TypeError('key argument required');
+		assertDefined(key, 'key');
 
 		if (!this.ready && !options?.nowait)
 			await this.once('ready');
@@ -91,8 +91,7 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 	 * Get record with a given key synchronously
 	 */
 	getSync(key: Identifier): TRecord | undefined {
-		if (!key)
-			throw new TypeError('key argument required');
+		assertDefined(key, 'key');
 
 		return this._map.get(key);
 	}
@@ -100,8 +99,8 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 	/** Get all records matching an optional filter */
 	async getAll(filter?: (r: TRecord | undefined, i: Identifier) => boolean):
 		Promise<Array<[Identifier, TRecord | undefined]>> {
-		if (filter && typeof filter !== 'function')
-			throw new TypeError('filter argument, when defined, must be a Function');
+		if (filter)
+			assertFunction(filter, 'filter');
 
 		if (!this.ready)
 			await this.once('ready');
@@ -119,8 +118,7 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 
 	/** Create record with a given key and value */
 	async create(key: Identifier, value: TRecord = {} as TRecord) {
-		if (!key)
-			throw new TypeError('key argument required');
+		assertDefined(key, 'key');
 		if (typeof value === 'function')
 			throw new TypeError('value argument must be an instance of an Object');
 
@@ -132,10 +130,8 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 
 	/** Update existing view record */
 	async update(key: Identifier, update: (r: TRecord) => TRecord) {
-		if (!key)
-			throw new TypeError('key argument required');
-		if (typeof update !== 'function')
-			throw new TypeError('update argument must be a Function');
+		assertDefined(key, 'key');
+		assertFunction(update, 'update');
 
 		if (!this._map.has(key))
 			throw new Error(`Key '${key}' does not exist`);
@@ -145,10 +141,8 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 
 	/** Update existing view record or create new */
 	async updateEnforcingNew(key: Identifier, update: (r?: TRecord) => TRecord) {
-		if (!key)
-			throw new TypeError('key argument required');
-		if (typeof update !== 'function')
-			throw new TypeError('update argument must be a Function');
+		assertDefined(key, 'key');
+		assertFunction(update, 'update');
 
 		if (!this._map.has(key))
 			return this.create(key, applyUpdate(undefined, update));
@@ -158,10 +152,9 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 
 	/** Update all records that match filter criteria */
 	async updateAll(filter: (r: TRecord) => boolean, update: (r: TRecord) => TRecord) {
-		if (filter && typeof filter !== 'function')
-			throw new TypeError('filter argument, when specified, must be a Function');
-		if (typeof update !== 'function')
-			throw new TypeError('update argument must be a Function');
+		if (filter)
+			assertFunction(filter, 'filter');
+		assertFunction(update, 'update');
 
 		for (const [key, value] of this._map) {
 			if (!filter || filter(value))
@@ -184,16 +177,15 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 
 	/** Delete record */
 	async delete(key: Identifier) {
-		if (!key)
-			throw new TypeError('key argument required');
+		assertDefined(key, 'key');
 
 		this._map.delete(key);
 	}
 
 	/** Delete all records that match filter criteria */
 	async deleteAll(filter: (r?: TRecord) => boolean) {
-		if (filter && typeof filter !== 'function')
-			throw new TypeError('filter argument, when specified, must be a Function');
+		if (filter)
+			assertFunction(filter, 'filter');
 
 		for (const [key, value] of this._map) {
 			if (!filter || filter(value))

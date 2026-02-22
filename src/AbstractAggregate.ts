@@ -11,9 +11,7 @@ import {
 	type IAggregateConstructor,
 	type IEventStore,
 	type ICommandBus,
-	SNAPSHOT_EVENT_TYPE,
-	isSnapshotEvent,
-	isEvent
+	SNAPSHOT_EVENT_TYPE
 } from './interfaces/index.ts';
 
 import {
@@ -21,7 +19,14 @@ import {
 	validateHandlers,
 	getHandler,
 	getMessageHandlerNames,
-	clone
+	clone,
+	assertDefined,
+	assertString,
+	assertMessage,
+	assertSnapshotEvent,
+	assertNumber,
+	assertObject,
+	assertOptionalArray
 } from './utils/index.ts';
 
 /**
@@ -99,12 +104,12 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 
 	constructor(options: IAggregateConstructorParams<TState>) {
 		const { id, state, events } = options;
-		if (!id)
-			throw new TypeError('id argument required');
-		if (state && typeof state !== 'object')
-			throw new TypeError('state argument, when provided, must be an Object');
-		if (events && !Array.isArray(events))
-			throw new TypeError('events argument, when provided, must be an Array');
+		assertDefined(id, 'id');
+
+		if (state)
+			assertObject(state, 'state');
+		if (events)
+			assertOptionalArray(events, 'events');
 
 		this.#id = id;
 
@@ -139,10 +144,7 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 
 	/** Pass command to command handler */
 	async handle(command: ICommand): Promise<IEventSet> {
-		if (!command)
-			throw new TypeError('command argument required');
-		if (!command.type)
-			throw new TypeError('command.type argument required');
+		assertMessage(command, 'command');
 
 		const handler = getHandler(this, command.type);
 		if (!handler)
@@ -179,8 +181,7 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 	protected emit(type: string): IEvent<void>;
 	protected emit<TPayload>(type: string, payload: TPayload): IEvent<TPayload>;
 	protected emit<TPayload>(type: string, payload?: TPayload): IEvent<TPayload> {
-		if (typeof type !== 'string' || !type.length)
-			throw new TypeError('type argument must be a non-empty string');
+		assertString(type, 'type');
 
 		const event = this.makeEvent<TPayload>(type, payload as TPayload, this.command);
 
@@ -212,12 +213,8 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 
 	/** Register aggregate event and mutate aggregate state */
 	protected emitRaw<TPayload>(event: IEvent<TPayload>): void {
-		if (!isEvent(event))
-			throw new TypeError('event argument must be a valid IEvent');
-		if (!event.aggregateId)
-			throw new TypeError('event.aggregateId argument required');
-		if (typeof event.aggregateVersion !== 'number')
-			throw new TypeError('event.aggregateVersion argument must be a Number');
+		assertDefined(event?.aggregateId, 'event.aggregateId');
+		assertNumber(event?.aggregateVersion, 'event.aggregateVersion');
 
 		this.mutate(event);
 
@@ -240,10 +237,8 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 
 	/** Restore aggregate state from a snapshot */
 	protected restoreSnapshot(snapshotEvent: ISnapshotEvent<TState>) {
-		if (!isSnapshotEvent(snapshotEvent))
-			throw new TypeError('snapshotEvent argument must be a valid ISnapshotEvent');
-		if (!snapshotEvent.payload)
-			throw new TypeError('snapshotEvent.payload argument required');
+		assertSnapshotEvent(snapshotEvent, 'snapshotEvent');
+
 		if (!this.state)
 			throw new Error('state property is empty, either defined state or override restoreSnapshot method');
 

@@ -1,7 +1,7 @@
 import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
-import { type IContainer, type ILogger, type IMessage, isMessage } from '../interfaces/index.ts';
+import type { IContainer, ILogger, IMessage } from '../interfaces/index.ts';
 import * as Event from '../Event.ts';
-import { extractErrorDetails, Lock } from '../utils/index.ts';
+import { assertFunction, assertMessage, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
 import { registerExitCleanup } from './utils/index.ts';
 import { EventEmitter } from 'events';
 
@@ -129,8 +129,7 @@ export class RabbitMqGateway {
 		rabbitMqConnectionFactory?: () => Promise<ChannelModel>,
 		eventEmitterFactory?: () => EventEmitter<GatewayEvents>
 	}) {
-		if (!o.rabbitMqConnectionFactory)
-			throw new TypeError('rabbitMqConnectionFactory argument required');
+		assertFunction(o?.rabbitMqConnectionFactory, 'o.rabbitMqConnectionFactory');
 
 		this.#emitter = o?.eventEmitterFactory?.() ?? new EventEmitter();
 		this.#connectionFactory = o.rabbitMqConnectionFactory;
@@ -627,10 +626,8 @@ export class RabbitMqGateway {
 	 * The event will be delivered to all subscribers, except this instance's own consumer.
 	 */
 	async publish(exchange: string, message: IMessage): Promise<void> {
-		if (typeof exchange !== 'string' || !exchange.length)
-			throw new TypeError('exchange argument must be a non-empty String');
-		if (!isMessage(message))
-			throw new TypeError('valid message argument is required');
+		assertString(exchange, 'exchange');
+		assertMessage(message, 'message');
 
 		if (!this.#pubChannel) {
 			const connection = await this.#assertConnection();

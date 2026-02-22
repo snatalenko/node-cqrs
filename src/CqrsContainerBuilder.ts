@@ -5,7 +5,6 @@ import { EventStore } from './EventStore.ts';
 import { SagaEventHandler } from './SagaEventHandler.ts';
 import { EventDispatcher } from './EventDispatcher.ts';
 import { InMemoryMessageBus } from './in-memory/index.ts';
-import { isClass } from './utils/isClass.ts';
 import {
 	type IAggregateConstructor,
 	type ICommandHandler,
@@ -21,6 +20,7 @@ import {
 	isEventStorageReader,
 	isEventStorageWriter
 } from './interfaces/index.ts';
+import { assertClass } from './utils/assert.ts';
 
 export class CqrsContainerBuilder<TContainerInterface extends IContainer = IContainer>
 	extends ContainerBuilder<TContainerInterface> {
@@ -76,8 +76,7 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 	 * to eventStore and will restore its state upon instance creation
 	 */
 	registerProjection(ProjectionType: IProjectionConstructor, exposedViewAlias?: keyof TContainerInterface) {
-		if (!isClass(ProjectionType))
-			throw new TypeError('ProjectionType argument must be a constructor function');
+		assertClass(ProjectionType, 'ProjectionType');
 
 		const projectionFactory = (container: TContainerInterface): IProjection<any> => {
 			const projection = container.createInstance(ProjectionType);
@@ -99,8 +98,7 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 
 	/** Register aggregate type in the container */
 	registerAggregate(AggregateType: IAggregateConstructor<any, any>) {
-		if (!isClass(AggregateType))
-			throw new TypeError('AggregateType argument must be a constructor function');
+		assertClass(AggregateType, 'AggregateType');
 
 		const commandHandlerFactory = (container: TContainerInterface): ICommandHandler =>
 			container.createInstance(AggregateCommandHandler, {
@@ -116,8 +114,7 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 
 	/** Register saga type in the container */
 	registerSaga(SagaType: ISagaConstructor) {
-		if (!isClass(SagaType))
-			throw new TypeError('SagaType argument must be a constructor function');
+		assertClass(SagaType, 'SagaType');
 
 		const eventReceptorFactory = (container: TContainerInterface): IEventReceptor =>
 			container.createInstance(SagaEventHandler, {
