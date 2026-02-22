@@ -1,3 +1,27 @@
+# [1.0.0-rc.36](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.35...v1.0.0-rc.36) (2026-02-22)
+
+
+### Features
+
+* Re-process commands on concurrency errors in EventStorage ([8a60560](https://github.com/snatalenko/node-cqrs/commit/8a60560b1e3dc7bff85217851a12c503730a9e19))
+
+### Changes
+
+* Use di0 resolvers to avoid explicit type alias declarations ([efcbc77](https://github.com/snatalenko/node-cqrs/commit/efcbc774a45c127821c0c3b94a646402e9526610))
+
+### Documentation
+
+* Rename GH workflow and corresponding badge ([8dd82df](https://github.com/snatalenko/node-cqrs/commit/8dd82df4d8b2ffa561d0a47aba56b5eac638e1fc))
+
+### Tests
+
+* Improve test coverage ([b13e51d](https://github.com/snatalenko/node-cqrs/commit/b13e51db11941fd6295e7e2296a50622db9da7ae))
+
+### Internal Fixes
+
+* Move workers tests to "integration/", letting unit tests to run without build ([9038356](https://github.com/snatalenko/node-cqrs/commit/9038356202ad51e1df35cc726f55c93eb9885665))
+
+
 # [1.0.0-rc.35](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.34...v1.0.0-rc.35) (2026-02-18)
 
 
