@@ -1,3 +1,11 @@
+# [1.0.0-rc.37](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.36...v1.0.0-rc.37) (2026-02-23)
+
+
+### Internal Fixes
+
+* Update di0 with fixed resolvers ([c4dcb4f](https://github.com/snatalenko/node-cqrs/commit/c4dcb4f7f9d524d6d506dcc24d8ace3399f609b2))
+
+
 # [1.0.0-rc.36](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.35...v1.0.0-rc.36) (2026-02-22)
 
 
