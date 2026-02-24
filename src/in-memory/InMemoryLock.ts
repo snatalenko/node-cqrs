@@ -1,6 +1,7 @@
+import type { IViewLocker } from '../interfaces/IViewLocker.js';
 import { Deferred } from '../utils/index.ts';
 
-export class InMemoryLock {
+export class InMemoryLock implements IViewLocker {
 
 	#lockMarker: Deferred<void> | undefined;
 
@@ -11,15 +12,20 @@ export class InMemoryLock {
 		return !!this.#lockMarker;
 	}
 
+	get ready(): boolean {
+		return !this.locked;
+	}
+
 	/**
 	 * Acquire the lock on the current instance.
 	 * Resolves when the lock is successfully acquired
 	 */
-	async lock(): Promise<void> {
+	async lock(): Promise<boolean> {
 		while (this.locked)
-			await this.once('unlocked');
+			await this.once('ready');
 
 		this.#lockMarker = new Deferred();
+		return this.locked;
 	}
 
 	/**
@@ -34,8 +40,8 @@ export class InMemoryLock {
 	 * Wait until the lock is released.
 	 * Resolves immediately if the lock is not acquired
 	 */
-	once(event: 'unlocked'): Promise<void> {
-		if (event !== 'unlocked')
+	once(event: 'ready'): Promise<void> {
+		if (event !== 'ready')
 			throw new TypeError(`Unexpected event type: ${event}`);
 
 		return this.#lockMarker?.promise ?? Promise.resolve();

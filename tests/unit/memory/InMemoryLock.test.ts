@@ -11,7 +11,7 @@ describe('InMemoryLock', () => {
 	it('should call each method explicitly to satisfy coverage', async () => {
 		await lock.lock();
 		await lock.unlock();
-		await lock.once('unlocked'); // Even if tested elsewhere, call it directly
+		await lock.once('ready'); // Even if tested elsewhere, call it directly
 	});
 
 	it('starts unlocked', () => {
@@ -53,7 +53,7 @@ describe('InMemoryLock', () => {
 	it('resolves once() immediately if not locked', async () => {
 		let resolved = false;
 
-		await lock.once('unlocked').then(() => {
+		await lock.once('ready').then(() => {
 			resolved = true;
 		});
 
@@ -64,7 +64,7 @@ describe('InMemoryLock', () => {
 		await lock.lock();
 		let resolved = false;
 
-		const waitForUnlock = lock.once('unlocked').then(() => {
+		const waitForUnlock = lock.once('ready').then(() => {
 			resolved = true;
 		});
 

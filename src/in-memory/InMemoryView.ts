@@ -48,8 +48,7 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 
 	/** Lock the view to prevent concurrent modifications */
 	async lock(): Promise<boolean> {
-		await this.#lock.lock();
-		return this.#lock.locked;
+		return this.#lock.lock();
 	}
 
 	/** Release the lock */
@@ -59,10 +58,7 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 
 	/** Create a Promise which will resolve to a first emitted event of a given type */
 	once(eventType: 'ready'): Promise<any> {
-		if (eventType !== 'ready')
-			throw new TypeError(`Unexpected event type: ${eventType}`);
-
-		return this.#lock.once('unlocked');
+		return this.#lock.once(eventType);
 	}
 
 	/**
