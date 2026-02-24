@@ -1,8 +1,11 @@
+const hasExplicitPath = process.argv.length > 2 &&
+	process.argv.slice(2).some(arg => !arg.startsWith('-') && arg.includes('/'));
+
 export default {
 	testEnvironment: 'node',
-	roots: [
-		'<rootDir>/tests/unit'
-	],
+	roots: hasExplicitPath
+		? ['<rootDir>/tests']
+		: ['<rootDir>/tests/unit'],
 	testMatch: [
 		'**/*.test.ts',
 		'**/*.test.cjs'
