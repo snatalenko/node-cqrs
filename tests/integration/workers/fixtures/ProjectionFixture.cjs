@@ -2,6 +2,7 @@ const { isMainThread } = require('node:worker_threads');
 
 // In Jest (main thread), import from src/ so coverage is collected from instrumented sources.
 // In worker threads, use the built CJS entrypoint because Node can't execute TS without a loader.
+/** @type {import('../../../../src/workers/index.ts')} */
 const workers = isMainThread ?
 	require('../../../../src/workers/index.ts') :
 	require('node-cqrs/workers');
@@ -90,17 +91,15 @@ class ViewFixture {
  */
 class ProjectionFixture extends AbstractWorkerProjection {
 
+	static get workerModulePath() {
+		return __filename;
+	}
+
 	/**
 	 * @param {any} container
 	 */
-	constructor({
-		workerModulePath = __filename,
-		useWorkerThreads,
-		logger
-	} = {}) {
+	constructor({ logger } = {}) {
 		super({
-			workerModulePath,
-			useWorkerThreads,
 			view: new ViewFixture(),
 			logger
 		});

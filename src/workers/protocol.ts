@@ -1,4 +1,5 @@
 import type { MessagePort } from 'node:worker_threads';
+import type { IEvent } from '../interfaces/IEvent.ts';
 
 export interface IWorkerData {
 	projectionPort: MessagePort,
@@ -21,3 +22,9 @@ export const isWorkerInitMessage = (msg: unknown): msg is WorkerInitMessage =>
 	&& 'type' in msg
 	&& msg.type === 'ready';
 
+
+export interface IRemoteProjectionApi {
+	project(event: IEvent): Promise<void> | void;
+	_project(event: IEvent): Promise<void> | void;
+	ping(): true;
+}
