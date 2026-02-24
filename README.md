@@ -136,7 +136,8 @@ const aggregateCommandHandler = new AggregateCommandHandler({ eventStore, aggreg
 aggregateCommandHandler.subscribe(commandBus);
 
 const projection = new UsersProjection();
-await projection.subscribe(eventStore);
+projection.subscribe(eventStore);
+projection.restore(eventStore);
 const users = projection.view;
 ```
 

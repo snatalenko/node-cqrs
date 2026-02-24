@@ -7,7 +7,7 @@ export interface IProjection<TView> extends IObserver {
 	readonly view: TView;
 
 	/** Subscribe to new events */
-	subscribe(eventStore: IObservable): Promise<void> | void;
+	subscribe(eventStore: IObservable): void;
 
 	/** Restore view state from not-yet-projected events */
 	restore(eventStore: IEventStorageReader): Promise<void> | void;

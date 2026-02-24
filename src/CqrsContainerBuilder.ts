@@ -11,7 +11,6 @@ import {
 	type IContainer,
 	type IEventReceptor,
 	type IProjection,
-	type IProjectionConstructor,
 	type ISagaConstructor,
 	isDispatchPipelineProcessor,
 	isExecutionLocker,
@@ -20,7 +19,7 @@ import {
 	isEventStorageReader,
 	isEventStorageWriter
 } from './interfaces/index.ts';
-import { assertClass } from './utils/assert.ts';
+import { assertClass, assertFunction } from './utils/assert.ts';
 
 export class CqrsContainerBuilder<TContainerInterface extends IContainer = IContainer>
 	extends ContainerBuilder<TContainerInterface> {
@@ -75,12 +74,18 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 	 * Register projection, which will expose view and will be subscribed
 	 * to eventStore and will restore its state upon instance creation
 	 */
-	registerProjection(ProjectionType: IProjectionConstructor, exposedViewAlias?: keyof TContainerInterface) {
-		assertClass(ProjectionType, 'ProjectionType');
+	registerProjection(
+		typeOrFactory: ClassOrFactory<IProjection<any>, TContainerInterface>,
+		exposedViewAlias?: keyof TContainerInterface
+	) {
+		assertFunction(typeOrFactory, 'typeOrFactory');
 
 		const projectionFactory = (container: TContainerInterface): IProjection<any> => {
-			const projection = container.createInstance(ProjectionType);
+			const projection = container.createInstance(typeOrFactory);
 			projection.subscribe(container.eventStore);
+
+			// start async projection restoring
+			void projection.restore(container.eventStore);
 
 			if (exposedViewAlias)
 				return projection.view;

@@ -124,12 +124,10 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	 * Subscribe to event store
 	 * and restore view state from not yet projected events
 	 */
-	async subscribe(eventStore: IObservable & IEventStorageReader): Promise<void> {
+	subscribe(eventStore: IObservable): void {
 		subscribe(eventStore, this, {
 			masterHandler: this.project
 		});
-
-		await this.restore(eventStore);
 	}
 
 	/** Pass event to projection event handler */
