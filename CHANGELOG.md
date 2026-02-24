@@ -1,3 +1,17 @@
+# [1.0.0-rc.38](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.37...v1.0.0-rc.38) (2026-02-24)
+
+
+### Tests
+
+* Allow running individual integration tests with `npm t` ([cfef9a8](https://github.com/snatalenko/node-cqrs/commit/cfef9a87b6e0fce159205a1d55f38e51c6f9e8de))
+
+### Internal Fixes
+
+* Split AbstractWorkerProjection into worker-side and main-thread proxy ([751bfcf](https://github.com/snatalenko/node-cqrs/commit/751bfcf9f63547bafcec51af4e949d77ca1d0077))
+* Rename InMemoryLock event to match IViewLocker interface ([1fe2eb1](https://github.com/snatalenko/node-cqrs/commit/1fe2eb149f8801e1b7e935a90cca05691d5d2017))
+* Separate projection restoring from subscription; start explicitly in DI container ([3ddc649](https://github.com/snatalenko/node-cqrs/commit/3ddc649feaa65e267d7eb5646289e88f8a4a332b))
+
+
 # [1.0.0-rc.37](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.36...v1.0.0-rc.37) (2026-02-23)
 
 
