@@ -12,6 +12,11 @@ export type DispatchPipelineEnvelope = {
 	 */
 	origin?: string;
 
+	/**
+	 * When true, storage writers may bypass optimistic-concurrency checks for this batch.
+	 */
+	ignoreConcurrencyError?: boolean;
+
 	event?: IEvent;
 }
 

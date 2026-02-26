@@ -1,5 +1,4 @@
 import type {
-	CommitEventsOptions,
 	IIdentifierProvider,
 	IEvent,
 	IEventSet,
@@ -9,7 +8,6 @@ import type {
 	IEventStorageWriter,
 	Identifier,
 	IDispatchPipelineProcessor,
-	DispatchPipelineEnvelope,
 	DispatchPipelineBatch,
 	AggregateEventsQueryParams
 } from '../interfaces/index.ts';
@@ -35,7 +33,7 @@ export class InMemoryEventStorage implements
 		return String(this.#nextId);
 	}
 
-	async commitEvents(events: IEventSet, options?: CommitEventsOptions): Promise<IEventSet> {
+	async commitEvents(events: IEventSet, options?: { ignoreConcurrencyError?: boolean }): Promise<IEventSet> {
 		await nextCycle();
 
 		if (!options?.ignoreConcurrencyError) {
@@ -132,8 +130,7 @@ export class InMemoryEventStorage implements
 	 *
 	 * This method is part of the `IDispatchPipelineProcessor` interface.
 	 */
-	async process(batch: DispatchPipelineBatch<DispatchPipelineEnvelope & { ignoreConcurrencyError?: boolean }>):
-		Promise<DispatchPipelineBatch> {
+	async process(batch: DispatchPipelineBatch): Promise<DispatchPipelineBatch> {
 		const events: IEvent[] = [];
 		for (const { event } of batch) {
 			if (!event)
@@ -142,8 +139,7 @@ export class InMemoryEventStorage implements
 			events.push(event);
 		}
 
-		const ignoreConcurrencyError = batch.some(item => item.ignoreConcurrencyError === true);
-		if (ignoreConcurrencyError)
+		if (batch.at(0)?.ignoreConcurrencyError)
 			await this.commitEvents(events, { ignoreConcurrencyError: true });
 		else
 			await this.commitEvents(events);
