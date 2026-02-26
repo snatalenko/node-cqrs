@@ -17,21 +17,21 @@ import type {
 	ILocker,
 	ILogger,
 	IObservable,
-	RetryOnConcurrencyErrorConfig,
 	RetryOnConcurrencyErrorDecision,
+	RetryOnConcurrencyErrorOptions,
 	RetryOnConcurrencyErrorResolver
 } from './interfaces/index.ts';
 import { isObject } from './interfaces/isObject.ts';
 
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 
-function normalizeRetryResolver(
-	value: boolean | number | RetryOnConcurrencyErrorConfig | RetryOnConcurrencyErrorResolver | undefined
-): RetryOnConcurrencyErrorResolver {
+function normalizeRetryResolver(value?: RetryOnConcurrencyErrorOptions): RetryOnConcurrencyErrorResolver {
 	if (typeof value === 'function')
 		return value;
 	if (value === false)
 		return () => false;
+	if (value === 'ignore')
+		return () => 'ignore';
 	if (typeof value === 'number')
 		return (err, attempt) => err instanceof ConcurrencyError && attempt < value;
 
@@ -91,7 +91,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		aggregateFactory?: IAggregateFactory<TAggregate, any>,
 		handles?: Readonly<string[]>,
 		restoresFrom?: Readonly<string[]>,
-		retryOnConcurrencyError?: boolean | number | RetryOnConcurrencyErrorConfig | RetryOnConcurrencyErrorResolver
+		retryOnConcurrencyError?: RetryOnConcurrencyErrorOptions
 	}) {
 		assertDefined(eventStore, 'eventStore');
 

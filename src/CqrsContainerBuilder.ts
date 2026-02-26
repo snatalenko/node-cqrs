@@ -110,7 +110,8 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 				aggregateFactory: (options: any) =>
 					container.createInstance(AggregateType, options),
 				handles: AggregateType.handles,
-				restoresFrom: AggregateType.restoresFrom
+				restoresFrom: AggregateType.restoresFrom,
+				retryOnConcurrencyError: AggregateType.retryOnConcurrencyError
 			});
 
 		return this.registerCommandHandler(commandHandlerFactory);

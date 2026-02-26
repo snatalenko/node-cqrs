@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import * as sinon from 'sinon';
 import {
 	InMemoryEventStorage,
 	InMemoryView,
@@ -6,6 +7,7 @@ import {
 	AbstractAggregate,
 	AbstractSaga,
 	AbstractProjection,
+	ConcurrencyError,
 	type IAggregateSnapshotStorage,
 	type ILocker,
 	type ILockerLease
@@ -57,6 +59,37 @@ describe('CqrsContainerBuilder', function () {
 
 			await builder.container().commandBus.sendRaw({ type: 'doSomething' });
 			expect(dependencyMet).to.equal(true);
+		});
+
+		it('passes retryOnConcurrencyError options to AggregateCommandHandler', async () => {
+
+			class IgnoreConcurrencyAggregate extends AbstractAggregate<void> {
+				static retryOnConcurrencyError = 'ignore' as const;
+
+				doSomething() {
+					this.emit('done');
+				}
+			}
+
+			builder.registerAggregate(IgnoreConcurrencyAggregate);
+			const container = builder.container();
+
+			let dispatchCallCount = 0;
+			const dispatchStub = sinon.stub(container.eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+				dispatchCallCount++;
+				if (meta?.ignoreConcurrencyError)
+					return events as any;
+
+				throw new ConcurrencyError();
+			});
+
+			const events = await container.commandBus.sendRaw({ type: 'doSomething' } as any);
+
+			expect(events).to.have.length(1);
+			expect(dispatchCallCount).to.equal(2);
+			expect(dispatchStub.secondCall.args[1]).to.include({
+				ignoreConcurrencyError: true
+			});
 		});
 	});
 

@@ -603,6 +603,44 @@ describe('AggregateCommandHandler', function () {
 			});
 		});
 
+		it('ignores concurrency errors when retryOnConcurrencyError is set to "ignore"', async () => {
+
+			class IgnoreByOptionAggregate extends MyAggregate {
+				static retryOnConcurrencyError = 'ignore' as const;
+			}
+
+			const aggregateId = 'ignore-option-test-id';
+			let dispatchCallCount = 0;
+			let ignoredDispatchMeta: Record<string, any> | undefined;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: IgnoreByOptionAggregate
+			});
+
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			const originalDispatch = eventStore.dispatch.bind(eventStore);
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+				dispatchCallCount++;
+				if (meta?.ignoreConcurrencyError) {
+					ignoredDispatchMeta = meta;
+					return originalDispatch(events, meta);
+				}
+
+				throw new ConcurrencyError();
+			});
+
+			const events = await handler.execute({ type: 'doSomething', aggregateId });
+
+			expect(events).to.have.length(1);
+			expect(dispatchCallCount).to.equal(2); // initial failure + ignored concurrency check
+			expect(ignoredDispatchMeta).to.include({
+				ignoreConcurrencyError: true
+			});
+		});
+
 		it('does not retry non-ConcurrencyError errors', async () => {
 
 			const aggregateId = 'non-concurrency-error-test-id';
