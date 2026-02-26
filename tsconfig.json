@@ -21,7 +21,8 @@
     "alwaysStrict": false,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true
+    "rewriteRelativeImportExtensions": true,
+    "noImplicitOverride": true
   },
   "include": [
     "src/**/*"

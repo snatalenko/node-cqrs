@@ -11,6 +11,7 @@ import {
 	type IAggregateConstructor,
 	type IEventStore,
 	type ICommandBus,
+	type RetryOnConcurrencyErrorOptions,
 	SNAPSHOT_EVENT_TYPE
 } from './interfaces/index.ts';
 
@@ -45,6 +46,24 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 	 */
 	static get handles(): string[] {
 		return getMessageHandlerNames(this);
+	}
+
+	/**
+	 * Optional list of event types that are required to restore the aggregate state.
+	 *
+	 * @see IAggregateConstructor
+	 */
+	static get restoresFrom(): Readonly<string[]> | undefined {
+		return undefined;
+	}
+
+	/**
+	 * Defines retry behavior when a ConcurrencyError is thrown during event dispatch.
+	 *
+	 * @see IAggregateConstructor
+	 */
+	static get retryOnConcurrencyError(): RetryOnConcurrencyErrorOptions | undefined {
+		return undefined;
 	}
 
 	/**
