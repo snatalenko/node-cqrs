@@ -32,6 +32,20 @@ describe('InMemoryEventStorage', () => {
 				expect(err).to.be.instanceOf(ConcurrencyError);
 			}
 		});
+
+		it('allows duplicate aggregateVersion when ignoreConcurrencyError option is enabled', async () => {
+			await storage.commitEvents([
+				{ id: '1', aggregateId: 'agg1', aggregateVersion: 0, type: 'Created' }
+			]);
+
+			const duplicate = [
+				{ id: '2', aggregateId: 'agg1', aggregateVersion: 0, type: 'Created' }
+			];
+
+			const result = await storage.commitEvents(duplicate, { ignoreConcurrencyError: true });
+
+			expect(result).to.deep.equal(duplicate);
+		});
 	});
 
 	describe('getAggregateEvents', () => {

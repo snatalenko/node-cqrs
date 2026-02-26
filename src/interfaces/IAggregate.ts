@@ -47,6 +47,16 @@ export type IAggregateConstructorParams<TState extends IMutableState | object | 
 	state?: TState
 };
 
+export type RetryOnConcurrencyErrorDecision = boolean | 'ignore';
+
+export type RetryOnConcurrencyErrorResolver =
+	(err: unknown, attempt: number) => RetryOnConcurrencyErrorDecision;
+
+export type RetryOnConcurrencyErrorConfig = {
+	maxRetries?: number;
+	ignoreAfterMaxRetries?: boolean;
+};
+
 export interface IAggregateConstructor<
 	TAggregate extends IAggregate,
 	TState extends IMutableState | object | void
@@ -74,9 +84,16 @@ export interface IAggregateConstructor<
 	 * - `false`: no retry
 	 * - `true`: retry up to 5 times on ConcurrencyError
 	 * - `number`: retry up to the specified number of times
-	 * - `(err, attempt) => boolean`: custom function to decide whether to retry
+	 * - `RetryOnConcurrencyErrorConfig`: configure retries (`maxRetries` must be a non-negative integer)
+	 *   and optional ignore on exhaustion
+	 * - `(err, attempt) => RetryOnConcurrencyErrorDecision`:
+	 *   custom function to decide whether to retry (`true`), stop (`false`) or ignore (`'ignore'`)
 	 */
-	readonly retryOnConcurrencyError?: boolean | number | ((err: unknown, attempt: number) => boolean);
+	readonly retryOnConcurrencyError?:
+		| boolean
+		| number
+		| RetryOnConcurrencyErrorConfig
+		| RetryOnConcurrencyErrorResolver;
 
 	new(options: IAggregateConstructorParams<TState>): TAggregate;
 }

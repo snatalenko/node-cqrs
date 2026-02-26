@@ -10,7 +10,9 @@ import {
 	assertSnapshotEvent,
 	assertObservable,
 	assertNumber,
-	assertClass
+	assertClass,
+	assertNonNegativeInteger,
+	assertBoolean
 } from '../../../src/utils/assert.ts';
 
 describe('assertDefined', () => {
@@ -184,5 +186,32 @@ describe('assertClass', () => {
 	});
 	it('does not throw for a class', () => {
 		expect(() => assertClass(class Foo {}, 'x')).not.toThrow();
+	});
+});
+
+describe('assertNonNegativeInteger', () => {
+	it('throws TypeError for non-number', () => {
+		expect(() => assertNonNegativeInteger('1', 'x')).toThrow(new TypeError('x must be a non-negative integer'));
+	});
+	it('throws TypeError for negative number', () => {
+		expect(() => assertNonNegativeInteger(-1, 'x')).toThrow(TypeError);
+	});
+	it('throws TypeError for non-integer number', () => {
+		expect(() => assertNonNegativeInteger(1.5, 'x')).toThrow(TypeError);
+	});
+	it('does not throw for non-negative integers', () => {
+		expect(() => assertNonNegativeInteger(0, 'x')).not.toThrow();
+		expect(() => assertNonNegativeInteger(42, 'x')).not.toThrow();
+	});
+});
+
+describe('assertBoolean', () => {
+	it('throws TypeError for non-boolean', () => {
+		expect(() => assertBoolean('true', 'x')).toThrow(new TypeError('x must be a Boolean'));
+		expect(() => assertBoolean(1, 'x')).toThrow(TypeError);
+	});
+	it('does not throw for booleans', () => {
+		expect(() => assertBoolean(true, 'x')).not.toThrow();
+		expect(() => assertBoolean(false, 'x')).not.toThrow();
 	});
 });

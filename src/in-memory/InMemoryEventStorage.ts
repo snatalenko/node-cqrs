@@ -1,4 +1,5 @@
 import type {
+	CommitEventsOptions,
 	IIdentifierProvider,
 	IEvent,
 	IEventSet,
@@ -8,6 +9,7 @@ import type {
 	IEventStorageWriter,
 	Identifier,
 	IDispatchPipelineProcessor,
+	DispatchPipelineEnvelope,
 	DispatchPipelineBatch,
 	AggregateEventsQueryParams
 } from '../interfaces/index.ts';
@@ -33,16 +35,18 @@ export class InMemoryEventStorage implements
 		return String(this.#nextId);
 	}
 
-	async commitEvents(events: IEventSet): Promise<IEventSet> {
+	async commitEvents(events: IEventSet, options?: CommitEventsOptions): Promise<IEventSet> {
 		await nextCycle();
 
-		for (const event of events) {
-			if (event.aggregateId !== undefined && event.aggregateVersion !== undefined) {
-				const conflict = this.#events.find(e =>
-					e.aggregateId === event.aggregateId &&
-					e.aggregateVersion === event.aggregateVersion);
-				if (conflict)
-					throw new ConcurrencyError(`Duplicate aggregateVersion ${event.aggregateVersion} for aggregate ${event.aggregateId}`);
+		if (!options?.ignoreConcurrencyError) {
+			for (const event of events) {
+				if (event.aggregateId !== undefined && event.aggregateVersion !== undefined) {
+					const conflict = this.#events.find(e =>
+						e.aggregateId === event.aggregateId &&
+						e.aggregateVersion === event.aggregateVersion);
+					if (conflict)
+						throw new ConcurrencyError(`Duplicate aggregateVersion ${event.aggregateVersion} for aggregate ${event.aggregateId}`);
+				}
 			}
 		}
 
@@ -128,7 +132,8 @@ export class InMemoryEventStorage implements
 	 *
 	 * This method is part of the `IDispatchPipelineProcessor` interface.
 	 */
-	async process(batch: DispatchPipelineBatch): Promise<DispatchPipelineBatch> {
+	async process(batch: DispatchPipelineBatch<DispatchPipelineEnvelope & { ignoreConcurrencyError?: boolean }>):
+		Promise<DispatchPipelineBatch> {
 		const events: IEvent[] = [];
 		for (const { event } of batch) {
 			if (!event)
@@ -137,7 +142,11 @@ export class InMemoryEventStorage implements
 			events.push(event);
 		}
 
-		await this.commitEvents(events);
+		const ignoreConcurrencyError = batch.some(item => item.ignoreConcurrencyError === true);
+		if (ignoreConcurrencyError)
+			await this.commitEvents(events, { ignoreConcurrencyError: true });
+		else
+			await this.commitEvents(events);
 
 		return batch;
 	}

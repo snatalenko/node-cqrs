@@ -1,4 +1,7 @@
-import { assertArray, assertDefined, assertMessage, assertObservable, Lock, MapAssertable } from './utils/index.ts';
+import {
+	assertArray, assertBoolean, assertDefined, assertMessage, assertNonNegativeInteger, assertObservable,
+	Lock, MapAssertable
+} from './utils/index.ts';
 import { ConcurrencyError } from './errors/index.ts';
 import type {
 	AggregateEventsQueryParams,
@@ -13,21 +16,40 @@ import type {
 	IEventStore,
 	ILocker,
 	ILogger,
-	IObservable
+	IObservable,
+	RetryOnConcurrencyErrorConfig,
+	RetryOnConcurrencyErrorDecision,
+	RetryOnConcurrencyErrorResolver
 } from './interfaces/index.ts';
-
+import { isObject } from './interfaces/isObject.ts';
 
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 
-type RetryResolver = (err: unknown, attempt: number) => boolean;
-
-function normalizeRetryResolver(value: boolean | number | RetryResolver | undefined): RetryResolver {
+function normalizeRetryResolver(
+	value: boolean | number | RetryOnConcurrencyErrorConfig | RetryOnConcurrencyErrorResolver | undefined
+): RetryOnConcurrencyErrorResolver {
 	if (typeof value === 'function')
 		return value;
 	if (value === false)
 		return () => false;
 	if (typeof value === 'number')
-		return (_err, attempt) => attempt < value;
+		return (err, attempt) => err instanceof ConcurrencyError && attempt < value;
+
+	if (isObject(value)) {
+		const { maxRetries = DEFAULT_MAX_RETRY_ATTEMPTS, ignoreAfterMaxRetries = false } = value;
+		assertNonNegativeInteger(maxRetries, 'retryOnConcurrencyError.maxRetries');
+		assertBoolean(ignoreAfterMaxRetries, 'retryOnConcurrencyError.ignoreAfterMaxRetries');
+
+		return (err, attempt): RetryOnConcurrencyErrorDecision => {
+			if (!(err instanceof ConcurrencyError))
+				return false;
+
+			if (attempt < maxRetries)
+				return true;
+
+			return ignoreAfterMaxRetries ? 'ignore' : false;
+		};
+	}
 
 	// undefined or true — default behavior
 	return (err, attempt) => err instanceof ConcurrencyError && attempt < DEFAULT_MAX_RETRY_ATTEMPTS;
@@ -47,7 +69,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 	readonly #aggregateFactory: IAggregateFactory<TAggregate, any>;
 	readonly #handles: Readonly<string[]>;
 	readonly #restoresFrom?: Readonly<string[]>;
-	readonly #shouldRetry: RetryResolver;
+	readonly #shouldRetry: RetryOnConcurrencyErrorResolver;
 
 	/** Aggregate instances cache for concurrent command handling */
 	#aggregatesCache: MapAssertable<Identifier, Promise<TAggregate>> = new MapAssertable();
@@ -69,7 +91,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		aggregateFactory?: IAggregateFactory<TAggregate, any>,
 		handles?: Readonly<string[]>,
 		restoresFrom?: Readonly<string[]>,
-		retryOnConcurrencyError?: boolean | number | RetryResolver
+		retryOnConcurrencyError?: boolean | number | RetryOnConcurrencyErrorConfig | RetryOnConcurrencyErrorResolver
 	}) {
 		assertDefined(eventStore, 'eventStore');
 
@@ -169,8 +191,9 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 					await this.#aggregatesCache.get(aggregateId)! :
 					await this.#createAggregate();
 
+				let events: IEventSet | undefined;
 				try {
-					const events = await aggregate.handle(cmd);
+					events = await aggregate.handle(cmd);
 
 					this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
 
@@ -186,8 +209,15 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 					if (aggregateId)
 						this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
 
-					if (!this.#shouldRetry(err, attempt))
+					const retryDecision = this.#shouldRetry(err, attempt);
+					if (!retryDecision)
 						throw err;
+
+					if (retryDecision === 'ignore' && events?.length) {
+						this.#logger?.info(`"${cmd.type}" concurrency error ignored after ${attempt + 1} attempt(s), force-dispatching`);
+						await this.#eventStore.dispatch(events, { ignoreConcurrencyError: true });
+						return events;
+					}
 				}
 			}
 		}

@@ -72,6 +72,22 @@ describe('EventStore', () => {
 			expect(dispatchSpy).toHaveBeenCalledWith([event], { origin: 'internal' });
 		});
 
+		it('merges custom dispatch metadata with internal origin', async () => {
+			const event: IEvent<void> = Object.freeze({
+				id: 'event-1',
+				type: 'StartSaga',
+				payload: undefined
+			});
+			const dispatchSpy = jest.spyOn(eventDispatcher, 'dispatch');
+
+			await store.dispatch([event], { ignoreConcurrencyError: true });
+
+			expect(dispatchSpy).toHaveBeenCalledWith([event], {
+				ignoreConcurrencyError: true,
+				origin: 'internal'
+			});
+		});
+
 		it('does not assign id to events when missing', async () => {
 			const event: IEvent = { type: 'RegularEvent' } as IEvent;
 			const [processed] = await store.dispatch([event]);

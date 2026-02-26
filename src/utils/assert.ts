@@ -63,3 +63,13 @@ export function assertClass(value: unknown, argName: string): asserts value is n
 	if (!isClass(value))
 		throw new TypeError(`${argName} must be a class`);
 }
+
+export function assertNonNegativeInteger(value: unknown, argName: string): asserts value is number {
+	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
+		throw new TypeError(`${argName} must be a non-negative integer`);
+}
+
+export function assertBoolean(value: unknown, argName: string): asserts value is boolean {
+	if (typeof value !== 'boolean')
+		throw new TypeError(`${argName} must be a Boolean`);
+}

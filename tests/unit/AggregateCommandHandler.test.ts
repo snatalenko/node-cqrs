@@ -480,6 +480,54 @@ describe('AggregateCommandHandler', function () {
 			}
 		});
 
+		it('retries up to maxRetries when retryOnConcurrencyError is a config object', async () => {
+
+			class ConfigRetryAggregate extends MyAggregate {
+				static retryOnConcurrencyError = {
+					maxRetries: 2
+				};
+			}
+
+			const aggregateId = 'config-retry-test-id';
+			let dispatchCallCount = 0;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: ConfigRetryAggregate
+			});
+
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+				dispatchCallCount++;
+				throw new ConcurrencyError();
+			});
+
+			try {
+				await handler.execute({ type: 'doSomething', aggregateId });
+				assert.fail('Expected ConcurrencyError to be thrown');
+			}
+			catch (err) {
+				expect(err).to.be.instanceOf(ConcurrencyError);
+				expect(dispatchCallCount).to.equal(3); // 2 retries + initial attempt
+			}
+		});
+
+		it('throws when retryOnConcurrencyError config is invalid', () => {
+
+			class InvalidRetryConfigAggregate extends MyAggregate {
+				static retryOnConcurrencyError = {
+					maxRetries: -1
+				} as any;
+			}
+
+			expect(() => new AggregateCommandHandler({
+				eventStore,
+				aggregateType: InvalidRetryConfigAggregate
+			})).to.throw(TypeError, 'retryOnConcurrencyError.maxRetries must be a non-negative integer');
+		});
+
 		it('uses custom function resolver for retry decision', async () => {
 
 			const retryDecisions: Array<{ err: unknown, attempt: number }> = [];
@@ -516,6 +564,45 @@ describe('AggregateCommandHandler', function () {
 			}
 		});
 
+		it('allows custom retry resolver to return "ignore"', async () => {
+
+			class IgnoreRetryAggregate extends MyAggregate {
+				static retryOnConcurrencyError = (_err: unknown, attempt: number) =>
+					(attempt < 1 ? true : 'ignore');
+			}
+
+			const aggregateId = 'custom-ignore-retry-test-id';
+			let dispatchCallCount = 0;
+			let ignoredDispatchMeta: Record<string, any> | undefined;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: IgnoreRetryAggregate
+			});
+
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			const originalDispatch = eventStore.dispatch.bind(eventStore);
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+				dispatchCallCount++;
+				if (meta?.ignoreConcurrencyError) {
+					ignoredDispatchMeta = meta;
+					return originalDispatch(events, meta);
+				}
+
+				throw new ConcurrencyError();
+			});
+
+			const events = await handler.execute({ type: 'doSomething', aggregateId });
+
+			expect(events).to.have.length(1);
+			expect(dispatchCallCount).to.equal(3); // 2 regular attempts + ignored concurrency check
+			expect(ignoredDispatchMeta).to.include({
+				ignoreConcurrencyError: true
+			});
+		});
+
 		it('does not retry non-ConcurrencyError errors', async () => {
 
 			const aggregateId = 'non-concurrency-error-test-id';
@@ -543,6 +630,48 @@ describe('AggregateCommandHandler', function () {
 				expect(err.message).to.equal('some other error');
 				expect(dispatchCallCount).to.equal(1);
 			}
+		});
+
+		it('ignores concurrency error after retries are exhausted when retryOnConcurrencyError config enables ignoreAfterMaxRetries', async () => {
+
+			class IgnoreOnExhaustedRetryAggregate extends MyAggregate {
+				static retryOnConcurrencyError = {
+					maxRetries: 1,
+					ignoreAfterMaxRetries: true
+				};
+			}
+
+			const aggregateId = 'force-store-type-test-id';
+			let dispatchCallCount = 0;
+			let ignoredDispatchMeta: Record<string, any> | undefined;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: IgnoreOnExhaustedRetryAggregate
+			});
+
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			const originalDispatch = eventStore.dispatch.bind(eventStore);
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+				dispatchCallCount++;
+				if (meta?.ignoreConcurrencyError) {
+					ignoredDispatchMeta = meta;
+					return originalDispatch(events, meta);
+				}
+
+				throw new ConcurrencyError();
+			});
+
+			const events = await handler.execute({ type: 'doSomething', aggregateId });
+
+			expect(events).to.have.length(1);
+			expect(events[0]).to.have.property('type', 'somethingDone');
+			expect(dispatchCallCount).to.equal(3); // 2 regular attempts + ignored concurrency check
+			expect(ignoredDispatchMeta).to.include({
+				ignoreConcurrencyError: true
+			});
 		});
 
 		it('commits events produced before failure; 2nd+3rd execute against same re-created aggregate instance', async () => {
@@ -644,6 +773,45 @@ describe('AggregateCommandHandler', function () {
 				expect(err).to.be.instanceOf(ConcurrencyError);
 				expect(dispatchCallCount).to.equal(1);
 			}
+		});
+
+		it('accepts retryOnConcurrencyError config with ignoreAfterMaxRetries via constructor options with aggregateFactory', async () => {
+
+			const aggregateId = 'factory-force-store-test-id';
+			let dispatchCallCount = 0;
+			let ignoredDispatchMeta: Record<string, any> | undefined;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateFactory: params => new MyAggregate(params),
+				handles: MyAggregate.handles,
+				retryOnConcurrencyError: {
+					maxRetries: 0,
+					ignoreAfterMaxRetries: true
+				}
+			});
+
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			const originalDispatch = eventStore.dispatch.bind(eventStore);
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+				dispatchCallCount++;
+				if (meta?.ignoreConcurrencyError) {
+					ignoredDispatchMeta = meta;
+					return originalDispatch(events, meta);
+				}
+
+				throw new ConcurrencyError();
+			});
+
+			const events = await handler.execute({ type: 'doSomething', aggregateId });
+
+			expect(events).to.have.length(1);
+			expect(dispatchCallCount).to.equal(2); // 1 regular attempt + ignored concurrency check
+			expect(ignoredDispatchMeta).to.include({
+				ignoreConcurrencyError: true
+			});
 		});
 	});
 });

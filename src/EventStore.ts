@@ -143,10 +143,13 @@ export class EventStore implements IEventStore {
 	 * @param events - a set of events to commit
 	 * @returns Signed and committed events
 	 */
-	async dispatch(events: IEventSet): Promise<IEventSet> {
+	async dispatch(events: IEventSet, meta?: Record<string, any>): Promise<IEventSet> {
 		assertArray(events, 'events');
 
-		return this.#eventDispatcher.dispatch(events, { origin: 'internal' });
+		return this.#eventDispatcher.dispatch(events, {
+			origin: 'internal',
+			...meta
+		});
 	}
 
 	on(messageType: string, handler: IMessageHandler) {
