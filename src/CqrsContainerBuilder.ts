@@ -111,7 +111,9 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 					container.createInstance(AggregateType, options),
 				handles: AggregateType.handles,
 				restoresFrom: AggregateType.restoresFrom,
-				retryOnConcurrencyError: AggregateType.retryOnConcurrencyError
+				...AggregateType.retryOnConcurrencyError !== undefined && {
+					retryOnConcurrencyError: AggregateType.retryOnConcurrencyError
+				}
 			});
 
 		return this.registerCommandHandler(commandHandlerFactory);
