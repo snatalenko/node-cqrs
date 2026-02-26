@@ -533,7 +533,7 @@ describe('AggregateCommandHandler', function () {
 			const retryDecisions: Array<{ err: unknown, attempt: number }> = [];
 
 			class CustomRetryAggregate extends MyAggregate {
-				static retryOnConcurrencyError = (err: unknown, attempt: number) => {
+				static retryOnConcurrencyError = (err: unknown, events, attempt: number) => {
 					retryDecisions.push({ err, attempt });
 					return attempt < 1; // retry once (allow on attempt 0 only)
 				};
@@ -567,7 +567,7 @@ describe('AggregateCommandHandler', function () {
 		it('allows custom retry resolver to return "ignore"', async () => {
 
 			class IgnoreRetryAggregate extends MyAggregate {
-				static retryOnConcurrencyError = (_err: unknown, attempt: number) =>
+				static retryOnConcurrencyError = (_err: unknown, events, attempt: number) =>
 					(attempt < 1 ? true : 'ignore');
 			}
 

@@ -50,7 +50,7 @@ export type IAggregateConstructorParams<TState extends IMutableState | object | 
 export type RetryOnConcurrencyErrorDecision = boolean | 'ignore';
 
 export type RetryOnConcurrencyErrorResolver =
-	(err: unknown, attempt: number) => RetryOnConcurrencyErrorDecision;
+	(err: unknown, events: IEventSet | undefined, attempt: number) => RetryOnConcurrencyErrorDecision;
 
 export type RetryOnConcurrencyErrorConfig = {
 	maxRetries?: number;

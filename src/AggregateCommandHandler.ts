@@ -33,14 +33,14 @@ function normalizeRetryResolver(value?: RetryOnConcurrencyErrorOptions): RetryOn
 	if (value === 'ignore')
 		return () => 'ignore';
 	if (typeof value === 'number')
-		return (err, attempt) => err instanceof ConcurrencyError && attempt < value;
+		return (err, events, attempt) => err instanceof ConcurrencyError && attempt < value;
 
 	if (isObject(value)) {
 		const { maxRetries = DEFAULT_MAX_RETRY_ATTEMPTS, ignoreAfterMaxRetries = false } = value;
 		assertNonNegativeInteger(maxRetries, 'retryOnConcurrencyError.maxRetries');
 		assertBoolean(ignoreAfterMaxRetries, 'retryOnConcurrencyError.ignoreAfterMaxRetries');
 
-		return (err, attempt): RetryOnConcurrencyErrorDecision => {
+		return (err, events, attempt): RetryOnConcurrencyErrorDecision => {
 			if (!(err instanceof ConcurrencyError))
 				return false;
 
@@ -52,7 +52,8 @@ function normalizeRetryResolver(value?: RetryOnConcurrencyErrorOptions): RetryOn
 	}
 
 	// undefined or true — default behavior
-	return (err, attempt) => err instanceof ConcurrencyError && attempt < DEFAULT_MAX_RETRY_ATTEMPTS;
+	return (err, events, attempt) =>
+		err instanceof ConcurrencyError && attempt < DEFAULT_MAX_RETRY_ATTEMPTS;
 }
 
 /**
@@ -182,7 +183,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		try {
 			for (let attempt = 0; ; attempt++) {
 				if (attempt > 0)
-					this.#logger?.info(`retrying "${cmd.type}" command on aggregate ${aggregateId}, attempt ${attempt + 1}`);
+					this.#logger?.warn(`retrying "${cmd.type}" command on aggregate ${aggregateId}, attempt ${attempt + 1}`);
 
 				// Read the current cache entry after acquiring the lock. On the first attempt
 				// this is the pre-warmed (possibly shared) instance; on retries it is the
@@ -209,12 +210,12 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 					if (aggregateId)
 						this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
 
-					const retryDecision = this.#shouldRetry(err, attempt);
+					const retryDecision = this.#shouldRetry(err, events, attempt);
 					if (!retryDecision)
 						throw err;
 
 					if (retryDecision === 'ignore' && events?.length) {
-						this.#logger?.info(`"${cmd.type}" concurrency error ignored after ${attempt + 1} attempt(s), force-dispatching`);
+						this.#logger?.warn(`"${cmd.type}" concurrency error ignored after ${attempt + 1} attempt(s), force-dispatching`);
 						await this.#eventStore.dispatch(events, { ignoreConcurrencyError: true });
 						return events;
 					}
