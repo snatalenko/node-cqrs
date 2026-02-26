@@ -1,3 +1,11 @@
+# [1.0.0-rc.39](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.38...v1.0.0-rc.39) (2026-02-26)
+
+
+### Changes
+
+* Add an option for ES concurrency errors ignoring ([5189ba0](https://github.com/snatalenko/node-cqrs/commit/5189ba05c6fb0c5f8635251062acf76d032da8b0))
+
+
 # [1.0.0-rc.38](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.37...v1.0.0-rc.38) (2026-02-24)
 
 
