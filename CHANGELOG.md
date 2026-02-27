@@ -1,3 +1,11 @@
+# [1.0.0-rc.41](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.40...v1.0.0-rc.41) (2026-02-27)
+
+
+### Fixes
+
+* Failing synchronous event handler may prevent execution of other handlers ([fb026e5](https://github.com/snatalenko/node-cqrs/commit/fb026e5263f13c05e8e6999ff0162700551f587c))
+
+
 # [1.0.0-rc.40](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.39...v1.0.0-rc.40) (2026-02-26)
 
 
