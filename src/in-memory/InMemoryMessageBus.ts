@@ -102,8 +102,14 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 
 		const promises: (unknown | Promise<unknown>)[] = [];
 
-		for (const handler of this.handlers.get(event.type) ?? [])
-			promises.push(handler(event, meta));
+		for (const handler of this.handlers.get(event.type) ?? []) {
+			try {
+				promises.push(handler(event, meta));
+			}
+			catch (err) {
+				promises.push(Promise.reject(err));
+			}
+		}
 
 		for (const namedQueue of this.queues.values())
 			promises.push(namedQueue.publish(event, meta));

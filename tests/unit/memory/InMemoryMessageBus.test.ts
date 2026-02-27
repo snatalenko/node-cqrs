@@ -80,6 +80,55 @@ describe('InMemoryMessageBus', function () {
 			expect(handler2).to.have.property('calledOnce', true);
 		});
 
+		it('keeps notifying other handlers when one handler throws', async () => {
+
+			const failingHandler = spy(() => {
+				throw new Error('handler failed');
+			});
+			const successfulHandler = spy();
+
+			bus.on('somethingHappened', failingHandler);
+			bus.on('somethingHappened', successfulHandler);
+
+			try {
+				await bus.publish({ type: 'somethingHappened' });
+				throw new AssertionError('did not fail');
+			}
+			catch (err) {
+				if (err.message !== 'handler failed')
+					throw err;
+			}
+
+			expect(failingHandler).to.have.property('calledOnce', true);
+			expect(successfulHandler).to.have.property('calledOnce', true);
+		});
+
+		it('keeps notifying handlers in other named queues when one named queue handler throws', async () => {
+
+			const directHandler = spy();
+			const failingQueueHandler = spy(() => {
+				throw new Error('queue handler failed');
+			});
+			const successfulQueueHandler = spy();
+
+			bus.on('somethingHappened', directHandler);
+			bus.queue?.('notifications').on('somethingHappened', failingQueueHandler);
+			bus.queue?.('analytics').on('somethingHappened', successfulQueueHandler);
+
+			try {
+				await bus.publish({ type: 'somethingHappened' });
+				throw new AssertionError('did not fail');
+			}
+			catch (err) {
+				if (err.message !== 'queue handler failed')
+					throw err;
+			}
+
+			expect(directHandler).to.have.property('calledOnce', true);
+			expect(failingQueueHandler).to.have.property('calledOnce', true);
+			expect(successfulQueueHandler).to.have.property('calledOnce', true);
+		});
+
 		it('does not allow to setup multiple subscriptions for same event + queueName combination', () => {
 
 			bus.queue?.('notifications').on('somethingHappened', () => { });
