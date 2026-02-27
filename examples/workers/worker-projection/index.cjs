@@ -1,7 +1,7 @@
 const CounterProjection = require('./CounterProjection.cjs');
 
 async function main() {
-	const projection = new CounterProjection();
+	const projection = CounterProjection.workerProxyFactory();
 
 	await projection.project({ id: '1', type: 'somethingHappened' });
 	await projection.project({ id: '2', type: 'somethingHappened' });

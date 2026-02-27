@@ -13,9 +13,13 @@ class CounterView {
 }
 
 class CounterProjection extends AbstractWorkerProjection {
+
+	static get workerModulePath() {
+		return __filename;
+	}
+
 	constructor() {
 		super({
-			workerModulePath: __filename,
 			view: new CounterView()
 		});
 	}
