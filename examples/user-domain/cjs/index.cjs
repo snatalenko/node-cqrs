@@ -18,7 +18,7 @@ const UsersProjection = require('./UsersProjection.cjs');
 exports.createContainer = () => {
 	const builder = new ContainerBuilder();
 
-	// auto-resolved as eventStorageReader, eventStorageWriter, and identifierProvider
+	// auto-resolved as eventStorageReader, eventStorage, and identifierProvider
 	builder.register(InMemoryEventStorage);
 
 	// auto-resolved as snapshotStorage

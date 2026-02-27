@@ -137,9 +137,9 @@ describe('CqrsContainerBuilder', function () {
 			expect(b.container().eventStorageReader).to.be.instanceOf(InMemoryEventStorage);
 		});
 
-		it('resolves eventStorageWriter from an unaliased type implementing IEventStorageWriter', () => {
+		it('resolves eventStorage from an unaliased type implementing IEventStorageReader', () => {
 			b.register(InMemoryEventStorage);
-			expect(b.container().eventStorageWriter).to.be.instanceOf(InMemoryEventStorage);
+			expect(b.container().eventStorage).to.be.instanceOf(InMemoryEventStorage);
 		});
 
 		it('resolves snapshotStorage from an unaliased type implementing IAggregateSnapshotStorage', () => {
@@ -164,11 +164,12 @@ describe('CqrsContainerBuilder', function () {
 			expect(b.container().executionLocker).to.be.instanceOf(MockLocker);
 		});
 
-		it('the same unaliased instance satisfies all three storage resolvers', () => {
+		it('the same unaliased instance satisfies eventStorageReader, eventStorage and identifierProvider resolvers', () => {
 			b.register(InMemoryEventStorage);
 			const container = b.container();
-			const storage = container.eventStorageWriter;
+			const storage = container.eventStorageReader;
 			expect(container.eventStorageReader).to.equal(storage);
+			expect(container.eventStorage).to.equal(storage);
 			expect(container.identifierProvider).to.equal(storage);
 		});
 	});

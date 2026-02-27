@@ -18,7 +18,7 @@ import { UsersProjection, type UsersView } from './UsersProjection.ts';
 
 	const builder = new ContainerBuilder<MyDiContainer>();
 
-	// auto-resolved as eventStorageReader, eventStorageWriter, and identifierProvider
+	// auto-resolved as eventStorageReader, eventStorage, and identifierProvider
 	builder.register(InMemoryEventStorage);
 
 	builder.registerAggregate(UserAggregate);

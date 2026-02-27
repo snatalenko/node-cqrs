@@ -5,7 +5,6 @@ import type {
 	EventQueryAfter,
 	IEventStorageReader,
 	IEventStream,
-	IEventStorageWriter,
 	Identifier,
 	IDispatchPipelineProcessor,
 	DispatchPipelineBatch,
@@ -21,7 +20,6 @@ import { ConcurrencyError } from '../errors/index.ts';
  */
 export class InMemoryEventStorage implements
 	IEventStorageReader,
-	IEventStorageWriter,
 	IIdentifierProvider,
 	IDispatchPipelineProcessor {
 

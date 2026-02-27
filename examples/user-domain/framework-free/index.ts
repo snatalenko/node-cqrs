@@ -11,7 +11,7 @@
 import EventEmitter from 'events';
 import crypto from 'crypto';
 import type {
-	IAggregate, ICommand, ICommandHandler, Identifier, IEvent, IEventSet, IEventStorageReader, IEventStorageWriter,
+	IAggregate, ICommand, ICommandHandler, Identifier, IEvent, IEventSet, IEventStorageReader,
 	IObservable, IProjection
 } from '../../../types';
 
@@ -100,7 +100,7 @@ class UserProjection implements IProjection<Map<string, { username: string }>> {
  * Dumb event store that keeps all events in memory
  * and re-distributes them to all subscribers
  */
-class EventStore extends EventEmitter implements IObservable, IEventStorageReader, IEventStorageWriter {
+class EventStore extends EventEmitter implements IObservable, IEventStorageReader {
 
 	#events: IEvent[] = [];
 
@@ -138,7 +138,9 @@ class EventStore extends EventEmitter implements IObservable, IEventStorageReade
  */
 class CommandHandler implements ICommandHandler {
 
-	#eventStore: IEventStorageReader & IEventStorageWriter;
+	#eventStore: IEventStorageReader & {
+		commitEvents(events: IEventSet): Promise<IEventSet>
+	};
 
 	constructor(eventStore) {
 		this.#eventStore = eventStore;

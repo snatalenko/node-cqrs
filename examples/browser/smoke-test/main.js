@@ -75,7 +75,7 @@
 
 		const builder = new ContainerBuilder();
 
-		// auto-resolved as eventStorageReader, eventStorageWriter, and identifierProvider
+		// auto-resolved as eventStorageReader, eventStorage, and identifierProvider
 		builder.register(InMemoryEventStorage);
 		builder.registerAggregate(UserAggregate);
 		builder.registerProjection(UsersProjection, 'users');
@@ -108,4 +108,3 @@
 		setStatusFail();
 	});
 }());
-

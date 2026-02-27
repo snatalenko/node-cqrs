@@ -8,14 +8,13 @@ import type { IEventStorageReader } from './IEventStorageReader.ts';
 import type { IAggregateSnapshotStorage } from './IAggregateSnapshotStorage.ts';
 import type { IIdentifierProvider } from './IIdentifierProvider.ts';
 import type { IExtendableLogger, ILogger } from './ILogger.ts';
-import type { IEventStorageWriter } from './IEventStorageWriter.ts';
 import type { ILocker } from './ILocker.ts';
 
 export interface IContainer extends Container {
 	eventBus: IEventBus;
 	eventStore: IEventStore
 	eventStorageReader: IEventStorageReader;
-	eventStorageWriter?: IEventStorageWriter;
+	eventStorage?: IEventStorageReader;
 	identifierProvider?: IIdentifierProvider;
 	snapshotStorage?: IAggregateSnapshotStorage;
 	eventIdAugmenter?: IDispatchPipelineProcessor;

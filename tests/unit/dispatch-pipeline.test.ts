@@ -22,25 +22,26 @@ describe('eventDispatchPipeline', () => {
 		builder.register(InMemoryEventStorage);
 		builder.register(InMemorySnapshotStorage);
 		builder.register((c: IContainer) => [
-			c.eventStorageWriter,
+			c.eventStorage,
 			c.snapshotStorage
 		]).as('eventDispatchPipeline');
 
 		container = builder.container() as IContainer;
 	});
 
-	it('delivers all events to eventStorageWriter', async () => {
+	it('delivers all events to eventStorage', async () => {
 
-		const { eventDispatcher, eventStorageWriter } = container;
+		const { eventDispatcher, eventStorage } = container;
+		const storage = eventStorage as InMemoryEventStorage;
 
-		jest.spyOn(eventStorageWriter, 'commitEvents');
+		jest.spyOn(storage, 'commitEvents');
 
 		await eventDispatcher.dispatch([testEvent], { origin: 'internal' });
 		await eventDispatcher.dispatch([testEvent], { origin: 'external' });
 
-		expect(eventStorageWriter.commitEvents).toHaveBeenCalledTimes(2);
-		expect(eventStorageWriter.commitEvents).toHaveBeenNthCalledWith(1, [testEvent]);
-		expect(eventStorageWriter.commitEvents).toHaveBeenNthCalledWith(2, [testEvent]);
+		expect(storage.commitEvents).toHaveBeenCalledTimes(2);
+		expect(storage.commitEvents).toHaveBeenNthCalledWith(1, [testEvent]);
+		expect(storage.commitEvents).toHaveBeenNthCalledWith(2, [testEvent]);
 	});
 
 

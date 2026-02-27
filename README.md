@@ -110,7 +110,7 @@ Wire buses, the event store, and your domain components with dependency injectio
 ```ts
 const builder = new ContainerBuilder();
 
-builder.register(InMemoryEventStorage); // implements IEventStorageReader, IEventStorageWriter, and IIdentifierProvider
+builder.register(InMemoryEventStorage); // implements IEventStorageReader, IDispatchPipelineProcessor, and IIdentifierProvider
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'usersView');
 builder.registerSaga(WelcomeEmailSaga);

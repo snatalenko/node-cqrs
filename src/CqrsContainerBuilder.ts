@@ -16,8 +16,7 @@ import {
 	isExecutionLocker,
 	isAggregateSnapshotStorage,
 	isIdentifierProvider,
-	isEventStorageReader,
-	isEventStorageWriter
+	isEventStorageReader
 } from './interfaces/index.ts';
 import { assertClass, assertFunction } from './utils/assert.ts';
 
@@ -32,7 +31,7 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 
 		super.addResolver(isIdentifierProvider, 'identifierProvider');
 		super.addResolver(isEventStorageReader, 'eventStorageReader');
-		super.addResolver(isEventStorageWriter, 'eventStorageWriter');
+		super.addResolver(isEventStorageReader, 'eventStorage');
 		super.addResolver(isAggregateSnapshotStorage, 'snapshotStorage');
 		super.addResolver(isExecutionLocker, 'executionLocker');
 
@@ -42,10 +41,10 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 		super.register(EventDispatcher).as('eventDispatcher');
 
 		super.register(c => [
-			// automatically add `eventStorageWrite` and `snapshotStorage` to the default dispatch pipeline
-			// if they're registered in the DI container and implement `IDispatchPipelineProcessor` interface
+			// automatically add eventStorage and snapshotStorage to the default dispatch pipeline
+			// if they're registered in the DI container and implement IDispatchPipelineProcessor
 			...isDispatchPipelineProcessor(c.eventIdAugmenter) ? [c.eventIdAugmenter] : [],
-			...isDispatchPipelineProcessor(c.eventStorageWriter) ? [c.eventStorageWriter] : [],
+			...isDispatchPipelineProcessor(c.eventStorage) ? [c.eventStorage] : [],
 			...isDispatchPipelineProcessor(c.snapshotStorage) ? [c.snapshotStorage] : []
 		]).as('eventDispatchPipeline');
 	}

@@ -12,7 +12,6 @@ export * from './IEventLocker.ts';
 export * from './IEventReceptor.ts';
 export * from './IEventSet.ts';
 export * from './IEventStorageReader.ts';
-export * from './IEventStorageWriter.ts';
 export * from './IEventStore.ts';
 export * from './IEventStream.ts';
 export * from './IIdentifierProvider.ts';
