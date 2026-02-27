@@ -1,3 +1,15 @@
+# [1.0.0-rc.42](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.41...v1.0.0-rc.42) (2026-02-27)
+
+
+### Documentation
+
+* Add CONTRIBUTING.md symlinks for coding agents ([878f25f](https://github.com/snatalenko/node-cqrs/commit/878f25fd99ff4884045ea4d8b2cb739f3e2bf5ff))
+
+### Tests
+
+* Fix broken AbstractWorkerProjection example ([5320b97](https://github.com/snatalenko/node-cqrs/commit/5320b97644637981bacccf3c24c019ddeaabae35))
+
+
 # [1.0.0-rc.41](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.40...v1.0.0-rc.41) (2026-02-27)
 
 
