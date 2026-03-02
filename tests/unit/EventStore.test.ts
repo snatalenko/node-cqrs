@@ -50,6 +50,68 @@ describe('EventStore', () => {
 		});
 	});
 
+	describe('constructor', () => {
+
+		it('uses eventStorage as fallback when eventStorageReader is not provided', async () => {
+			const storage = {
+				getAggregateEvents: jest.fn().mockResolvedValue([]),
+				getSagaEvents: jest.fn().mockResolvedValue([]),
+				getEventsByTypes: jest.fn().mockResolvedValue([]),
+				getNewId: jest.fn().mockResolvedValue('storage-id')
+			} as unknown as IEventStorageReader & IIdentifierProvider;
+
+			const storeWithFallback = new EventStore({
+				eventBus,
+				eventDispatcher,
+				eventStorage: storage,
+				logger: undefined
+			});
+
+			await expect(storeWithFallback.getNewId()).resolves.toBe('storage-id');
+			expect(storage.getNewId).toHaveBeenCalledTimes(1);
+
+			for await (const _ of storeWithFallback.getEventsByTypes(['test']))
+				void _;
+			expect(storage.getEventsByTypes).toHaveBeenCalledWith(['test'], undefined);
+		});
+
+		it('prefers eventStorageReader when both eventStorageReader and eventStorage are provided', async () => {
+			const reader = {
+				getAggregateEvents: jest.fn().mockResolvedValue([]),
+				getSagaEvents: jest.fn().mockResolvedValue([]),
+				getEventsByTypes: jest.fn().mockResolvedValue([]),
+				getNewId: jest.fn().mockResolvedValue('reader-id')
+			} as unknown as IEventStorageReader & IIdentifierProvider;
+			const storage = {
+				getAggregateEvents: jest.fn().mockResolvedValue([]),
+				getSagaEvents: jest.fn().mockResolvedValue([]),
+				getEventsByTypes: jest.fn().mockResolvedValue([]),
+				getNewId: jest.fn().mockResolvedValue('storage-id')
+			} as unknown as IEventStorageReader & IIdentifierProvider;
+
+			const storeWithBoth = new EventStore({
+				eventBus,
+				eventDispatcher,
+				eventStorageReader: reader,
+				eventStorage: storage,
+				logger: undefined
+			});
+
+			await expect(storeWithBoth.getNewId()).resolves.toBe('reader-id');
+			expect(reader.getNewId).toHaveBeenCalledTimes(1);
+			expect(storage.getNewId).not.toHaveBeenCalled();
+		});
+
+		it('throws when neither eventStorageReader nor eventStorage is provided', () => {
+			expect(() => new EventStore({
+				eventBus,
+				eventDispatcher,
+				identifierProvider: mockIdentifierProvider,
+				logger: undefined
+			} as any)).toThrow('eventStorageReader or eventStorage is required');
+		});
+	});
+
 	describe('dispatch', () => {
 
 		it('throws error when called with non-array argument', async () => {

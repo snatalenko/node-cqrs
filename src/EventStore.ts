@@ -38,7 +38,8 @@ export class EventStore implements IEventStore {
 	#logger?: ILogger;
 
 	constructor({
-		eventStorageReader,
+		eventStorage,
+		eventStorageReader = eventStorage,
 		identifierProvider = isIdentifierProvider(eventStorageReader) ? eventStorageReader : undefined,
 		snapshotStorage,
 		eventBus,
@@ -47,8 +48,9 @@ export class EventStore implements IEventStore {
 		eventDispatchPipelines,
 		logger
 	}: Pick<IContainer,
-		'identifierProvider' |
+		'eventStorage' |
 		'eventStorageReader' |
+		'identifierProvider' |
 		'snapshotStorage' |
 		'eventBus' |
 		'eventDispatcher' |
@@ -56,7 +58,7 @@ export class EventStore implements IEventStore {
 		'eventDispatchPipeline' |
 		'eventDispatchPipelines'
 	>) {
-		assertDefined(eventStorageReader, 'eventStorageReader');
+		assertDefined(eventStorageReader, 'eventStorageReader or eventStorage');
 		assertDefined(identifierProvider, 'identifierProvider');
 		assertObservable(eventBus, 'eventBus');
 

@@ -13,8 +13,19 @@ import type { ILocker } from './ILocker.ts';
 export interface IContainer extends Container {
 	eventBus: IEventBus;
 	eventStore: IEventStore
-	eventStorageReader: IEventStorageReader;
+
+	/**
+	 * Storage alias used by dispatch pipelines (write/persist role).
+	 * In simple setups this is the same implementation as eventStorageReader.
+	 */
 	eventStorage?: IEventStorageReader;
+
+	/**
+	 * Reader alias consumed by EventStore and other restore/read flows.
+	 * Can point to a dedicated read implementation in split-storage setups.
+	 */
+	eventStorageReader?: IEventStorageReader;
+
 	identifierProvider?: IIdentifierProvider;
 	snapshotStorage?: IAggregateSnapshotStorage;
 	eventIdAugmenter?: IDispatchPipelineProcessor;

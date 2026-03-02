@@ -30,7 +30,11 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 		super(options);
 
 		super.addResolver(isIdentifierProvider, 'identifierProvider');
+
+		// Reader alias consumed by EventStore constructor
 		super.addResolver(isEventStorageReader, 'eventStorageReader');
+
+		// Storage alias used in dispatch pipelines (write/persist role)
 		super.addResolver(isEventStorageReader, 'eventStorage');
 		super.addResolver(isAggregateSnapshotStorage, 'snapshotStorage');
 		super.addResolver(isExecutionLocker, 'executionLocker');
