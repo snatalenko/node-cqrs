@@ -1,5 +1,5 @@
 import { type IMessageHandler, type IObservable, isObservableQueueProvider } from '../interfaces/index.ts';
-import { assertArray, assertDefined, assertFunction, assertObject, assertObservable } from './assert.ts';
+import { assertStringArray, assertDefined, assertFunction, assertObject, assertObservable } from './assert.ts';
 import { getHandler } from './getHandler.ts';
 import { getMessageHandlerNames } from './getMessageHandlerNames.ts';
 
@@ -38,7 +38,7 @@ export function subscribe(
 		assertFunction(masterHandler, 'masterHandler');
 
 	const subscribeTo = messageTypes || getHandledMessageTypes(observer);
-	assertArray(subscribeTo, 'either options.messageTypes, observer.handles or ObserverType.handles');
+	assertStringArray(subscribeTo, 'either options.messageTypes, observer.handles or ObserverType.handles');
 
 	for (const messageType of unique(subscribeTo)) {
 		const handler = masterHandler || getHandler(observer, messageType);

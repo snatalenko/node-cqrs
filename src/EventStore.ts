@@ -23,6 +23,7 @@ import {
 	assertArray,
 	assertDefined,
 	assertObservable,
+	assertStringArray,
 	parseSagaId,
 	setupOneTimeEmitterSubscription
 } from './utils/index.ts';
@@ -86,7 +87,7 @@ export class EventStore implements IEventStore {
 	}
 
 	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
-		assertArray(eventTypes, 'eventTypes');
+		assertStringArray(eventTypes, 'eventTypes');
 
 		this.#logger?.debug(`retrieving ${eventTypes.join(', ')} events...`);
 

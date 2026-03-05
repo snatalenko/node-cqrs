@@ -1,5 +1,5 @@
 import type { IEvent, ILogger, IObservable } from '../interfaces/index.ts';
-import { assertArray, assertFunction, assertObservable } from './assert.ts';
+import { assertStringArray, assertFunction, assertObservable } from './assert.ts';
 
 /**
  * Create one-time eventEmitter subscription for one or multiple events that match a filter
@@ -19,7 +19,7 @@ export function setupOneTimeEmitterSubscription(
 	logger?: ILogger
 ): Promise<IEvent> {
 	assertObservable(emitter, 'emitter');
-	assertArray(messageTypes, 'messageTypes');
+	assertStringArray(messageTypes, 'messageTypes');
 	if (handler)
 		assertFunction(handler, 'handler');
 	if (filter)

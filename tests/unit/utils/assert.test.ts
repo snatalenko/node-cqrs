@@ -4,6 +4,7 @@ import {
 	assertFunction,
 	assertObject,
 	assertArray,
+	assertStringArray,
 	assertOptionalArray,
 	assertMessage,
 	assertEvent,
@@ -91,6 +92,25 @@ describe('assertArray', () => {
 	});
 	it('does not throw for a non-empty array', () => {
 		expect(() => assertArray([1], 'x')).not.toThrow();
+	});
+});
+
+describe('assertStringArray', () => {
+	it('throws TypeError for non-array', () => {
+		expect(() => assertStringArray({}, 'x')).toThrow(new TypeError('x must be a non-empty String[]'));
+	});
+	it('throws TypeError for empty array', () => {
+		expect(() => assertStringArray([], 'x')).toThrow(TypeError);
+	});
+	it('throws TypeError for non-string item', () => {
+		expect(() => assertStringArray(['ok', 1], 'x')).toThrow(TypeError);
+	});
+	it('throws TypeError for empty string item', () => {
+		expect(() => assertStringArray(['ok', ''], 'x')).toThrow(TypeError);
+	});
+	it('does not throw for non-empty string array', () => {
+		expect(() => assertStringArray(['a'], 'x')).not.toThrow();
+		expect(() => assertStringArray(['a', 'b'], 'x')).not.toThrow();
 	});
 });
 

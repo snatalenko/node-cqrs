@@ -1,5 +1,5 @@
 import {
-	assertArray, assertBoolean, assertDefined, assertMessage, assertNonNegativeInteger, assertObservable,
+	assertBoolean, assertDefined, assertMessage, assertNonNegativeInteger, assertObservable, assertStringArray,
 	Lock, MapAssertable
 } from './utils/index.ts';
 import { ConcurrencyError } from './errors/index.ts';
@@ -111,7 +111,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 				AggregateType.retryOnConcurrencyError);
 		}
 		else if (aggregateFactory) {
-			assertArray(handles, 'handles');
+			assertStringArray(handles, 'handles');
 
 			this.#aggregateFactory = aggregateFactory;
 			this.#handles = handles;

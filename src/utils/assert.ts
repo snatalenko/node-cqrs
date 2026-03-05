@@ -29,6 +29,11 @@ export function assertArray(value: unknown, argName: string): asserts value is u
 		throw new TypeError(`${argName} must be a non-empty Array`);
 }
 
+export function assertStringArray(value: unknown, argName: string): asserts value is string[] {
+	if (!Array.isArray(value) || !value.length || value.some(item => typeof item !== 'string' || !item.length))
+		throw new TypeError(`${argName} must be a non-empty String[]`);
+}
+
 export function assertOptionalArray(value: unknown, argName: string): asserts value is unknown[] {
 	if (!Array.isArray(value))
 		throw new TypeError(`${argName} must be an Array`);
