@@ -12,11 +12,25 @@ function getInheritedPropertyNames(prototype: object): string[] {
 	];
 }
 
+type ObserverConstructor<T extends object> = abstract new (...args: any[]) => T;
+
 /**
- * Get message handler names from a command/event handler class.
- * Assumes all private method names start from underscore ("_").
+ * Get message handler names from an observer instance.
+ * Assumes private method names start with underscore (`_`).
  */
-export function getMessageHandlerNames(observerInstanceOrClass: (object | Function)): string[] {
+export function getMessageHandlerNames<T extends object>(observerInstance: T): Extract<keyof T, string>[];
+
+/**
+ * Get message handler names from an observer class constructor.
+ * Assumes private method names start with underscore (`_`).
+ */
+export function getMessageHandlerNames<T extends object>(
+	observerClass: ObserverConstructor<T>
+): Extract<keyof T, string>[];
+
+export function getMessageHandlerNames<T extends object>(
+	observerInstanceOrClass: T | ObserverConstructor<T>
+): Extract<keyof T, string>[] {
 	if (!observerInstanceOrClass)
 		throw new TypeError('observerInstanceOrClass argument required');
 
@@ -34,5 +48,6 @@ export function getMessageHandlerNames(observerInstanceOrClass: (object | Functi
 	return propNames.filter(key =>
 		!key.startsWith('_') &&
 		!inheritedProperties.includes(key) &&
-		typeof propDescriptors[key].value === 'function');
+		typeof propDescriptors[key].value === 'function'
+	) as Extract<keyof T, string>[];
 }
