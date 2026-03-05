@@ -16,7 +16,7 @@
     "strictBindCallApply": true,
     "strictPropertyInitialization": true,
     "isolatedModules": true,
-    "removeComments": false,
+    "removeComments": true,
     "sourceMap": true,
     "alwaysStrict": false,
     "noEmit": true,
