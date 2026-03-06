@@ -135,6 +135,12 @@ describe('AggregateCommandHandler', function () {
 		}
 	});
 
+	it('throws when neither aggregateType nor aggregateFactory is provided', () => {
+		expect(() => new AggregateCommandHandler({
+			eventStore
+		} as any)).to.throw('either aggregateType or aggregateFactory is required');
+	});
+
 	it('requests aggregate ID from event store, when aggregate does not exist', async () => {
 
 		const handler = new AggregateCommandHandler({ eventStore, aggregateType: MyAggregate });
@@ -652,6 +658,40 @@ describe('AggregateCommandHandler', function () {
 			});
 
 			// Ensure aggregate exists
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			commitSpy.restore();
+			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+				dispatchCallCount++;
+				throw new Error('some other error');
+			});
+
+			try {
+				await handler.execute({ type: 'doSomething', aggregateId });
+				assert.fail('Expected error to be thrown');
+			}
+			catch (err: any) {
+				expect(err.message).to.equal('some other error');
+				expect(dispatchCallCount).to.equal(1);
+			}
+		});
+
+		it('does not retry non-ConcurrencyError errors with object retry config', async () => {
+
+			class ConfigRetryAggregate extends MyAggregate {
+				static retryOnConcurrencyError = {
+					maxRetries: 2
+				};
+			}
+
+			const aggregateId = 'non-concurrency-config-error-test-id';
+			let dispatchCallCount = 0;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: ConfigRetryAggregate
+			});
+
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
 			commitSpy.restore();

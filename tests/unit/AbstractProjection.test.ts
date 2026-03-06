@@ -6,12 +6,51 @@ import {
 	InMemoryEventStorage,
 	EventStore,
 	InMemoryMessageBus,
-	EventDispatcher
+	EventDispatcher,
+	type IEventLocker,
+	type IViewLocker
 } from '../../src';
 
 class MyProjection extends AbstractProjection<InMemoryView<{ somethingHappenedCnt?: number }>> {
 	static get handles() {
 		return ['somethingHappened'];
+	}
+
+	async _somethingHappened({ aggregateId }) {
+		return this.view.updateEnforcingNew(aggregateId, (v = {}) => {
+			if (v.somethingHappenedCnt)
+				v.somethingHappenedCnt += 1;
+			else
+				v.somethingHappenedCnt = 1;
+
+			return v;
+		});
+	}
+}
+
+type ProjectionWithSettersParams = {
+	view?: InMemoryView<{ somethingHappenedCnt?: number }>;
+	eventLocker?: IEventLocker | null;
+	viewLocker?: IViewLocker | null;
+};
+
+class ProjectionWithSetters extends AbstractProjection<InMemoryView<{ somethingHappenedCnt?: number }>> {
+	static get handles() {
+		return ['somethingHappened'];
+	}
+
+	constructor({
+		view,
+		eventLocker,
+		viewLocker
+	}: ProjectionWithSettersParams = {}) {
+		super();
+
+		if (view)
+			this.view = view;
+
+		this._eventLocker = eventLocker;
+		this._viewLocker = viewLocker;
 	}
 
 	async _somethingHappened({ aggregateId }) {
@@ -220,6 +259,125 @@ describe('AbstractProjection', function () {
 
 			expect(projection._somethingHappened).to.have.property('calledOnce', true);
 			expect(projection._somethingHappened.lastCall.args).to.eql([event2]);
+		});
+	});
+
+	describe('protected setters', () => {
+
+		it('allows assigning view from a derived constructor', () => {
+			const customView = new InMemoryView();
+			const projectionWithSetters = new ProjectionWithSetters({
+				view: customView
+			});
+
+			expect(projectionWithSetters.view).to.equal(customView);
+		});
+
+		it('uses eventLocker assigned in a derived constructor', async () => {
+			const tryMarkAsProjecting = sinon.stub().resolves(true);
+			const markAsProjected = sinon.stub().resolves();
+			const getLastEvent = sinon.stub().resolves(undefined);
+			const eventLocker: IEventLocker = {
+				tryMarkAsProjecting,
+				markAsProjected,
+				getLastEvent
+			};
+			const projectionWithSetters = new ProjectionWithSetters({
+				view: new InMemoryView(),
+				eventLocker
+			});
+			const event = { type: 'somethingHappened', aggregateId: 1 };
+
+			await projectionWithSetters.project(event);
+
+			expect(tryMarkAsProjecting).to.have.property('calledOnce', true);
+			expect(tryMarkAsProjecting.lastCall.args).to.eql([event]);
+			expect(markAsProjected).to.have.property('calledOnce', true);
+			expect(markAsProjected.lastCall.args).to.eql([event]);
+		});
+
+		it('returns early when event lock is not obtained', async () => {
+			const tryMarkAsProjecting = sinon.stub().resolves(false);
+			const markAsProjected = sinon.stub().resolves();
+			const getLastEvent = sinon.stub().resolves(undefined);
+			const eventLocker: IEventLocker = {
+				tryMarkAsProjecting,
+				markAsProjected,
+				getLastEvent
+			};
+			const projectionWithSetters = new ProjectionWithSetters({
+				view: new InMemoryView(),
+				eventLocker
+			});
+			const handlerSpy = sinon.spy(projectionWithSetters, '_somethingHappened');
+			const event = { type: 'somethingHappened', aggregateId: 1 };
+
+			await projectionWithSetters.project(event);
+
+			expect(tryMarkAsProjecting).to.have.property('calledOnce', true);
+			expect(handlerSpy).to.have.property('called', false);
+			expect(markAsProjected).to.have.property('called', false);
+		});
+
+		it('uses viewLocker assigned in a derived constructor on restore', async () => {
+			const lock = sinon.stub().resolves(true);
+			const unlock = sinon.stub();
+			const once = sinon.stub().resolves();
+			const viewLocker: IViewLocker = {
+				ready: true,
+				lock,
+				unlock,
+				once
+			};
+			const projectionWithSetters = new ProjectionWithSetters({
+				view: new InMemoryView(),
+				viewLocker
+			});
+			const eventStore = {
+				async* getEventsByTypes() {
+				}
+			};
+
+			await projectionWithSetters.restore(eventStore as any);
+
+			expect(lock).to.have.property('calledOnce', true);
+			expect(unlock).to.have.property('calledOnce', true);
+		});
+
+		it('uses eventLocker assigned in a derived constructor on restore', async () => {
+			const lastEvent = {
+				id: 'last-event-id',
+				type: 'somethingHappened',
+				aggregateId: 42,
+				aggregateVersion: 1
+			};
+			const tryMarkAsProjecting = sinon.stub().resolves(true);
+			const markAsProjected = sinon.stub().resolves();
+			const getLastEvent = sinon.stub().resolves(lastEvent);
+			const eventLocker: IEventLocker = {
+				tryMarkAsProjecting,
+				markAsProjected,
+				getLastEvent
+			};
+			const projectionWithSetters = new ProjectionWithSetters({
+				view: new InMemoryView(),
+				eventLocker
+			});
+			const getEventsByTypes = sinon.spy(async function* (
+				messageTypes: string[],
+				options: { afterEvent?: any }
+			) {
+				expect(messageTypes).to.eql(ProjectionWithSetters.handles);
+				expect(options).to.eql({ afterEvent: lastEvent });
+			});
+			const eventStore = {
+				getEventsByTypes
+			};
+
+			await projectionWithSetters.restore(eventStore as any);
+
+			expect(getLastEvent).to.have.property('calledOnce', true);
+			expect(getEventsByTypes).to.have.property('calledOnce', true);
 		});
 	});
 });

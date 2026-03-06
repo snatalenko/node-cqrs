@@ -21,6 +21,22 @@ describe('EventIdAugmentor', function () {
 		expect(batch[1].event).to.have.property('id', 'keep');
 	});
 
+	it('skips envelopes without event', async () => {
+		const identifierProvider = {
+			getNewId: async () => 'evt-1'
+		};
+
+		const augmentor = new EventIdAugmentor({ identifierProvider } as any);
+		const batch = [
+			{},
+			{ event: { type: 'a', aggregateId: '1', payload: undefined } }
+		];
+
+		await augmentor.process(batch as any);
+
+		expect((batch[1] as any).event).to.have.property('id', 'evt-1');
+	});
+
 	it('throws when identifierProvider is missing', () => {
 		let thrown: any;
 		try {
@@ -35,4 +51,3 @@ describe('EventIdAugmentor', function () {
 		expect(thrown).to.have.property('message', 'identifierProvider is required');
 	});
 });
-

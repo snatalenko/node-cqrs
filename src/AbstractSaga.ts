@@ -11,7 +11,8 @@ import {
 	assertDefined,
 	assertString,
 	assertMessage,
-	assertEvent
+	assertEvent,
+	assertFunction
 } from './utils/index.ts';
 
 /**
@@ -106,8 +107,7 @@ export abstract class AbstractSaga implements ISaga {
 			throw new Error('Another event is being processed, concurrent handling is not allowed');
 
 		const handler = getHandler(this, event.type);
-		if (!handler)
-			throw new Error(`'${event.type}' handler is not defined or not a function`);
+		assertFunction(handler, `${event.type} handler`);
 
 		this.#handling = true;
 		this.#messages.length = 0;

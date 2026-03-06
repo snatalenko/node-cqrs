@@ -352,6 +352,13 @@ describe('AbstractAggregate', function () {
 			expect(changes[1]).to.have.property('type', 'snapshot');
 			expect(changes[1]).to.have.property('payload').that.deep.equals((agg as any).state);
 		});
+
+		it('throws when state is not defined', () => {
+			const statelessAggregate = new StatelessAggregate({ id: 2 });
+
+			expect(() => (statelessAggregate as any).makeSnapshot())
+				.to.throw('state property is empty, either define state or override makeSnapshot method');
+		});
 	});
 
 	describe('protected restoreSnapshot(snapshotEvent)', () => {
@@ -398,6 +405,13 @@ describe('AbstractAggregate', function () {
 			(agg as any).restoreSnapshot(snapshotEvent);
 
 			expect(agg).to.have.property('state').that.deep.equals(snapshotEvent.payload);
+		});
+
+		it('throws when state is not defined', () => {
+			const statelessAggregate = new StatelessAggregate({ id: 2 });
+
+			expect(() => (statelessAggregate as any).restoreSnapshot({ aggregateVersion: 1, type: 'snapshot', payload: {} }))
+				.to.throw('state property is empty, either defined state or override restoreSnapshot method');
 		});
 	});
 

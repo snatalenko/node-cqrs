@@ -229,6 +229,31 @@ describe('SagaEventHandler', function () {
 		await factoryHandler.handle({ id: 'starter-factory-1', type: 'somethingHappened', aggregateId: 1 } as any);
 	});
 
+	it('throws when neither sagaType nor sagaFactory is provided', () => {
+		expect(() => new SagaEventHandler({
+			eventStore,
+			commandBus
+		} as any)).to.throw('Either sagaType or sagaFactory is required');
+	});
+
+	it('throws when a non-starter event has no saga origin', async () => {
+		let thrown: any;
+
+		try {
+			await sagaEventHandler.handle({
+				id: 'no-origin-1',
+				type: 'followingHappened',
+				aggregateId: 1
+			} as any);
+		}
+		catch (err: any) {
+			thrown = err;
+		}
+
+		expect(thrown).to.be.instanceOf(Error);
+		expect(thrown).to.have.property('message', 'Event "followingHappened" does not contain saga origin for "Saga"');
+	});
+
 	it('starts saga for handled events when startsWith is not defined and saga origin is absent', async () => {
 		class OriginDrivenSaga extends AbstractSaga {
 			somethingHappened(_event: any) {

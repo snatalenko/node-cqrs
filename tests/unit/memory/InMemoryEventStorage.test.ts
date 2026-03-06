@@ -117,6 +117,53 @@ describe('InMemoryEventStorage', () => {
 
 			expect(results).to.deep.equal([event1, event2]);
 		});
+
+		it('throws when beforeEvent.sagaOrigins does not match sagaId', async () => {
+			const event1 = { id: '1', sagaOrigins: { SagaA: '1' }, type: 'SagaStarted' };
+			await storage.commitEvents([event1]);
+
+			const beforeEvent = { id: '1', sagaOrigins: { SagaA: '2' } };
+			const stream = storage.getSagaEvents('SagaA:1', { beforeEvent } as any);
+
+			try {
+				await stream.next();
+				throw new Error('Expected error was not thrown');
+			}
+			catch (err: any) {
+				expect(err).to.be.instanceOf(TypeError);
+				expect(err.message).to.equal('beforeEvent.sagaOrigins does not match sagaId');
+			}
+		});
+
+		it('throws when origin event cannot be found', async () => {
+			await storage.commitEvents([{ id: 'before', sagaOrigins: { SagaA: 'origin' }, type: 'SagaProgressed' }]);
+
+			const beforeEvent = { id: 'before', sagaOrigins: { SagaA: 'origin' } };
+			const stream = storage.getSagaEvents('SagaA:origin', { beforeEvent } as any);
+
+			try {
+				await stream.next();
+				throw new Error('Expected error was not thrown');
+			}
+			catch (err: any) {
+				expect(err.message).to.equal('origin event origin not found');
+			}
+		});
+
+		it('throws when beforeEvent cannot be found in storage', async () => {
+			await storage.commitEvents([{ id: 'origin', sagaOrigins: { SagaA: 'origin' }, type: 'SagaStarted' }]);
+
+			const beforeEvent = { id: 'missing', sagaOrigins: { SagaA: 'origin' } };
+			const stream = storage.getSagaEvents('SagaA:origin', { beforeEvent } as any);
+
+			try {
+				await stream.next();
+				throw new Error('Expected error was not thrown');
+			}
+			catch (err: any) {
+				expect(err.message).to.equal('beforeEvent missing not found');
+			}
+		});
 	});
 
 	describe('getEventsByTypes', () => {
@@ -176,6 +223,19 @@ describe('InMemoryEventStorage', () => {
 			const id2 = storage.getNewId();
 			expect(id1).to.equal('1');
 			expect(id2).to.equal('2');
+		});
+	});
+
+	describe('process', () => {
+
+		it('throws when batch item does not contain event', async () => {
+			try {
+				await storage.process([{}] as any);
+				throw new Error('Expected error was not thrown');
+			}
+			catch (err: any) {
+				expect(err.message).to.equal('Event batch does not contain `event`');
+			}
 		});
 	});
 });

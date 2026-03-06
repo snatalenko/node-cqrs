@@ -201,7 +201,6 @@ describe('assertClass', () => {
 	});
 	it('throws TypeError for a plain function', () => {
 		expect(() => assertClass(() => {}, 'x')).toThrow(TypeError);
-		// eslint-disable-next-line no-empty-function
 		expect(() => assertClass(function Foo() {}, 'x')).toThrow(TypeError);
 	});
 	it('does not throw for a class', () => {

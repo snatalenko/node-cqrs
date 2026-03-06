@@ -16,6 +16,7 @@ describe('InMemoryLock', () => {
 
 	it('starts unlocked', () => {
 		expect(lock.locked).to.be.false;
+		expect(lock.ready).to.be.true;
 	});
 
 	it('acquires a lock', async () => {

@@ -68,4 +68,27 @@ describe('setupOneTimeEmitterSubscription', () => {
 		await p;
 		expect(handler).toHaveBeenCalledTimes(1);
 	});
+
+	it('ignores repeated callback invocations after first handled event', async () => {
+		let listener: Function | undefined;
+		const emitter = {
+			on(_type: string, fn: Function) {
+				listener = fn;
+			},
+			off() {
+			},
+			emit(_type: string, event: IEvent) {
+				listener?.(event);
+				listener?.(event);
+			}
+		};
+
+		const handler = jest.fn();
+		const p = setupOneTimeEmitterSubscription(emitter as any, ['foo'], undefined, handler);
+
+		emitter.emit('foo', testEvent('foo'));
+
+		await p;
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
 });

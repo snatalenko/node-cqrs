@@ -119,4 +119,13 @@ describe('SqliteViewLocker', function () {
 		expect(error).to.exist;
 		expect(error).to.have.property('message', '"test" lock could not be prolonged');
 	});
+
+	it('unlock() handles missing lock row gracefully', async () => {
+		await firstLock.unlock();
+	});
+
+	it('once() throws for unexpected events', () => {
+		expect(() => firstLock.once('unexpected' as any))
+			.to.throw(TypeError, 'Unexpected event: unexpected');
+	});
 });

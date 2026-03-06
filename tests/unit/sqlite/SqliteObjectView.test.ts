@@ -18,6 +18,33 @@ describe('SqliteObjectView', function () {
 		});
 	});
 
+	afterEach(() => {
+		viewModelSqliteDb.close();
+	});
+
+	it('creates db connection from viewModelSqliteDbFactory when db is not provided', async () => {
+		const db = createDb(':memory:');
+		const view = new SqliteObjectView({
+			viewModelSqliteDbFactory: () => db,
+			projectionName: 'test-factory',
+			tableNamePrefix: 'tbl_factory',
+			schemaVersion: '1'
+		});
+
+		await view.create('1', { foo: 'bar' });
+		expect(await view.get('1')).to.eql({ foo: 'bar' });
+
+		db.close();
+	});
+
+	it('throws if neither db nor dbFactory are provided', () => {
+		expect(() => new SqliteObjectView({
+			projectionName: 'test',
+			tableNamePrefix: 'tbl_test',
+			schemaVersion: '1'
+		} as any)).to.throw('either viewModelSqliteDb or viewModelSqliteDbFactory argument required');
+	});
+
 	describe('getSync', () => {
 
 		it('returns stored record', async () => {

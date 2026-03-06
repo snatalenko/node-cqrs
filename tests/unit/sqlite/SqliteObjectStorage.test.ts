@@ -109,4 +109,27 @@ describe('SqliteObjectStorage', function () {
 
 		expect(row?.version).toBe(concurrency);
 	});
+
+	it('throws if create() affects no rows', async () => {
+		db.exec(`
+			CREATE TRIGGER test_objects_ignore_insert
+			BEFORE INSERT ON test_objects
+			BEGIN
+				SELECT RAISE(IGNORE);
+			END;
+		`);
+
+		await expect(() => storage.create('0006', { name: 'ignored', value: 1 }))
+			.rejects.toThrow("Record '0006' could not be created");
+	});
+
+	it('throws if record version changed before update commit', async () => {
+		await storage.create('0007', { name: 'conflict', value: 1 });
+
+		await expect(() => storage.update('0007', r => {
+			db.prepare('UPDATE test_objects SET version = version + 1 WHERE id = ?')
+				.run(guid('0007'));
+			return { ...r, value: 2 };
+		})).rejects.toThrow("Record '0007' could not be updated");
+	});
 });

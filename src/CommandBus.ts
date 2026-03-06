@@ -91,9 +91,6 @@ export class CommandBus implements ICommandBus {
 			return this.sendRaw({ type, aggregateId, context, payload });
 		}
 
-		if (payload !== undefined)
-			throw new TypeError('more than expected arguments supplied');
-
 		return this.sendRaw<TPayload>({ type, aggregateId, ...options } as ICommand<TPayload>);
 	}
 

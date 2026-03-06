@@ -197,5 +197,13 @@ describe('CqrsContainerBuilder', function () {
 
 			expect(container).to.have.property('myView').that.is.instanceOf(InMemoryView);
 		});
+
+		it('returns projection instance when exposedViewAlias is not provided', () => {
+			builder.registerProjection(MyProjection).as('myProjection');
+
+			const container = builder.container();
+
+			expect(container).to.have.property('myProjection').that.is.instanceOf(MyProjection);
+		});
 	});
 });

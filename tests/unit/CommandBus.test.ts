@@ -10,6 +10,7 @@ describe('CommandBus', function () {
 	beforeEach(() => {
 		messageBus = new InMemoryMessageBus();
 		sinon.spy(messageBus, 'on');
+		sinon.spy(messageBus, 'off');
 		sinon.spy(messageBus, 'send');
 		bus = new CommandBus({ messageBus });
 	});
@@ -30,6 +31,29 @@ describe('CommandBus', function () {
 			expect(messageBus.on).to.have.property('calledOnce', true);
 			expect(messageBus.on).to.have.nested.property('firstCall.args[0]', 'doSomething');
 			expect(messageBus.on).to.have.nested.property('firstCall.args[1]').that.is.a('Function');
+		});
+	});
+
+	describe('off(commandType, handler)', () => {
+
+		it('validates parameters', () => {
+			const handler = () => { };
+			bus.on('test', handler);
+
+			expect(() => bus.off()).to.throw(TypeError);
+			expect(() => bus.off('test')).to.throw(TypeError);
+			expect(() => bus.off('test', handler)).to.not.throw();
+		});
+
+		it('removes previously installed handler on messageBus', () => {
+			const handler = () => { };
+			bus.on('doSomething', handler);
+
+			bus.off('doSomething', handler);
+
+			expect(messageBus.off).to.have.property('calledOnce', true);
+			expect(messageBus.off).to.have.nested.property('firstCall.args[0]', 'doSomething');
+			expect(messageBus.off).to.have.nested.property('firstCall.args[1]', handler);
 		});
 	});
 
@@ -58,6 +82,47 @@ describe('CommandBus', function () {
 				.then(() => {
 					expect(messageBus.send).to.have.nested.property('lastCall.args[0]', command);
 				});
+		});
+
+		it('uses child logger if provided and logs send success', async () => {
+			const logger = {
+				debug: sinon.spy(),
+				warn: sinon.spy()
+			};
+			const extendableLogger = {
+				child: sinon.stub().returns(logger)
+			};
+			const commandBus = new CommandBus({ messageBus, logger: extendableLogger as any });
+			const command = { type: 'doSomething', aggregateId: 10 };
+
+			await commandBus.sendRaw(command as any);
+
+			expect(extendableLogger.child).to.have.property('calledOnce', true);
+			expect(extendableLogger.child).to.have.nested.property('firstCall.args[0]').that.deep.eq({ service: 'CommandBus' });
+			expect(logger.debug).to.have.property('calledTwice', true);
+			expect(logger.debug).to.have.nested.property('firstCall.args[0]').that.contain('to 10');
+			expect(logger.debug).to.have.nested.property('lastCall.args[0]').that.contain('on 10');
+		});
+
+		it('logs send failure without aggregateId', async () => {
+			const logger = {
+				debug: sinon.spy(),
+				warn: sinon.spy()
+			};
+			const commandBus = new CommandBus({ logger: logger as any });
+
+			await commandBus.sendRaw({ type: 'missing-handler' } as any).then(() => {
+				throw new Error('must fail');
+			}, error => {
+				expect(error).to.have.property('message', 'No \'missing-handler\' subscribers found');
+			});
+
+			expect(logger.debug).to.have.property('calledOnce', true);
+			expect(logger.debug).to.have.nested.property('firstCall.args[0]').that.not.contain('to');
+			expect(logger.warn).to.have.property('calledOnce', true);
+			expect(logger.warn).to.have.nested.property('firstCall.args[0]').that.contain('processing has failed');
+			expect(logger.warn).to.have.nested.property('firstCall.args[0]').that.not.contain('on ');
+			expect(logger.warn).to.have.nested.property('firstCall.args[1].stack').that.is.a('string');
 		});
 	});
 

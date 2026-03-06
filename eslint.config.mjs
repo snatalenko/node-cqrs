@@ -664,7 +664,9 @@ export default defineConfig([
 			'class-methods-use-this': 'off',
 			'no-loop-func': 'off',
 			'no-return-assign': 'off',
-			'no-console': 'off'
+			'no-console': 'off',
+			'require-yield': 'off',
+			'no-empty-function': 'off'
 		}
 	}
 ]);

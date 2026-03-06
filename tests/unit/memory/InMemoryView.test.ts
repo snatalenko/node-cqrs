@@ -10,6 +10,18 @@ describe('InMemoryView', function () {
 		v = new InMemoryView();
 	});
 
+	describe('factory', () => {
+
+		it('creates a new InMemoryView instance', async () => {
+			const view = InMemoryView.factory<InMemoryView<any>>();
+
+			expect(view).to.be.instanceOf(InMemoryView);
+
+			await view.create('foo', 'bar');
+			expect(await view.get('foo')).to.eq('bar');
+		});
+	});
+
 	describe('create', () => {
 
 		beforeEach(() => v.unlock());
@@ -113,6 +125,16 @@ describe('InMemoryView', function () {
 		});
 	});
 
+	describe('getSync', () => {
+
+		it('returns a value synchronously by key', async () => {
+			await v.create('foo', 'bar');
+
+			expect(v.getSync('foo')).to.equal('bar');
+			expect(v.getSync('missing')).to.equal(undefined);
+		});
+	});
+
 	describe('getAll', () => {
 
 		it('validates parameters', async () => {
@@ -191,6 +213,26 @@ describe('InMemoryView', function () {
 			await v.updateEnforcingNew('foo', val => `${val}-upd`);
 
 			expect(await v.get('foo')).to.eq('bar-upd');
+		});
+
+		it('updates existing record with update() method', async () => {
+			await v.create('foo', 'bar');
+
+			await v.update('foo', val => `${val}-from-update`);
+
+			expect(await v.get('foo')).to.eq('bar-from-update');
+		});
+
+		it('fails updating existing key when stored value is falsy', async () => {
+			await v.create('counter', 0 as any);
+
+			try {
+				await v.update('counter', () => 1 as any);
+				assert(false, 'did not throw');
+			}
+			catch (e: any) {
+				expect(e).to.have.property('message', 'Key \'counter\' does not exist');
+			}
 		});
 
 		it('updates existing record by operating on argument', async () => {

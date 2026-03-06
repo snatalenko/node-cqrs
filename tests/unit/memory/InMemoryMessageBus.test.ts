@@ -143,4 +143,17 @@ describe('InMemoryMessageBus', function () {
 			}
 		});
 	});
+
+	describe('off(messageType, handler)', function () {
+
+		it('fails when no subscribers are registered for messageType', () => {
+			try {
+				bus.off('missingEvent', () => { });
+				throw new AssertionError('did not fail');
+			}
+			catch (err: any) {
+				expect(err.message).to.equal('No missingEvent subscribers found');
+			}
+		});
+	});
 });

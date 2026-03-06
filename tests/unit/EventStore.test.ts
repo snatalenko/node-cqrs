@@ -206,6 +206,15 @@ describe('EventStore', () => {
 			expect(result).toEqual(sagaEvents);
 			expect(mockStorage.getSagaEvents).toHaveBeenCalledWith('SagaA:origin-1', filter);
 		});
+
+		it('throws when filter.beforeEvent.sagaOrigins does not match sagaId', async () => {
+			const filter = { beforeEvent: { id: 'before-1', sagaOrigins: { SagaA: 'other-origin' } } };
+
+			await expect(async () => {
+				for await (const _ of store.getSagaEvents('SagaA:origin-1', filter as any))
+					void _;
+			}).rejects.toThrow('filter.beforeEvent.sagaOrigins does not match sagaId');
+		});
 	});
 
 	describe('getNewId', () => {
@@ -234,6 +243,17 @@ describe('EventStore', () => {
 			const queueResult = store.queue('testQueue');
 			expect(queueResult).toBeInstanceOf(InMemoryMessageBus);
 			expect(queueSpy).toHaveBeenCalledWith('testQueue');
+		});
+
+		it('throws when injected eventBus does not support queue()', () => {
+			(store as any).eventBus = {
+				publish: jest.fn(),
+				on: jest.fn(),
+				off: jest.fn()
+			};
+
+			expect(() => store.queue('testQueue'))
+				.toThrow('Injected eventBus does not support named queues');
 		});
 	});
 
