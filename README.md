@@ -430,7 +430,64 @@ import { RabbitMqEventBus, RabbitMqGateway } from 'node-cqrs/rabbitmq';
 import { AbstractWorkerProjection } from 'node-cqrs/workers';
 ```
 
-- [AbstractWorkerProjection](src/workers/AbstractWorkerProjection.ts) - projection base class for running handlers and views in a worker thread
+Workers are an execution mode for projections.
+
+You still define one projection class, but it runs as:
+1. A real projection inside a worker thread (handles events, mutates the view).
+2. A proxy projection in the main thread (forwards calls to the worker and exposes the remote view).
+
+This lets you keep your projection code unchanged while moving heavy work off the main thread.
+
+Quickstart:
+1. Create your projection by extending `AbstractWorkerProjection`.
+2. In the worker module, call `YourProjection.createInstanceInWorkerThread()`.
+3. In your app container, register `YourProjection.workerProxyFactory` and use it like a normal projection.
+
+Worker module example (CJS):
+
+```js
+const { AbstractWorkerProjection } = require('node-cqrs/workers');
+
+class CounterView {
+	counter = 0;
+	increment() { this.counter += 1; }
+	getCounter() { return this.counter; }
+}
+
+class CounterProjection extends AbstractWorkerProjection {
+	static get workerModulePath() {
+		return __filename;
+	}
+
+	constructor() {
+		super({ view: new CounterView() });
+	}
+
+	somethingHappened() {
+		this.view.increment();
+	}
+}
+
+CounterProjection.createInstanceInWorkerThread();
+module.exports = CounterProjection;
+```
+
+Main thread usage (DI):
+
+```js
+const CounterProjection = require('./CounterProjection.cjs');
+const { ContainerBuilder } = require('node-cqrs');
+
+const builder = new ContainerBuilder();
+builder.registerProjection(CounterProjection.workerProxyFactory, 'counterView');
+
+const { eventStore, counterView } = builder.container();
+await eventStore.dispatch([{ id: '1', type: 'somethingHappened', payload: {} }]);
+const counter = await counterView.getCounter();
+```
+
+`workerModulePath` should point to executable JavaScript (`__filename` in CJS, `fileURLToPath(import.meta.url)` in ESM).
+If you need a custom proxy projection, you can still use `workerProxyFactory(...)` directly (advanced usage).
 
 
 ## Examples
