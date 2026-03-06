@@ -1,12 +1,24 @@
 {
   "name": "node-cqrs",
   "version": "1.0.0-rc.42",
-  "description": "Infrastructure-agnostic building blocks for CQRS/ES",
+  "description": "TypeScript CQRS/Event Sourcing toolkit for Node.js with DI, sagas, projections, and optional Worker, RabbitMQ, and SQLite adapters",
   "type": "module",
   "keywords": [
     "cqrs",
+    "event-sourcing",
+    "eventsourcing",
     "ddd",
-    "eventsourcing"
+    "domain-driven-design",
+    "event-store",
+    "command-bus",
+    "event-bus",
+    "projection",
+    "saga",
+    "typescript",
+    "nodejs",
+    "worker-threads",
+    "rabbitmq",
+    "sqlite"
   ],
   "repository": {
     "type": "git",
