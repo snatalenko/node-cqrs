@@ -1,42 +1,32 @@
 import { Worker, MessageChannel } from 'node:worker_threads';
 import type {
-	IEvent, IEventLocker, IEventStorageReader, IEventStore, IExtendableLogger, ILogger, IProjection, IViewLocker
+	IEvent, IEventStorageReader, IEventStore, IExtendableLogger, ILogger, IViewLocker
 } from '../interfaces/index.ts';
+import type { IProxyProjection, IWorkerProjection, ProxyProjectionParams } from './interfaces/index.ts';
 import * as Comlink from 'comlink';
 import { nodeEndpoint, createWorker } from './utils/index.ts';
-import { assertArray, assertString, extractErrorDetails, subscribe } from '../utils/index.ts';
+import { assertStringArray, assertString, extractErrorDetails, subscribe } from '../utils/index.ts';
 import { describe } from '../Event.ts';
 import { InMemoryLock } from '../in-memory/InMemoryLock.ts';
-import { IRemoteProjectionApi } from './protocol.ts';
-
-export type WorkerProxyProjectionParams = {
-
-	/**
-	 * Required in the main thread to spawn a worker (derived projection module path).
-	 * Not used in the worker thread.
-	 */
-	workerModulePath: string;
-
-	messageTypes: string[];
-
-	logger?: IExtendableLogger | ILogger;
-}
 
 /**
  * Projection being automatically created in the main thread to proxy events
  * and view calls to AbstractWorkerThreadProjection instance
  */
-export class WorkerProxyProjection<TView extends IEventLocker> implements IProjection<Comlink.Remote<TView>> {
+export class WorkerProxyProjection<
+	TView,
+	TProjection extends IWorkerProjection<TView> = IWorkerProjection<TView>
+> implements IProxyProjection<TView> {
 
 	#worker?: Worker;
 	readonly #workerInit: Promise<Worker>;
-	readonly #remoteProjection: Comlink.Remote<IRemoteProjectionApi>;
+	readonly #remoteProjection: Comlink.Remote<TProjection>;
 	readonly #remoteView: Comlink.Remote<TView>;
 	readonly #logger?: ILogger;
 	readonly #messageTypes: string[];
 	readonly #viewLocker: IViewLocker = new InMemoryLock();
 
-	get remoteProjection() {
+	get remoteProjection(): Comlink.Remote<TProjection> {
 		return this.#remoteProjection;
 	}
 
@@ -48,9 +38,11 @@ export class WorkerProxyProjection<TView extends IEventLocker> implements IProje
 		workerModulePath,
 		messageTypes,
 		logger
-	}: WorkerProxyProjectionParams) {
+	}: ProxyProjectionParams & {
+		logger?: IExtendableLogger | ILogger;
+	}) {
 		assertString(workerModulePath, 'workerModulePath');
-		assertArray(messageTypes, 'messageTypes');
+		assertStringArray(messageTypes, 'messageTypes');
 
 		this.#messageTypes = messageTypes;
 		this.#logger = logger && 'child' in logger ? logger.child({ service: new.target.name }) : logger;
@@ -70,7 +62,7 @@ export class WorkerProxyProjection<TView extends IEventLocker> implements IProje
 
 		this.#workerInit.catch(() => { });
 
-		this.#remoteProjection = Comlink.wrap<IRemoteProjectionApi>(nodeEndpoint(projectionPortMain));
+		this.#remoteProjection = Comlink.wrap<TProjection>(nodeEndpoint(projectionPortMain));
 		this.#remoteView = Comlink.wrap<TView>(nodeEndpoint(viewPortMain));
 	}
 
@@ -97,7 +89,7 @@ export class WorkerProxyProjection<TView extends IEventLocker> implements IProje
 			await this.#workerInit;
 
 		this.#logger?.debug('retrieving last event projected');
-		const lastEvent = await this.view.getLastEvent();
+		const lastEvent = await this.#remoteProjection.getLastProjectedEvent();
 
 		this.#logger?.debug(`retrieving ${lastEvent ? `events after ${describe(lastEvent)}` : 'all events'}...`);
 

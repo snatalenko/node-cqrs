@@ -24,7 +24,7 @@ Key points:
 
 - The same projection module is used as the **worker entry point**.
 - The module should bootstrap the worker-side singleton via
-  `YourProjection.createInstanceIfWorkerThread()`.
+  `YourProjection.createInstanceInWorkerThread()`.
 - In the main thread, `project()` automatically waits for worker startup (so `ensureWorkerReady()` is optional).
 
 Example (CommonJS):
@@ -39,9 +39,12 @@ class CounterView {
 }
 
 class CounterProjection extends AbstractWorkerProjection {
+  static get workerModulePath() {
+    return __filename;
+  }
+
   constructor() {
     super({
-      workerModulePath: __filename,
       view: new CounterView()
     });
   }
@@ -51,7 +54,7 @@ class CounterProjection extends AbstractWorkerProjection {
   }
 }
 
-CounterProjection.createInstanceIfWorkerThread();
+CounterProjection.createInstanceInWorkerThread();
 
 module.exports = CounterProjection;
 ```

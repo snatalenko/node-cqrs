@@ -6,6 +6,7 @@
     "declaration": true,
     "declarationDir": "./types",
     "declarationMap": false,
+    "stripInternal": true,
     "outDir": "./dist/esm",
     "noEmit": false,
     "noEmitOnError": true

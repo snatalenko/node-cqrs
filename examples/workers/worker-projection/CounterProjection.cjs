@@ -12,6 +12,9 @@ class CounterView {
 	}
 }
 
+/**
+ * @extends {AbstractWorkerProjection<CounterView>}
+ */
 class CounterProjection extends AbstractWorkerProjection {
 
 	static get workerModulePath() {
@@ -29,6 +32,6 @@ class CounterProjection extends AbstractWorkerProjection {
 	}
 }
 
-CounterProjection.createInstanceIfWorkerThread();
+CounterProjection.createInstanceInWorkerThread();
 
 module.exports = CounterProjection;
