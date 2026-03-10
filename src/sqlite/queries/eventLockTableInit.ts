@@ -3,7 +3,7 @@ export const eventLockTableInit = (eventLockTableName: string) => `
 		projection_name TEXT NOT NULL,
 		schema_version TEXT NOT NULL,
 		event_id BLOB NOT NULL,
-		processing_at INTEGER NOT NULL DEFAULT (cast(unixepoch('subsec') * 1000 as INTEGER)),
+		processing_at INTEGER NOT NULL DEFAULT (cast(unixepoch('now','subsec') * 1000 as INTEGER)),
 		processed_at INTEGER,
 		PRIMARY KEY (projection_name, schema_version, event_id)
 	);

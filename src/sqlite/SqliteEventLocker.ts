@@ -80,16 +80,16 @@ export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventL
 			VALUES (?, ?, ?)
 			ON CONFLICT (projection_name, schema_version, event_id)
 			DO UPDATE SET
-				processing_at = cast(unixepoch('subsec') * 1000 as INTEGER)
+				processing_at = cast(unixepoch('now','subsec') * 1000 as INTEGER)
 			WHERE
 				processed_at IS NULL
-				AND processing_at <= cast(unixepoch('subsec') * 1000 as INTEGER) - ${this.#eventLockTtl}
+				AND processing_at <= cast(unixepoch('now','subsec') * 1000 as INTEGER) - ${this.#eventLockTtl}
 		`);
 
 		this.#finalizeEventLockQuery = db.prepare(`
 			UPDATE ${this.#eventLockTableName}
 			SET
-				processed_at = cast(unixepoch('subsec') * 1000 as INTEGER)
+				processed_at = cast(unixepoch('now','subsec') * 1000 as INTEGER)
 			WHERE
 				projection_name = ?
 				AND schema_version = ?
