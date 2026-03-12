@@ -1,5 +1,3 @@
-import { expect } from 'chai';
-import * as sinon from 'sinon';
 import {
 	InMemoryEventStorage,
 	InMemoryView,
@@ -53,12 +51,12 @@ describe('CqrsContainerBuilder', function () {
 			builder.registerAggregate(MyAggregate);
 
 			await builder.container().commandBus.sendRaw({ type: 'doSomething' });
-			expect(dependencyMet).to.equal(false);
+			expect(dependencyMet).toBe(false);
 
 			builder.register(SomeService, 'aggregateDependency');
 
 			await builder.container().commandBus.sendRaw({ type: 'doSomething' });
-			expect(dependencyMet).to.equal(true);
+			expect(dependencyMet).toBe(true);
 		});
 
 		it('passes retryOnConcurrencyError options to AggregateCommandHandler', async () => {
@@ -75,7 +73,7 @@ describe('CqrsContainerBuilder', function () {
 			const container = builder.container();
 
 			let dispatchCallCount = 0;
-			const dispatchStub = sinon.stub(container.eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+			const dispatchStub = jest.spyOn(container.eventStore, 'dispatch').mockImplementation(async (events, meta?: Record<string, any>) => {
 				dispatchCallCount++;
 				if (meta?.ignoreConcurrencyError)
 					return events as any;
@@ -85,9 +83,9 @@ describe('CqrsContainerBuilder', function () {
 
 			const events = await container.commandBus.sendRaw({ type: 'doSomething' } as any);
 
-			expect(events).to.have.length(1);
-			expect(dispatchCallCount).to.equal(2);
-			expect(dispatchStub.secondCall.args[1]).to.include({
+			expect(events).toHaveLength(1);
+			expect(dispatchCallCount).toBe(2);
+			expect(dispatchStub.mock.calls[1]?.[1]).toMatchObject({
 				ignoreConcurrencyError: true
 			});
 		});
@@ -129,17 +127,17 @@ describe('CqrsContainerBuilder', function () {
 
 		it('resolves identifierProvider from an unaliased type implementing IIdentifierProvider', () => {
 			b.register(InMemoryEventStorage);
-			expect(b.container().identifierProvider).to.be.instanceOf(InMemoryEventStorage);
+			expect(b.container().identifierProvider).toBeInstanceOf(InMemoryEventStorage);
 		});
 
 		it('resolves eventStorageReader from an unaliased type implementing IEventStorageReader', () => {
 			b.register(InMemoryEventStorage);
-			expect(b.container().eventStorageReader).to.be.instanceOf(InMemoryEventStorage);
+			expect(b.container().eventStorageReader).toBeInstanceOf(InMemoryEventStorage);
 		});
 
 		it('resolves eventStorage from an unaliased type implementing IEventStorageReader', () => {
 			b.register(InMemoryEventStorage);
-			expect(b.container().eventStorage).to.be.instanceOf(InMemoryEventStorage);
+			expect(b.container().eventStorage).toBeInstanceOf(InMemoryEventStorage);
 		});
 
 		it('resolves snapshotStorage from an unaliased type implementing IAggregateSnapshotStorage', () => {
@@ -151,7 +149,7 @@ describe('CqrsContainerBuilder', function () {
 				deleteAggregateSnapshot() { }
 			}
 			b.register(MockSnapshotStorage);
-			expect(b.container().snapshotStorage).to.be.instanceOf(MockSnapshotStorage);
+			expect(b.container().snapshotStorage).toBeInstanceOf(MockSnapshotStorage);
 		});
 
 		it('resolves executionLocker from an unaliased type implementing ILocker', () => {
@@ -161,16 +159,16 @@ describe('CqrsContainerBuilder', function () {
 				}
 			}
 			b.register(MockLocker);
-			expect(b.container().executionLocker).to.be.instanceOf(MockLocker);
+			expect(b.container().executionLocker).toBeInstanceOf(MockLocker);
 		});
 
 		it('the same unaliased instance satisfies eventStorageReader, eventStorage and identifierProvider resolvers', () => {
 			b.register(InMemoryEventStorage);
 			const container = b.container();
 			const storage = container.eventStorageReader;
-			expect(container.eventStorageReader).to.equal(storage);
-			expect(container.eventStorage).to.equal(storage);
-			expect(container.identifierProvider).to.equal(storage);
+			expect(container.eventStorageReader).toBe(storage);
+			expect(container.eventStorage).toBe(storage);
+			expect(container.identifierProvider).toBe(storage);
 		});
 	});
 
@@ -186,7 +184,7 @@ describe('CqrsContainerBuilder', function () {
 		}
 
 		it('exists', () => {
-			expect(builder).to.respondTo('registerProjection');
+			expect(typeof (builder as any).registerProjection).toBe('function');
 		});
 
 		it('exposes projection view thru getter', () => {
@@ -195,7 +193,8 @@ describe('CqrsContainerBuilder', function () {
 
 			const container = builder.container();
 
-			expect(container).to.have.property('myView').that.is.instanceOf(InMemoryView);
+			expect(container).toHaveProperty('myView');
+			expect((container as any).myView).toBeInstanceOf(InMemoryView);
 		});
 
 		it('returns projection instance when exposedViewAlias is not provided', () => {
@@ -203,7 +202,8 @@ describe('CqrsContainerBuilder', function () {
 
 			const container = builder.container();
 
-			expect(container).to.have.property('myProjection').that.is.instanceOf(MyProjection);
+			expect(container).toHaveProperty('myProjection');
+			expect((container as any).myProjection).toBeInstanceOf(MyProjection);
 		});
 	});
 });

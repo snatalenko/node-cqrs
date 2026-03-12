@@ -1,5 +1,4 @@
 import { InMemoryView } from '../../../src';
-import { expect, assert } from 'chai';
 import { nextCycle } from '../../../src/in-memory/utils';
 
 describe('InMemoryView', function () {
@@ -15,10 +14,10 @@ describe('InMemoryView', function () {
 		it('creates a new InMemoryView instance', async () => {
 			const view = InMemoryView.factory<InMemoryView<any>>();
 
-			expect(view).to.be.instanceOf(InMemoryView);
+			expect(view).toBeInstanceOf(InMemoryView);
 
 			await view.create('foo', 'bar');
-			expect(await view.get('foo')).to.eq('bar');
+			expect(await view.get('foo')).toBe('bar');
 		});
 	});
 
@@ -30,7 +29,7 @@ describe('InMemoryView', function () {
 
 			await v.create('foo', 'bar');
 
-			expect(await v.get('foo')).to.eq('bar');
+			expect(await v.get('foo')).toBe('bar');
 		});
 
 		it('fails if record already exists', async () => {
@@ -39,23 +38,23 @@ describe('InMemoryView', function () {
 
 			try {
 				await v.create('foo', 'bar');
-				assert(false, 'did not throw');
+				throw new Error('did not throw');
 			}
 			catch (e: any) {
-				expect(e).to.have.property('message', 'Key \'foo\' already exists');
+				expect(e).toHaveProperty('message', 'Key \'foo\' already exists');
 			}
 		});
 
 		it('creates new record, as passed in value', async () => {
 
 			await v.create('foo', 'bar');
-			expect(await v.get('foo')).to.eq('bar');
+			expect(await v.get('foo')).toBe('bar');
 		});
 
 		it('fails, when trying to pass a function as a value', async () => {
 			try {
 				await v.create('foo', () => 'bar');
-				assert(false, 'did not throw');
+				throw new Error('did not throw');
 			}
 			catch (err) {
 				if (!(err instanceof TypeError))
@@ -69,10 +68,10 @@ describe('InMemoryView', function () {
 		it('returns number of records', async () => {
 
 			await v.create('foo', 'bar');
-			expect(v).to.have.property('size', 1);
+			expect(v).toHaveProperty('size', 1);
 
 			await v.create('foo2', 'bar');
-			expect(v).to.have.property('size', 2);
+			expect(v).toHaveProperty('size', 2);
 		});
 	});
 
@@ -81,8 +80,8 @@ describe('InMemoryView', function () {
 		it('checks whether the view has a value with a given key', async () => {
 
 			await v.create('foo', 'bar');
-			expect(v.has('foo')).to.equal(true);
-			expect(v.has('test')).to.equal(false);
+			expect(v.has('foo')).toBe(true);
+			expect(v.has('test')).toBe(false);
 		});
 	});
 
@@ -94,24 +93,24 @@ describe('InMemoryView', function () {
 			await v.create('foo', 'bar');
 
 			const response = v.get('foo');
-			expect(response).to.be.instanceof(Promise);
+			expect(response).toBeInstanceOf(Promise);
 
 			let delayedResult;
 			response.then(result => {
 				delayedResult = result;
 			});
 
-			expect(delayedResult).to.equal(undefined);
+			expect(delayedResult).toBe(undefined);
 
 			await nextCycle();
 
-			expect(delayedResult).to.equal(undefined);
+			expect(delayedResult).toBe(undefined);
 
 			await v.unlock();
 
 			await nextCycle();
 
-			expect(delayedResult).to.equal('bar');
+			expect(delayedResult).toBe('bar');
 		});
 
 		it('asynchronously returns a view record with a given key', async () => {
@@ -121,7 +120,7 @@ describe('InMemoryView', function () {
 
 			const result = await v.get('foo');
 
-			expect(result).to.equal('bar');
+			expect(result).toBe('bar');
 		});
 	});
 
@@ -130,8 +129,8 @@ describe('InMemoryView', function () {
 		it('returns a value synchronously by key', async () => {
 			await v.create('foo', 'bar');
 
-			expect(v.getSync('foo')).to.equal('bar');
-			expect(v.getSync('missing')).to.equal(undefined);
+			expect(v.getSync('foo')).toBe('bar');
+			expect(v.getSync('missing')).toBe(undefined);
 		});
 	});
 
@@ -140,7 +139,7 @@ describe('InMemoryView', function () {
 		it('validates parameters', async () => {
 			try {
 				await v.getAll(true as any);
-				assert(false, 'did not throw');
+				throw new Error('did not throw');
 			}
 			catch (err) {
 				if (!(err instanceof TypeError))
@@ -156,7 +155,7 @@ describe('InMemoryView', function () {
 
 			const result = await v.getAll(value => typeof value === 'string');
 
-			expect(result).to.eql([
+			expect(result).toEqual([
 				['foo', 'bar'],
 				['c', 'test']
 			]);
@@ -168,24 +167,24 @@ describe('InMemoryView', function () {
 			await v.create('foo', 'bar');
 
 			const response = v.getAll((value, key) => key === 'foo');
-			expect(response).to.be.instanceof(Promise);
+			expect(response).toBeInstanceOf(Promise);
 
 			let delayedResult;
 			response.then(result => {
 				delayedResult = result;
 			});
 
-			expect(delayedResult).to.equal(undefined);
+			expect(delayedResult).toBe(undefined);
 
 			await nextCycle();
 
-			expect(delayedResult).to.equal(undefined);
+			expect(delayedResult).toBe(undefined);
 
 			await v.unlock();
 
 			await nextCycle();
 
-			expect(delayedResult).to.eql([['foo', 'bar']]);
+			expect(delayedResult).toEqual([['foo', 'bar']]);
 		});
 	});
 
@@ -197,10 +196,10 @@ describe('InMemoryView', function () {
 
 			try {
 				await v.update('foo', () => null);
-				assert(false, 'did not throw');
+				throw new Error('did not throw');
 			}
 			catch (e: any) {
-				expect(e).to.have.property('message', 'Key \'foo\' does not exist');
+				expect(e).toHaveProperty('message', 'Key \'foo\' does not exist');
 			}
 		});
 
@@ -208,11 +207,11 @@ describe('InMemoryView', function () {
 
 			await v.create('foo', 'bar');
 
-			expect(await v.get('foo')).to.eq('bar');
+			expect(await v.get('foo')).toBe('bar');
 
 			await v.updateEnforcingNew('foo', val => `${val}-upd`);
 
-			expect(await v.get('foo')).to.eq('bar-upd');
+			expect(await v.get('foo')).toBe('bar-upd');
 		});
 
 		it('updates existing record with update() method', async () => {
@@ -220,7 +219,7 @@ describe('InMemoryView', function () {
 
 			await v.update('foo', val => `${val}-from-update`);
 
-			expect(await v.get('foo')).to.eq('bar-from-update');
+			expect(await v.get('foo')).toBe('bar-from-update');
 		});
 
 		it('fails updating existing key when stored value is falsy', async () => {
@@ -228,10 +227,10 @@ describe('InMemoryView', function () {
 
 			try {
 				await v.update('counter', () => 1 as any);
-				assert(false, 'did not throw');
+				throw new Error('did not throw');
 			}
 			catch (e: any) {
-				expect(e).to.have.property('message', 'Key \'counter\' does not exist');
+				expect(e).toHaveProperty('message', 'Key \'counter\' does not exist');
 			}
 		});
 
@@ -239,13 +238,13 @@ describe('InMemoryView', function () {
 
 			await v.create('foo', { x: 'bar' });
 
-			expect(await v.get('foo')).to.deep.eq({ x: 'bar' });
+			expect(await v.get('foo')).toEqual({ x: 'bar' });
 
 			await v.updateEnforcingNew('foo', val => {
 				val.x += '-upd';
 			});
 
-			expect(await v.get('foo')).to.deep.eq({ x: 'bar-upd' });
+			expect(await v.get('foo')).toEqual({ x: 'bar-upd' });
 		});
 	});
 
@@ -255,22 +254,22 @@ describe('InMemoryView', function () {
 
 		it('creates record, if it does not exist', async () => {
 
-			expect(await v.get('foo')).to.eq(undefined);
+			expect(await v.get('foo')).toBe(undefined);
 
 			await v.updateEnforcingNew('foo', () => 'bar');
 
-			expect(await v.get('foo')).to.eq('bar');
+			expect(await v.get('foo')).toBe('bar');
 		});
 
 		it('updates existing record', async () => {
 
 			await v.create('foo', 'bar');
 
-			expect(await v.get('foo')).to.eq('bar');
+			expect(await v.get('foo')).toBe('bar');
 
 			await v.updateEnforcingNew('foo', val => `${val}-upd`);
 
-			expect(await v.get('foo')).to.eq('bar-upd');
+			expect(await v.get('foo')).toBe('bar-upd');
 		});
 	});
 
@@ -284,8 +283,8 @@ describe('InMemoryView', function () {
 
 			await v.updateAll(val => typeof val === 'string', val => `${val}-updated`);
 
-			expect(await v.get('foo')).to.eq('bar-updated');
-			expect(await v.get('x')).to.eql({ v: 'y' });
+			expect(await v.get('foo')).toBe('bar-updated');
+			expect(await v.get('x')).toEqual({ v: 'y' });
 		});
 	});
 
@@ -295,18 +294,18 @@ describe('InMemoryView', function () {
 
 		it('does nothing, if record does not exist', () => {
 
-			expect(() => v.delete('foo')).to.not.throw();
+			expect(() => v.delete('foo')).not.toThrow();
 		});
 
 		it('deletes existing record', async () => {
 
 			await v.create('foo', 'bar');
 
-			expect(await v.get('foo')).to.eq('bar');
+			expect(await v.get('foo')).toBe('bar');
 
 			await v.delete('foo');
 
-			expect(await v.get('foo')).to.eq(undefined);
+			expect(await v.get('foo')).toBe(undefined);
 		});
 	});
 
@@ -320,8 +319,8 @@ describe('InMemoryView', function () {
 
 			await v.deleteAll(val => typeof val === 'object');
 
-			expect(await v.get('foo')).to.eq('bar');
-			expect(await v.get('x')).to.eq(undefined);
+			expect(await v.get('foo')).toBe('bar');
+			expect(await v.get('x')).toBe(undefined);
 		});
 	});
 
@@ -329,9 +328,9 @@ describe('InMemoryView', function () {
 
 		it('returns view summary', async () => {
 
-			expect(`${v}`).to.eq('0 records');
+			expect(`${v}`).toBe('0 records');
 			await v.create('foo', 'bar');
-			expect(`${v}`).to.eq('1 record');
+			expect(`${v}`).toBe('1 record');
 		});
 	});
 });

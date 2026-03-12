@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import createDb from 'better-sqlite3';
 import { SqliteObjectView } from '../../../src/sqlite';
 import { promisify } from 'util';
@@ -32,7 +31,7 @@ describe('SqliteObjectView', function () {
 		});
 
 		await view.create('1', { foo: 'bar' });
-		expect(await view.get('1')).to.eql({ foo: 'bar' });
+		expect(await view.get('1')).toEqual({ foo: 'bar' });
 
 		db.close();
 	});
@@ -42,19 +41,19 @@ describe('SqliteObjectView', function () {
 			projectionName: 'test',
 			tableNamePrefix: 'tbl_test',
 			schemaVersion: '1'
-		} as any)).to.throw('either viewModelSqliteDb or viewModelSqliteDbFactory argument required');
+		} as any)).toThrow('either viewModelSqliteDb or viewModelSqliteDbFactory argument required');
 	});
 
 	describe('getSync', () => {
 
 		it('returns stored record', async () => {
 			await sqliteObjectView.create('1', { foo: 'bar' });
-			expect(sqliteObjectView.getSync('1')).to.eql({ foo: 'bar' });
+			expect(sqliteObjectView.getSync('1')).toEqual({ foo: 'bar' });
 		});
 
 		it('returns undefined if record does not exist', async () => {
 			await sqliteObjectView.get('missing'); // ensures connection is initialized
-			expect(sqliteObjectView.getSync('missing')).to.eq(undefined);
+			expect(sqliteObjectView.getSync('missing')).toBe(undefined);
 		});
 	});
 
@@ -70,15 +69,15 @@ describe('SqliteObjectView', function () {
 			catch (err) {
 				error = err;
 			}
-			expect(error).to.exist;
-			expect(error).to.have.property('message', 'id must be a non-empty String');
+			expect(error).toBeDefined();
+			expect(error).toHaveProperty('message', 'id must be a non-empty String');
 		});
 
 		it('waits for readiness before returning data', async () => {
 
 			await sqliteObjectView.lock();
 
-			expect(sqliteObjectView).to.have.property('ready', false);
+			expect(sqliteObjectView).toHaveProperty('ready', false);
 
 			let resultObtained = false;
 			const resultPromise = sqliteObjectView.get('test').then(() => {
@@ -86,13 +85,13 @@ describe('SqliteObjectView', function () {
 			});
 
 			await delay(5);
-			expect(resultObtained).to.eq(false);
+			expect(resultObtained).toBe(false);
 
 			sqliteObjectView.unlock();
 
 
 			await resultPromise;
-			expect(resultObtained).to.eq(true);
+			expect(resultObtained).toBe(true);
 		});
 
 		it('returns stored record if ready', async () => {
@@ -100,13 +99,13 @@ describe('SqliteObjectView', function () {
 			sqliteObjectView.create('1', { foo: 'bar' });
 
 			const r = await sqliteObjectView.get('1');
-			expect(r).to.eql({ foo: 'bar' });
+			expect(r).toEqual({ foo: 'bar' });
 		});
 
 		it('returns undefined if record does not exist', async () => {
 
 			const r = await sqliteObjectView.get('1');
-			expect(r).to.eql(undefined);
+			expect(r).toEqual(undefined);
 		});
 	});
 
@@ -114,7 +113,7 @@ describe('SqliteObjectView', function () {
 
 		it('stores a record retrievable by id', async () => {
 			await sqliteObjectView.create('1', { name: 'Alice' });
-			expect(await sqliteObjectView.get('1')).to.eql({ name: 'Alice' });
+			expect(await sqliteObjectView.get('1')).toEqual({ name: 'Alice' });
 		});
 
 		it('throws if record with the same id already exists', async () => {
@@ -127,7 +126,7 @@ describe('SqliteObjectView', function () {
 			catch (err) {
 				error = err;
 			}
-			expect(error).to.exist;
+			expect(error).toBeDefined();
 		});
 	});
 
@@ -136,7 +135,7 @@ describe('SqliteObjectView', function () {
 		it('updates an existing record', async () => {
 			await sqliteObjectView.create('1', { name: 'Alice' });
 			await sqliteObjectView.update('1', r => ({ ...r, name: 'Bob' }));
-			expect(await sqliteObjectView.get('1')).to.eql({ name: 'Bob' });
+			expect(await sqliteObjectView.get('1')).toEqual({ name: 'Bob' });
 		});
 
 		it('throws if record does not exist', async () => {
@@ -147,7 +146,7 @@ describe('SqliteObjectView', function () {
 			catch (err) {
 				error = err;
 			}
-			expect(error).to.exist;
+			expect(error).toBeDefined();
 		});
 	});
 
@@ -155,13 +154,13 @@ describe('SqliteObjectView', function () {
 
 		it('creates a new record if it does not exist', async () => {
 			await sqliteObjectView.updateEnforcingNew('1', () => ({ name: 'Alice' }));
-			expect(await sqliteObjectView.get('1')).to.eql({ name: 'Alice' });
+			expect(await sqliteObjectView.get('1')).toEqual({ name: 'Alice' });
 		});
 
 		it('updates an existing record', async () => {
 			await sqliteObjectView.create('1', { name: 'Alice' });
 			await sqliteObjectView.updateEnforcingNew('1', r => ({ ...r!, name: 'Bob' }));
-			expect(await sqliteObjectView.get('1')).to.eql({ name: 'Bob' });
+			expect(await sqliteObjectView.get('1')).toEqual({ name: 'Bob' });
 		});
 	});
 
@@ -170,13 +169,13 @@ describe('SqliteObjectView', function () {
 		it('removes an existing record and returns true', async () => {
 			await sqliteObjectView.create('1', { name: 'Alice' });
 			const result = await sqliteObjectView.delete('1');
-			expect(result).to.eq(true);
-			expect(await sqliteObjectView.get('1')).to.eq(undefined);
+			expect(result).toBe(true);
+			expect(await sqliteObjectView.get('1')).toBe(undefined);
 		});
 
 		it('returns false when record does not exist', async () => {
 			const result = await sqliteObjectView.delete('missing');
-			expect(result).to.eq(false);
+			expect(result).toBe(false);
 		});
 	});
 });

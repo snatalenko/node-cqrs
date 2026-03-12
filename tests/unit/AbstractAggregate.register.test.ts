@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import {
 	AbstractAggregate,
 	CommandBus,
@@ -30,8 +29,8 @@ describe('AbstractAggregate.register', function () {
 		RegisteredAggregate.register(eventStore, commandBus);
 
 		const [evt] = await commandBus.send('doThing', undefined, { payload: undefined });
-		expect(evt).to.have.property('type', 'thingDone');
-		expect(evt).to.have.property('aggregateId');
+		expect(evt).toHaveProperty('type', 'thingDone');
+		expect(evt).toHaveProperty('aggregateId');
 	});
 });
 

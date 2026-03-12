@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import { makeSagaId, parseSagaId } from '../../../src/utils/sagaId.ts';
 
 describe('sagaId utils', function () {
@@ -7,18 +6,18 @@ describe('sagaId utils', function () {
 		const originEventId = 'evt123';
 		const sagaId = makeSagaId(sagaDescriptor, originEventId);
 
-		expect(sagaId).to.equal('Sagas:WelcomeEmail:evt123');
+		expect(sagaId).toBe('Sagas:WelcomeEmail:evt123');
 
 		const parsed = parseSagaId(sagaId);
-		expect(parsed).to.deep.equal({ sagaDescriptor, originEventId });
+		expect(parsed).toEqual({ sagaDescriptor, originEventId });
 	});
 
 	it('throws for invalid inputs', () => {
-		expect(() => makeSagaId('', 'a')).to.throw(TypeError);
-		expect(() => makeSagaId('a', '')).to.throw(TypeError);
-		expect(() => parseSagaId('')).to.throw(TypeError);
-		expect(() => parseSagaId('no-separator' as any)).to.throw(TypeError);
-		expect(() => parseSagaId(':x' as any)).to.throw(TypeError);
-		expect(() => parseSagaId('x:' as any)).to.throw(TypeError);
+		expect(() => makeSagaId('', 'a')).toThrow(TypeError);
+		expect(() => makeSagaId('a', '')).toThrow(TypeError);
+		expect(() => parseSagaId('')).toThrow(TypeError);
+		expect(() => parseSagaId('no-separator' as any)).toThrow(TypeError);
+		expect(() => parseSagaId(':x' as any)).toThrow(TypeError);
+		expect(() => parseSagaId('x:' as any)).toThrow(TypeError);
 	});
 });

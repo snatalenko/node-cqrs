@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import createDb from 'better-sqlite3';
 import { AbstractSqliteObjectProjection, SqliteObjectView } from '../../../src/sqlite';
 
@@ -8,8 +7,8 @@ describe('AbstractSqliteObjectProjection', () => {
 			somethingHappened() { }
 		}
 
-		expect(() => MissingSqliteProjection.tableName).to.throw('tableName is not defined');
-		expect(() => MissingSqliteProjection.schemaVersion).to.throw('schemaVersion is not defined');
+		expect(() => MissingSqliteProjection.tableName).toThrow('tableName is not defined');
+		expect(() => MissingSqliteProjection.schemaVersion).toThrow('schemaVersion is not defined');
 	});
 
 	it('initializes SqliteObjectView in constructor', () => {
@@ -30,7 +29,7 @@ describe('AbstractSqliteObjectProjection', () => {
 			viewModelSqliteDb: db
 		} as any);
 
-		expect(projection.view).to.be.instanceOf(SqliteObjectView);
+		expect(projection.view).toBeInstanceOf(SqliteObjectView);
 		db.close();
 	});
 });

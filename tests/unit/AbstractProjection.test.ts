@@ -1,5 +1,3 @@
-import { expect, assert, AssertionError } from 'chai';
-import * as sinon from 'sinon';
 import {
 	AbstractProjection,
 	InMemoryView,
@@ -80,7 +78,8 @@ describe('AbstractProjection', function () {
 
 		it('returns a view storage associated with projection', () => {
 
-			expect(projection).to.have.property('view').that.is.equal(view);
+			expect(projection).toHaveProperty('view');
+			expect(projection.view).toBe(view);
 		});
 	});
 
@@ -96,7 +95,7 @@ describe('AbstractProjection', function () {
 				on() { },
 				off() { }
 			};
-			sinon.spy(observable, 'on');
+			jest.spyOn(observable, 'on');
 		});
 
 		it('subscribes to all handlers defined', () => {
@@ -108,9 +107,9 @@ describe('AbstractProjection', function () {
 
 			new ProjectionWithoutHandles().subscribe(observable);
 
-			expect(observable.on).to.have.property('callCount', 2);
-			expect(observable.on).to.have.nested.property('firstCall.args[0]').that.eql('somethingHappened');
-			expect(observable.on).to.have.nested.property('lastCall.args[0]').that.eql('somethingHappened2');
+			expect(observable.on).toHaveBeenCalledTimes(2);
+			expect((observable.on as jest.Mock).mock.calls[0]?.[0]).toBe('somethingHappened');
+			expect((observable.on as jest.Mock).mock.calls.at(-1)?.[0]).toBe('somethingHappened2');
 		});
 
 		it('ignores overridden projection methods', () => {
@@ -126,8 +125,8 @@ describe('AbstractProjection', function () {
 
 			new ProjectionWithoutHandles().subscribe(observable);
 
-			expect(observable.on).to.have.property('calledOnce', true);
-			expect(observable.on).to.have.nested.property('lastCall.args[0]').that.eql('somethingHappened');
+			expect(observable.on).toHaveBeenCalledTimes(1);
+			expect((observable.on as jest.Mock).mock.calls.at(-1)?.[0]).toBe('somethingHappened');
 		});
 
 		it('subscribes projection to all events returned by "handles"', () => {
@@ -142,8 +141,8 @@ describe('AbstractProjection', function () {
 
 			new ProjectionWithHandles().subscribe(observable);
 
-			expect(observable.on).to.have.property('calledOnce', true);
-			expect(observable.on).to.have.nested.property('lastCall.args[0]').that.eql('somethingHappened2');
+			expect(observable.on).toHaveBeenCalledTimes(1);
+			expect((observable.on as jest.Mock).mock.calls.at(-1)?.[0]).toBe('somethingHappened2');
 		});
 	});
 
@@ -159,32 +158,31 @@ describe('AbstractProjection', function () {
 					yield { type: 'somethingHappened', aggregateId: 2, aggregateVersion: 1 };
 				}
 			};
-			sinon.spy(es, 'getEventsByTypes');
+			jest.spyOn(es, 'getEventsByTypes');
 
 			return projection.restore(es);
 		});
 
 		it('queries events of specific types from event store', () => {
 
-			assert(es.getEventsByTypes.calledOnce, 'es.getEventsByTypes was not called');
+			expect(es.getEventsByTypes).toHaveBeenCalledTimes(1);
+			const args = (es.getEventsByTypes as jest.Mock).mock.calls.at(-1) || [];
 
-			const { args } = es.getEventsByTypes.lastCall;
-
-			expect(args).to.have.length(2);
-			expect(args[0]).to.deep.eq(MyProjection.handles);
+			expect(args).toHaveLength(2);
+			expect(args[0]).toEqual(MyProjection.handles);
 		});
 
 		it('projects all retrieved events to view', async () => {
 
 			const viewRecord = await projection.view.get(1);
 
-			expect(viewRecord).to.exist;
-			expect(viewRecord).to.have.property('somethingHappenedCnt', 2);
+			expect(viewRecord).toBeDefined();
+			expect(viewRecord).toHaveProperty('somethingHappenedCnt', 2);
 		});
 
 		it('assigns "ready=true" property to InMemoryView view', () => {
 
-			expect(projection.view).to.have.property('ready', true);
+			expect(projection.view).toHaveProperty('ready', true);
 		});
 
 		it('throws, if projection error encountered', () => {
@@ -196,9 +194,9 @@ describe('AbstractProjection', function () {
 			};
 
 			return projection.restore(es).then(() => {
-				throw new AssertionError('must fail');
+				throw new Error('must fail');
 			}, err => {
-				expect(err).to.have.property('message', '\'unexpectedEvent\' handler is not defined or not a function');
+				expect(err).toHaveProperty('message', '\'unexpectedEvent\' handler is not defined or not a function');
 			});
 		});
 	});
@@ -228,18 +226,18 @@ describe('AbstractProjection', function () {
 				projected = true;
 			});
 
-			expect(restored).to.eq(false);
-			expect(projected).to.eq(false);
+			expect(restored).toBe(false);
+			expect(projected).toBe(false);
 
 			await restoreProcess;
 
-			expect(restored).to.eq(true);
-			expect(projected).to.eq(false);
+			expect(restored).toBe(true);
+			expect(projected).toBe(false);
 
 			await projectProcess;
 
-			expect(restored).to.eq(true);
-			expect(projected).to.eq(true);
+			expect(restored).toBe(true);
+			expect(projected).toBe(true);
 		});
 
 		it('can bypass waiting when invoked as a protected method', async () => {
@@ -249,16 +247,16 @@ describe('AbstractProjection', function () {
 		it('passes event to projection event handler', async () => {
 
 			projection.view.unlock();
-			sinon.spy(projection, '_somethingHappened');
+			jest.spyOn(projection, '_somethingHappened');
 
 			const event2 = { type: 'somethingHappened', aggregateId: 1 };
 
-			expect(projection._somethingHappened).to.have.property('called', false);
+			expect(projection._somethingHappened).not.toHaveBeenCalled();
 
 			await projection.project(event2);
 
-			expect(projection._somethingHappened).to.have.property('calledOnce', true);
-			expect(projection._somethingHappened.lastCall.args).to.eql([event2]);
+			expect(projection._somethingHappened).toHaveBeenCalledTimes(1);
+			expect(projection._somethingHappened.mock.calls.at(-1)).toEqual([event2]);
 		});
 	});
 
@@ -270,13 +268,13 @@ describe('AbstractProjection', function () {
 				view: customView
 			});
 
-			expect(projectionWithSetters.view).to.equal(customView);
+			expect(projectionWithSetters.view).toBe(customView);
 		});
 
 		it('uses eventLocker assigned in a derived constructor', async () => {
-			const tryMarkAsProjecting = sinon.stub().resolves(true);
-			const markAsProjected = sinon.stub().resolves();
-			const getLastEvent = sinon.stub().resolves(undefined);
+			const tryMarkAsProjecting = jest.fn().mockResolvedValue(true);
+			const markAsProjected = jest.fn().mockResolvedValue(undefined);
+			const getLastEvent = jest.fn().mockResolvedValue(undefined);
 			const eventLocker: IEventLocker = {
 				tryMarkAsProjecting,
 				markAsProjected,
@@ -290,16 +288,16 @@ describe('AbstractProjection', function () {
 
 			await projectionWithSetters.project(event);
 
-			expect(tryMarkAsProjecting).to.have.property('calledOnce', true);
-			expect(tryMarkAsProjecting.lastCall.args).to.eql([event]);
-			expect(markAsProjected).to.have.property('calledOnce', true);
-			expect(markAsProjected.lastCall.args).to.eql([event]);
+			expect(tryMarkAsProjecting).toHaveBeenCalledTimes(1);
+			expect(tryMarkAsProjecting.mock.calls.at(-1)).toEqual([event]);
+			expect(markAsProjected).toHaveBeenCalledTimes(1);
+			expect(markAsProjected.mock.calls.at(-1)).toEqual([event]);
 		});
 
 		it('returns early when event lock is not obtained', async () => {
-			const tryMarkAsProjecting = sinon.stub().resolves(false);
-			const markAsProjected = sinon.stub().resolves();
-			const getLastEvent = sinon.stub().resolves(undefined);
+			const tryMarkAsProjecting = jest.fn().mockResolvedValue(false);
+			const markAsProjected = jest.fn().mockResolvedValue(undefined);
+			const getLastEvent = jest.fn().mockResolvedValue(undefined);
 			const eventLocker: IEventLocker = {
 				tryMarkAsProjecting,
 				markAsProjected,
@@ -309,20 +307,20 @@ describe('AbstractProjection', function () {
 				view: new InMemoryView(),
 				eventLocker
 			});
-			const handlerSpy = sinon.spy(projectionWithSetters, '_somethingHappened');
+			const handlerSpy = jest.spyOn(projectionWithSetters, '_somethingHappened');
 			const event = { type: 'somethingHappened', aggregateId: 1 };
 
 			await projectionWithSetters.project(event);
 
-			expect(tryMarkAsProjecting).to.have.property('calledOnce', true);
-			expect(handlerSpy).to.have.property('called', false);
-			expect(markAsProjected).to.have.property('called', false);
+			expect(tryMarkAsProjecting).toHaveBeenCalledTimes(1);
+			expect(handlerSpy).not.toHaveBeenCalled();
+			expect(markAsProjected).not.toHaveBeenCalled();
 		});
 
 		it('uses viewLocker assigned in a derived constructor on restore', async () => {
-			const lock = sinon.stub().resolves(true);
-			const unlock = sinon.stub();
-			const once = sinon.stub().resolves();
+			const lock = jest.fn().mockResolvedValue(true);
+			const unlock = jest.fn();
+			const once = jest.fn().mockResolvedValue(undefined);
 			const viewLocker: IViewLocker = {
 				ready: true,
 				lock,
@@ -340,8 +338,8 @@ describe('AbstractProjection', function () {
 
 			await projectionWithSetters.restore(eventStore as any);
 
-			expect(lock).to.have.property('calledOnce', true);
-			expect(unlock).to.have.property('calledOnce', true);
+			expect(lock).toHaveBeenCalledTimes(1);
+			expect(unlock).toHaveBeenCalledTimes(1);
 		});
 
 		it('uses eventLocker assigned in a derived constructor on restore', async () => {
@@ -351,9 +349,9 @@ describe('AbstractProjection', function () {
 				aggregateId: 42,
 				aggregateVersion: 1
 			};
-			const tryMarkAsProjecting = sinon.stub().resolves(true);
-			const markAsProjected = sinon.stub().resolves();
-			const getLastEvent = sinon.stub().resolves(lastEvent);
+			const tryMarkAsProjecting = jest.fn().mockResolvedValue(true);
+			const markAsProjected = jest.fn().mockResolvedValue(undefined);
+			const getLastEvent = jest.fn().mockResolvedValue(lastEvent);
 			const eventLocker: IEventLocker = {
 				tryMarkAsProjecting,
 				markAsProjected,
@@ -363,12 +361,12 @@ describe('AbstractProjection', function () {
 				view: new InMemoryView(),
 				eventLocker
 			});
-			const getEventsByTypes = sinon.spy(async function* (
+			const getEventsByTypes = jest.fn(async function* (
 				messageTypes: string[],
 				options: { afterEvent?: any }
 			) {
-				expect(messageTypes).to.eql(ProjectionWithSetters.handles);
-				expect(options).to.eql({ afterEvent: lastEvent });
+				expect(messageTypes).toEqual(ProjectionWithSetters.handles);
+				expect(options).toEqual({ afterEvent: lastEvent });
 			});
 			const eventStore = {
 				getEventsByTypes
@@ -376,8 +374,8 @@ describe('AbstractProjection', function () {
 
 			await projectionWithSetters.restore(eventStore as any);
 
-			expect(getLastEvent).to.have.property('calledOnce', true);
-			expect(getEventsByTypes).to.have.property('calledOnce', true);
+			expect(getLastEvent).toHaveBeenCalledTimes(1);
+			expect(getEventsByTypes).toHaveBeenCalledTimes(1);
 		});
 	});
 });

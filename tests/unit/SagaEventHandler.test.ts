@@ -1,5 +1,3 @@
-import { expect } from 'chai';
-import * as sinon from 'sinon';
 import {
 	SagaEventHandler,
 	InMemoryEventStorage,
@@ -54,7 +52,7 @@ describe('SagaEventHandler', function () {
 	});
 
 	it('exists', () => {
-		expect(SagaEventHandler).to.be.a('Function');
+		expect(SagaEventHandler).toBeInstanceOf(Function);
 	});
 
 	it('restores saga state, passes in received event and sends emitted commands', async () => {
@@ -65,13 +63,13 @@ describe('SagaEventHandler', function () {
 			deferred.resolve(undefined);
 		});
 
-		sinon.spy(eventStore, 'getSagaEvents');
+		jest.spyOn(eventStore, 'getSagaEvents');
 		await eventStorage.commitEvents([
 			{ id: 'starter-1', type: 'somethingHappened', aggregateId: 1, sagaOrigins: { Saga: 'starter-1' } },
 			{ id: 'e-following-1', type: 'followingHappened', aggregateId: 1, sagaOrigins: { Saga: 'starter-1' } }
 		] as any);
 
-		expect(eventStore.getSagaEvents).to.have.property('callCount', 0);
+		expect(eventStore.getSagaEvents).toHaveBeenCalledTimes(0);
 
 		await sagaEventHandler.handle({
 			id: 'e-following-1',
@@ -83,7 +81,7 @@ describe('SagaEventHandler', function () {
 			payload: undefined
 		});
 
-		expect(eventStore.getSagaEvents).to.have.property('callCount', 1);
+		expect(eventStore.getSagaEvents).toHaveBeenCalledTimes(1);
 
 		await deferred.promise;
 	});
@@ -102,8 +100,8 @@ describe('SagaEventHandler', function () {
 			thrown = err;
 		}
 
-		expect(thrown).to.be.instanceOf(Error);
-		expect(thrown).to.have.property('message', 'command execution failed');
+		expect(thrown).toBeInstanceOf(Error);
+		expect(thrown).toHaveProperty('message', 'command execution failed');
 	});
 
 	it('throws for starter events without event id', async () => {
@@ -119,8 +117,8 @@ describe('SagaEventHandler', function () {
 			thrown = err;
 		}
 
-		expect(thrown).to.be.instanceOf(TypeError);
-		expect(thrown).to.have.property('message', 'event.id must be a non-empty String');
+		expect(thrown).toBeInstanceOf(TypeError);
+		expect(thrown).toHaveProperty('message', 'event.id must be a non-empty String');
 	});
 
 	it('does not mutate starter event when saga origin is absent', async () => {
@@ -135,8 +133,8 @@ describe('SagaEventHandler', function () {
 		await sagaEventHandler.handle(event as any);
 
 		const command = await deferred.promise;
-		expect(event).to.not.have.property('sagaOrigins');
-		expect(command).to.have.nested.property('sagaOrigins.Saga', 'starter-2');
+		expect(event).not.toHaveProperty('sagaOrigins');
+		expect(command).toHaveProperty('sagaOrigins.Saga', 'starter-2');
 	});
 
 	it('throws when starter event already has saga origin with same event id', async () => {
@@ -156,8 +154,8 @@ describe('SagaEventHandler', function () {
 			thrown = err;
 		}
 
-		expect(thrown).to.be.instanceOf(Error);
-		expect(thrown).to.have.property('message', 'Starter event "somethingHappened" already contains saga origin for "Saga"');
+		expect(thrown).toBeInstanceOf(Error);
+		expect(thrown).toHaveProperty('message', 'Starter event "somethingHappened" already contains saga origin for "Saga"');
 	});
 
 	it('throws when starter event already has saga origin with another event id', async () => {
@@ -177,8 +175,8 @@ describe('SagaEventHandler', function () {
 			thrown = err;
 		}
 
-		expect(thrown).to.be.instanceOf(Error);
-		expect(thrown).to.have.property('message', 'Starter event "somethingHappened" already contains saga origin for "Saga"');
+		expect(thrown).toBeInstanceOf(Error);
+		expect(thrown).toHaveProperty('message', 'Starter event "somethingHappened" already contains saga origin for "Saga"');
 	});
 
 	it('propagates event context to commands when command.context is not set', async () => {
@@ -194,8 +192,8 @@ describe('SagaEventHandler', function () {
 		} as any);
 
 		const command = await deferred.promise;
-		expect(command).to.have.property('context');
-		expect(command.context).to.deep.equal({ requestId: 'r1' });
+		expect(command).toHaveProperty('context');
+		expect(command.context).toEqual({ requestId: 'r1' });
 	});
 
 	it('supports sagaFactory wiring and requires sagaDescriptor', async () => {
@@ -214,8 +212,8 @@ describe('SagaEventHandler', function () {
 			thrown = err;
 		}
 
-		expect(thrown).to.be.instanceOf(TypeError);
-		expect(thrown).to.have.property('message', 'options.sagaDescriptor must be a non-empty String');
+		expect(thrown).toBeInstanceOf(TypeError);
+		expect(thrown).toHaveProperty('message', 'options.sagaDescriptor must be a non-empty String');
 
 		const factoryHandler = new SagaEventHandler({
 			sagaFactory: () => ({ mutate: () => undefined, handle: () => [] } as any),
@@ -233,7 +231,7 @@ describe('SagaEventHandler', function () {
 		expect(() => new SagaEventHandler({
 			eventStore,
 			commandBus
-		} as any)).to.throw('Either sagaType or sagaFactory is required');
+		} as any)).toThrow('Either sagaType or sagaFactory is required');
 	});
 
 	it('throws when a non-starter event has no saga origin', async () => {
@@ -250,8 +248,8 @@ describe('SagaEventHandler', function () {
 			thrown = err;
 		}
 
-		expect(thrown).to.be.instanceOf(Error);
-		expect(thrown).to.have.property('message', 'Event "followingHappened" does not contain saga origin for "Saga"');
+		expect(thrown).toBeInstanceOf(Error);
+		expect(thrown).toHaveProperty('message', 'Event "followingHappened" does not contain saga origin for "Saga"');
 	});
 
 	it('starts saga for handled events when startsWith is not defined and saga origin is absent', async () => {
@@ -269,7 +267,7 @@ describe('SagaEventHandler', function () {
 		await handler.handle({ id: 'od-1', type: 'somethingHappened', aggregateId: 1 } as any);
 
 		const cmd = await deferred.promise;
-		expect(cmd).to.have.nested.property('sagaOrigins.OriginDrivenSaga', 'od-1');
+		expect(cmd).toHaveProperty('sagaOrigins.OriginDrivenSaga', 'od-1');
 	});
 
 	it('restores saga for handled events when startsWith is not defined and saga origin is present', async () => {
@@ -284,7 +282,7 @@ describe('SagaEventHandler', function () {
 		}
 
 		const handler = new SagaEventHandler({ sagaType: OriginDrivenSaga, eventStore, commandBus });
-		sinon.spy(eventStore, 'getSagaEvents');
+		jest.spyOn(eventStore, 'getSagaEvents');
 
 		const origin = 'od-origin-1';
 		await eventStorage.commitEvents([
@@ -303,7 +301,7 @@ describe('SagaEventHandler', function () {
 			payload: undefined
 		} as any);
 
-		expect(eventStore.getSagaEvents).to.have.property('callCount', 1);
+		expect(eventStore.getSagaEvents).toHaveBeenCalledTimes(1);
 		await deferred.promise;
 	});
 
@@ -343,12 +341,12 @@ describe('SagaEventHandler', function () {
 		} as any);
 
 		await new Promise(setImmediate);
-		expect(handleCalled).to.equal(false);
+		expect(handleCalled).toBe(false);
 
 		allowMutateFinish.resolve(undefined);
 		await p;
 
-		expect(handleCalled).to.equal(true);
+		expect(handleCalled).toBe(true);
 	});
 
 	it('executes concurrent events for the same saga id sequentially on the same saga instance', async () => {
@@ -388,7 +386,7 @@ describe('SagaEventHandler', function () {
 
 		const concurrentHandler = new SagaEventHandler({ sagaType: ConcurrencySaga, eventStore, commandBus });
 
-		sinon.spy(eventStore, 'getSagaEvents');
+		jest.spyOn(eventStore, 'getSagaEvents');
 
 		const sagaId = 's1';
 
@@ -424,9 +422,9 @@ describe('SagaEventHandler', function () {
 
 		await Promise.all([p1, p2]);
 
-		expect(maxInFlight).to.equal(1);
-		expect(instances.size).to.equal(1);
-		expect(eventStore.getSagaEvents).to.have.property('callCount', 1);
+		expect(maxInFlight).toBe(1);
+		expect(instances.size).toBe(1);
+		expect(eventStore.getSagaEvents).toHaveBeenCalledTimes(1);
 	});
 
 	it('supports a starter event that starts multiple sagas', async () => {
@@ -469,9 +467,9 @@ describe('SagaEventHandler', function () {
 		const cmdA = await a.promise;
 		const cmdB = await b.promise;
 
-		expect(cmdA).to.have.nested.property('sagaOrigins.SagaA', 'origin-1');
-		expect(cmdB).to.have.nested.property('sagaOrigins.SagaB', 'origin-1');
-		expect(cmdA.sagaOrigins).to.not.have.property('SagaB');
-		expect(cmdB.sagaOrigins).to.not.have.property('SagaA');
+		expect(cmdA).toHaveProperty('sagaOrigins.SagaA', 'origin-1');
+		expect(cmdB).toHaveProperty('sagaOrigins.SagaB', 'origin-1');
+		expect(cmdA.sagaOrigins).not.toHaveProperty('SagaB');
+		expect(cmdB.sagaOrigins).not.toHaveProperty('SagaA');
 	});
 });

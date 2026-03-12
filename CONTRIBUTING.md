@@ -66,7 +66,7 @@ npm run lint           # Run ESLint
 ### Running a single test file
 
 ```bash
-npm t tests/unit/CommandBus.test.ts
+npm test tests/unit/CommandBus.test.ts
 ```
 
 ## Browser bundle

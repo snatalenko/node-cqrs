@@ -1,5 +1,3 @@
-import { expect, assert } from 'chai';
-import * as sinon from 'sinon';
 import {
 	EventDispatcher,
 	ICommandBus,
@@ -101,17 +99,17 @@ describe('AggregateCommandHandler', function () {
 			eventDispatcher,
 			identifierProvider: eventStorage
 		});
-		getNewIdSpy = sinon.spy(eventStore, 'getNewId');
-		getAggregateEventsSpy = sinon.spy(eventStore, 'getAggregateEvents');
-		commitSpy = sinon.spy(eventStore, 'dispatch');
+		getNewIdSpy = jest.spyOn(eventStore, 'getNewId');
+		getAggregateEventsSpy = jest.spyOn(eventStore, 'getAggregateEvents');
+		commitSpy = jest.spyOn(eventStore, 'dispatch');
 
 		commandBus = new CommandBus() as any;
-		onSpy = sinon.spy(commandBus, 'on');
+		onSpy = jest.spyOn(commandBus, 'on');
 	});
 
 	it('exports a class', () => {
-		expect(AggregateCommandHandler).to.be.a('Function');
-		expect(AggregateCommandHandler.toString().substr(0, 5)).to.eq('class');
+		expect(AggregateCommandHandler).toBeInstanceOf(Function);
+		expect(AggregateCommandHandler.toString().substr(0, 5)).toBe('class');
 	});
 
 	it('subscribes to commands handled by Aggregate', () => {
@@ -120,25 +118,25 @@ describe('AggregateCommandHandler', function () {
 
 		handler.subscribe(commandBus);
 
-		expect(commandBus.on).to.have.property('callCount', 2);
+		expect(commandBus.on).toHaveBeenCalledTimes(2);
 
 		{
-			const { args } = onSpy.firstCall;
-			expect(args[0]).to.eq('createAggregate');
-			expect(args[1]).to.be.instanceOf(Function);
+			const args = onSpy.mock.calls[0];
+			expect(args[0]).toBe('createAggregate');
+			expect(args[1]).toBeInstanceOf(Function);
 		}
 
 		{
-			const { args } = onSpy.secondCall;
-			expect(args[0]).to.eq('doSomething');
-			expect(args[1]).to.be.instanceOf(Function);
+			const args = onSpy.mock.calls[1];
+			expect(args[0]).toBe('doSomething');
+			expect(args[1]).toBeInstanceOf(Function);
 		}
 	});
 
 	it('throws when neither aggregateType nor aggregateFactory is provided', () => {
 		expect(() => new AggregateCommandHandler({
 			eventStore
-		} as any)).to.throw('either aggregateType or aggregateFactory is required');
+		} as any)).toThrow('either aggregateType or aggregateFactory is required');
 	});
 
 	it('requests aggregate ID from event store, when aggregate does not exist', async () => {
@@ -147,7 +145,7 @@ describe('AggregateCommandHandler', function () {
 
 		await handler.execute({ type: 'createAggregate' });
 
-		assert(getNewIdSpy.calledOnce, 'getNewId was not called once');
+		expect(getNewIdSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('restores aggregate from event store events', async () => {
@@ -156,10 +154,10 @@ describe('AggregateCommandHandler', function () {
 
 		await handler.execute({ type: 'doSomething', aggregateId: 1 });
 
-		assert(getAggregateEventsSpy.calledOnce, 'getAggregateEvents was not called');
+		expect(getAggregateEventsSpy).toHaveBeenCalledTimes(1);
 
-		const { args } = getAggregateEventsSpy.lastCall;
-		expect(args[0]).to.eql(1);
+		const args = getAggregateEventsSpy.mock.calls.at(-1) || [];
+		expect(args[0]).toEqual(1);
 	});
 
 	it('can restore from filtered event types while keeping aggregate version via tail event', async () => {
@@ -175,19 +173,19 @@ describe('AggregateCommandHandler', function () {
 
 		const events = await handler.execute({ type: 'do', aggregateId });
 
-		assert(getAggregateEventsSpy.called, 'getAggregateEvents was not called');
-		expect(getAggregateEventsSpy.lastCall.args).to.eql([
+		expect(getAggregateEventsSpy).toHaveBeenCalled();
+		expect(getAggregateEventsSpy.mock.calls.at(-1)).toEqual([
 			aggregateId,
 			{ eventTypes: ['stateEvent'], tail: 'last' }
 		]);
 
-		expect(events[0]).to.have.property('aggregateVersion', 3);
+		expect(events[0]).toHaveProperty('aggregateVersion', 3);
 	});
 
 	it('passes commands to aggregate.handle(cmd)', async () => {
 
 		const aggregate = new MyAggregate({ id: 1 });
-		const handleSpy = sinon.spy(aggregate, 'handle');
+		const handleSpy = jest.spyOn(aggregate, 'handle');
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
@@ -197,9 +195,9 @@ describe('AggregateCommandHandler', function () {
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		const { args } = handleSpy.lastCall;
-		expect(args[0]).to.have.property('type', 'doSomething');
-		expect(args[0]).to.have.property('payload', 'test');
+		const args = handleSpy.mock.calls.at(-1) || [];
+		expect(args[0]).toHaveProperty('type', 'doSomething');
+		expect(args[0]).toHaveProperty('payload', 'test');
 	});
 
 	it('attaches command context and sagaOrigins to produced events', async () => {
@@ -218,8 +216,9 @@ describe('AggregateCommandHandler', function () {
 
 		const events = await handler.execute(command);
 
-		expect(events[0]).to.have.property('context', context);
-		expect(events[0]).to.have.property('sagaOrigins').that.eqls(sagaOrigins);
+		expect(events[0]).toHaveProperty('context', context);
+		expect(events[0]).toHaveProperty('sagaOrigins');
+		expect(events[0].sagaOrigins).toEqual(sagaOrigins);
 	});
 
 	it('resolves to produced events', async () => {
@@ -227,8 +226,8 @@ describe('AggregateCommandHandler', function () {
 
 		const events = await handler.execute({ type: 'doSomething', aggregateId: 1 });
 
-		expect(events).to.have.length(1);
-		expect(events[0]).to.have.property('type', 'somethingDone');
+		expect(events).toHaveLength(1);
+		expect(events[0]).toHaveProperty('type', 'somethingDone');
 	});
 
 	it('commits produced events to eventStore', async () => {
@@ -237,10 +236,10 @@ describe('AggregateCommandHandler', function () {
 
 		await handler.execute({ type: 'doSomething', aggregateId: 1 });
 
-		assert(commitSpy.calledOnce, 'commit was not called');
+		expect(commitSpy).toHaveBeenCalledTimes(1);
 
-		const { args } = commitSpy.lastCall;
-		expect(args[0]).to.be.an('Array');
+		const args = commitSpy.mock.calls.at(-1) || [];
+		expect(args[0]).toBeInstanceOf(Array);
 	});
 
 	it('invokes aggregate.makeSnapshot before committing event stream, when get shouldTakeSnapshot equals true', async () => {
@@ -254,7 +253,7 @@ describe('AggregateCommandHandler', function () {
 				return this.version !== 0 && this.version % 2 === 0;
 			}
 		});
-		sinon.spy(aggregate, 'makeSnapshot');
+		const makeSnapshotSpy = jest.spyOn(aggregate, 'makeSnapshot');
 
 		const handler = new AggregateCommandHandler({
 			eventStore,
@@ -264,25 +263,25 @@ describe('AggregateCommandHandler', function () {
 
 		// test
 
-		expect(aggregate).to.have.nested.property('makeSnapshot.called', false);
-		expect(aggregate).to.have.property('version', 0);
+		expect(makeSnapshotSpy).not.toHaveBeenCalled();
+		expect(aggregate).toHaveProperty('version', 0);
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.nested.property('makeSnapshot.called', false);
-		expect(aggregate).to.have.property('version', 1); // 1st event
+		expect(makeSnapshotSpy).not.toHaveBeenCalled();
+		expect(aggregate).toHaveProperty('version', 1); // 1st event
 
 		await handler.execute({ type: 'doSomething', payload: 'test' });
 
-		expect(aggregate).to.have.nested.property('makeSnapshot.called', true);
-		expect(aggregate).to.have.property('version', 3); // 2nd event and snapshot
+		expect(makeSnapshotSpy).toHaveBeenCalledTimes(1);
+		expect(aggregate).toHaveProperty('version', 3); // 2nd event and snapshot
 
-		const [eventStream] = commitSpy.lastCall.args;
+		const [eventStream] = commitSpy.mock.calls.at(-1);
 
-		expect(eventStream).to.have.length(2);
-		expect(eventStream[1]).to.have.property('type', 'snapshot');
-		expect(eventStream[1]).to.have.property('aggregateVersion', 2);
-		expect(eventStream[1]).to.have.property('payload');
+		expect(eventStream).toHaveLength(2);
+		expect(eventStream[1]).toHaveProperty('type', 'snapshot');
+		expect(eventStream[1]).toHaveProperty('aggregateVersion', 2);
+		expect(eventStream[1]).toHaveProperty('payload');
 	});
 
 	it('produces events with sequential versions for concurrent commands to the same aggregate', async () => {
@@ -309,7 +308,7 @@ describe('AggregateCommandHandler', function () {
 			allEvents.push(event);
 
 		const emittedEventVersions = allEvents.map(e => e.aggregateVersion);
-		expect(emittedEventVersions).to.deep.equal([0, 1, 2]);
+		expect(emittedEventVersions).toEqual([0, 1, 2]);
 	});
 
 	it('uses cached aggregate instance for concurrent commands and restores for subsequent commands', async () => {
@@ -331,7 +330,7 @@ describe('AggregateCommandHandler', function () {
 		await handler.execute({ type: 'createAggregate', aggregateId });
 
 		// Reset spies/counters before the main test part
-		getAggregateEventsSpy.resetHistory();
+		getAggregateEventsSpy.mockClear();
 		factoryCallCount = 0;
 
 		const command1 = { type: 'doSomething', aggregateId };
@@ -344,11 +343,11 @@ describe('AggregateCommandHandler', function () {
 		]);
 
 		// Check that restore and factory were called only once for the concurrent pair
-		assert(getAggregateEventsSpy.calledOnce, 'getAggregateEvents should be called once for concurrent commands');
-		expect(factoryCallCount).to.equal(1, 'Aggregate factory should be called once for concurrent commands');
+		expect(getAggregateEventsSpy).toHaveBeenCalledTimes(1);
+		expect(factoryCallCount).toBe(1, 'Aggregate factory should be called once for concurrent commands');
 
 
-		getAggregateEventsSpy.resetHistory();
+		getAggregateEventsSpy.mockClear();
 		factoryCallCount = 0;
 
 		// Execute a third command after the first two completed
@@ -356,8 +355,8 @@ describe('AggregateCommandHandler', function () {
 		await handler.execute(command3);
 
 		// Check that restore and factory were called again for the subsequent command
-		assert(getAggregateEventsSpy.calledOnce, 'getAggregateEvents should be called again for the subsequent command');
-		expect(factoryCallCount).to.equal(1, 'Aggregate factory should be called again for the subsequent command');
+		expect(getAggregateEventsSpy).toHaveBeenCalledTimes(1);
+		expect(factoryCallCount).toBe(1, 'Aggregate factory should be called again for the subsequent command');
 	});
 
 	describe('retryOnConcurrencyError', () => {
@@ -376,9 +375,9 @@ describe('AggregateCommandHandler', function () {
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
 			// Make dispatch fail once with ConcurrencyError, then succeed
+			commitSpy.mockRestore();
 			const originalDispatch = eventStore.dispatch.bind(eventStore);
-			commitSpy.restore();
-			commitSpy = sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?) => {
+			commitSpy = jest.spyOn(eventStore, 'dispatch').mockImplementation(async (events, meta?) => {
 				dispatchCallCount++;
 				if (dispatchCallCount === 1) // fail on first attempt
 					throw new ConcurrencyError();
@@ -388,9 +387,9 @@ describe('AggregateCommandHandler', function () {
 
 			const events = await handler.execute({ type: 'doSomething', aggregateId });
 
-			expect(events).to.have.length(1);
-			expect(events[0]).to.have.property('type', 'somethingDone');
-			expect(dispatchCallCount).to.equal(2); // failed once, succeeded on retry
+			expect(events).toHaveLength(1);
+			expect(events[0]).toHaveProperty('type', 'somethingDone');
+			expect(dispatchCallCount).toBe(2); // failed once, succeeded on retry
 		});
 
 		it('stops retrying after max attempts and throws ConcurrencyError', async () => {
@@ -406,15 +405,15 @@ describe('AggregateCommandHandler', function () {
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
 			// Make dispatch always fail with ConcurrencyError
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').rejects(new ConcurrencyError());
+			commitSpy.mockRestore();
+			jest.spyOn(eventStore, 'dispatch').mockRejectedValue(new ConcurrencyError());
 
 			try {
 				await handler.execute({ type: 'doSomething', aggregateId });
-				assert.fail('Expected ConcurrencyError to be thrown');
+				throw new Error('Expected ConcurrencyError to be thrown');
 			}
 			catch (err) {
-				expect(err).to.be.instanceOf(ConcurrencyError);
+				expect(err).toBeInstanceOf(ConcurrencyError);
 			}
 		});
 
@@ -435,19 +434,19 @@ describe('AggregateCommandHandler', function () {
 			// Ensure aggregate exists
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+			commitSpy.mockRestore();
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async () => {
 				dispatchCallCount++;
 				throw new ConcurrencyError();
 			});
 
 			try {
 				await handler.execute({ type: 'doSomething', aggregateId });
-				assert.fail('Expected ConcurrencyError to be thrown');
+				throw new Error('Expected ConcurrencyError to be thrown');
 			}
 			catch (err) {
-				expect(err).to.be.instanceOf(ConcurrencyError);
-				expect(dispatchCallCount).to.equal(1);
+				expect(err).toBeInstanceOf(ConcurrencyError);
+				expect(dispatchCallCount).toBe(1);
 			}
 		});
 
@@ -468,21 +467,21 @@ describe('AggregateCommandHandler', function () {
 			// Ensure aggregate exists
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+			commitSpy.mockRestore();
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async () => {
 				dispatchCallCount++;
 				throw new ConcurrencyError();
 			});
 
 			try {
 				await handler.execute({ type: 'doSomething', aggregateId });
-				assert.fail('Expected ConcurrencyError to be thrown');
+				throw new Error('Expected ConcurrencyError to be thrown');
 			}
 			catch (err) {
-				expect(err).to.be.instanceOf(ConcurrencyError);
+				expect(err).toBeInstanceOf(ConcurrencyError);
 
 				// retryOnConcurrencyError=2 means 2 retry attempts = 3 total dispatch calls
-				expect(dispatchCallCount).to.equal(3);
+				expect(dispatchCallCount).toBe(3);
 			}
 		});
 
@@ -504,19 +503,19 @@ describe('AggregateCommandHandler', function () {
 
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+			commitSpy.mockRestore();
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async () => {
 				dispatchCallCount++;
 				throw new ConcurrencyError();
 			});
 
 			try {
 				await handler.execute({ type: 'doSomething', aggregateId });
-				assert.fail('Expected ConcurrencyError to be thrown');
+				throw new Error('Expected ConcurrencyError to be thrown');
 			}
 			catch (err) {
-				expect(err).to.be.instanceOf(ConcurrencyError);
-				expect(dispatchCallCount).to.equal(3); // 2 retries + initial attempt
+				expect(err).toBeInstanceOf(ConcurrencyError);
+				expect(dispatchCallCount).toBe(3); // 2 retries + initial attempt
 			}
 		});
 
@@ -531,7 +530,7 @@ describe('AggregateCommandHandler', function () {
 			expect(() => new AggregateCommandHandler({
 				eventStore,
 				aggregateType: InvalidRetryConfigAggregate
-			})).to.throw(TypeError, 'retryOnConcurrencyError.maxRetries must be a non-negative integer');
+			})).toThrow(TypeError, 'retryOnConcurrencyError.maxRetries must be a non-negative integer');
 		});
 
 		it('uses custom function resolver for retry decision', async () => {
@@ -555,18 +554,18 @@ describe('AggregateCommandHandler', function () {
 			// Ensure aggregate exists
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').rejects(new ConcurrencyError('test conflict'));
+			commitSpy.mockRestore();
+			jest.spyOn(eventStore, 'dispatch').mockRejectedValue(new ConcurrencyError('test conflict'));
 
 			try {
 				await handler.execute({ type: 'doSomething', aggregateId });
-				assert.fail('Expected ConcurrencyError to be thrown');
+				throw new Error('Expected ConcurrencyError to be thrown');
 			}
 			catch (err) {
-				expect(err).to.be.instanceOf(ConcurrencyError);
-				expect(retryDecisions).to.have.length(2);
-				expect(retryDecisions[0].attempt).to.equal(0);
-				expect(retryDecisions[1].attempt).to.equal(1);
+				expect(err).toBeInstanceOf(ConcurrencyError);
+				expect(retryDecisions).toHaveLength(2);
+				expect(retryDecisions[0].attempt).toBe(0);
+				expect(retryDecisions[1].attempt).toBe(1);
 			}
 		});
 
@@ -588,9 +587,9 @@ describe('AggregateCommandHandler', function () {
 
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
+			commitSpy.mockRestore();
 			const originalDispatch = eventStore.dispatch.bind(eventStore);
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async (events, meta?: Record<string, any>) => {
 				dispatchCallCount++;
 				if (meta?.ignoreConcurrencyError) {
 					ignoredDispatchMeta = meta;
@@ -602,9 +601,9 @@ describe('AggregateCommandHandler', function () {
 
 			const events = await handler.execute({ type: 'doSomething', aggregateId });
 
-			expect(events).to.have.length(1);
-			expect(dispatchCallCount).to.equal(3); // 2 regular attempts + ignored concurrency check
-			expect(ignoredDispatchMeta).to.include({
+			expect(events).toHaveLength(1);
+			expect(dispatchCallCount).toBe(3); // 2 regular attempts + ignored concurrency check
+			expect(ignoredDispatchMeta).toMatchObject({
 				ignoreConcurrencyError: true
 			});
 		});
@@ -626,9 +625,9 @@ describe('AggregateCommandHandler', function () {
 
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
+			commitSpy.mockRestore();
 			const originalDispatch = eventStore.dispatch.bind(eventStore);
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async (events, meta?: Record<string, any>) => {
 				dispatchCallCount++;
 				if (meta?.ignoreConcurrencyError) {
 					ignoredDispatchMeta = meta;
@@ -640,9 +639,9 @@ describe('AggregateCommandHandler', function () {
 
 			const events = await handler.execute({ type: 'doSomething', aggregateId });
 
-			expect(events).to.have.length(1);
-			expect(dispatchCallCount).to.equal(2); // initial failure + ignored concurrency check
-			expect(ignoredDispatchMeta).to.include({
+			expect(events).toHaveLength(1);
+			expect(dispatchCallCount).toBe(2); // initial failure + ignored concurrency check
+			expect(ignoredDispatchMeta).toMatchObject({
 				ignoreConcurrencyError: true
 			});
 		});
@@ -660,19 +659,19 @@ describe('AggregateCommandHandler', function () {
 			// Ensure aggregate exists
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+			commitSpy.mockRestore();
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async () => {
 				dispatchCallCount++;
 				throw new Error('some other error');
 			});
 
 			try {
 				await handler.execute({ type: 'doSomething', aggregateId });
-				assert.fail('Expected error to be thrown');
+				throw new Error('Expected error to be thrown');
 			}
 			catch (err: any) {
-				expect(err.message).to.equal('some other error');
-				expect(dispatchCallCount).to.equal(1);
+				expect(err.message).toBe('some other error');
+				expect(dispatchCallCount).toBe(1);
 			}
 		});
 
@@ -694,19 +693,19 @@ describe('AggregateCommandHandler', function () {
 
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+			commitSpy.mockRestore();
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async () => {
 				dispatchCallCount++;
 				throw new Error('some other error');
 			});
 
 			try {
 				await handler.execute({ type: 'doSomething', aggregateId });
-				assert.fail('Expected error to be thrown');
+				throw new Error('Expected error to be thrown');
 			}
 			catch (err: any) {
-				expect(err.message).to.equal('some other error');
-				expect(dispatchCallCount).to.equal(1);
+				expect(err.message).toBe('some other error');
+				expect(dispatchCallCount).toBe(1);
 			}
 		});
 
@@ -730,9 +729,9 @@ describe('AggregateCommandHandler', function () {
 
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
+			commitSpy.mockRestore();
 			const originalDispatch = eventStore.dispatch.bind(eventStore);
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async (events, meta?: Record<string, any>) => {
 				dispatchCallCount++;
 				if (meta?.ignoreConcurrencyError) {
 					ignoredDispatchMeta = meta;
@@ -744,10 +743,10 @@ describe('AggregateCommandHandler', function () {
 
 			const events = await handler.execute({ type: 'doSomething', aggregateId });
 
-			expect(events).to.have.length(1);
-			expect(events[0]).to.have.property('type', 'somethingDone');
-			expect(dispatchCallCount).to.equal(3); // 2 regular attempts + ignored concurrency check
-			expect(ignoredDispatchMeta).to.include({
+			expect(events).toHaveLength(1);
+			expect(events[0]).toHaveProperty('type', 'somethingDone');
+			expect(dispatchCallCount).toBe(3); // 2 regular attempts + ignored concurrency check
+			expect(ignoredDispatchMeta).toMatchObject({
 				ignoreConcurrencyError: true
 			});
 		});
@@ -774,11 +773,11 @@ describe('AggregateCommandHandler', function () {
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
 			// Fail only dispatch for the 2nd command (attempt 0), then let all others through
-			const originalDispatch = eventStore.dispatch.bind(eventStore);
 			let dispatchCallCount = 0;
 			let failedDispatchCmdId: string | undefined;
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?) => {
+			commitSpy.mockRestore();
+			const originalDispatch = eventStore.dispatch.bind(eventStore);
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async (events, meta?) => {
 				dispatchCallCount++;
 				if (dispatchCallCount === 2) {
 					failedDispatchCmdId = (events as any)?.[0]?.payload?.cmdId;
@@ -799,27 +798,27 @@ describe('AggregateCommandHandler', function () {
 			await Promise.all([handler.execute(cmd1), handler.execute(cmd2), handler.execute(cmd3)]);
 
 			// cmd2 failed once, retried, cmd1+cmd3 executed — 4 dispatch calls total
-			expect(dispatchCallCount).to.equal(4);
-			expect(failedDispatchCmdId).to.equal(cmd2Id, 'the failed dispatch must correspond to the 2nd command');
+			expect(dispatchCallCount).toBe(4);
+			expect(failedDispatchCmdId).toBe(cmd2Id, 'the failed dispatch must correspond to the 2nd command');
 
 			// Collect committed somethingDone events
 			const allEvents = [];
 			for await (const event of eventStore.getAggregateEvents(aggregateId))
 				allEvents.push(event);
 			const doneEvents = allEvents.filter(e => e.type === 'somethingDone');
-			expect(doneEvents).to.have.length(3);
+			expect(doneEvents).toHaveLength(3);
 
 			// Verify events produced before failure were committed (cmd1 stays committed when cmd2 fails and retries)
 			const cmdIds = doneEvents.map(e => e.payload.cmdId);
-			expect(cmdIds).to.deep.equal([cmd1Id, cmd2Id, cmd3Id], 'events must be committed sequentially for cmd1, cmd2, cmd3');
+			expect(cmdIds).toEqual([cmd1Id, cmd2Id, cmd3Id], 'events must be committed sequentially for cmd1, cmd2, cmd3');
 
 			const emittedEventVersions = doneEvents.map(e => e.aggregateVersion);
-			expect(emittedEventVersions).to.deep.equal([1, 2, 3], 'somethingDone events must have sequential versions');
+			expect(emittedEventVersions).toEqual([1, 2, 3], 'somethingDone events must have sequential versions');
 
 			// 1st event comes from the 1st restored instance, 2nd+3rd from the re-created instance after retry
 			const instanceIds = doneEvents.map(e => e.payload.instanceId);
-			expect(instanceIds).to.deep.equal([1, 2, 2], 'cmd2 retry and cmd3 must execute against the same re-created instance');
-			expect(nextInstanceId).to.equal(3, 'only 2 instances should be created for cmd1+cmd2/cmd3 (initial + retry)');
+			expect(instanceIds).toEqual([1, 2, 2], 'cmd2 retry and cmd3 must execute against the same re-created instance');
+			expect(nextInstanceId).toBe(3, 'only 2 instances should be created for cmd1+cmd2/cmd3 (initial + retry)');
 		});
 
 		it('accepts retryOnConcurrencyError via constructor options with aggregateFactory', async () => {
@@ -837,19 +836,19 @@ describe('AggregateCommandHandler', function () {
 			// Ensure aggregate exists
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async () => {
+			commitSpy.mockRestore();
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async () => {
 				dispatchCallCount++;
 				throw new ConcurrencyError();
 			});
 
 			try {
 				await handler.execute({ type: 'doSomething', aggregateId });
-				assert.fail('Expected ConcurrencyError to be thrown');
+				throw new Error('Expected ConcurrencyError to be thrown');
 			}
 			catch (err) {
-				expect(err).to.be.instanceOf(ConcurrencyError);
-				expect(dispatchCallCount).to.equal(1);
+				expect(err).toBeInstanceOf(ConcurrencyError);
+				expect(dispatchCallCount).toBe(1);
 			}
 		});
 
@@ -871,9 +870,9 @@ describe('AggregateCommandHandler', function () {
 
 			await handler.execute({ type: 'createAggregate', aggregateId });
 
+			commitSpy.mockRestore();
 			const originalDispatch = eventStore.dispatch.bind(eventStore);
-			commitSpy.restore();
-			sinon.stub(eventStore, 'dispatch').callsFake(async (events, meta?: Record<string, any>) => {
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async (events, meta?: Record<string, any>) => {
 				dispatchCallCount++;
 				if (meta?.ignoreConcurrencyError) {
 					ignoredDispatchMeta = meta;
@@ -885,9 +884,9 @@ describe('AggregateCommandHandler', function () {
 
 			const events = await handler.execute({ type: 'doSomething', aggregateId });
 
-			expect(events).to.have.length(1);
-			expect(dispatchCallCount).to.equal(2); // 1 regular attempt + ignored concurrency check
-			expect(ignoredDispatchMeta).to.include({
+			expect(events).toHaveLength(1);
+			expect(dispatchCallCount).toBe(2); // 1 regular attempt + ignored concurrency check
+			expect(ignoredDispatchMeta).toMatchObject({
 				ignoreConcurrencyError: true
 			});
 		});

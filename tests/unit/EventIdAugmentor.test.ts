@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import { EventIdAugmentor } from '../../src/EventIdAugmentor.ts';
 
 describe('EventIdAugmentor', function () {
@@ -16,9 +15,9 @@ describe('EventIdAugmentor', function () {
 
 		const out = await augmentor.process(batch as any);
 
-		expect(out).to.equal(batch);
-		expect(batch[0].event).to.have.property('id', 'evt-1');
-		expect(batch[1].event).to.have.property('id', 'keep');
+		expect(out).toBe(batch);
+		expect(batch[0].event).toHaveProperty('id', 'evt-1');
+		expect(batch[1].event).toHaveProperty('id', 'keep');
 	});
 
 	it('skips envelopes without event', async () => {
@@ -34,7 +33,7 @@ describe('EventIdAugmentor', function () {
 
 		await augmentor.process(batch as any);
 
-		expect((batch[1] as any).event).to.have.property('id', 'evt-1');
+		expect((batch[1] as any).event).toHaveProperty('id', 'evt-1');
 	});
 
 	it('throws when identifierProvider is missing', () => {
@@ -47,7 +46,7 @@ describe('EventIdAugmentor', function () {
 			thrown = err;
 		}
 
-		expect(thrown).to.be.instanceOf(TypeError);
-		expect(thrown).to.have.property('message', 'identifierProvider is required');
+		expect(thrown).toBeInstanceOf(TypeError);
+		expect(thrown).toHaveProperty('message', 'identifierProvider is required');
 	});
 });

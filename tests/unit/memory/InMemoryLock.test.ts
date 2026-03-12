@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import { InMemoryLock } from '../../../src';
 
 describe('InMemoryLock', () => {
@@ -15,13 +14,13 @@ describe('InMemoryLock', () => {
 	});
 
 	it('starts unlocked', () => {
-		expect(lock.locked).to.be.false;
-		expect(lock.ready).to.be.true;
+		expect(lock.locked).toBe(false);
+		expect(lock.ready).toBe(true);
 	});
 
 	it('acquires a lock', async () => {
 		await lock.lock();
-		expect(lock.locked).to.be.true;
+		expect(lock.locked).toBe(true);
 	});
 
 	it('blocks second lock() call until unlocked', async () => {
@@ -35,20 +34,20 @@ describe('InMemoryLock', () => {
 
 		// Ensure second lock() is still waiting
 		await new Promise(resolve => setTimeout(resolve, 100));
-		expect(secondLockAcquired).to.be.false;
+		expect(secondLockAcquired).toBe(false);
 
 		// Unlock and allow second lock to proceed
 		await lock.unlock();
 		await secondLock;
-		expect(secondLockAcquired).to.be.true;
+		expect(secondLockAcquired).toBe(true);
 	});
 
 	it('unlocks the lock', async () => {
 		await lock.lock();
-		expect(lock.locked).to.be.true;
+		expect(lock.locked).toBe(true);
 
 		await lock.unlock();
-		expect(lock.locked).to.be.false;
+		expect(lock.locked).toBe(false);
 	});
 
 	it('resolves once() immediately if not locked', async () => {
@@ -58,7 +57,7 @@ describe('InMemoryLock', () => {
 			resolved = true;
 		});
 
-		expect(resolved).to.be.true;
+		expect(resolved).toBe(true);
 	});
 
 	it('resolves once() only after unlocking', async () => {
@@ -71,22 +70,22 @@ describe('InMemoryLock', () => {
 
 		// Ensure it's still waiting
 		await new Promise(resolve => setTimeout(resolve, 100));
-		expect(resolved).to.be.false;
+		expect(resolved).toBe(false);
 
 		// Unlock and verify resolution
 		await lock.unlock();
 		await waitForUnlock;
-		expect(resolved).to.be.true;
+		expect(resolved).toBe(true);
 	});
 
 	it('handles multiple unlock() calls gracefully', async () => {
 		await lock.lock();
 		await lock.unlock();
 		await lock.unlock(); // Should not throw or change state
-		expect(lock.locked).to.be.false;
+		expect(lock.locked).toBe(false);
 	});
 
 	it('throws an error for unexpected event types in once()', () => {
-		expect(() => lock.once('invalid_event')).to.throw(TypeError);
+		expect(() => lock.once('invalid_event')).toThrow(TypeError);
 	});
 });

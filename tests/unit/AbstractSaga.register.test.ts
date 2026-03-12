@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import {
 	AbstractSaga,
 	CommandBus,
@@ -39,7 +38,7 @@ describe('AbstractSaga.register', function () {
 		await eventStore.dispatch([{ id: 'e1', type: 'somethingHappened', aggregateId: 1, payload: undefined } as any]);
 
 		const cmd = await deferred.promise;
-		expect(cmd).to.have.property('type', 'doSomething');
+		expect(cmd).toHaveProperty('type', 'doSomething');
 	});
 });
 

@@ -1,6 +1,4 @@
 import { IMessageBus, InMemoryMessageBus } from '../../../src';
-import { expect, AssertionError } from 'chai';
-import { spy } from 'sinon';
 
 describe('InMemoryMessageBus', function () {
 
@@ -15,7 +13,7 @@ describe('InMemoryMessageBus', function () {
 
 			bus.on('doSomething', cmd => {
 				try {
-					expect(cmd).to.have.nested.property('payload.message', 'test');
+					expect(cmd).toHaveProperty('payload.message', 'test');
 					done();
 				}
 				catch (err) {
@@ -30,13 +28,13 @@ describe('InMemoryMessageBus', function () {
 				}
 			});
 
-			expect(result).is.instanceOf(Promise);
+			expect(result).toBeInstanceOf(Promise);
 		});
 
 		it('fails if no handlers found', async () => {
 			try {
 				await bus.send({ type: 'doSomething' });
-				throw new AssertionError('did not fail');
+				throw new Error('did not fail');
 			}
 			catch (err) {
 				if (err.message !== 'No \'doSomething\' subscribers found')
@@ -51,7 +49,7 @@ describe('InMemoryMessageBus', function () {
 
 			try {
 				await bus.send({ type: 'doSomething' });
-				throw new AssertionError('did not fail');
+				throw new Error('did not fail');
 			}
 			catch (err) {
 				if (err.message !== 'More than one \'doSomething\' subscriber found')
@@ -63,53 +61,53 @@ describe('InMemoryMessageBus', function () {
 	describe('publish(event)', function () {
 
 		it('exists', () => {
-			expect(bus).to.respondTo('publish');
+			expect(typeof (bus as any).publish).toBe('function');
 		});
 
 		it('publishes a message to all handlers', async () => {
 
-			const handler1 = spy();
-			const handler2 = spy();
+			const handler1 = jest.fn();
+			const handler2 = jest.fn();
 
 			bus.on('somethingHappened', handler1);
 			bus.on('somethingHappened', handler2);
 
 			await bus.publish({ type: 'somethingHappened' });
 
-			expect(handler1).to.have.property('calledOnce', true);
-			expect(handler2).to.have.property('calledOnce', true);
+			expect(handler1).toHaveBeenCalledTimes(1);
+			expect(handler2).toHaveBeenCalledTimes(1);
 		});
 
 		it('keeps notifying other handlers when one handler throws', async () => {
 
-			const failingHandler = spy(() => {
+			const failingHandler = jest.fn(() => {
 				throw new Error('handler failed');
 			});
-			const successfulHandler = spy();
+			const successfulHandler = jest.fn();
 
 			bus.on('somethingHappened', failingHandler);
 			bus.on('somethingHappened', successfulHandler);
 
 			try {
 				await bus.publish({ type: 'somethingHappened' });
-				throw new AssertionError('did not fail');
+				throw new Error('did not fail');
 			}
 			catch (err) {
 				if (err.message !== 'handler failed')
 					throw err;
 			}
 
-			expect(failingHandler).to.have.property('calledOnce', true);
-			expect(successfulHandler).to.have.property('calledOnce', true);
+			expect(failingHandler).toHaveBeenCalledTimes(1);
+			expect(successfulHandler).toHaveBeenCalledTimes(1);
 		});
 
 		it('keeps notifying handlers in other named queues when one named queue handler throws', async () => {
 
-			const directHandler = spy();
-			const failingQueueHandler = spy(() => {
+			const directHandler = jest.fn();
+			const failingQueueHandler = jest.fn(() => {
 				throw new Error('queue handler failed');
 			});
-			const successfulQueueHandler = spy();
+			const successfulQueueHandler = jest.fn();
 
 			bus.on('somethingHappened', directHandler);
 			bus.queue?.('notifications').on('somethingHappened', failingQueueHandler);
@@ -117,16 +115,16 @@ describe('InMemoryMessageBus', function () {
 
 			try {
 				await bus.publish({ type: 'somethingHappened' });
-				throw new AssertionError('did not fail');
+				throw new Error('did not fail');
 			}
 			catch (err) {
 				if (err.message !== 'queue handler failed')
 					throw err;
 			}
 
-			expect(directHandler).to.have.property('calledOnce', true);
-			expect(failingQueueHandler).to.have.property('calledOnce', true);
-			expect(successfulQueueHandler).to.have.property('calledOnce', true);
+			expect(directHandler).toHaveBeenCalledTimes(1);
+			expect(failingQueueHandler).toHaveBeenCalledTimes(1);
+			expect(successfulQueueHandler).toHaveBeenCalledTimes(1);
 		});
 
 		it('does not allow to setup multiple subscriptions for same event + queueName combination', () => {
@@ -135,7 +133,7 @@ describe('InMemoryMessageBus', function () {
 
 			try {
 				bus.queue?.('notifications').on('somethingHappened', () => { });
-				throw new AssertionError('did not fail');
+				throw new Error('did not fail');
 			}
 			catch (err) {
 				if (err.message !== '"somethingHappened" handler is already set up on the "notifications" queue')
@@ -149,10 +147,10 @@ describe('InMemoryMessageBus', function () {
 		it('fails when no subscribers are registered for messageType', () => {
 			try {
 				bus.off('missingEvent', () => { });
-				throw new AssertionError('did not fail');
+				throw new Error('did not fail');
 			}
 			catch (err: any) {
-				expect(err.message).to.equal('No missingEvent subscribers found');
+				expect(err.message).toBe('No missingEvent subscribers found');
 			}
 		});
 	});

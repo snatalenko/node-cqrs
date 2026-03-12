@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import createDb from 'better-sqlite3';
 import { SqliteViewLocker } from '../../../src/sqlite';
 
@@ -33,7 +32,7 @@ describe('SqliteViewLocker', function () {
 
 	it('locks a view successfully', async function () {
 		const result = await firstLock.lock();
-		expect(result).to.be.true;
+		expect(result).toBe(true);
 	});
 
 	it('unlocks a view successfully', async function () {
@@ -41,20 +40,20 @@ describe('SqliteViewLocker', function () {
 		firstLock.unlock();
 
 		const lockResult = await secondLock.lock();
-		expect(lockResult).to.be.true;
+		expect(lockResult).toBe(true);
 	});
 
 	it('sets ready flag to `false` when locked', async () => {
 
 		await firstLock.lock();
-		expect(firstLock).to.have.property('ready', false);
+		expect(firstLock).toHaveProperty('ready', false);
 	});
 
 	it('sets ready flag to `true` when unlocked', async () => {
 
 		await firstLock.lock();
 		await firstLock.unlock();
-		expect(firstLock).to.have.property('ready', true);
+		expect(firstLock).toHaveProperty('ready', true);
 	});
 
 	it('waits for the lock to be released if already locked', async function () {
@@ -69,12 +68,12 @@ describe('SqliteViewLocker', function () {
 
 		// Wait briefly to check if it resolves too soon
 		await jest.advanceTimersByTimeAsync(viewLockTtl);
-		expect(secondLockAcquired).to.be.false;
+		expect(secondLockAcquired).toBe(false);
 
 		firstLock.unlock();
 
 		await secondLockAcquiring;
-		expect(secondLockAcquired).to.be.true;
+		expect(secondLockAcquired).toBe(true);
 	});
 
 
@@ -84,14 +83,16 @@ describe('SqliteViewLocker', function () {
 		const initial = viewModelSqliteDb.prepare('SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?')
 			.get('test', '1.0') as any;
 
-		expect(initial).to.have.property('locked_till').that.is.gt(Date.now());
+		expect(initial).toHaveProperty('locked_till');
+		expect(initial.locked_till).toBeGreaterThan(Date.now());
 
 		await jest.advanceTimersByTimeAsync(viewLockTtl);
 
 		const updated = viewModelSqliteDb.prepare('SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?')
 			.get('test', '1.0') as any;
 
-		expect(updated).to.have.property('locked_till').that.is.gt(initial.locked_till);
+		expect(updated).toHaveProperty('locked_till');
+		expect(updated.locked_till).toBeGreaterThan(initial.locked_till);
 	});
 
 	it('should release the lock upon unlock()', async function () {
@@ -101,7 +102,7 @@ describe('SqliteViewLocker', function () {
 		const row = viewModelSqliteDb.prepare('SELECT * FROM tbl_view_lock WHERE projection_name = ? AND schema_version = ?')
 			.get('test', '1.0') as any;
 
-		expect(row.locked_till).to.be.null;
+		expect(row.locked_till).toBeNull();
 	});
 
 	it('should fail to prolong the lock if already released', async function () {
@@ -116,8 +117,8 @@ describe('SqliteViewLocker', function () {
 			error = err;
 		}
 
-		expect(error).to.exist;
-		expect(error).to.have.property('message', '"test" lock could not be prolonged');
+		expect(error).toBeDefined();
+		expect(error).toHaveProperty('message', '"test" lock could not be prolonged');
 	});
 
 	it('unlock() handles missing lock row gracefully', async () => {
@@ -126,6 +127,6 @@ describe('SqliteViewLocker', function () {
 
 	it('once() throws for unexpected events', () => {
 		expect(() => firstLock.once('unexpected' as any))
-			.to.throw(TypeError, 'Unexpected event: unexpected');
+			.toThrow(TypeError, 'Unexpected event: unexpected');
 	});
 });

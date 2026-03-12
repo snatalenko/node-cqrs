@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import createDb from 'better-sqlite3';
 import { SqliteObjectView } from '../../../src/sqlite';
 import type { IEvent } from '../../../src/interfaces';
@@ -32,18 +31,18 @@ describe('AbstractSqliteView', function () {
 	describe('ready', () => {
 
 		it('is true initially', () => {
-			expect(view.ready).to.be.true;
+			expect(view.ready).toBe(true);
 		});
 
 		it('is false after lock()', async () => {
 			await view.lock();
-			expect(view.ready).to.be.false;
+			expect(view.ready).toBe(false);
 		});
 
 		it('is true after unlock()', async () => {
 			await view.lock();
 			view.unlock();
-			expect(view.ready).to.be.true;
+			expect(view.ready).toBe(true);
 		});
 	});
 
@@ -51,14 +50,14 @@ describe('AbstractSqliteView', function () {
 
 		it('lock() returns true', async () => {
 			const result = await view.lock();
-			expect(result).to.be.true;
+			expect(result).toBe(true);
 		});
 
 		it('unlock() allows re-locking', async () => {
 			await view.lock();
 			view.unlock();
 			const result = await view.lock();
-			expect(result).to.be.true;
+			expect(result).toBe(true);
 		});
 	});
 
@@ -77,11 +76,11 @@ describe('AbstractSqliteView', function () {
 				resolved = true;
 			});
 
-			expect(resolved).to.be.false;
+			expect(resolved).toBe(false);
 			view.unlock();
 
 			await p;
-			expect(resolved).to.be.true;
+			expect(resolved).toBe(true);
 		});
 	});
 
@@ -89,7 +88,7 @@ describe('AbstractSqliteView', function () {
 
 		it('returns undefined when no event has been projected', async () => {
 			const result = await view.getLastEvent();
-			expect(result).to.be.undefined;
+			expect(result).toBeUndefined();
 		});
 
 		it('returns the last projected event', async () => {
@@ -97,7 +96,7 @@ describe('AbstractSqliteView', function () {
 			await view.markAsProjected(testEvent);
 
 			const result = await view.getLastEvent();
-			expect(result).to.deep.equal(testEvent);
+			expect(result).toEqual(testEvent);
 		});
 	});
 
@@ -105,13 +104,13 @@ describe('AbstractSqliteView', function () {
 
 		it('returns true for a new event', async () => {
 			const result = await view.tryMarkAsProjecting(testEvent);
-			expect(result).to.be.true;
+			expect(result).toBe(true);
 		});
 
 		it('returns false for an already-locked event', async () => {
 			await view.tryMarkAsProjecting(testEvent);
 			const result = await view.tryMarkAsProjecting(testEvent);
-			expect(result).to.be.false;
+			expect(result).toBe(false);
 		});
 	});
 
@@ -122,7 +121,7 @@ describe('AbstractSqliteView', function () {
 			await view.markAsProjected(testEvent);
 
 			const last = await view.getLastEvent();
-			expect(last).to.deep.equal(testEvent);
+			expect(last).toEqual(testEvent);
 		});
 
 		it('throws if event was never locked', async () => {
@@ -133,7 +132,7 @@ describe('AbstractSqliteView', function () {
 			catch (err) {
 				error = err;
 			}
-			expect(error).to.exist;
+			expect(error).toBeDefined();
 		});
 	});
 });

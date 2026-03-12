@@ -1,6 +1,5 @@
 'use strict';
 
-const { expect } = require('chai');
 const { createContainer, createBaseInstances } = require('../index.cjs');
 
 describe('user-domain example', () => {
@@ -23,11 +22,13 @@ describe('user-domain example', () => {
 
 		const userCreatedEvent = await eventStore.once('userCreated');
 
-		expect(userCreatedEvent).to.have.property('aggregateId').that.is.not.undefined;
-		expect(userCreatedEvent).to.have.property('aggregateVersion', 0);
-		expect(userCreatedEvent).to.have.property('type', 'userCreated');
-		expect(userCreatedEvent).to.have.nested.property('payload.username', 'sherlock');
-		expect(userCreatedEvent).to.have.nested.property('payload.passwordHash').that.does.not.eq('magic');
+		expect(userCreatedEvent).toHaveProperty('aggregateId');
+		expect(userCreatedEvent.aggregateId).not.toBeUndefined();
+		expect(userCreatedEvent).toHaveProperty('aggregateVersion', 0);
+		expect(userCreatedEvent).toHaveProperty('type', 'userCreated');
+		expect(userCreatedEvent).toHaveProperty('payload.username', 'sherlock');
+		expect(userCreatedEvent).toHaveProperty('payload.passwordHash');
+		expect(userCreatedEvent.payload.passwordHash).not.toBe('magic');
 
 		// created user aggregateId can be retrieved from "userCreated" event
 		userAggregateId = userCreatedEvent.aggregateId;
@@ -41,10 +42,11 @@ describe('user-domain example', () => {
 
 		const userPasswordChanged = await eventStore.once('userPasswordChanged');
 
-		expect(userPasswordChanged).to.have.property('aggregateId', userAggregateId);
-		expect(userPasswordChanged).to.have.property('aggregateVersion', 1);
-		expect(userPasswordChanged).to.have.property('type', 'userPasswordChanged');
-		expect(userPasswordChanged).to.have.nested.property('payload.passwordHash').that.does.not.eq('no-magic');
+		expect(userPasswordChanged).toHaveProperty('aggregateId', userAggregateId);
+		expect(userPasswordChanged).toHaveProperty('aggregateVersion', 1);
+		expect(userPasswordChanged).toHaveProperty('type', 'userPasswordChanged');
+		expect(userPasswordChanged).toHaveProperty('payload.passwordHash');
+		expect(userPasswordChanged.payload.passwordHash).not.toBe('no-magic');
 	};
 
 	const testProjection = async container => {
@@ -64,8 +66,8 @@ describe('user-domain example', () => {
 
 		const viewRecord = await users.get(userCreated.aggregateId);
 
-		expect(viewRecord).to.exist;
-		expect(viewRecord).to.have.property('username', 'sherlock');
+		expect(viewRecord).toBeDefined();
+		expect(viewRecord).toHaveProperty('username', 'sherlock');
 	};
 
 	describe('with DI container', () => {

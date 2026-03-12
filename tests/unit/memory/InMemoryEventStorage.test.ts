@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import { InMemoryEventStorage, ConcurrencyError } from '../../../src';
 
 describe('InMemoryEventStorage', () => {
@@ -14,7 +13,7 @@ describe('InMemoryEventStorage', () => {
 				{ id: '1', aggregateId: 'agg1', aggregateVersion: 1, type: 'TestEvent' }
 			];
 			const result = await storage.commitEvents(events);
-			expect(result).to.deep.equal(events);
+			expect(result).toEqual(events);
 		});
 
 		it('throws ConcurrencyError when committing a duplicate aggregateVersion for the same aggregate', async () => {
@@ -29,7 +28,7 @@ describe('InMemoryEventStorage', () => {
 				throw new Error('Expected ConcurrencyError was not thrown');
 			}
 			catch (err) {
-				expect(err).to.be.instanceOf(ConcurrencyError);
+				expect(err).toBeInstanceOf(ConcurrencyError);
 			}
 		});
 
@@ -44,7 +43,7 @@ describe('InMemoryEventStorage', () => {
 
 			const result = await storage.commitEvents(duplicate, { ignoreConcurrencyError: true });
 
-			expect(result).to.deep.equal(duplicate);
+			expect(result).toEqual(duplicate);
 		});
 	});
 
@@ -60,7 +59,7 @@ describe('InMemoryEventStorage', () => {
 			for await (const event of storage.getAggregateEvents('agg1'))
 				results.push(event);
 
-			expect(results).to.deep.equal([event1]);
+			expect(results).toEqual([event1]);
 		});
 
 		it('yields events with aggregateVersion greater than snapshot.aggregateVersion', async () => {
@@ -74,7 +73,7 @@ describe('InMemoryEventStorage', () => {
 			for await (const event of storage.getAggregateEvents('agg1', { snapshot }))
 				results.push(event);
 
-			expect(results).to.deep.equal([event2]);
+			expect(results).toEqual([event2]);
 		});
 	});
 
@@ -92,7 +91,7 @@ describe('InMemoryEventStorage', () => {
 			for await (const event of storage.getSagaEvents('SagaA:1', { beforeEvent } as any))
 				results.push(event);
 
-			expect(results).to.deep.equal([event1, event2]);
+			expect(results).toEqual([event1, event2]);
 		});
 
 		it('supports events participating in multiple sagas', async () => {
@@ -115,7 +114,7 @@ describe('InMemoryEventStorage', () => {
 			for await (const event of storage.getSagaEvents('SagaB:1', { beforeEvent } as any))
 				results.push(event);
 
-			expect(results).to.deep.equal([event1, event2]);
+			expect(results).toEqual([event1, event2]);
 		});
 
 		it('throws when beforeEvent.sagaOrigins does not match sagaId', async () => {
@@ -130,8 +129,8 @@ describe('InMemoryEventStorage', () => {
 				throw new Error('Expected error was not thrown');
 			}
 			catch (err: any) {
-				expect(err).to.be.instanceOf(TypeError);
-				expect(err.message).to.equal('beforeEvent.sagaOrigins does not match sagaId');
+				expect(err).toBeInstanceOf(TypeError);
+				expect(err.message).toBe('beforeEvent.sagaOrigins does not match sagaId');
 			}
 		});
 
@@ -146,7 +145,7 @@ describe('InMemoryEventStorage', () => {
 				throw new Error('Expected error was not thrown');
 			}
 			catch (err: any) {
-				expect(err.message).to.equal('origin event origin not found');
+				expect(err.message).toBe('origin event origin not found');
 			}
 		});
 
@@ -161,7 +160,7 @@ describe('InMemoryEventStorage', () => {
 				throw new Error('Expected error was not thrown');
 			}
 			catch (err: any) {
-				expect(err.message).to.equal('beforeEvent missing not found');
+				expect(err.message).toBe('beforeEvent missing not found');
 			}
 		});
 	});
@@ -179,7 +178,7 @@ describe('InMemoryEventStorage', () => {
 			for await (const event of storage.getEventsByTypes(['A']))
 				results.push(event);
 
-			expect(results).to.deep.equal([event1, event3]);
+			expect(results).toEqual([event1, event3]);
 		});
 
 		it('yields events only after the given afterEvent id', async () => {
@@ -194,7 +193,7 @@ describe('InMemoryEventStorage', () => {
 			for await (const event of storage.getEventsByTypes(['A'], options))
 				results.push(event);
 
-			expect(results).to.deep.equal([event2, event3]);
+			expect(results).toEqual([event2, event3]);
 		});
 
 		it('throws error if afterEvent is provided without id', async () => {
@@ -209,8 +208,8 @@ describe('InMemoryEventStorage', () => {
 				throw new Error('Expected error was not thrown');
 			}
 			catch (err) {
-				expect(err).to.be.instanceOf(TypeError);
-				expect(err.message).to.equal('options.afterEvent.id must be a non-empty String');
+				expect(err).toBeInstanceOf(TypeError);
+				expect(err.message).toBe('options.afterEvent.id must be a non-empty String');
 			}
 		});
 	});
@@ -221,8 +220,8 @@ describe('InMemoryEventStorage', () => {
 
 			const id1 = storage.getNewId();
 			const id2 = storage.getNewId();
-			expect(id1).to.equal('1');
-			expect(id2).to.equal('2');
+			expect(id1).toBe('1');
+			expect(id2).toBe('2');
 		});
 	});
 
@@ -234,7 +233,7 @@ describe('InMemoryEventStorage', () => {
 				throw new Error('Expected error was not thrown');
 			}
 			catch (err: any) {
-				expect(err.message).to.equal('Event batch does not contain `event`');
+				expect(err.message).toBe('Event batch does not contain `event`');
 			}
 		});
 	});

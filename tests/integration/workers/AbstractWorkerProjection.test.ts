@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import * as path from 'node:path';
 import type { IEvent } from '../../../src/interfaces/index.ts';
 import { WorkerProxyProjection, workerProxyFactory } from '../../../src/workers/index.ts';
@@ -38,7 +37,7 @@ describe('AbstractWorkerProjection', () => {
 
 		await projectionProxy.ensureWorkerReady();
 		const pong = await projectionProxy.remoteProjection.ping();
-		expect(pong).to.equal(true);
+		expect(pong).toBe(true);
 	});
 
 	it('handles missing worker module error', async () => {
@@ -63,8 +62,8 @@ describe('AbstractWorkerProjection', () => {
 			error = err;
 		}
 
-		expect(error).to.be.ok;
-		expect(error.message).to.include('DOES_NOT_EXIST');
+		expect(error).toBeTruthy();
+		expect(error.message).toContain('DOES_NOT_EXIST');
 	});
 
 	it('creates custom proxy projection via container.createInstance', async () => {
@@ -90,10 +89,10 @@ describe('AbstractWorkerProjection', () => {
 		} as any);
 
 		try {
-			expect(proxy2).to.be.instanceOf(CustomProxyProjection);
-			expect(proxy2.marker).to.equal('injected');
+			expect(proxy2).toBeInstanceOf(CustomProxyProjection);
+			expect(proxy2.marker).toBe('injected');
 			await proxy2.ensureWorkerReady();
-			expect(await proxy2.remoteProjection.ping()).to.equal(true);
+			expect(await proxy2.remoteProjection.ping()).toBe(true);
 		}
 		finally {
 			proxy2.dispose();
@@ -106,28 +105,26 @@ describe('AbstractWorkerProjection', () => {
 			new WorkerProxyProjection<any>(params);
 
 		expect(() => workerProxyFactory(ProjectionFixture, customProxyFactory as any))
-			.to.throw(TypeError)
-			.with.property('message')
-			.that.includes('ProxyProjectionType must be a class');
+			.toThrow('ProxyProjectionType must be a class');
 	});
 
 	it('exposes remote view', async () => {
 
 		await projectionProxy.ensureWorkerReady();
-		expect(await projectionProxy.view.getCounter()).to.equal(0);
+		expect(await projectionProxy.view.getCounter()).toBe(0);
 	});
 
 	it('exposes last projected event via remote projection api', async () => {
 
 		await projectionProxy.project({ id: '1', type: 'somethingHappened' });
 		const lastEvent = await projectionProxy.remoteProjection.getLastProjectedEvent();
-		expect(lastEvent?.id).to.equal('1');
+		expect(lastEvent?.id).toBe('1');
 	});
 
 	it('projects events in worker thread', async () => {
 
 		await projectionProxy.project({ id: '1', type: 'somethingHappened' });
-		expect(await projectionProxy.view.getCounter()).to.equal(1);
+		expect(await projectionProxy.view.getCounter()).toBe(1);
 	});
 
 	it('awaits project calls while restoring', async () => {
@@ -145,10 +142,10 @@ describe('AbstractWorkerProjection', () => {
 			new Promise(resolve => setTimeout(() => resolve(false), 20))
 		]);
 
-		expect(resolvedEarly).to.equal(false);
+		expect(resolvedEarly).toBe(false);
 		await restorePromise;
 		await projectPromise;
-		expect(await projectionProxy.view.getCounter()).to.equal(2);
+		expect(await projectionProxy.view.getCounter()).toBe(2);
 	});
 
 	it('restores from event store and updates projection state', async () => {
@@ -158,8 +155,8 @@ describe('AbstractWorkerProjection', () => {
 			{ id: '2', type: 'somethingHappened' }
 		]));
 
-		expect((await projectionProxy.view.getLastEvent())?.id).to.equal('2');
-		expect(await projectionProxy.view.getCounter()).to.equal(2);
+		expect((await projectionProxy.view.getLastEvent())?.id).toBe('2');
+		expect(await projectionProxy.view.getCounter()).toBe(2);
 	});
 
 	it('restores only events after getLastEvent', async () => {
@@ -175,8 +172,8 @@ describe('AbstractWorkerProjection', () => {
 			{ id: '3', type: 'somethingHappened' }
 		]));
 
-		expect((await projectionProxy.view.getLastEvent())?.id).to.equal('3');
-		expect(await projectionProxy.view.getCounter()).to.equal(3);
+		expect((await projectionProxy.view.getLastEvent())?.id).toBe('3');
+		expect(await projectionProxy.view.getCounter()).toBe(3);
 	});
 
 	it('halts restore on handler error and keeps progress', async () => {
@@ -195,10 +192,10 @@ describe('AbstractWorkerProjection', () => {
 			error = err;
 		}
 
-		expect(error).to.be.instanceOf(Error);
-		expect(error.message).to.equal('boom');
-		expect((await projectionProxy.view.getLastEvent())?.id).to.equal('1');
-		expect(await projectionProxy.view.getCounterNowait()).to.equal(1);
+		expect(error).toBeInstanceOf(Error);
+		expect(error.message).toBe('boom');
+		expect((await projectionProxy.view.getLastEvent())?.id).toBe('1');
+		expect(await projectionProxy.view.getCounterNowait()).toBe(1);
 	});
 
 	it('does not project events when event lock is not obtained', async () => {
@@ -211,7 +208,7 @@ describe('AbstractWorkerProjection', () => {
 			{ id: '2', type: 'somethingHappened' }
 		]));
 
-		expect((await projectionProxy.view.getLastEvent())?.id).to.equal('2');
-		expect(await projectionProxy.view.getCounter()).to.equal(1);
+		expect((await projectionProxy.view.getLastEvent())?.id).toBe('2');
+		expect(await projectionProxy.view.getCounter()).toBe(1);
 	});
 });
