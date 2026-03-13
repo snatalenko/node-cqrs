@@ -48,7 +48,13 @@ describe('SagaEventHandler', function () {
 			eventBus,
 			eventDispatcher
 		});
-		sagaEventHandler = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus });
+		const logger: any = {
+			child: () => ({
+				debug: () => undefined,
+				info: () => undefined
+			})
+		};
+		sagaEventHandler = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus, logger });
 	});
 
 	it('exists', () => {
