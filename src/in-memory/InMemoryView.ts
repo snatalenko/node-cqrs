@@ -129,9 +129,6 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 		assertDefined(key, 'key');
 		assertFunction(update, 'update');
 
-		if (!this._map.has(key))
-			throw new Error(`Key '${key}' does not exist`);
-
 		return this._update(key, update);
 	}
 
@@ -160,10 +157,10 @@ export class InMemoryView<TRecord> implements IViewLocker, IObjectStorage<TRecor
 
 	/** Update existing record */
 	private async _update(key: Identifier, update: (r: TRecord) => TRecord) {
-		const value = this._map.get(key);
-		if (!value)
+		if (!this._map.has(key))
 			throw new Error(`Key '${key}' does not exist`);
 
+		const value = this._map.get(key) as TRecord;
 		const updatedValue = applyUpdate(value, update);
 		if (updatedValue === undefined)
 			return;

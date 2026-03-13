@@ -222,18 +222,6 @@ describe('InMemoryView', function () {
 			expect(await v.get('foo')).toBe('bar-from-update');
 		});
 
-		it('fails updating existing key when stored value is falsy', async () => {
-			await v.create('counter', 0 as any);
-
-			try {
-				await v.update('counter', () => 1 as any);
-				throw new Error('did not throw');
-			}
-			catch (e: any) {
-				expect(e).toHaveProperty('message', 'Key \'counter\' does not exist');
-			}
-		});
-
 		it('updates existing record by operating on argument', async () => {
 
 			await v.create('foo', { x: 'bar' });
@@ -285,6 +273,17 @@ describe('InMemoryView', function () {
 
 			expect(await v.get('foo')).toBe('bar-updated');
 			expect(await v.get('x')).toEqual({ v: 'y' });
+		});
+
+		it('keeps record unchanged when update returns undefined for an existing undefined value', async () => {
+
+			(v as any)._map.set('foo', undefined);
+			await v.unlock();
+
+			await v.update('foo', r => r);
+
+			expect(v.has('foo')).toBe(true);
+			expect(await v.get('foo')).toBe(undefined);
 		});
 	});
 
