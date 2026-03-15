@@ -130,7 +130,17 @@ Code style and formatting are enforced via [EditorConfig](https://editorconfig.o
 - **Type-only imports:** Use the `type` keyword for imports that are only used as types
 - **`.ts` file extensions in imports:** Always use explicit `.ts` extensions in relative import paths
 
-Please run `npm run lint` before opening a PR.
+## Verification
+
+Run the following checks to verify your changes:
+
+```bash
+npm test               # Unit tests pass
+npm run lint           # No lint errors
+npm run build          # ESM and CJS build successfully
+npm run examples       # Examples run without errors
+npm run test:examples  # Example unit tests pass
+```
 
 ## Pull requests
 
