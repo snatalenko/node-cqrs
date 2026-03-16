@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import {
 	AbstractProjection,
 	InMemoryView,
@@ -257,6 +258,59 @@ describe('AbstractProjection', function () {
 
 			expect(projection._somethingHappened).toHaveBeenCalledTimes(1);
 			expect(projection._somethingHappened.mock.calls.at(-1)).toEqual([event2]);
+		});
+	});
+
+	describe('tracerFactory', () => {
+
+		it('creates a span when project() is called with tracerFactory', async () => {
+			const tracerFactory = (name: string) => trace.getTracer(name);
+			const tracedProjection = new MyProjection({ view: new InMemoryView(), tracerFactory });
+
+			await expect(
+				tracedProjection.project({ type: 'somethingHappened', aggregateId: 1 })
+			).resolves.toBeUndefined();
+		});
+
+		it('works without tracerFactory', async () => {
+			const untracedProjection = new MyProjection({ view: new InMemoryView() });
+
+			await expect(
+				untracedProjection.project({ type: 'somethingHappened', aggregateId: 1 })
+			).resolves.toBeUndefined();
+		});
+
+		it('records error on span when project() throws', async () => {
+			const span = {
+				end: jest.fn(),
+				recordException: jest.fn(),
+				setStatus: jest.fn()
+			};
+			const tracer = { startSpan: jest.fn(() => span) };
+			const tracerFactory = () => tracer as any;
+
+			const failingProjection = new (class extends AbstractProjection {
+				static get handles() { return ['fail']; }
+				async _fail() { throw new Error('project failed'); }
+			})({ view: new InMemoryView(), tracerFactory });
+
+			await expect(
+				failingProjection.project({ type: 'fail', aggregateId: 1 })
+			).rejects.toThrow('project failed');
+
+			expect(span.recordException).toHaveBeenCalledWith(expect.any(Error));
+			expect(span.setStatus).toHaveBeenCalledWith(expect.objectContaining({ code: 2 }));
+			expect(span.end).toHaveBeenCalled();
+		});
+
+		it('restore() works with tracerFactory', async () => {
+			const tracerFactory = (name: string) => trace.getTracer(name);
+			const tracedProjection = new MyProjection({ view: new InMemoryView(), tracerFactory });
+			const es = {
+				async* getEventsByTypes() { }
+			};
+
+			await expect(tracedProjection.restore(es as any)).resolves.toBeUndefined();
 		});
 	});
 

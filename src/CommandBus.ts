@@ -1,29 +1,34 @@
+import type { Tracer } from '@opentelemetry/api';
 import { InMemoryMessageBus } from './in-memory/index.ts';
 import type {
 	ICommand,
 	ICommandBus,
+	IContainer,
 	Identifier,
 	IEventSet,
-	IExtendableLogger,
 	ILogger,
 	IMessageBus,
-	IMessageHandler
+	IMessageHandler,
+	IMessageMeta
 } from './interfaces/index.ts';
 import { assertString, assertFunction, assertMessage, assertObject } from './utils/index.ts';
+import { recordSpanError, spanAttributes, spanContext } from './telemetry/index.ts';
+
 
 export class CommandBus implements ICommandBus {
 
-	#logger?: ILogger;
-	#bus: IMessageBus;
+	readonly #logger?: ILogger;
+	readonly #bus: IMessageBus;
+	readonly #tracer: Tracer | undefined;
 
-	constructor(o?: {
-		messageBus?: IMessageBus,
-		logger?: ILogger | IExtendableLogger
+	constructor(o?: Pick<IContainer, 'logger' | 'tracerFactory'> & {
+		messageBus?: IMessageBus
 	}) {
 		this.#bus = o?.messageBus ?? new InMemoryMessageBus();
+		this.#tracer = o?.tracerFactory?.(new.target.name);
 
 		this.#logger = o?.logger && 'child' in o.logger ?
-			o.logger.child({ service: 'CommandBus' }) :
+			o.logger.child({ service: new.target.name }) :
 			o?.logger;
 	}
 
@@ -97,19 +102,27 @@ export class CommandBus implements ICommandBus {
 	/**
 	 * Send a command for execution
 	 */
-	sendRaw<TPayload>(command: ICommand<TPayload>): Promise<IEventSet> {
+	sendRaw<TPayload>(command: ICommand<TPayload>, meta?: IMessageMeta): Promise<IEventSet> {
 		assertMessage(command, 'command');
 
 		this.#logger?.debug(`sending '${command.type}' command${command.aggregateId ? ` to ${command.aggregateId}` : ''}...`);
 
-		return this.#bus.send(command).then(r => {
+		const span = this.#tracer?.startSpan(`CommandBus.send ${command.type}`,
+			spanAttributes('command', command, ['type', 'aggregateId']),
+			spanContext(meta)
+		);
+
+		return this.#bus.send(command, { span }).then(r => {
 			this.#logger?.debug(`'${command.type}' ${command.aggregateId ? `on ${command.aggregateId}` : ''} processed`);
 			return r;
 		}, error => {
 			this.#logger?.warn(`'${command.type}' ${command.aggregateId ? `on ${command.aggregateId}` : ''} processing has failed: ${error.message}`, {
 				stack: error.stack
 			});
+			recordSpanError(span, error);
 			throw error;
+		}).finally(() => {
+			span?.end();
 		});
 	}
 }

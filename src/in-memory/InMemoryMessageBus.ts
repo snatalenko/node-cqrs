@@ -3,6 +3,7 @@ import type {
 	IEvent,
 	IMessageBus,
 	IMessageHandler,
+	IMessageMeta,
 	IObservable,
 	IObservableQueueProvider
 } from '../interfaces/index.ts';
@@ -80,7 +81,7 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 	/**
 	 * Send command to exactly 1 command handler
 	 */
-	async send(command: ICommand): Promise<any> {
+	async send(command: ICommand, meta?: IMessageMeta): Promise<any> {
 		assertMessage(command, 'command');
 
 		const handlers = this.handlers.get(command.type);
@@ -91,7 +92,7 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 
 		const commandHandler = handlers.values().next().value;
 
-		return commandHandler!(command);
+		return commandHandler!(command, meta);
 	}
 
 	/**

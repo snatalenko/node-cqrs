@@ -200,6 +200,34 @@ describe('AggregateCommandHandler', function () {
 		expect(args[0]).toHaveProperty('payload', 'test');
 	});
 
+	it('creates a dedicated handle span for aggregate command processing', async () => {
+		const spans: any[] = [];
+		const tracer = {
+			startSpan: jest.fn((name: string) => {
+				const span = {
+					name,
+					end: jest.fn(),
+					recordException: jest.fn(),
+					setStatus: jest.fn()
+				};
+				spans.push(span);
+				return span;
+			})
+		};
+		const tracerFactory = () => tracer as any;
+		const handler = new AggregateCommandHandler({
+			eventStore,
+			aggregateType: MyAggregate,
+			tracerFactory
+		});
+
+		await handler.execute({ type: 'doSomething', aggregateId: 1 });
+
+		const handleSpan = spans.find(span => span.name === 'AggregateCommandHandler.execute doSomething');
+		expect(handleSpan).toBeDefined();
+		expect(commitSpy.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({ span: handleSpan }));
+	});
+
 	it('attaches command context and sagaOrigins to produced events', async () => {
 
 		const handler = new AggregateCommandHandler({

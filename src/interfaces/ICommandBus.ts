@@ -1,5 +1,6 @@
 import type { ICommand } from './ICommand.ts';
 import type { IEventSet } from './IEventSet.ts';
+import type { IMessageMeta } from './IMessageMeta.ts';
 import type { IObservable } from './IObservable.ts';
 import type { IObserver } from './IObserver.ts';
 
@@ -7,7 +8,7 @@ export interface ICommandBus extends IObservable {
 	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object }):
 		Promise<IEventSet>;
 
-	sendRaw(command: ICommand):
+	sendRaw(command: ICommand, meta?: IMessageMeta):
 		Promise<IEventSet>;
 }
 

@@ -1,3 +1,5 @@
+import type { Tracer } from '@opentelemetry/api';
+import { recordSpanError, spanAttributes, spanContext } from './telemetry/index.ts';
 import * as Event from './Event.ts';
 import type {
 	ICommandBus,
@@ -8,6 +10,7 @@ import type {
 	IEventStore,
 	ILocker,
 	ILogger,
+	IMessageMeta,
 	IObservable,
 	ISaga,
 	ISagaConstructor,
@@ -42,8 +45,9 @@ export class SagaEventHandler implements IEventReceptor {
 	readonly #sagaDescriptor: string;
 	readonly #executionLock: ILocker;
 	readonly #sagasCache: MapAssertable<Identifier, Promise<ISaga>> = new MapAssertable();
+	readonly #tracer: Tracer | undefined;
 
-	constructor(options: Pick<IContainer, 'eventStore' | 'commandBus' | 'executionLocker' | 'logger'> & {
+	constructor(options: Pick<IContainer, 'eventStore' | 'commandBus' | 'executionLocker' | 'logger' | 'tracerFactory'> & {
 		sagaType?: ISagaConstructor,
 		sagaFactory?: ISagaFactory,
 		sagaDescriptor?: string,
@@ -70,6 +74,7 @@ export class SagaEventHandler implements IEventReceptor {
 			this.#startsWith = SagaType.startsWith;
 			this.#handles = SagaType.handles;
 			this.#sagaDescriptor = SagaType.sagaDescriptor ?? SagaType.name;
+			this.#tracer = options.tracerFactory?.(this.#sagaDescriptor);
 		}
 		else if (options.sagaFactory) {
 			assertOptionalArray(options.handles, 'options.handles');
@@ -79,6 +84,7 @@ export class SagaEventHandler implements IEventReceptor {
 			this.#startsWith = options.startsWith;
 			this.#handles = options.handles;
 			this.#sagaDescriptor = options.sagaDescriptor;
+			this.#tracer = options.tracerFactory?.(this.#sagaDescriptor);
 		}
 		else {
 			throw new Error('Either sagaType or sagaFactory is required');
@@ -95,51 +101,65 @@ export class SagaEventHandler implements IEventReceptor {
 	}
 
 	/** Handle saga event */
-	async handle(event: IEvent): Promise<void> {
+	async handle(event: IEvent, meta?: IMessageMeta): Promise<void> {
 		assertDefined(event, 'event');
 		assertDefined(event.type, 'event.type');
 		assertString(event.id, 'event.id');
 
-		const sagaOriginFromEvent = event.sagaOrigins?.[this.#sagaDescriptor];
-		const isStarterEvent = this.#startsWith?.includes(event.type) ?? !sagaOriginFromEvent;
-		if (isStarterEvent && sagaOriginFromEvent)
-			throw new Error(`Starter event "${event.type}" already contains saga origin for "${this.#sagaDescriptor}"`);
-
-		const sagaOrigin = isStarterEvent ? event.id : sagaOriginFromEvent;
-		if (!sagaOrigin)
-			throw new Error(`Event "${event.type}" does not contain saga origin for "${this.#sagaDescriptor}"`);
-
-		const sagaId = makeSagaId(this.#sagaDescriptor, sagaOrigin);
-		const saga = await this.#sagasCache.assert(sagaId, () => (isStarterEvent ?
-			this.#createSaga(sagaId) :
-			this.#restoreSaga(sagaId, event)
-		));
-
-		// multiple events to a same saga ID will execute sequentially on a same saga instance
-		const lease = await this.#executionLock.acquire(sagaId);
+		const span = this.#tracer?.startSpan(`${this.#sagaDescriptor}.handle ${event.type}`,
+			spanAttributes('saga', event, ['type', 'aggregateId']),
+			spanContext(meta)
+		);
 
 		try {
-			const commands = await saga.handle(event);
-			this.#logger?.debug(`"${Event.describe(event)}" processed, ${commands.map(c => c.type).join(',') || 'no commands'} produced`);
+			const sagaOriginFromEvent = event.sagaOrigins?.[this.#sagaDescriptor];
+			const isStarterEvent = this.#startsWith?.includes(event.type) ?? !sagaOriginFromEvent;
+			if (isStarterEvent && sagaOriginFromEvent)
+				throw new Error(`Starter event "${event.type}" already contains saga origin for "${this.#sagaDescriptor}"`);
 
-			for (const command of commands) {
-				// attach event context to produced command
-				if (command.context === undefined && event.context !== undefined)
-					command.context = event.context;
+			const sagaOrigin = isStarterEvent ? event.id : sagaOriginFromEvent;
+			if (!sagaOrigin)
+				throw new Error(`Event "${event.type}" does not contain saga origin for "${this.#sagaDescriptor}"`);
 
-				if (command.sagaOrigins === undefined) {
-					command.sagaOrigins = {
-						...event.sagaOrigins,
-						[this.#sagaDescriptor]: sagaOrigin
-					};
+			const sagaId = makeSagaId(this.#sagaDescriptor, sagaOrigin);
+			const saga = await this.#sagasCache.assert(sagaId, () => (isStarterEvent ?
+				this.#createSaga(sagaId) :
+				this.#restoreSaga(sagaId, event)
+			));
+
+			// multiple events to a same saga ID will execute sequentially on a same saga instance
+			const lease = await this.#executionLock.acquire(sagaId);
+
+			try {
+				const commands = await saga.handle(event);
+				this.#logger?.debug(`"${Event.describe(event)}" processed, ${commands.map(c => c.type).join(',') || 'no commands'} produced`);
+
+				for (const command of commands) {
+					// attach event context to produced command
+					if (command.context === undefined && event.context !== undefined)
+						command.context = event.context;
+
+					if (command.sagaOrigins === undefined) {
+						command.sagaOrigins = {
+							...event.sagaOrigins,
+							[this.#sagaDescriptor]: sagaOrigin
+						};
+					}
+
+					await this.#commandBus.sendRaw(command, { span });
 				}
-
-				await this.#commandBus.sendRaw(command);
+			}
+			finally {
+				lease.release();
+				this.#sagasCache.release(sagaId);
 			}
 		}
+		catch (error: any) {
+			recordSpanError(span, error);
+			throw error;
+		}
 		finally {
-			lease.release();
-			this.#sagasCache.release(sagaId);
+			span?.end();
 		}
 	}
 

@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import { InMemoryMessageBus, CommandBus } from '../../src';
 
 describe('CommandBus', function () {
@@ -76,8 +77,22 @@ describe('CommandBus', function () {
 
 			return bus.sendRaw(command)
 				.then(() => {
-					expect(messageBus.send).toHaveBeenLastCalledWith(command);
+					expect(messageBus.send).toHaveBeenLastCalledWith(command, expect.any(Object));
 				});
+		});
+
+		it('passes a span in meta to messageBus when tracerFactory is provided', async () => {
+			const tracerFactory = (name: string) => trace.getTracer(name);
+			const ownBus = new InMemoryMessageBus();
+			jest.spyOn(ownBus, 'send');
+			const busWithTracer = new CommandBus({ messageBus: ownBus, tracerFactory });
+			busWithTracer.on('doSomething', () => { });
+
+			await busWithTracer.sendRaw({ type: 'doSomething' });
+
+			const meta = (ownBus.send as jest.Mock).mock.calls.at(-1)?.[1];
+			expect(meta).toHaveProperty('span');
+			expect(typeof meta.span.end).toBe('function');
 		});
 
 		it('uses child logger if provided and logs send success', async () => {

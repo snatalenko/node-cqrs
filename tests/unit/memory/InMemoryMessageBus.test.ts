@@ -9,6 +9,20 @@ describe('InMemoryMessageBus', function () {
 
 	describe('send(command)', function () {
 
+		it('forwards meta to command handler', async () => {
+
+			const meta = { span: { end: jest.fn() } as any };
+			let receivedMeta: any;
+
+			bus.on('doSomething', (_cmd, m) => {
+				receivedMeta = m;
+			});
+
+			await bus.send({ type: 'doSomething' }, meta);
+
+			expect(receivedMeta).toBe(meta);
+		});
+
 		it('passes command to a command handler', done => {
 
 			bus.on('doSomething', cmd => {

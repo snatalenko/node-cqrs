@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import {
 	SagaEventHandler,
 	InMemoryEventStorage,
@@ -238,6 +239,37 @@ describe('SagaEventHandler', function () {
 			eventStore,
 			commandBus
 		} as any)).toThrow('Either sagaType or sagaFactory is required');
+	});
+
+	describe('tracerFactory', () => {
+
+		it('passes a span in meta to commandBus when tracerFactory is provided', async () => {
+			const tracerFactory = (name: string) => trace.getTracer(name);
+			const ownCommandBus = new CommandBus({});
+			jest.spyOn(ownCommandBus, 'sendRaw');
+			ownCommandBus.on('doSomething', () => { });
+
+			const handlerWithTracer = new SagaEventHandler({
+				sagaType: Saga, eventStore, commandBus: ownCommandBus, tracerFactory
+			});
+
+			await handlerWithTracer.handle({ id: 'starter-span-1', type: 'somethingHappened', aggregateId: 1 } as any);
+
+			const meta = (ownCommandBus.sendRaw as jest.Mock).mock.calls.at(-1)?.[1];
+			expect(meta).toHaveProperty('span');
+			expect(typeof meta.span.end).toBe('function');
+		});
+
+		it('works without tracerFactory', async () => {
+			const ownCommandBus = new CommandBus({});
+			ownCommandBus.on('doSomething', () => { });
+
+			const handlerNoTracer = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus: ownCommandBus });
+
+			await expect(
+				handlerNoTracer.handle({ id: 'starter-no-span-1', type: 'somethingHappened', aggregateId: 1 } as any)
+			).resolves.toBeUndefined();
+		});
 	});
 
 	it('throws when a non-starter event has no saga origin', async () => {

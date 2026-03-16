@@ -31,12 +31,12 @@ import { EventDispatcher } from './EventDispatcher.ts';
 
 export class EventStore implements IEventStore {
 
-	#identifierProvider: IIdentifierProvider;
-	#eventStorageReader: IEventStorageReader;
-	#snapshotStorage: IAggregateSnapshotStorage | undefined;
-	eventBus: IEventBus;
-	#eventDispatcher: IEventDispatcher;
-	#logger?: ILogger;
+	readonly #identifierProvider: IIdentifierProvider;
+	readonly #eventStorageReader: IEventStorageReader;
+	readonly #snapshotStorage: IAggregateSnapshotStorage | undefined;
+	readonly eventBus: IEventBus;
+	readonly #eventDispatcher: IEventDispatcher;
+	readonly #logger?: ILogger;
 
 	constructor({
 		eventStorage,
@@ -47,6 +47,7 @@ export class EventStore implements IEventStore {
 		eventDispatcher,
 		eventDispatchPipeline,
 		eventDispatchPipelines,
+		tracerFactory,
 		logger
 	}: Pick<IContainer,
 		'eventStorage' |
@@ -57,7 +58,8 @@ export class EventStore implements IEventStore {
 		'eventDispatcher' |
 		'logger' |
 		'eventDispatchPipeline' |
-		'eventDispatchPipelines'
+		'eventDispatchPipelines' |
+		'tracerFactory'
 	>) {
 		assertDefined(eventStorageReader, 'eventStorageReader or eventStorage');
 		assertDefined(identifierProvider, 'identifierProvider');
@@ -69,7 +71,8 @@ export class EventStore implements IEventStore {
 		this.#eventDispatcher = eventDispatcher ?? new EventDispatcher({
 			eventBus,
 			eventDispatchPipeline,
-			eventDispatchPipelines
+			eventDispatchPipelines,
+			tracerFactory
 		});
 		this.eventBus = eventBus ?? this.#eventDispatcher.eventBus;
 		this.#logger = logger && 'child' in logger ?

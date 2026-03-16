@@ -19,6 +19,7 @@ import {
 	isEventStorageReader
 } from './interfaces/index.ts';
 import { assertClass, assertFunction } from './utils/assert.ts';
+import { createCqrsTracerFactory } from './telemetry/index.ts';
 
 export class CqrsContainerBuilder<TContainerInterface extends IContainer = IContainer>
 	extends ContainerBuilder<TContainerInterface> {
@@ -39,6 +40,7 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 		super.addResolver(isAggregateSnapshotStorage, 'snapshotStorage');
 		super.addResolver(isExecutionLocker, 'executionLocker');
 
+		super.register(createCqrsTracerFactory).as('tracerFactory');
 		super.register(InMemoryMessageBus).as('eventBus');
 		super.register(EventStore).as('eventStore');
 		super.register(CommandBus).as('commandBus');

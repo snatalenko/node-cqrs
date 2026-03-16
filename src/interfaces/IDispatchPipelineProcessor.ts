@@ -1,3 +1,4 @@
+import type { Span } from '@opentelemetry/api';
 import type { IEvent } from './IEvent.ts';
 import { isObject } from './isObject.ts';
 
@@ -18,6 +19,8 @@ export type DispatchPipelineEnvelope = {
 	ignoreConcurrencyError?: boolean;
 
 	event?: IEvent;
+
+	span?: Span;
 }
 
 /**

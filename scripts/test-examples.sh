@@ -21,6 +21,7 @@ run "Example: user-domain/cjs" node examples/user-domain/cjs/index.cjs
 run "Example: sagas/simple" node examples/sagas/simple/index.ts
 run "Example: sagas/overlaps" node examples/sagas/overlaps/index.ts
 run "Example: workers/worker-projection" node examples/workers/worker-projection/index.cjs
+run "Example: telemetry" node examples/telemetry/index.ts
 
 heading "Browser" npm run build:browser
 printf '%s\n\n' "Open \`examples/browser/smoke-test/index.html\` in a browser (DevTools console for details)"
