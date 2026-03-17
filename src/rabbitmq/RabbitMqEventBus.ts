@@ -1,4 +1,4 @@
-import type { IEvent, IEventBus, IMessageHandler, IObservable, IObservableQueueProvider } from '../interfaces/index.ts';
+import type { IEvent, IEventBus, IMessageHandler, IMessageMeta, IObservable, IObservableQueueProvider } from '../interfaces/index.ts';
 import { RabbitMqGateway } from './RabbitMqGateway.ts';
 
 /**
@@ -32,8 +32,8 @@ export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 	 * Publishes an event to the fanout exchange.
 	 * The event will be delivered to all subscribers, except this instance's own consumer.
 	 */
-	async publish(event: IEvent): Promise<void> {
-		await this.#gateway.publish(this.#exchange, event);
+	async publish(event: IEvent, meta?: IMessageMeta): Promise<void> {
+		await this.#gateway.publish(this.#exchange, event, meta);
 	}
 
 	/**

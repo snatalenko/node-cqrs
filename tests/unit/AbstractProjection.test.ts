@@ -290,8 +290,12 @@ describe('AbstractProjection', function () {
 			const tracerFactory = () => tracer as any;
 
 			const failingProjection = new (class extends AbstractProjection {
-				static get handles() { return ['fail']; }
-				async _fail() { throw new Error('project failed'); }
+				static get handles() {
+					return ['fail'];
+				}
+				async _fail() {
+					throw new Error('project failed');
+				}
 			})({ view: new InMemoryView(), tracerFactory });
 
 			await expect(
