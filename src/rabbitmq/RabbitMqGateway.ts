@@ -1,7 +1,7 @@
 import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import type { IContainer, ILogger, IMessage } from '../interfaces/index.ts';
 import * as Event from '../Event.ts';
-import { assertFunction, assertMessage, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
+import { assertFunction, assertMessage, assertNonNegativeInteger, assertNotDefined, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
 import { registerExitCleanup } from './utils/index.ts';
 import { EventEmitter } from 'events';
 
@@ -50,6 +50,15 @@ type Subscription = {
 	 * Set to `0` to disable the timeout entirely.
 	 */
 	handlerProcessTimeout?: number;
+
+	/**
+	 * How long a durable queue may remain unused (no consumers, no new messages) before RabbitMQ
+	 * automatically deletes it, in milliseconds.
+	 *
+	 * When set, the `x-expires` argument is passed to RabbitMQ on queue assertion (requires RabbitMQ ≥ 3.10
+	 * for quorum queues). Set to `0` or leave `undefined` to keep the queue indefinitely.
+	 */
+	queueExpires?: number;
 };
 
 type EstablishedSubscription = Subscription & {
@@ -361,6 +370,13 @@ export class RabbitMqGateway {
 	 * @returns A promise that resolves when the subscription is successfully set up.
 	 */
 	async subscribe(subscription: Subscription) {
+		if (subscription.handlerProcessTimeout !== undefined)
+			assertNonNegativeInteger(subscription.handlerProcessTimeout, 'subscription.handlerProcessTimeout');
+		if (subscription.queueExpires !== undefined)
+			assertNonNegativeInteger(subscription.queueExpires, 'subscription.queueExpires');
+		if (!subscription.queueName)
+			assertNotDefined(subscription.queueExpires, 'subscription.queueExpires');
+
 		this.#desiredState = 'connected';
 		this.#clearReconnectTimer();
 
@@ -388,7 +404,8 @@ export class RabbitMqGateway {
 		const {
 			exchange,
 			queueName,
-			eventType
+			eventType,
+			queueExpires
 		} = subscription;
 
 		const channel = await this.#assertQueueChannel(queueName);
@@ -417,7 +434,10 @@ export class RabbitMqGateway {
 			await this.#assetQueue(channel, deadLetterExchangeName, `${queueGivenName}.failed`);
 
 			// Assert durable queue that will survive broker restart
-			await this.#assetQueue(channel, exchange, queueGivenName, eventType, { deadLetterExchangeName });
+			await this.#assetQueue(channel, exchange, queueGivenName, eventType, {
+				deadLetterExchangeName,
+				...queueExpires && { queueExpires }
+			});
 		}
 
 		const subscriptionRecord = this.#findSubscription(subscription);
@@ -479,11 +499,15 @@ export class RabbitMqGateway {
 
 		/** Exchange where rejected or timed out messages will be delivered */
 		deadLetterExchangeName?: string,
+
+		/** Auto-delete the queue after this many ms of idleness (no consumers, no new messages) */
+		queueExpires?: number,
 	}) {
 		const {
 			durable = true,
 			exclusive = false,
-			deadLetterExchangeName
+			deadLetterExchangeName,
+			queueExpires
 		} = options ?? {};
 
 		await channel.assertExchange(exchange, 'topic', { durable: true });
@@ -497,6 +521,9 @@ export class RabbitMqGateway {
 				...durable && {
 					// Use quorum queues (Raft-replicated, HA alternative to classic queues) for durable workloads
 					'x-queue-type': 'quorum'
+				},
+				...queueExpires && {
+					'x-expires': queueExpires
 				}
 			}
 		});
