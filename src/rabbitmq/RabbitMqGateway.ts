@@ -46,7 +46,8 @@ type Subscription = {
 	 * Handler timeout in milliseconds; if the handler does not complete within this time,
 	 * the message is considered failed and is rejected.
 	 *
-	 * Defaults to 1h (`RabbitMqGateway.HANDLER_PROCESS_TIMEOUT`)
+	 * Defaults to 1h (`RabbitMqGateway.HANDLER_PROCESS_TIMEOUT`).
+	 * Set to `0` to disable the timeout entirely.
 	 */
 	handlerProcessTimeout?: number;
 };
@@ -531,13 +532,15 @@ export class RabbitMqGateway {
 
 			// Keep the process alive while waiting for the handler to finish
 			const handlerProcessTimeout = options?.handlerProcessTimeout ?? RabbitMqGateway.HANDLER_PROCESS_TIMEOUT;
-			const keepAliveTimeout = setTimeout(() => {
-				this.#logger?.error('Message processing timed out', {
-					queueName: queueGivenName,
-					msg: extractMessageMeta(msg)
-				});
-				this.#rejectMessage(channel, msg);
-			}, handlerProcessTimeout);
+			const keepAliveTimeout = handlerProcessTimeout
+				? setTimeout(() => {
+					this.#logger?.error('Message processing timed out', {
+						queueName: queueGivenName,
+						msg: extractMessageMeta(msg)
+					});
+					this.#rejectMessage(channel, msg);
+				}, handlerProcessTimeout)
+				: null;
 
 			try {
 				this.#logger?.debug('Message received', {
@@ -571,7 +574,8 @@ export class RabbitMqGateway {
 				this.#rejectMessage(channel, msg);
 			}
 			finally {
-				clearTimeout(keepAliveTimeout);
+				if (keepAliveTimeout !== null)
+					clearTimeout(keepAliveTimeout);
 			}
 		}, {
 			noAck: options?.noAck
