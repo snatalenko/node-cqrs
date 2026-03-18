@@ -2,7 +2,7 @@ import type { ChannelModel } from 'amqplib';
 import type { RabbitMqGateway } from './RabbitMqGateway.ts';
 import type { ConfigProvider } from './utils/index.ts';
 
-declare module '../interfaces/IContainer' {
+declare module 'node-cqrs' {
 	interface IContainer {
 		rabbitMqGateway?: RabbitMqGateway;
 		rabbitMqConnectionFactory?: () => Promise<ChannelModel>;

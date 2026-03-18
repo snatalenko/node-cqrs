@@ -1,4 +1,4 @@
-import type { IContainer } from '../interfaces/index.ts';
+import type { IContainer } from 'node-cqrs';
 import { Lock } from '../utils/index.ts';
 import type { Database } from 'better-sqlite3';
 

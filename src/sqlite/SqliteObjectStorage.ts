@@ -1,6 +1,7 @@
 import type { Statement, Database } from 'better-sqlite3';
 import { guid } from './utils/index.ts';
-import type { IContainer, IObjectStorage } from '../interfaces/index.ts';
+import type { IContainer } from 'node-cqrs';
+import type { IObjectStorage } from '../interfaces/index.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
 import { assertFunction, assertString } from '../utils/assert.ts';
 

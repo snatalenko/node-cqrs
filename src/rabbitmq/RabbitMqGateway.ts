@@ -1,5 +1,6 @@
 import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
-import type { IContainer, ILogger, IMessage } from '../interfaces/index.ts';
+import type { IContainer } from 'node-cqrs';
+import type { ILogger, IMessage } from '../interfaces/index.ts';
 import * as Event from '../Event.ts';
 import { assertDefined, assertFunction, assertMessage, assertNonNegativeInteger, assertNotDefined, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
 import { ConfigProvider, registerExitCleanup, resolveProvider } from './utils/index.ts';
@@ -14,7 +15,7 @@ type MessageHandler = (m: IMessage) => Promise<unknown> | unknown;
 /**
  * Represents a subscription to events from a RabbitMQ exchange.
  */
-type Subscription = {
+export type Subscription = {
 
 	/** Name of the exchange to subscribe to */
 	exchange: string;

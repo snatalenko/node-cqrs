@@ -1,5 +1,6 @@
 import type { Database, Statement } from 'better-sqlite3';
-import type { IContainer, IEvent, IEventLocker } from '../interfaces/index.ts';
+import type { IContainer } from 'node-cqrs';
+import type { IEvent, IEventLocker } from '../interfaces/index.ts';
 import { getEventId } from './utils/index.ts';
 import { viewLockTableInit, eventLockTableInit } from './queries/index.ts';
 import type { SqliteViewLockerParams } from './SqliteViewLocker.ts';
