@@ -118,6 +118,30 @@ describe('RabbitMqGateway', () => {
 			expect(received1).toHaveLength(1);
 			expect(received2).toHaveLength(1);
 		});
+
+		it('supports async rabbitMqAppIdProvider when ignoring own messages', async () => {
+			const rabbitMqAppId = jest.fn(async () => 'node-cqrs.async-app-id');
+			gateway1 = new RabbitMqGateway({
+				rabbitMqConnectionFactory,
+				rabbitMqAppId
+			});
+			const received: IMessage[] = [];
+
+			await gateway1.subscribeToFanout(exchange, msg => {
+				received.push(msg);
+			});
+
+			const message: IMessage = {
+				type: 'test.event',
+				payload: { asyncProvider: true }
+			};
+
+			await gateway1.publish(exchange, message);
+			await delay(50);
+
+			expect(received).toHaveLength(0);
+			expect(rabbitMqAppId).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('subscribeToQueue', () => {
@@ -186,6 +210,42 @@ describe('RabbitMqGateway', () => {
 			expect(dlqReceived[0].payload.shouldFail).toBe(true);
 
 			await cn2.close();
+		});
+
+		it('ignores own durable queued messages across gateway instances with stable app id provider', async () => {
+			const rabbitMqAppIdProvider = () => 'node-cqrs.durable-stable-id';
+			gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory, rabbitMqAppId: rabbitMqAppIdProvider });
+			gateway2 = new RabbitMqGateway({ rabbitMqConnectionFactory, rabbitMqAppId: rabbitMqAppIdProvider });
+
+			const received: IMessage[] = [];
+
+			const cn = await amqplib.connect('amqp://localhost');
+			const ch = await cn.createChannel();
+			const deadLetterExchangeName = `${exchange}.failed`;
+			await ch.assertExchange(exchange, 'topic', { durable: true });
+			await ch.assertExchange(deadLetterExchangeName, 'topic', { durable: true });
+			await ch.assertQueue(queueName, {
+				durable: true,
+				arguments: {
+					'x-queue-type': 'quorum',
+					'x-dead-letter-exchange': deadLetterExchangeName
+				}
+			});
+			await ch.bindQueue(queueName, exchange, '#');
+			await cn.close();
+
+			const message: IMessage = {
+				type: 'queue.event',
+				payload: { own: true }
+			};
+
+			await gateway1.publish(exchange, message);
+			await delay(50);
+
+			await gateway2.subscribeToQueue(exchange, queueName, msg => received.push(msg), { ignoreOwn: true });
+			await delay(50);
+
+			expect(received).toHaveLength(0);
 		});
 	});
 

@@ -1,8 +1,8 @@
 import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import type { IContainer, ILogger, IMessage } from '../interfaces/index.ts';
 import * as Event from '../Event.ts';
-import { assertFunction, assertMessage, assertNonNegativeInteger, assertNotDefined, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
-import { registerExitCleanup } from './utils/index.ts';
+import { assertDefined, assertFunction, assertMessage, assertNonNegativeInteger, assertNotDefined, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
+import { ConfigProvider, registerExitCleanup, resolveProvider } from './utils/index.ts';
 import { EventEmitter } from 'events';
 
 /** Generate a short pseudo-unique identifier using a truncated timestamp and random component */
@@ -122,13 +122,14 @@ export class RabbitMqGateway {
 	static ALL_EVENTS_WILDCARD = '*';
 	static RECONNECT_DELAY = 30_000; // 30 sec
 
-	#connectionFactory: () => Promise<ChannelModel>;
-	#appId: string;
-	#logger: ILogger | undefined;
-	#emitter: EventEmitter<GatewayEvents>;
+	readonly #connectionFactory: () => Promise<ChannelModel>;
+	readonly #appIdProvider: ConfigProvider<string>;
+	#appId: string | undefined;
+	readonly #logger: ILogger | undefined;
+	readonly #emitter: EventEmitter<GatewayEvents>;
 
 	#desiredState: 'connected' | 'disconnected' = 'disconnected';
-	#stateChangeLock = new Lock();
+	readonly #stateChangeLock = new Lock();
 
 	/**
 	 * Established connection to RabbitMQ.
@@ -150,20 +151,33 @@ export class RabbitMqGateway {
 		return !!this.#connection;
 	}
 
-	constructor(o: Partial<Pick<IContainer, 'logger' | 'process'>> & {
-		rabbitMqConnectionFactory?: () => Promise<ChannelModel>,
+	constructor({
+		rabbitMqConnectionFactory,
+		rabbitMqAppId = getRandomAppId(),
+		eventEmitterFactory,
+		logger,
+		process
+	}: Partial<Pick<IContainer, 'logger' | 'process' | 'rabbitMqConnectionFactory' | 'rabbitMqAppId'>> & {
 		eventEmitterFactory?: () => EventEmitter<GatewayEvents>
 	}) {
-		assertFunction(o?.rabbitMqConnectionFactory, 'o.rabbitMqConnectionFactory');
+		assertFunction(rabbitMqConnectionFactory, 'rabbitMqConnectionFactory');
+		assertDefined(rabbitMqAppId, 'rabbitMqAppId');
 
-		this.#emitter = o?.eventEmitterFactory?.() ?? new EventEmitter();
-		this.#connectionFactory = o.rabbitMqConnectionFactory;
-		this.#appId = getRandomAppId();
-		this.#logger = o.logger && 'child' in o.logger ?
-			o.logger.child({ service: new.target.name, appId: this.#appId }) :
-			o.logger;
+		this.#emitter = eventEmitterFactory?.() ?? new EventEmitter();
+		this.#connectionFactory = rabbitMqConnectionFactory;
+		this.#appIdProvider = rabbitMqAppId;
+		this.#logger = logger && 'child' in logger ?
+			logger.child({ service: new.target.name }) :
+			logger;
 
-		registerExitCleanup(o.process, () => this.disconnect());
+		registerExitCleanup(process, () => this.disconnect());
+	}
+
+	/** Returns this gateway's app id from `rabbitMqAppIdProvider` */
+	async getAppId(): Promise<string> {
+		this.#appId ??= await resolveProvider(this.#appIdProvider);
+		assertString(this.#appId, 'appId');
+		return this.#appId;
 	}
 
 	/**
@@ -580,8 +594,10 @@ export class RabbitMqGateway {
 		if (this.#queueConsumers.has(queueGivenName))
 			return false;
 
-		if (options?.concurrentLimit !== undefined)
+		if (options?.concurrentLimit !== undefined) {
+			assertNonNegativeInteger(options.concurrentLimit, 'options.concurrentLimit');
 			await channel.prefetch(options.concurrentLimit);
+		}
 
 		const c = await channel.consume(queueGivenName, async (msg: ConsumeMessage | null) => {
 			if (!msg)
@@ -612,8 +628,9 @@ export class RabbitMqGateway {
 				if (!handlers.length && !isSystemQueue(queueGivenName))
 					throw new Error(`Message from queue "${queueGivenName}" was delivered to a consumer that does not handle type "${message.type}"`);
 
+				const ownAppId = handlers.some(s => s.ignoreOwn) ? await this.getAppId() : undefined;
 				for (const { handler, ignoreOwn } of handlers) {
-					if (ignoreOwn && msg.properties.appId === this.#appId)
+					if (ignoreOwn && msg.properties.appId === ownAppId)
 						continue;
 
 					await handler(message);
@@ -711,12 +728,13 @@ export class RabbitMqGateway {
 
 			return sagaOrigins[sagaDescriptors[0]];
 		})();
+		const appId = await this.getAppId();
 		const properties = {
 			contentType: 'application/json',
 			contentEncoding: 'utf8',
 			persistent: true,
 			timestamp: message.context?.ts ?? Date.now(),
-			appId: this.#appId,
+			appId,
 			type: message.type,
 			messageId: 'id' in message && typeof message.id === 'string' ?
 				message.id :
