@@ -78,7 +78,7 @@ Domain logic lives in three building blocks:
 
 Message delivery is handled by the following components, in order:
 
-- **[Command Bus](src/CommandBus.ts)** - routes commands to handlers
+- **[Command Bus](src/in-memory/InMemoryMessageBus.ts)** - routes commands to handlers
 - **[Aggregate Command Handler](src/AggregateCommandHandler.ts)** - restores aggregate state and executes commands
 - **[Event Store](src/EventStore.ts)** — runs the event dispatch pipeline (e.g. encoding, persistence), then publishes events to the event bus for delivery to all subscribers
 - **[Saga Event Handler](src/SagaEventHandler.ts)** - restores saga state and applies events
@@ -122,6 +122,7 @@ const { commandBus, eventStore, usersView } = builder.container();
 <summary>Manual setup (without DI container)</summary>
 
 ```ts
+const commandBus = new InMemoryMessageBus();
 const eventBus = new InMemoryMessageBus();
 const eventStorage = new InMemoryEventStorage();
 const eventStore = new EventStore({
@@ -130,7 +131,6 @@ const eventStore = new EventStore({
 	eventDispatchPipeline: [eventStorage],
 	eventBus
 });
-const commandBus = new CommandBus();
 
 const aggregateCommandHandler = new AggregateCommandHandler({ eventStore, aggregateType: UserAggregate });
 aggregateCommandHandler.subscribe(commandBus);
@@ -151,7 +151,7 @@ Commands represent intent. Send them via `commandBus`:
 ```ts
 commandBus.send('signupUser', undefined, { payload: { profile, password } });
 // or
-commandBus.sendRaw({ type: 'signupUser', payload: { profile, password } });
+commandBus.send({ type: 'signupUser', payload: { profile, password } });
 ```
 
 Commands are handled by [Aggregates](#aggregates-write-model) and may also be enqueued by [Sagas](#sagas).
@@ -352,6 +352,7 @@ For strict, explicit routing:
 <summary><strong>Manual wiring (without DI container)</strong></summary>
 
 ```ts
+const commandBus = new InMemoryMessageBus();
 const eventBus = new InMemoryMessageBus();
 const eventStorage = new InMemoryEventStorage();
 const eventStore = new EventStore({
@@ -363,7 +364,6 @@ const eventStore = new EventStore({
 	],
 	eventBus
 });
-const commandBus = new CommandBus();
 
 SignupAggregate.register(eventStore, commandBus);
 WelcomeEmailSaga.register(eventStore, commandBus);

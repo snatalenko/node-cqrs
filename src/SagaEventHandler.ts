@@ -134,7 +134,7 @@ export class SagaEventHandler implements IEventReceptor {
 					};
 				}
 
-				await this.#commandBus.sendRaw(command);
+				await this.#commandBus.send(command);
 			}
 		}
 		finally {

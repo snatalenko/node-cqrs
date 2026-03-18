@@ -1,7 +1,8 @@
 import type {
 	ICommand,
+	ICommandBus,
 	IEvent,
-	IMessageBus,
+	IEventBus,
 	IMessageHandler,
 	IObservable,
 	IObservableQueueProvider
@@ -17,12 +18,12 @@ import {
  * Default implementation of the message bus.
  * Keeps all subscriptions and messages in memory.
  */
-export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider {
+export class InMemoryMessageBus implements IEventBus, ICommandBus, IObservableQueueProvider {
 
 	protected handlers: Map<string, Set<IMessageHandler>> = new Map();
 	protected uniqueEventHandlers: boolean;
 	protected queueName: string | undefined;
-	protected queues: Map<string, IMessageBus> = new Map();
+	protected queues: Map<string, InMemoryMessageBus> = new Map();
 
 	constructor({ queueName, uniqueEventHandlers = !!queueName }: {
 		queueName?: string,
@@ -80,7 +81,22 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 	/**
 	 * Send command to exactly 1 command handler
 	 */
-	async send(command: ICommand): Promise<any> {
+	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object }): Promise<any>;
+
+	/**
+	 * Send pre-built command to exactly 1 command handler
+	 */
+	send(command: ICommand): Promise<any>;
+
+	async send(
+		commandOrType: ICommand | string,
+		aggregateId?: string,
+		options?: { payload?: object, context?: object }
+	): Promise<any> {
+		const command: ICommand = typeof commandOrType === 'string'
+			? { type: commandOrType, aggregateId, ...options }
+			: commandOrType;
+
 		assertMessage(command, 'command');
 
 		const handlers = this.handlers.get(command.type);
@@ -92,6 +108,11 @@ export class InMemoryMessageBus implements IMessageBus, IObservableQueueProvider
 		const commandHandler = handlers.values().next().value;
 
 		return commandHandler!(command);
+	}
+
+	/** @deprecated Use {@link send} */
+	sendRaw(command: ICommand): Promise<any> {
+		return this.send(command);
 	}
 
 	/**

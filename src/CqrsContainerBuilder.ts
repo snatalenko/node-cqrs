@@ -1,6 +1,5 @@
 import { ContainerBuilder, type TypeConfig, type ClassOrFactory } from 'di0';
 import { AggregateCommandHandler } from './AggregateCommandHandler.ts';
-import { CommandBus } from './CommandBus.ts';
 import { EventStore } from './EventStore.ts';
 import { SagaEventHandler } from './SagaEventHandler.ts';
 import { EventDispatcher } from './EventDispatcher.ts';
@@ -39,9 +38,9 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 		super.addResolver(isAggregateSnapshotStorage, 'snapshotStorage');
 		super.addResolver(isExecutionLocker, 'executionLocker');
 
+		super.register(InMemoryMessageBus).as('commandBus');
 		super.register(InMemoryMessageBus).as('eventBus');
 		super.register(EventStore).as('eventStore');
-		super.register(CommandBus).as('commandBus');
 		super.register(EventDispatcher).as('eventDispatcher');
 
 		super.register(c => [
