@@ -28,7 +28,7 @@ npm install
 | **examples/** | Runnable examples (TS, CJS, sagas, browser, workers) |
 | **src/interfaces/** | TypeScript contracts (`IEvent`, `IAggregate`, `ISaga`, etc.) |
 | **src/in-memory/** | Default in-process implementations |
-| **src/rabbitmq/** | RabbitMQ event bus (`node-cqrs/rabbitmq`) |
+| **src/rabbitmq/** | RabbitMQ buses (`node-cqrs/rabbitmq`) |
 | **src/sqlite/** | SQLite-backed views (`node-cqrs/sqlite`) |
 | **src/workers/** | Worker thread projections (`node-cqrs/workers`) |
 | src/AbstractAggregate.ts | Base class for aggregates; auto-routes commands to methods by name |

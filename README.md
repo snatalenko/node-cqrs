@@ -418,11 +418,12 @@ import { AbstractSqliteView, SqliteObjectView } from 'node-cqrs/sqlite';
 ### RabbitMQ
 
 ```ts
-import { RabbitMqEventBus, RabbitMqGateway } from 'node-cqrs/rabbitmq';
+import { RabbitMqEventBus, RabbitMqCommandBus, RabbitMqGateway } from 'node-cqrs/rabbitmq';
 ```
 
 - [RabbitMqGateway](src/rabbitmq/RabbitMqGateway.ts) - publish/subscribe gateway with durable and transient queue support
-- [RabbitMqEventBus](src/rabbitmq/RabbitMqEventBus.ts) - RabbitMQ-backed `IEventBus` with named queues
+- [RabbitMqEventBus](src/rabbitmq/RabbitMqEventBus.ts) - RabbitMQ-backed `IEventBus` (fanout delivery to all subscribers)
+- [RabbitMqCommandBus](src/rabbitmq/RabbitMqCommandBus.ts) - RabbitMQ-backed `ICommandBus` (point-to-point delivery via durable queue)
 
 ### Workers
 

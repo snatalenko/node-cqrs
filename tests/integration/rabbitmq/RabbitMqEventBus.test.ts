@@ -22,9 +22,18 @@ describe('RabbitMqEventBus', () => {
 		gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory });
 		gateway2 = new RabbitMqGateway({ rabbitMqConnectionFactory });
 		gateway3 = new RabbitMqGateway({ rabbitMqConnectionFactory });
-		eventBus1 = new RabbitMqEventBus({ rabbitMqGateway: gateway1, exchange: exchangeName });
-		eventBus2 = new RabbitMqEventBus({ rabbitMqGateway: gateway2, exchange: exchangeName });
-		eventBus3 = new RabbitMqEventBus({ rabbitMqGateway: gateway3, exchange: exchangeName });
+		eventBus1 = new RabbitMqEventBus({
+			rabbitMqGateway: gateway1,
+			rabbitMqEventBusConfig: { exchange: exchangeName }
+		});
+		eventBus2 = new RabbitMqEventBus({
+			rabbitMqGateway: gateway2,
+			rabbitMqEventBusConfig: { exchange: exchangeName }
+		});
+		eventBus3 = new RabbitMqEventBus({
+			rabbitMqGateway: gateway3,
+			rabbitMqEventBusConfig: { exchange: exchangeName }
+		});
 	});
 
 	afterEach(async () => {
