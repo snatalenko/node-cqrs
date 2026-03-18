@@ -1,3 +1,33 @@
+# [1.0.0-rc.43](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.42...v1.0.0-rc.43) (2026-03-18)
+
+
+### Changes
+
+* Allow extending WorkerProxyProjection via workerProxyFactory custom proxy type ([c9860b6](https://github.com/snatalenko/node-cqrs/commit/c9860b605a52e0cf0be167917b66e5efeb0fe29c))
+
+### Fixes
+
+* All errors being ignored with concurrency resolution set to 'ignore' ([0cb10bc](https://github.com/snatalenko/node-cqrs/commit/0cb10bcaef5ec76050b14caf6d5ad710a005b6d0))
+
+### Documentation
+
+* Update package description and keywords ([15ef847](https://github.com/snatalenko/node-cqrs/commit/15ef847b4b7dc7007f38423580704604901fc588))
+* Add AbstractWorkerProjection description to readme.md ([dd3952c](https://github.com/snatalenko/node-cqrs/commit/dd3952cc79d8a5762cd5b5bc320429ac9d0e7403))
+
+### Tests
+
+* Migrate chai+sinon tests to pure jest and remove legacy deps ([86840dd](https://github.com/snatalenko/node-cqrs/commit/86840dd7313e6af217fb74b7c32227d09860433b))
+
+### Build System
+
+* Remove comments from compiled dists ([d7124bd](https://github.com/snatalenko/node-cqrs/commit/d7124bdb47d8cef12280f404146b4f4d8e0ae1e7))
+
+### Internal Fixes
+
+* Allow EventStore to resolve reader from eventStorage alias ([91cd778](https://github.com/snatalenko/node-cqrs/commit/91cd778171ed1ace11802a4ef1fb05384de11433))
+* Update dependencies ([8c7478e](https://github.com/snatalenko/node-cqrs/commit/8c7478e6f569426c8ad94fed9bc84a159f31bf1c))
+
+
 # [1.0.0-rc.42](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.41...v1.0.0-rc.42) (2026-02-27)
 
 
