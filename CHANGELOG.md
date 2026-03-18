@@ -1,3 +1,11 @@
+# [1.0.0-rc.44](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.43...v1.0.0-rc.44) (2026-03-18)
+
+
+### Internal Fixes
+
+* Upgrade di0 to latest stable version with resolvers ([5f2c9ad](https://github.com/snatalenko/node-cqrs/commit/5f2c9adfd101bb53e7250db95c89f1cbd1730362))
+
+
 # [1.0.0-rc.43](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.42...v1.0.0-rc.43) (2026-03-18)
 
 
