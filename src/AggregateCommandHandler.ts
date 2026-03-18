@@ -31,7 +31,7 @@ function normalizeRetryResolver(value?: RetryOnConcurrencyErrorOptions): RetryOn
 	if (value === false)
 		return () => false;
 	if (value === 'ignore')
-		return () => 'ignore';
+		return err => (err instanceof ConcurrencyError ? 'ignore' : false);
 	if (typeof value === 'number')
 		return (err, events, attempt) => err instanceof ConcurrencyError && attempt < value;
 
@@ -163,17 +163,40 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		return aggregate;
 	}
 
+	/**
+	 * Register interest in the cache entry before acquiring the lock, so concurrent callers for the same aggregateId
+	 * share one restoration promise instead of each triggering a separate event-store read
+	 */
+	#allocateCacheEntry(aggregateId: Identifier | undefined) {
+		if (aggregateId)
+			this.#aggregatesCache.assert(aggregateId, () => this.#restoreAggregate(aggregateId));
+	}
+
+	/**
+	 * Replace the dirty cache entry with a fresh restoration promise
+	 * so both the retry and any commands queued on the lock start from a clean state.
+	 */
+	#resetCacheEntry(aggregateId: Identifier | undefined) {
+		if (aggregateId)
+			this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
+	}
+
+	/**
+	 * Decrement the usage counter registered above;
+	 * deletes the entry when the last concurrent caller for this aggregateId is done.
+	 */
+	#releaseCacheEntry(aggregateId: Identifier | undefined) {
+		if (aggregateId)
+			this.#aggregatesCache.release(aggregateId);
+	}
+
 	/** Pass a command to corresponding aggregate */
 	async execute(cmd: ICommand): Promise<IEventSet> {
 		assertMessage(cmd, 'cmd');
 
 		const { aggregateId } = cmd;
 
-		// Register interest in the cache entry before acquiring the lock, so concurrent
-		// callers for the same aggregateId share one restoration promise instead of each
-		// triggering a separate event-store read.
-		if (aggregateId)
-			this.#aggregatesCache.assert(aggregateId, () => this.#restoreAggregate(aggregateId));
+		this.#allocateCacheEntry(aggregateId);
 
 		// Serialize execution per aggregate — commands for the same id queue here.
 		const lease = aggregateId ?
@@ -182,9 +205,6 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 		try {
 			for (let attempt = 0; ; attempt++) {
-				if (attempt > 0)
-					this.#logger?.warn(`retrying "${cmd.type}" command on aggregate ${aggregateId}, attempt ${attempt + 1}`);
-
 				// Read the current cache entry after acquiring the lock. On the first attempt
 				// this is the pre-warmed (possibly shared) instance; on retries it is the
 				// fresh instance placed into the cache by the error handler below.
@@ -192,43 +212,46 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 					await this.#aggregatesCache.get(aggregateId)! :
 					await this.#createAggregate();
 
-				let events: IEventSet | undefined;
+				let events: IEventSet;
 				try {
 					events = await aggregate.handle(cmd);
 
 					this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
+				}
+				catch (error: unknown) {
+					this.#resetCacheEntry(aggregateId);
+					throw error;
+				}
 
+				try {
 					if (events.length)
 						await this.#eventStore.dispatch(events);
 
 					return events;
 				}
-				catch (err: unknown) {
-					// The aggregate is now dirty (mutated by handle). Replace the cache entry
-					// with a fresh restoration promise so both the retry below and any commands
-					// queued on the lock start from a clean state.
-					if (aggregateId)
-						this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
+				catch (error: unknown) {
+					this.#resetCacheEntry(aggregateId);
 
-					const retryDecision = this.#shouldRetry(err, events, attempt);
+					const retryDecision = this.#shouldRetry(error, events, attempt);
 					if (!retryDecision)
-						throw err;
+						throw error;
 
-					if (retryDecision === 'ignore' && events?.length) {
-						this.#logger?.warn(`"${cmd.type}" concurrency error ignored after ${attempt + 1} attempt(s), force-dispatching`);
-						await this.#eventStore.dispatch(events, { ignoreConcurrencyError: true });
+					if (retryDecision === 'ignore') {
+						this.#logger?.warn(`"${cmd.type}" command error ignored after ${attempt + 1} attempt(s), force-dispatching`, { error });
+						if (events.length)
+							await this.#eventStore.dispatch(events, { ignoreConcurrencyError: true });
+
 						return events;
 					}
+
+					this.#logger?.warn(`"${cmd.type}" command failed on attempt ${attempt + 1}, will retry`, { error });
 				}
 			}
 		}
 		finally {
 			lease?.release();
 
-			// Decrement the usage counter registered above; deletes the entry when
-			// the last concurrent caller for this aggregateId is done.
-			if (aggregateId)
-				this.#aggregatesCache.release(aggregateId);
+			this.#releaseCacheEntry(aggregateId);
 		}
 	}
 }
