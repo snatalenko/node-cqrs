@@ -45,6 +45,7 @@ Built around ES6/TypeScript classes and dependency injection - swap implementati
 - [Infrastructure modules](#infrastructure-modules)
   - [In-memory](#in-memory)
   - [SQLite](#sqlite)
+  - [Redis](#redis)
   - [RabbitMQ](#rabbitmq)
   - [Workers](#workers)
 - [Examples](#examples)
@@ -99,6 +100,7 @@ Optional peer dependencies:
 | Module | Packages |
 |--------|----------|
 | SQLite | `better-sqlite3`, `md5` |
+| Redis | `ioredis`, `md5` |
 | RabbitMQ | `amqplib` |
 | Worker threads | `comlink` |
 
@@ -397,6 +399,7 @@ interface ISaga {
 |--------|--------|----------|
 | In-memory | `node-cqrs` | Tests and local development |
 | SQLite | `node-cqrs/sqlite` | Persistent views with catch-up |
+| Redis | `node-cqrs/redis` | Distributed persistent views with catch-up |
 | RabbitMQ | `node-cqrs/rabbitmq` | Cross-process event distribution |
 | Workers | `node-cqrs/workers` | CPU-heavy projections in worker threads |
 
@@ -414,6 +417,43 @@ import { AbstractSqliteView, SqliteObjectView } from 'node-cqrs/sqlite';
 
 - [AbstractSqliteView](src/sqlite/AbstractSqliteView.ts) - SQLite view with restore locking and checkpoint tracking
 - [SqliteObjectView](src/sqlite/SqliteObjectView.ts) - SQLite-backed object view
+
+### Redis
+
+> **Experimental** — the Redis module is new and has not been validated in production. APIs may change in minor versions.
+
+```ts
+import { AbstractRedisProjection, RedisView } from 'node-cqrs/redis';
+```
+
+Requires `ioredis` and `md5` peer dependencies. Register a shared `Redis` instance as `viewModelRedis` in the DI container:
+
+```ts
+import Redis from 'ioredis';
+import { AbstractRedisProjection } from 'node-cqrs/redis';
+
+class UsersProjection extends AbstractRedisProjection<{ username: string }> {
+	static override get tableName() { return 'users'; }
+	static override get schemaVersion() { return '1'; }
+
+	userCreated(event: IEvent) {
+		this.view.updateEnforcingNew(event.aggregateId as string, () => ({
+			username: event.payload.username
+		}));
+	}
+}
+
+builder.register(() => new Redis({ host: 'localhost', port: 6379 })).as('viewModelRedis');
+builder.registerProjection(UsersProjection, 'usersView');
+```
+
+- [RedisView](src/redis/RedisView.ts) - Redis-backed object view with distributed locking and checkpoint tracking
+- [AbstractRedisProjection](src/redis/AbstractRedisProjection.ts) - base class for Redis-backed projections
+- [RedisObjectStorage](src/redis/RedisObjectStorage.ts) - low-level key/value object store backed by Redis
+- [RedisViewLocker](src/redis/RedisViewLocker.ts) - distributed view lock with auto-prolongation via `PEXPIRE`
+- [RedisEventLocker](src/redis/RedisEventLocker.ts) - per-event deduplication and last-event checkpoint
+
+See [examples/redis](examples/redis) for a runnable example.
 
 ### RabbitMQ
 
@@ -496,6 +536,7 @@ If you need a custom proxy projection, you can still use `workerProxyFactory(...
 - [examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts) - minimal, no-framework CQRS/ES in one file
 - [examples/user-domain/ts](examples/user-domain/ts) - TypeScript with DI container
 - [examples/user-domain/cjs](examples/user-domain/cjs) - CommonJS
+- [examples/redis](examples/redis/index.ts) - Redis-backed persistent projection
 - [examples/sagas/simple](examples/sagas/simple/index.ts) - simple saga
 - [examples/sagas/overlaps](examples/sagas/overlaps/index.ts) - overlapping sagas, multi-step flow
 - [examples/browser/smoke-test](examples/browser/smoke-test) - browser smoke test
