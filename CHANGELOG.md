@@ -1,3 +1,27 @@
+# [1.0.0-rc.45](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.44...v1.0.0-rc.45) (2026-03-19)
+
+
+### Features
+
+* Add RabbitMQ command bus implementation and enhance MQ configuration options ([a565c59](https://github.com/snatalenko/node-cqrs/commit/a565c59f87fa46f2279781329ebacf55b1245805))
+
+### Changes
+
+* Resolve RabbitMQ appId from injected `rabbitMqAppId` provider ([56c2fe1](https://github.com/snatalenko/node-cqrs/commit/56c2fe1b4c5d1e9d85bf72ae6364a5012daec48d))
+* Return established subscription details from `subscribe` method of RabbitMqGateway ([7768256](https://github.com/snatalenko/node-cqrs/commit/7768256639c58194d0792813afdb5ec9a0c2ee9c))
+* Add option for queue expiration ([7073832](https://github.com/snatalenko/node-cqrs/commit/7073832aa5287f5786d6f8f06d4ad67698ac3f19))
+* Add option to disable handler timeout on rabbitmq subscription ([dd76d5e](https://github.com/snatalenko/node-cqrs/commit/dd76d5e9c728739620ba7d4399108db97293772f))
+
+### Fixes
+
+* Avoid finalization of already finalized MQ messages ([a9a1ea6](https://github.com/snatalenko/node-cqrs/commit/a9a1ea63fc85ba8cd6b09e2c2330636e22639b2c))
+
+### Internal Fixes
+
+* Consolidate CommandBus into InMemoryMessageBus ([62b1b0a](https://github.com/snatalenko/node-cqrs/commit/62b1b0ad23e71ea78bafef780cd06d9366d8c803))
+* Enable "x-single-active-consumer" on event queues ([6cf8e74](https://github.com/snatalenko/node-cqrs/commit/6cf8e74485201b157bb4265feeb4b5d3088cf531))
+
+
 # [1.0.0-rc.44](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.43...v1.0.0-rc.44) (2026-03-18)
 
 
