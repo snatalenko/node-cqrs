@@ -103,7 +103,8 @@ export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 			ignoreOwn,
 			concurrentLimit,
 			handlerProcessTimeout,
-			queueExpires
+			queueExpires,
+			singleActiveConsumer: true
 		});
 	}
 

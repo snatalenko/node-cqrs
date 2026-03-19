@@ -60,6 +60,11 @@ export type Subscription = {
 	 * for quorum queues). Set to `0` or leave `undefined` to keep the queue indefinitely.
 	 */
 	queueExpires?: number;
+
+	/**
+	 * Enables RabbitMQ single active consumer mode (`x-single-active-consumer`).
+	 */
+	singleActiveConsumer?: boolean;
 };
 
 export type SubscribeResult = {
@@ -435,7 +440,8 @@ export class RabbitMqGateway {
 			exchange,
 			queueName,
 			eventType,
-			queueExpires
+			queueExpires,
+			singleActiveConsumer
 		} = subscription;
 
 		const channel = await this.#assertQueueChannel(queueName);
@@ -472,6 +478,7 @@ export class RabbitMqGateway {
 			// Assert durable queue that will survive broker restart
 			const reply = await this.#assetQueue(channel, exchange, queueGivenName, eventType, {
 				deadLetterExchangeName,
+				...singleActiveConsumer && { singleActiveConsumer },
 				...queueExpires && { queueExpires }
 			});
 			messageCount = reply.messageCount;
@@ -542,6 +549,9 @@ export class RabbitMqGateway {
 		/** Used by only one connection and the queue will be deleted when that connection closes */
 		exclusive?: boolean,
 
+		/** RabbitMQ ensures only one consumer is active for this queue at any moment */
+		singleActiveConsumer?: boolean,
+
 		/** Exchange where rejected or timed out messages will be delivered */
 		deadLetterExchangeName?: string,
 
@@ -551,6 +561,7 @@ export class RabbitMqGateway {
 		const {
 			durable = true,
 			exclusive = false,
+			singleActiveConsumer = false,
 			deadLetterExchangeName,
 			queueExpires
 		} = options ?? {};
@@ -569,6 +580,9 @@ export class RabbitMqGateway {
 				},
 				...queueExpires && {
 					'x-expires': queueExpires
+				},
+				...singleActiveConsumer && {
+					'x-single-active-consumer': true
 				}
 			}
 		});

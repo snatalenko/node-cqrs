@@ -36,7 +36,32 @@ describe('RabbitMq bus config forwarding', () => {
 			ignoreOwn: true,
 			concurrentLimit: 2,
 			handlerProcessTimeout: 1234,
-			queueExpires: 5678
+			queueExpires: 5678,
+			singleActiveConsumer: true
+		});
+	});
+
+	it('always enables single active consumer for event bus subscriptions even without queueName', async () => {
+		const rabbitMqGateway = createGateway();
+		const bus = new RabbitMqEventBus({
+			rabbitMqGateway: rabbitMqGateway as any,
+			rabbitMqEventBusConfig: {
+				exchange: 'events'
+			}
+		});
+
+		await bus.on('test.event', handler);
+
+		expect(rabbitMqGateway.subscribe).toHaveBeenCalledWith({
+			exchange: 'events',
+			queueName: undefined,
+			eventType: 'test.event',
+			handler,
+			ignoreOwn: true,
+			concurrentLimit: undefined,
+			handlerProcessTimeout: undefined,
+			queueExpires: undefined,
+			singleActiveConsumer: true
 		});
 	});
 

@@ -142,6 +142,21 @@ describe('RabbitMqGateway', () => {
 			expect(received).toHaveLength(0);
 			expect(rabbitMqAppId).toHaveBeenCalledTimes(1);
 		});
+
+		it('does not set single active consumer for fanout exclusive queue', async () => {
+			await gateway1.subscribeToFanout(exchange, () => undefined);
+
+			const res = await fetch('http://localhost:15672/api/queues/%2F', {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+			const queues: any[] = await res.json();
+			const exclusiveQueues = queues.filter(q => q.exclusive);
+
+			expect(exclusiveQueues.length).toBeGreaterThan(0);
+			for (const q of exclusiveQueues)
+				expect(q.arguments?.['x-single-active-consumer']).toBeUndefined();
+
+		});
 	});
 
 	describe('subscribeToQueue', () => {

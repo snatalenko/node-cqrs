@@ -105,6 +105,25 @@ describe('RabbitMqEventBus', () => {
 
 			expect(received1).toEqual([event1, event2]);
 		});
+
+		it('enables single active consumer for named queue subscriptions', async () => {
+			const namedQueueBus = new RabbitMqEventBus({
+				rabbitMqGateway: gateway1,
+				rabbitMqEventBusConfig: {
+					exchange: exchangeName,
+					queueName
+				}
+			});
+
+			await namedQueueBus.on(eventType, () => undefined);
+
+			const res = await fetch(`http://localhost:15672/api/queues/%2F/${queueName}`, {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+			const queueInfo = await res.json();
+
+			expect(queueInfo.arguments?.['x-single-active-consumer']).toBe(true);
+		});
 	});
 
 	describe('queue()', () => {
