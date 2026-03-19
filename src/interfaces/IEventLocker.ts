@@ -25,6 +25,11 @@ export interface IEventLocker {
 	 * Marks an event as projected.
 	 */
 	markAsProjected(event: IEvent): Promise<void> | void;
+
+	/**
+	 * Records an event as the last projected event (restore checkpoint).
+	 */
+	markAsLastEvent(event: IEvent): Promise<void> | void;
 }
 
 export const isEventLocker = (view: unknown): view is IEventLocker =>
@@ -33,9 +38,11 @@ export const isEventLocker = (view: unknown): view is IEventLocker =>
 		&& 'getLastEvent' in view
 		&& 'tryMarkAsProjecting' in view
 		&& 'markAsProjected' in view
+		&& 'markAsLastEvent' in view
 	) || (
 		typeof view === 'function'
 		&& typeof (view as any).getLastEvent === 'function'
 		&& typeof (view as any).tryMarkAsProjecting === 'function'
 		&& typeof (view as any).markAsProjected === 'function'
+		&& typeof (view as any).markAsLastEvent === 'function'
 	);
