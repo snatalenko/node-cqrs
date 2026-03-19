@@ -604,6 +604,8 @@ export class RabbitMqGateway {
 			if (!msg)
 				return;
 
+			let messageFinalized = false;
+
 			// Keep the process alive while waiting for the handler to finish
 			const handlerProcessTimeout = options?.handlerProcessTimeout ?? RabbitMqGateway.HANDLER_PROCESS_TIMEOUT;
 			const keepAliveTimeout = handlerProcessTimeout
@@ -613,6 +615,7 @@ export class RabbitMqGateway {
 						msg: extractMessageMeta(msg)
 					});
 					this.#rejectMessage(channel, msg);
+					messageFinalized = true;
 				}, handlerProcessTimeout)
 				: null;
 
@@ -637,7 +640,15 @@ export class RabbitMqGateway {
 					await handler(message);
 				}
 
-				channel.ack(msg);
+				if (messageFinalized) {
+					this.#logger?.error('Handler resolved, but message has already been finalized', {
+						queueName: queueGivenName,
+						msg: extractMessageMeta(msg)
+					});
+				}
+				else {
+					channel.ack(msg);
+				}
 			}
 			catch (err: unknown) {
 				this.#logger?.error('Message processing failed', {
@@ -646,7 +657,10 @@ export class RabbitMqGateway {
 					msg: extractMessageMeta(msg)
 				});
 
-				this.#rejectMessage(channel, msg);
+				if (!messageFinalized) {
+					this.#rejectMessage(channel, msg);
+					messageFinalized = true;
+				}
 			}
 			finally {
 				if (keepAliveTimeout !== null)

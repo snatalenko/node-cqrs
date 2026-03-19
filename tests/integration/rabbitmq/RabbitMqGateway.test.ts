@@ -1,5 +1,5 @@
 import { RabbitMqGateway } from '../../../src/rabbitmq/RabbitMqGateway';
-import { IMessage } from '../../../src/interfaces';
+import type { ILogger, IMessage } from '../../../src/interfaces';
 import * as amqplib from 'amqplib';
 import { delay } from './utils';
 import { Deferred } from '../../../src/utils/Deferred';
@@ -210,6 +210,62 @@ describe('RabbitMqGateway', () => {
 			expect(dlqReceived[0].payload.shouldFail).toBe(true);
 
 			await cn2.close();
+		});
+
+		it('does not ack a message after timeout and logs it while consumer keeps processing', async () => {
+			const errorLogs: Array<{ message: string, meta?: { [key: string]: any } }> = [];
+			const logger: ILogger = {
+				log: (level, message, meta) => {
+					if (level === 'error')
+						errorLogs.push({ message, meta });
+				},
+				debug: () => undefined,
+				info: () => undefined,
+				warn: () => undefined,
+				error: (message, meta) => {
+					errorLogs.push({ message, meta });
+				}
+			};
+			gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger, process: process as NodeJS.Process });
+
+			const received: IMessage[] = [];
+			const timedOutMessage: IMessage = {
+				type: 'timeout.ack',
+				payload: { id: 'slow-1', slow: true }
+			};
+			const fastMessage: IMessage = {
+				type: 'timeout.ack',
+				payload: { id: 'fast-1', slow: false }
+			};
+
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: timedOutMessage.type,
+				handler: async message => {
+					if (message.payload.slow)
+						await delay(80);
+
+					received.push(message);
+				},
+				handlerProcessTimeout: 20
+			});
+
+			await gateway3!.publish(exchange, timedOutMessage);
+			await delay(140); // wait for timeout + handler completion (late ack path)
+
+			await gateway3!.publish(exchange, fastMessage);
+			await delay(80);
+
+			expect(received.some(m => m.payload.id === 'fast-1')).toBe(true);
+
+			const timeoutLog = errorLogs.find(l => l.message === 'Message processing timed out');
+			expect(timeoutLog).toBeDefined();
+			expect(timeoutLog?.meta?.msg).toBeDefined();
+
+			const skippedAckLog = errorLogs.find(l => l.message === 'Handler resolved, but message has already been finalized');
+			expect(skippedAckLog).toBeDefined();
+			expect(skippedAckLog?.meta?.msg).toBeDefined();
 		});
 
 		it('ignores own durable queued messages across gateway instances with stable app id provider', async () => {
