@@ -1,3 +1,11 @@
+# [1.0.0-rc.46](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.45...v1.0.0-rc.46) (2026-03-19)
+
+
+### Changes
+
+* Pass event meta through projection chain, allow skipping last event update for internal-origin events ([dd36395](https://github.com/snatalenko/node-cqrs/commit/dd36395a2ad4be712df0a81e60514701ec7e03b8))
+
+
 # [1.0.0-rc.45](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.44...v1.0.0-rc.45) (2026-03-19)
 
 
