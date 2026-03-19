@@ -303,6 +303,58 @@ describe('RabbitMqGateway', () => {
 
 			expect(received).toHaveLength(0);
 		});
+
+		it('expires idle durable queue when queueExpires is configured', async () => {
+			const expiringQueueName = `${queueName}.expires.${Date.now()}`;
+			const eventType = 'queue.expires';
+			const handler = jest.fn();
+
+			await gateway1.subscribe({
+				exchange,
+				queueName: expiringQueueName,
+				eventType,
+				handler,
+				queueExpires: 1_000
+			});
+
+			await gateway1.unsubscribe({
+				exchange,
+				queueName: expiringQueueName,
+				eventType,
+				handler
+			});
+
+			const queueExists = async () => {
+				if (!gateway1.connection)
+					throw new Error('RabbitMQ connection is not established');
+
+				const ch = await gateway1.connection.createChannel();
+				ch.on('error', () => undefined);
+				try {
+					await ch.checkQueue(expiringQueueName);
+					return true;
+				}
+				catch {
+					return false;
+				}
+				finally {
+					await ch.close().catch(() => undefined);
+				}
+			};
+
+			// Queue expiration is asynchronous in RabbitMQ; allow time for broker cleanup.
+			const waitDeadline = Date.now() + 12_000;
+			let exists = true;
+			while (Date.now() < waitDeadline) {
+				exists = await queueExists();
+				if (!exists)
+					break;
+
+				await delay(1_000);
+			}
+
+			expect(exists).toBe(false);
+		}, 20_000);
 	});
 
 	describe('subscribe', () => {
