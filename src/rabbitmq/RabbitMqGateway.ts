@@ -1,8 +1,9 @@
 import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
-import type { IContainer, ILogger, IMessage } from '../interfaces/index.ts';
+import type { IContainer } from 'node-cqrs';
+import type { ILogger, IMessage } from '../interfaces/index.ts';
 import * as Event from '../Event.ts';
-import { assertFunction, assertMessage, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
-import { registerExitCleanup } from './utils/index.ts';
+import { assertDefined, assertFunction, assertMessage, assertNonNegativeInteger, assertNotDefined, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
+import { ConfigProvider, registerExitCleanup, resolveProvider } from './utils/index.ts';
 import { EventEmitter } from 'events';
 
 /** Generate a short pseudo-unique identifier using a truncated timestamp and random component */
@@ -14,7 +15,7 @@ type MessageHandler = (m: IMessage) => Promise<unknown> | unknown;
 /**
  * Represents a subscription to events from a RabbitMQ exchange.
  */
-type Subscription = {
+export type Subscription = {
 
 	/** Name of the exchange to subscribe to */
 	exchange: string;
@@ -46,9 +47,39 @@ type Subscription = {
 	 * Handler timeout in milliseconds; if the handler does not complete within this time,
 	 * the message is considered failed and is rejected.
 	 *
-	 * Defaults to 1h (`RabbitMqGateway.HANDLER_PROCESS_TIMEOUT`)
+	 * Defaults to 1h (`RabbitMqGateway.HANDLER_PROCESS_TIMEOUT`).
+	 * Set to `0` to disable the timeout entirely.
 	 */
 	handlerProcessTimeout?: number;
+
+	/**
+	 * How long a durable queue may remain unused (no consumers, no new messages) before RabbitMQ
+	 * automatically deletes it, in milliseconds.
+	 *
+	 * When set, the `x-expires` argument is passed to RabbitMQ on queue assertion (requires RabbitMQ ≥ 3.10
+	 * for quorum queues). Set to `0` or leave `undefined` to keep the queue indefinitely.
+	 */
+	queueExpires?: number;
+
+	/**
+	 * Enables RabbitMQ single active consumer mode (`x-single-active-consumer`).
+	 */
+	singleActiveConsumer?: boolean;
+};
+
+export type SubscribeResult = {
+
+	/** The actual queue name (may be auto-generated for exclusive queues) */
+	queue: string;
+
+	/** True when a new consumer was created for the queue in this call */
+	consumerCreated: boolean;
+
+	/** Number of ready messages in the queue at the time of subscription */
+	messageCount: number;
+
+	/** Number of consumers on the queue at the time of subscription (before this one) */
+	consumerCount: number;
 };
 
 type EstablishedSubscription = Subscription & {
@@ -97,13 +128,14 @@ export class RabbitMqGateway {
 	static ALL_EVENTS_WILDCARD = '*';
 	static RECONNECT_DELAY = 30_000; // 30 sec
 
-	#connectionFactory: () => Promise<ChannelModel>;
-	#appId: string;
-	#logger: ILogger | undefined;
-	#emitter: EventEmitter<GatewayEvents>;
+	readonly #connectionFactory: () => Promise<ChannelModel>;
+	readonly #appIdProvider: ConfigProvider<string>;
+	#appId: string | undefined;
+	readonly #logger: ILogger | undefined;
+	readonly #emitter: EventEmitter<GatewayEvents>;
 
 	#desiredState: 'connected' | 'disconnected' = 'disconnected';
-	#stateChangeLock = new Lock();
+	readonly #stateChangeLock = new Lock();
 
 	/**
 	 * Established connection to RabbitMQ.
@@ -125,20 +157,33 @@ export class RabbitMqGateway {
 		return !!this.#connection;
 	}
 
-	constructor(o: Partial<Pick<IContainer, 'logger' | 'process'>> & {
-		rabbitMqConnectionFactory?: () => Promise<ChannelModel>,
+	constructor({
+		rabbitMqConnectionFactory,
+		rabbitMqAppId = getRandomAppId(),
+		eventEmitterFactory,
+		logger,
+		process
+	}: Partial<Pick<IContainer, 'logger' | 'process' | 'rabbitMqConnectionFactory' | 'rabbitMqAppId'>> & {
 		eventEmitterFactory?: () => EventEmitter<GatewayEvents>
 	}) {
-		assertFunction(o?.rabbitMqConnectionFactory, 'o.rabbitMqConnectionFactory');
+		assertFunction(rabbitMqConnectionFactory, 'rabbitMqConnectionFactory');
+		assertDefined(rabbitMqAppId, 'rabbitMqAppId');
 
-		this.#emitter = o?.eventEmitterFactory?.() ?? new EventEmitter();
-		this.#connectionFactory = o.rabbitMqConnectionFactory;
-		this.#appId = getRandomAppId();
-		this.#logger = o.logger && 'child' in o.logger ?
-			o.logger.child({ service: new.target.name, appId: this.#appId }) :
-			o.logger;
+		this.#emitter = eventEmitterFactory?.() ?? new EventEmitter();
+		this.#connectionFactory = rabbitMqConnectionFactory;
+		this.#appIdProvider = rabbitMqAppId;
+		this.#logger = logger && 'child' in logger ?
+			logger.child({ service: new.target.name }) :
+			logger;
 
-		registerExitCleanup(o.process, () => this.disconnect());
+		registerExitCleanup(process, () => this.disconnect());
+	}
+
+	/** Returns this gateway's app id from `rabbitMqAppIdProvider` */
+	async getAppId(): Promise<string> {
+		this.#appId ??= await resolveProvider(this.#appIdProvider);
+		assertString(this.#appId, 'appId');
+		return this.#appId;
 	}
 
 	/**
@@ -359,7 +404,14 @@ export class RabbitMqGateway {
 	 * @param subscription.concurrentLimit - Optional. The maximum number of concurrent messages to process.
 	 * @returns A promise that resolves when the subscription is successfully set up.
 	 */
-	async subscribe(subscription: Subscription) {
+	async subscribe(subscription: Subscription): Promise<SubscribeResult> {
+		if (subscription.handlerProcessTimeout !== undefined)
+			assertNonNegativeInteger(subscription.handlerProcessTimeout, 'subscription.handlerProcessTimeout');
+		if (subscription.queueExpires !== undefined)
+			assertNonNegativeInteger(subscription.queueExpires, 'subscription.queueExpires');
+		if (!subscription.queueName)
+			assertNotDefined(subscription.queueExpires, 'subscription.queueExpires');
+
 		this.#desiredState = 'connected';
 		this.#clearReconnectTimer();
 
@@ -368,14 +420,14 @@ export class RabbitMqGateway {
 			if (!this.#connection)
 				await this.#connect();
 
-			await this.#subscribe(subscription);
+			return await this.#subscribe(subscription);
 		}
 		finally {
 			lease.release();
 		}
 	}
 
-	async #subscribe(subscription: Subscription) {
+	async #subscribe(subscription: Subscription): Promise<SubscribeResult> {
 		const subscriptionExists = !!this.#findSubscription(subscription);
 		if (subscriptionExists)
 			throw new Error(`Subscription ${describeSub(subscription)} already exists`);
@@ -387,20 +439,28 @@ export class RabbitMqGateway {
 		const {
 			exchange,
 			queueName,
-			eventType
+			eventType,
+			queueExpires,
+			singleActiveConsumer
 		} = subscription;
 
 		const channel = await this.#assertQueueChannel(queueName);
 
 		let queueGivenName = queueName;
+		let messageCount = 0;
+		let consumerCount = 0;
+
 		if (!queueGivenName) {
 			// Handle temporary (exclusive) queue case
 			if (!this.#exclusiveQueueName) {
 				// Assert temporary "exclusive" queue that will be destroyed on connection termination
-				this.#exclusiveQueueName = await this.#assetQueue(channel, exchange, '', eventType, {
+				const reply = await this.#assetQueue(channel, exchange, '', eventType, {
 					exclusive: true,
 					durable: false
 				});
+				this.#exclusiveQueueName = reply.queue;
+				messageCount = reply.messageCount;
+				consumerCount = reply.consumerCount;
 			}
 			else {
 				// If exclusive queue already exists, ensure it is bound with the current event type
@@ -416,16 +476,29 @@ export class RabbitMqGateway {
 			await this.#assetQueue(channel, deadLetterExchangeName, `${queueGivenName}.failed`);
 
 			// Assert durable queue that will survive broker restart
-			await this.#assetQueue(channel, exchange, queueGivenName, eventType, { deadLetterExchangeName });
+			const reply = await this.#assetQueue(channel, exchange, queueGivenName, eventType, {
+				deadLetterExchangeName,
+				...singleActiveConsumer && { singleActiveConsumer },
+				...queueExpires && { queueExpires }
+			});
+			messageCount = reply.messageCount;
+			consumerCount = reply.consumerCount;
 		}
 
 		const subscriptionRecord = this.#findSubscription(subscription);
 		if (subscriptionRecord)
 			subscriptionRecord.queueGivenName = queueGivenName;
 
-		await this.#assertConsumer(queueGivenName, channel, subscription);
+		const consumerCreated = await this.#assertConsumer(queueGivenName, channel, subscription);
 
 		this.#logger?.debug(`Subscription ${describeSub(subscription)} established`);
+
+		return {
+			queue: queueGivenName,
+			consumerCreated,
+			messageCount,
+			consumerCount
+		};
 	}
 
 	#findSubscription(subscription: Pick<Subscription, 'exchange' | 'queueName' | 'eventType' | 'handler'>) {
@@ -476,17 +549,25 @@ export class RabbitMqGateway {
 		/** Used by only one connection and the queue will be deleted when that connection closes */
 		exclusive?: boolean,
 
+		/** RabbitMQ ensures only one consumer is active for this queue at any moment */
+		singleActiveConsumer?: boolean,
+
 		/** Exchange where rejected or timed out messages will be delivered */
 		deadLetterExchangeName?: string,
+
+		/** Auto-delete the queue after this many ms of idleness (no consumers, no new messages) */
+		queueExpires?: number,
 	}) {
 		const {
 			durable = true,
 			exclusive = false,
-			deadLetterExchangeName
+			singleActiveConsumer = false,
+			deadLetterExchangeName,
+			queueExpires
 		} = options ?? {};
 
 		await channel.assertExchange(exchange, 'topic', { durable: true });
-		const { queue: queueGivenName } = await channel.assertQueue(queueName, {
+		const reply = await channel.assertQueue(queueName, {
 			exclusive,
 			durable,
 			arguments: {
@@ -496,13 +577,19 @@ export class RabbitMqGateway {
 				...durable && {
 					// Use quorum queues (Raft-replicated, HA alternative to classic queues) for durable workloads
 					'x-queue-type': 'quorum'
+				},
+				...queueExpires && {
+					'x-expires': queueExpires
+				},
+				...singleActiveConsumer && {
+					'x-single-active-consumer': true
 				}
 			}
 		});
 
-		await this.#assertBinding(channel, exchange, queueGivenName, eventType);
+		await this.#assertBinding(channel, exchange, reply.queue, eventType);
 
-		return queueGivenName;
+		return reply;
 	}
 
 	async #assertBinding(channel: Channel, exchange: string, queueGivenName: string, eventType?: string) {
@@ -518,26 +605,33 @@ export class RabbitMqGateway {
 		queueGivenName: string,
 		channel: Channel,
 		options?: Pick<Subscription, 'concurrentLimit' | 'noAck' | 'handlerProcessTimeout'>
-	) {
+	): Promise<boolean> {
 		if (this.#queueConsumers.has(queueGivenName))
-			return;
+			return false;
 
-		if (options?.concurrentLimit !== undefined)
+		if (options?.concurrentLimit !== undefined) {
+			assertNonNegativeInteger(options.concurrentLimit, 'options.concurrentLimit');
 			await channel.prefetch(options.concurrentLimit);
+		}
 
 		const c = await channel.consume(queueGivenName, async (msg: ConsumeMessage | null) => {
 			if (!msg)
 				return;
 
+			let messageFinalized = false;
+
 			// Keep the process alive while waiting for the handler to finish
 			const handlerProcessTimeout = options?.handlerProcessTimeout ?? RabbitMqGateway.HANDLER_PROCESS_TIMEOUT;
-			const keepAliveTimeout = setTimeout(() => {
-				this.#logger?.error('Message processing timed out', {
-					queueName: queueGivenName,
-					msg: extractMessageMeta(msg)
-				});
-				this.#rejectMessage(channel, msg);
-			}, handlerProcessTimeout);
+			const keepAliveTimeout = handlerProcessTimeout
+				? setTimeout(() => {
+					this.#logger?.error('Message processing timed out', {
+						queueName: queueGivenName,
+						msg: extractMessageMeta(msg)
+					});
+					this.#rejectMessage(channel, msg);
+					messageFinalized = true;
+				}, handlerProcessTimeout)
+				: null;
 
 			try {
 				this.#logger?.debug('Message received', {
@@ -552,14 +646,23 @@ export class RabbitMqGateway {
 				if (!handlers.length && !isSystemQueue(queueGivenName))
 					throw new Error(`Message from queue "${queueGivenName}" was delivered to a consumer that does not handle type "${message.type}"`);
 
+				const ownAppId = handlers.some(s => s.ignoreOwn) ? await this.getAppId() : undefined;
 				for (const { handler, ignoreOwn } of handlers) {
-					if (ignoreOwn && msg.properties.appId === this.#appId)
+					if (ignoreOwn && msg.properties.appId === ownAppId)
 						continue;
 
 					await handler(message);
 				}
 
-				channel.ack(msg);
+				if (messageFinalized) {
+					this.#logger?.error('Handler resolved, but message has already been finalized', {
+						queueName: queueGivenName,
+						msg: extractMessageMeta(msg)
+					});
+				}
+				else {
+					channel.ack(msg);
+				}
 			}
 			catch (err: unknown) {
 				this.#logger?.error('Message processing failed', {
@@ -568,10 +671,14 @@ export class RabbitMqGateway {
 					msg: extractMessageMeta(msg)
 				});
 
-				this.#rejectMessage(channel, msg);
+				if (!messageFinalized) {
+					this.#rejectMessage(channel, msg);
+					messageFinalized = true;
+				}
 			}
 			finally {
-				clearTimeout(keepAliveTimeout);
+				if (keepAliveTimeout !== null)
+					clearTimeout(keepAliveTimeout);
 			}
 		}, {
 			noAck: options?.noAck
@@ -583,6 +690,8 @@ export class RabbitMqGateway {
 			channel,
 			consumerTag: c.consumerTag
 		});
+
+		return true;
 	}
 
 	/** Reject a message, causing it to be dead-lettered or discarded */
@@ -648,12 +757,13 @@ export class RabbitMqGateway {
 
 			return sagaOrigins[sagaDescriptors[0]];
 		})();
+		const appId = await this.getAppId();
 		const properties = {
 			contentType: 'application/json',
 			contentEncoding: 'utf8',
 			persistent: true,
 			timestamp: message.context?.ts ?? Date.now(),
-			appId: this.#appId,
+			appId,
 			type: message.type,
 			messageId: 'id' in message && typeof message.id === 'string' ?
 				message.id :

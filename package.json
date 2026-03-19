@@ -25,40 +25,27 @@
     "url": "https://github.com/snatalenko/node-cqrs.git"
   },
   "main": "./dist/cjs/index.js",
-  "types": "./types/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "workers": [
-        "types/workers/index.d.ts"
-      ],
-      "rabbitmq": [
-        "types/rabbitmq/index.d.ts"
-      ],
-      "sqlite": [
-        "types/sqlite/index.d.ts"
-      ]
-    }
-  },
+  "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/types/index.d.ts",
       "require": "./dist/cjs/index.js",
-      "import": "./dist/esm/index.js",
-      "types": "./types/index.d.ts"
+      "import": "./dist/esm/index.js"
     },
     "./workers": {
+      "types": "./dist/types/workers/index.d.ts",
       "require": "./dist/cjs/workers/index.js",
-      "import": "./dist/esm/workers/index.js",
-      "types": "./types/workers/index.d.ts"
+      "import": "./dist/esm/workers/index.js"
     },
     "./rabbitmq": {
+      "types": "./dist/types/rabbitmq/index.d.ts",
       "require": "./dist/cjs/rabbitmq/index.js",
-      "import": "./dist/esm/rabbitmq/index.js",
-      "types": "./types/rabbitmq/index.d.ts"
+      "import": "./dist/esm/rabbitmq/index.js"
     },
     "./sqlite": {
+      "types": "./dist/types/sqlite/index.d.ts",
       "require": "./dist/cjs/sqlite/index.js",
-      "import": "./dist/esm/sqlite/index.js",
-      "types": "./types/sqlite/index.d.ts"
+      "import": "./dist/esm/sqlite/index.js"
     }
   },
   "directories": {
@@ -70,7 +57,7 @@
     "node": ">=16.0.0"
   },
   "scripts": {
-    "cleanup": "rm -rf ./dist ./types ./coverage",
+    "cleanup": "rm -rf ./dist ./coverage",
     "test": "jest",
     "examples": "bash scripts/test-examples.sh",
     "pretest:examples": "npm run build:cjs",

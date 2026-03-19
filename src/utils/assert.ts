@@ -78,3 +78,8 @@ export function assertBoolean(value: unknown, argName: string): asserts value is
 	if (typeof value !== 'boolean')
 		throw new TypeError(`${argName} must be a Boolean`);
 }
+
+export function assertNotDefined(value: unknown, argName: string): asserts value is undefined {
+	if (value !== undefined)
+		throw new TypeError(`${argName} must not be defined`);
+}

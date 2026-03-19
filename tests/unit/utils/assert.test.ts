@@ -13,7 +13,8 @@ import {
 	assertNumber,
 	assertClass,
 	assertNonNegativeInteger,
-	assertBoolean
+	assertBoolean,
+	assertNotDefined
 } from '../../../src/utils/assert.ts';
 
 describe('assertDefined', () => {
@@ -232,5 +233,22 @@ describe('assertBoolean', () => {
 	it('does not throw for booleans', () => {
 		expect(() => assertBoolean(true, 'x')).not.toThrow();
 		expect(() => assertBoolean(false, 'x')).not.toThrow();
+	});
+});
+
+describe('assertNotDefined', () => {
+	it('throws TypeError when value is defined', () => {
+		expect(() => assertNotDefined(1, 'x')).toThrow(new TypeError('x must not be defined'));
+	});
+	it('throws TypeError for null (not undefined)', () => {
+		expect(() => assertNotDefined(null, 'x')).toThrow(TypeError);
+	});
+	it('throws TypeError for falsy non-undefined values', () => {
+		expect(() => assertNotDefined(0, 'x')).toThrow(TypeError);
+		expect(() => assertNotDefined('', 'x')).toThrow(TypeError);
+		expect(() => assertNotDefined(false, 'x')).toThrow(TypeError);
+	});
+	it('does not throw for undefined', () => {
+		expect(() => assertNotDefined(undefined, 'x')).not.toThrow();
 	});
 });

@@ -1,5 +1,6 @@
 import type { Database, Statement } from 'better-sqlite3';
-import type { IContainer, ILogger, IViewLocker } from '../interfaces/index.ts';
+import type { IContainer } from 'node-cqrs';
+import type { ILogger, IViewLocker } from '../interfaces/index.ts';
 import { assertString, Deferred } from '../utils/index.ts';
 import { promisify } from 'util';
 import { viewLockTableInit } from './queries/index.ts';

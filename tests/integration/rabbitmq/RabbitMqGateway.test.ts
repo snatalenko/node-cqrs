@@ -1,5 +1,5 @@
 import { RabbitMqGateway } from '../../../src/rabbitmq/RabbitMqGateway';
-import { IMessage } from '../../../src/interfaces';
+import type { ILogger, IMessage } from '../../../src/interfaces';
 import * as amqplib from 'amqplib';
 import { delay } from './utils';
 import { Deferred } from '../../../src/utils/Deferred';
@@ -118,6 +118,45 @@ describe('RabbitMqGateway', () => {
 			expect(received1).toHaveLength(1);
 			expect(received2).toHaveLength(1);
 		});
+
+		it('supports async rabbitMqAppIdProvider when ignoring own messages', async () => {
+			const rabbitMqAppId = jest.fn(async () => 'node-cqrs.async-app-id');
+			gateway1 = new RabbitMqGateway({
+				rabbitMqConnectionFactory,
+				rabbitMqAppId
+			});
+			const received: IMessage[] = [];
+
+			await gateway1.subscribeToFanout(exchange, msg => {
+				received.push(msg);
+			});
+
+			const message: IMessage = {
+				type: 'test.event',
+				payload: { asyncProvider: true }
+			};
+
+			await gateway1.publish(exchange, message);
+			await delay(50);
+
+			expect(received).toHaveLength(0);
+			expect(rabbitMqAppId).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not set single active consumer for fanout exclusive queue', async () => {
+			await gateway1.subscribeToFanout(exchange, () => undefined);
+
+			const res = await fetch('http://localhost:15672/api/queues/%2F', {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+			const queues: any[] = await res.json();
+			const exclusiveQueues = queues.filter(q => q.exclusive);
+
+			expect(exclusiveQueues.length).toBeGreaterThan(0);
+			for (const q of exclusiveQueues)
+				expect(q.arguments?.['x-single-active-consumer']).toBeUndefined();
+
+		});
 	});
 
 	describe('subscribeToQueue', () => {
@@ -187,6 +226,150 @@ describe('RabbitMqGateway', () => {
 
 			await cn2.close();
 		});
+
+		it('does not ack a message after timeout and logs it while consumer keeps processing', async () => {
+			const errorLogs: Array<{ message: string, meta?: { [key: string]: any } }> = [];
+			const logger: ILogger = {
+				log: (level, message, meta) => {
+					if (level === 'error')
+						errorLogs.push({ message, meta });
+				},
+				debug: () => undefined,
+				info: () => undefined,
+				warn: () => undefined,
+				error: (message, meta) => {
+					errorLogs.push({ message, meta });
+				}
+			};
+			gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory, logger, process: process as NodeJS.Process });
+
+			const received: IMessage[] = [];
+			const timedOutMessage: IMessage = {
+				type: 'timeout.ack',
+				payload: { id: 'slow-1', slow: true }
+			};
+			const fastMessage: IMessage = {
+				type: 'timeout.ack',
+				payload: { id: 'fast-1', slow: false }
+			};
+
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: timedOutMessage.type,
+				handler: async message => {
+					if (message.payload.slow)
+						await delay(80);
+
+					received.push(message);
+				},
+				handlerProcessTimeout: 20
+			});
+
+			await gateway3!.publish(exchange, timedOutMessage);
+			await delay(140); // wait for timeout + handler completion (late ack path)
+
+			await gateway3!.publish(exchange, fastMessage);
+			await delay(80);
+
+			expect(received.some(m => m.payload.id === 'fast-1')).toBe(true);
+
+			const timeoutLog = errorLogs.find(l => l.message === 'Message processing timed out');
+			expect(timeoutLog).toBeDefined();
+			expect(timeoutLog?.meta?.msg).toBeDefined();
+
+			const skippedAckLog = errorLogs.find(l => l.message === 'Handler resolved, but message has already been finalized');
+			expect(skippedAckLog).toBeDefined();
+			expect(skippedAckLog?.meta?.msg).toBeDefined();
+		});
+
+		it('ignores own durable queued messages across gateway instances with stable app id provider', async () => {
+			const rabbitMqAppIdProvider = () => 'node-cqrs.durable-stable-id';
+			gateway1 = new RabbitMqGateway({ rabbitMqConnectionFactory, rabbitMqAppId: rabbitMqAppIdProvider });
+			gateway2 = new RabbitMqGateway({ rabbitMqConnectionFactory, rabbitMqAppId: rabbitMqAppIdProvider });
+
+			const received: IMessage[] = [];
+
+			const cn = await amqplib.connect('amqp://localhost');
+			const ch = await cn.createChannel();
+			const deadLetterExchangeName = `${exchange}.failed`;
+			await ch.assertExchange(exchange, 'topic', { durable: true });
+			await ch.assertExchange(deadLetterExchangeName, 'topic', { durable: true });
+			await ch.assertQueue(queueName, {
+				durable: true,
+				arguments: {
+					'x-queue-type': 'quorum',
+					'x-dead-letter-exchange': deadLetterExchangeName
+				}
+			});
+			await ch.bindQueue(queueName, exchange, '#');
+			await cn.close();
+
+			const message: IMessage = {
+				type: 'queue.event',
+				payload: { own: true }
+			};
+
+			await gateway1.publish(exchange, message);
+			await delay(50);
+
+			await gateway2.subscribeToQueue(exchange, queueName, msg => received.push(msg), { ignoreOwn: true });
+			await delay(50);
+
+			expect(received).toHaveLength(0);
+		});
+
+		it('expires idle durable queue when queueExpires is configured', async () => {
+			const expiringQueueName = `${queueName}.expires.${Date.now()}`;
+			const eventType = 'queue.expires';
+			const handler = jest.fn();
+
+			await gateway1.subscribe({
+				exchange,
+				queueName: expiringQueueName,
+				eventType,
+				handler,
+				queueExpires: 1_000
+			});
+
+			await gateway1.unsubscribe({
+				exchange,
+				queueName: expiringQueueName,
+				eventType,
+				handler
+			});
+
+			const queueExists = async () => {
+				if (!gateway1.connection)
+					throw new Error('RabbitMQ connection is not established');
+
+				const ch = await gateway1.connection.createChannel();
+				ch.on('error', () => undefined);
+				try {
+					await ch.checkQueue(expiringQueueName);
+					return true;
+				}
+				catch {
+					return false;
+				}
+				finally {
+					await ch.close().catch(() => undefined);
+				}
+			};
+
+			// Queue expiration is asynchronous in RabbitMQ; allow time for broker cleanup.
+			const waitDeadline = Date.now() + 12_000;
+			let exists = true;
+			while (Date.now() < waitDeadline) {
+				exists = await queueExists();
+				if (!exists)
+					break;
+
+				await delay(1_000);
+			}
+
+			expect(exists).toBe(false);
+		}, 20_000);
 	});
 
 	describe('subscribe', () => {

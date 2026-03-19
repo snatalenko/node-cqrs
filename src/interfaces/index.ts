@@ -18,7 +18,6 @@ export * from './IIdentifierProvider.ts';
 export * from './ILocker.ts';
 export * from './ILogger.ts';
 export * from './IMessage.ts';
-export * from './IMessageBus.ts';
 export * from './IMutableState.ts';
 export * from './IObjectStorage.ts';
 export * from './IObservable.ts';

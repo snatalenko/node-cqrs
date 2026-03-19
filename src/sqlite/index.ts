@@ -1,3 +1,5 @@
+import './IContainer.ts';
+
 export * from './AbstractSqliteAccessor.ts';
 export * from './AbstractSqliteObjectProjection.ts';
 export * from './AbstractSqliteView.ts';

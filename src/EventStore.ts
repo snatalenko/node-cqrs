@@ -141,7 +141,7 @@ export class EventStore implements IEventStore {
 	}
 
 	/**
-	 * Validate events, commit to storage and publish to messageBus, if needed
+	 * Validate events, commit to storage and publish to eventBus, if needed
 	 *
 	 * @param events - a set of events to commit
 	 * @returns Signed and committed events

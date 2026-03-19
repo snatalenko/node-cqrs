@@ -1,5 +1,5 @@
+import type { IContainer } from 'node-cqrs';
 import { AbstractProjection } from '../AbstractProjection.ts';
-import { IContainer } from '../interfaces/index.ts';
 import { SqliteObjectView } from './SqliteObjectView.ts';
 
 export abstract class AbstractSqliteObjectProjection<T> extends AbstractProjection<SqliteObjectView<T>> {
@@ -12,11 +12,9 @@ export abstract class AbstractSqliteObjectProjection<T> extends AbstractProjecti
 		throw new Error('schemaVersion is not defined');
 	}
 
-	constructor({ viewModelSqliteDb, viewModelSqliteDbFactory, logger }: Pick<IContainer,
-		'viewModelSqliteDbFactory' |
-		'viewModelSqliteDb' |
-		'logger'
-	>) {
+	constructor({ viewModelSqliteDb, viewModelSqliteDbFactory, logger }:
+		Pick<IContainer, 'viewModelSqliteDbFactory' | 'viewModelSqliteDb' | 'logger'>
+	) {
 		super({ logger });
 
 		this.view = new SqliteObjectView({

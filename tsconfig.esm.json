@@ -4,7 +4,7 @@
     "module": "ES2022",
     "target": "ES2022",
     "declaration": true,
-    "declarationDir": "./types",
+    "declarationDir": "./dist/types",
     "declarationMap": false,
     "stripInternal": true,
     "outDir": "./dist/esm",
