@@ -50,13 +50,22 @@ describe('SqliteEventLocker', () => {
 		expect(row.processed_at).not.toBeNull();
 	});
 
-	it('retrieves the last projected event', async () => {
+	it('retrieves the last projected event via markAsLastEvent', async () => {
+		await locker.tryMarkAsProjecting(testEvent);
+		await locker.markAsProjected(testEvent);
+		await locker.markAsLastEvent(testEvent);
+
+		const lastEvent = await locker.getLastEvent();
+
+		expect(lastEvent).toEqual(testEvent);
+	});
+
+	it('does not record last event on markAsProjected alone', async () => {
 		await locker.tryMarkAsProjecting(testEvent);
 		await locker.markAsProjected(testEvent);
 
-		const lastEvent = await locker.getLastEvent(); // Assuming getLastEvent might become async
-
-		expect(lastEvent).toEqual(testEvent);
+		const lastEvent = await locker.getLastEvent();
+		expect(lastEvent).toBeUndefined();
 	});
 
 	it('returns undefined if no event has been projected', async () => {

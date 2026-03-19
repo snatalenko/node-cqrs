@@ -54,4 +54,8 @@ export abstract class AbstractSqliteView extends AbstractSqliteAccessor implemen
 	markAsProjected(event: IEvent<any>) {
 		return this.eventLocker.markAsProjected(event);
 	}
+
+	markAsLastEvent(event: IEvent<any>) {
+		return this.eventLocker.markAsLastEvent(event);
+	}
 }

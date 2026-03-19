@@ -70,7 +70,10 @@ class ViewFixture {
 		return true;
 	}
 
-	markAsProjected(event) {
+	markAsProjected(_event) {
+	}
+
+	markAsLastEvent(event) {
 		this.#lastEvent = event;
 	}
 }

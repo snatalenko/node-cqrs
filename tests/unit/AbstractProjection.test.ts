@@ -274,10 +274,12 @@ describe('AbstractProjection', function () {
 		it('uses eventLocker assigned in a derived constructor', async () => {
 			const tryMarkAsProjecting = jest.fn().mockResolvedValue(true);
 			const markAsProjected = jest.fn().mockResolvedValue(undefined);
+			const markAsLastEvent = jest.fn().mockResolvedValue(undefined);
 			const getLastEvent = jest.fn().mockResolvedValue(undefined);
 			const eventLocker: IEventLocker = {
 				tryMarkAsProjecting,
 				markAsProjected,
+				markAsLastEvent,
 				getLastEvent
 			};
 			const projectionWithSetters = new ProjectionWithSetters({
@@ -292,15 +294,53 @@ describe('AbstractProjection', function () {
 			expect(tryMarkAsProjecting.mock.calls.at(-1)).toEqual([event]);
 			expect(markAsProjected).toHaveBeenCalledTimes(1);
 			expect(markAsProjected.mock.calls.at(-1)).toEqual([event]);
+			expect(markAsLastEvent).toHaveBeenCalledTimes(1);
+			expect(markAsLastEvent.mock.calls.at(-1)).toEqual([event]);
+		});
+
+		it('calls markAsLastEvent based on shouldRecordLastEvent', async () => {
+			const tryMarkAsProjecting = jest.fn().mockResolvedValue(true);
+			const markAsProjected = jest.fn().mockResolvedValue(undefined);
+			const markAsLastEvent = jest.fn().mockResolvedValue(undefined);
+			const getLastEvent = jest.fn().mockResolvedValue(undefined);
+			const eventLocker: IEventLocker = {
+				tryMarkAsProjecting,
+				markAsProjected,
+				markAsLastEvent,
+				getLastEvent
+			};
+
+			class ProjectionWithSkip extends ProjectionWithSetters {
+				protected shouldRecordLastEvent(_event: any, meta?: Record<string, any>) {
+					return meta?.origin !== 'internal';
+				}
+			}
+
+			const proj = new ProjectionWithSkip({
+				view: new InMemoryView(),
+				eventLocker
+			});
+
+			const event = { type: 'somethingHappened', aggregateId: 1 };
+
+			await proj.project(event, { origin: 'internal' });
+			expect(markAsProjected).toHaveBeenCalledTimes(1);
+			expect(markAsLastEvent).not.toHaveBeenCalled();
+
+			await proj.project(event, { origin: 'external' });
+			expect(markAsProjected).toHaveBeenCalledTimes(2);
+			expect(markAsLastEvent).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns early when event lock is not obtained', async () => {
 			const tryMarkAsProjecting = jest.fn().mockResolvedValue(false);
 			const markAsProjected = jest.fn().mockResolvedValue(undefined);
+			const markAsLastEvent = jest.fn().mockResolvedValue(undefined);
 			const getLastEvent = jest.fn().mockResolvedValue(undefined);
 			const eventLocker: IEventLocker = {
 				tryMarkAsProjecting,
 				markAsProjected,
+				markAsLastEvent,
 				getLastEvent
 			};
 			const projectionWithSetters = new ProjectionWithSetters({
@@ -315,6 +355,7 @@ describe('AbstractProjection', function () {
 			expect(tryMarkAsProjecting).toHaveBeenCalledTimes(1);
 			expect(handlerSpy).not.toHaveBeenCalled();
 			expect(markAsProjected).not.toHaveBeenCalled();
+			expect(markAsLastEvent).not.toHaveBeenCalled();
 		});
 
 		it('uses viewLocker assigned in a derived constructor on restore', async () => {
@@ -351,10 +392,12 @@ describe('AbstractProjection', function () {
 			};
 			const tryMarkAsProjecting = jest.fn().mockResolvedValue(true);
 			const markAsProjected = jest.fn().mockResolvedValue(undefined);
+			const markAsLastEvent = jest.fn().mockResolvedValue(undefined);
 			const getLastEvent = jest.fn().mockResolvedValue(lastEvent);
 			const eventLocker: IEventLocker = {
 				tryMarkAsProjecting,
 				markAsProjected,
+				markAsLastEvent,
 				getLastEvent
 			};
 			const projectionWithSetters = new ProjectionWithSetters({

@@ -1,4 +1,5 @@
 import createDb from 'better-sqlite3';
+import { AbstractProjection } from '../../../src';
 import { SqliteObjectView } from '../../../src/sqlite';
 import type { IEvent } from '../../../src/interfaces';
 
@@ -94,6 +95,7 @@ describe('AbstractSqliteView', function () {
 		it('returns the last projected event', async () => {
 			await view.tryMarkAsProjecting(testEvent);
 			await view.markAsProjected(testEvent);
+			await view.markAsLastEvent(testEvent);
 
 			const result = await view.getLastEvent();
 			expect(result).toEqual(testEvent);
@@ -116,12 +118,12 @@ describe('AbstractSqliteView', function () {
 
 	describe('markAsProjected', () => {
 
-		it('marks event as projected', async () => {
+		it('finalizes event lock without recording last event', async () => {
 			await view.tryMarkAsProjecting(testEvent);
 			await view.markAsProjected(testEvent);
 
 			const last = await view.getLastEvent();
-			expect(last).toEqual(testEvent);
+			expect(last).toBeUndefined();
 		});
 
 		it('throws if event was never locked', async () => {
@@ -133,6 +135,76 @@ describe('AbstractSqliteView', function () {
 				error = err;
 			}
 			expect(error).toBeDefined();
+		});
+	});
+
+	describe('markAsLastEvent', () => {
+
+		it('records the last projected event', async () => {
+			await view.markAsLastEvent(testEvent);
+
+			const last = await view.getLastEvent();
+			expect(last).toEqual(testEvent);
+		});
+	});
+
+	describe('shouldRecordLastEvent controls checkpoint during project', () => {
+
+		it('skips internal events during project, then does not re-process them on restore', async () => {
+			const event1: IEvent<any> = { id: '00000000-0000-0000-0000-000000000001', type: 'somethingHappened', aggregateId: '00000000-0000-0000-0000-00000000000a', aggregateVersion: 1 };
+			const event2: IEvent<any> = { id: '00000000-0000-0000-0000-000000000002', type: 'somethingHappened', aggregateId: '00000000-0000-0000-0000-00000000000b', aggregateVersion: 1 };
+			const event3: IEvent<any> = { id: '00000000-0000-0000-0000-000000000003', type: 'somethingHappened', aggregateId: '00000000-0000-0000-0000-00000000000c', aggregateVersion: 1 };
+
+			const handlerCalls: string[] = [];
+
+			class TestProjection extends AbstractProjection<SqliteObjectView<any>> {
+				static get handles() {
+					return ['somethingHappened'];
+				}
+
+				protected shouldRecordLastEvent(_event: IEvent, meta?: Record<string, any>) {
+					return meta?.origin !== 'internal';
+				}
+
+				async _somethingHappened(e: IEvent<any>) {
+					handlerCalls.push(String(e.id!));
+					await this.view.create(String(e.aggregateId!), {});
+				}
+			}
+
+			const projView = makeView(db, { tableNamePrefix: 'tbl_proj', projectionName: 'test_proj' });
+			const projection = new TestProjection({ view: projView });
+
+			// project 3 events: local, remote, local
+			await projection.project(event1, { origin: 'internal' });
+			await projection.project(event2, { origin: 'external' });
+			await projection.project(event3, { origin: 'internal' });
+
+			expect(handlerCalls).toEqual([event1.id, event2.id, event3.id]);
+
+			// last recorded event is the remote one (event2),
+			// because both local events were skipped by shouldRecordLastEvent
+			const lastAfterProject = await projView.getLastEvent();
+			expect(lastAfterProject).toEqual(event2);
+
+			// restore: event store yields event3 (as if replaying after event2)
+			const eventStore = {
+				async* getEventsByTypes(_types: string[], _opts: { afterEvent?: IEvent<any> }) {
+					yield event3;
+				}
+			};
+
+			handlerCalls.length = 0;
+			await projection.restore(eventStore as any);
+
+			// event3 was already projected, so tryMarkAsProjecting returns false
+			// and the handler is not called again
+			expect(handlerCalls).toEqual([]);
+
+			// last event is now event3: even though tryMarkAsProjecting skipped it,
+			// restore advances the checkpoint to the last event from the store
+			const lastAfterRestore = await projView.getLastEvent();
+			expect(lastAfterRestore).toEqual(event3);
 		});
 	});
 });
