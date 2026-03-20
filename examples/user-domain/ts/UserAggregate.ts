@@ -1,4 +1,4 @@
-import { AbstractAggregate } from 'node-cqrs';
+import { AbstractAggregate } from '../../../src/index.ts';
 import { md5 } from './utils.ts';
 import type {
 	ChangePasswordCommandPayload,

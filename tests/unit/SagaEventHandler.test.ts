@@ -2,7 +2,6 @@ import {
 	SagaEventHandler,
 	InMemoryEventStorage,
 	EventStore,
-	CommandBus,
 	AbstractSaga,
 	InMemoryMessageBus,
 	EventDispatcher
@@ -32,7 +31,7 @@ const triggeringEvent = {
 
 describe('SagaEventHandler', function () {
 
-	let commandBus: CommandBus;
+	let commandBus: InMemoryMessageBus;
 	let eventStore: EventStore;
 	let sagaEventHandler: SagaEventHandler;
 	let eventStorage: InMemoryEventStorage;
@@ -41,7 +40,7 @@ describe('SagaEventHandler', function () {
 		const eventBus = new InMemoryMessageBus();
 		const eventDispatcher = new EventDispatcher({ eventBus });
 		eventStorage = new InMemoryEventStorage();
-		commandBus = new CommandBus({});
+		commandBus = new InMemoryMessageBus({});
 		eventStore = new EventStore({
 			eventStorageReader: eventStorage,
 			identifierProvider: eventStorage,

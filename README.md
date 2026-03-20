@@ -92,7 +92,7 @@ Message delivery is handled by the following components, in order:
 npm install node-cqrs
 ```
 
-Node.js 16+ and [browsers](https://browserify.org) are supported.
+Node.js 16+ and browsers are supported.
 
 Optional peer dependencies:
 
@@ -498,7 +498,7 @@ If you need a custom proxy projection, you can still use `workerProxyFactory(...
 - [examples/user-domain/cjs](examples/user-domain/cjs) - CommonJS
 - [examples/sagas/simple](examples/sagas/simple/index.ts) - simple saga
 - [examples/sagas/overlaps](examples/sagas/overlaps/index.ts) - overlapping sagas, multi-step flow
-- [examples/browser/smoke-test](examples/browser/smoke-test) - browser smoke test
+- [examples/browser](examples/browser) - browser smoke test
 - [examples/workers/worker-projection](examples/workers/worker-projection) - worker thread projection
 
 TS examples can be run with NodeJS 24+ without transpiling.

@@ -76,8 +76,7 @@ Build a single-file browser bundle (IIFE) with:
 npm run build:browser
 ```
 
-This runs TypeScript compilation (via `tsconfig.browser.json`) and then bundles using `npx browserify`.
-The output is written to `dist/browser/bundle.iife.js` and exposes the library as a global `Cqrs`.
+The output is written to `dist/browser/bundle.iife.js` and `dist/browser/bundle.iife.min.js`, and exposes the library as a global `Cqrs`.
 
 Example usage from a plain HTML page:
 

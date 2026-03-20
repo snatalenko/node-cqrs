@@ -3,6 +3,8 @@
   "compilerOptions": {
     "module": "ES2022",
     "target": "ES2022",
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo.esm",
     "declaration": true,
     "declarationDir": "./dist/types",
     "declarationMap": false,
