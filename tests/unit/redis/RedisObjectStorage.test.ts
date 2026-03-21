@@ -158,6 +158,21 @@ describe('RedisObjectStorage', () => {
 				mockRedis.eval = originalEval;
 			}
 		});
+
+		it('throws if the record disappears between read and compare-and-set', async () => {
+			await storage.create('c5', { name: 'volatile', value: 1 });
+
+			const originalEval = mockRedis.eval;
+			mockRedis.eval = () => Promise.resolve(-1);
+
+			try {
+				await expect(() => storage.update('c5', r => ({ ...r, value: r.value + 1 })))
+					.rejects.toThrow("Record 'c5' does not exist");
+			}
+			finally {
+				mockRedis.eval = originalEval;
+			}
+		});
 	});
 
 	describe('updateEnforcingNew', () => {
@@ -213,6 +228,26 @@ describe('RedisObjectStorage', () => {
 
 			const envelope = JSON.parse(mockRedis.store.get(`test_items:${id}`)!);
 			expect(envelope.v).toBe(concurrency);
+		});
+
+		it('throws after exhausting retries while repeatedly losing the create race', async () => {
+			const s = new RedisObjectStorage<Item>({
+				viewModelRedis: mockRedis as unknown as Redis,
+				tableName: 'test_items',
+				maxRetries: 0
+			});
+			await s.assertConnection();
+
+			const originalSet = mockRedis.set;
+			mockRedis.set = () => Promise.resolve(null);
+
+			try {
+				await expect(() => s.updateEnforcingNew('d5', () => ({ name: 'never', value: 0 })))
+					.rejects.toThrow("Record 'd5' could not be upserted after 0 retries");
+			}
+			finally {
+				mockRedis.set = originalSet;
+			}
 		});
 	});
 
