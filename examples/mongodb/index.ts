@@ -16,19 +16,28 @@ import { UsersProjection, type UsersView } from '../user-domain-ts/UsersProjecti
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
-const CONNECTION_STRING = process.env.MONGODB_CONNECTION_STRING
-	?? 'mongodb://localhost:27017/node_cqrs_example';
 
 interface MyContainer extends IContainer {
 	users: UsersView;
 }
 
-const client = new MongoClient(CONNECTION_STRING);
-
 const builder = new ContainerBuilder<MyContainer>();
 
 // Register the Db factory — DI resolves it by name for MongoEventStorage
-builder.register(() => client.connect().then(() => client.db())).as('mongoDbFactory');
+builder.register(() => {
+	let client: MongoClient | undefined;
+
+	return async () => {
+		if (!client) {
+			const connectionString = process.env.MONGODB_CONNECTION_STRING ??
+				'mongodb://localhost:27017/node_cqrs_example';
+			client = new MongoClient(connectionString);
+			await client.connect();
+		}
+
+		return client.db();
+	};
+}).as('mongoDbFactory');
 
 // MongoEventStorage is auto-resolved as eventStorageReader, eventStorage, and identifierProvider
 builder.register(MongoEventStorage);
@@ -39,7 +48,7 @@ builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'users');
 
-const { commandBus, users } = builder.container();
+const { commandBus, users, restorePromises, mongoDbFactory } = builder.container();
 
 // ─── Run ─────────────────────────────────────────────────────────────────────
 
@@ -63,4 +72,6 @@ await commandBus.send('renameUser', aggregateId, {
 	payload: { username: 'alice-smith' } satisfies RenameUserCommandPayload
 }).catch(err => console.log('Expected error:', err.message)); // Username is already 'alice-smith'
 
-await client.close();
+await Promise.all(restorePromises!);
+const db = await mongoDbFactory!();
+await db.client.close();

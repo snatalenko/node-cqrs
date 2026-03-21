@@ -70,7 +70,7 @@
   "scripts": {
     "cleanup": "rm -rf ./dist ./coverage",
     "test": "jest",
-    "examples": "npm run example:user-domain-framework-free && npm run example:user-domain-ts && npm run example:sagas-simple && npm run example:sagas-overlaps && npm run example:user-domain-cjs && npm run example:workers-projection && npm run example:browser && npm run example:telemetry",
+    "examples": "npm run example:user-domain-framework-free && npm run example:user-domain-ts && npm run example:sagas-simple && npm run example:sagas-overlaps && npm run example:user-domain-cjs && npm run example:workers-projection && npm run example:sqlite && npm run example:redis && npm run example:mongodb && npm run example:browser && npm run example:telemetry",
     "example:telemetry": "node examples/telemetry/index.ts",
     "example:user-domain-ts": "node examples/user-domain-ts/index.ts",
     "example:user-domain-framework-free": "node examples/user-domain-framework-free/index.ts",
@@ -78,6 +78,9 @@
     "example:sagas-simple": "node examples/sagas-simple/index.ts",
     "example:sagas-overlaps": "node examples/sagas-overlaps/index.ts",
     "example:workers-projection": "npm run build:cjs && node examples/workers-projection/index.cjs",
+    "example:sqlite": "node examples/sqlite/index.ts",
+    "example:redis": "node examples/redis/index.ts",
+    "example:mongodb": "node examples/mongodb/index.ts",
     "example:browser": "npm run build:browser && echo \"\nOpen ./examples/browser/index.html in your browser (check DevTools console)\n\"",
     "pretest:examples": "npm run build:cjs",
     "test:examples": "jest --roots='<rootDir>/examples'",
