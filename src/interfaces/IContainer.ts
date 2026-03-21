@@ -47,4 +47,10 @@ export interface IContainer extends Container {
 	tracerFactory?: (name: string) => Tracer;
 
 	process?: NodeJS.Process
+
+	/**
+	 * Promises from projection restore operations started during container creation.
+	 * Await `Promise.all(restorePromises)` before closing shared resources.
+	 */
+	restorePromises?: Promise<void>[];
 }

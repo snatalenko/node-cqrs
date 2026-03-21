@@ -52,6 +52,8 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 			...isDispatchPipelineProcessor(c.eventStorage) ? [c.eventStorage] : [],
 			...isDispatchPipelineProcessor(c.snapshotStorage) ? [c.snapshotStorage] : []
 		]).as('eventDispatchPipeline');
+
+		super.register(() => [] as Promise<void>[]).as('restorePromises');
 	}
 
 	/** Register command handler, which will be subscribed to commandBus upon instance creation */
@@ -89,7 +91,11 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 			projection.subscribe(container.eventStore);
 
 			// start async projection restoring
-			void projection.restore(container.eventStore);
+			const restoreResult = projection.restore(container.eventStore);
+			if (restoreResult) {
+				restoreResult.catch(() => {}); // surfaced via Promise.all(restorePromises)
+				container.restorePromises?.push(restoreResult);
+			}
 
 			if (exposedViewAlias)
 				return projection.view;
