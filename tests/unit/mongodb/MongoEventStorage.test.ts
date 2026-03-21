@@ -1,6 +1,7 @@
 import { MongoEventStorage } from '../../../src/mongodb/MongoEventStorage.ts';
 import { ConcurrencyError } from '../../../src';
 import { ObjectId } from 'mongodb';
+import { EventEmitter } from 'events';
 
 function makeObjectId(hex?: string): ObjectId {
 	return hex ? new ObjectId(hex) : new ObjectId();
@@ -15,7 +16,8 @@ describe('MongoEventStorage', () => {
 	let storage: MongoEventStorage;
 	let mockCollection: {
 		createIndex: jest.Mock;
-		insertMany: jest.Mock;
+		insertOne: jest.Mock;
+		deleteMany: jest.Mock;
 		find: jest.Mock;
 		findOne: jest.Mock;
 	};
@@ -25,7 +27,8 @@ describe('MongoEventStorage', () => {
 
 		mockCollection = {
 			createIndex: jest.fn().mockResolvedValue('index'),
-			insertMany: jest.fn().mockResolvedValue({ insertedCount: 0 }),
+			insertOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+			deleteMany: jest.fn().mockResolvedValue({ acknowledged: true, deletedCount: 0 }),
 			find: jest.fn().mockReturnValue({ async* [Symbol.asyncIterator]() {} }),
 			findOne: jest.fn().mockResolvedValue(null)
 		};
@@ -77,6 +80,27 @@ describe('MongoEventStorage', () => {
 
 			expect(mockDb.collection).toHaveBeenCalledWith(MongoEventStorage.EVENTS_COLLECTION);
 		});
+
+		it('registers exit cleanup and closes the db client on signal', async () => {
+			const process = new EventEmitter();
+			const close = jest.fn().mockResolvedValue(undefined);
+			const mockDb = {
+				collection: jest.fn().mockReturnValue(mockCollection),
+				client: { close }
+			};
+
+			const storageWithProcess = new MongoEventStorage({
+				mongoDbFactory: () => mockDb as any,
+				process: process as any
+			});
+
+			await storageWithProcess.commitEvents([{ type: 'Test', aggregateId: 'a1', aggregateVersion: 1 } as any]);
+
+			process.emit('SIGTERM');
+			await Promise.resolve();
+
+			expect(close).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('getNewId', () => {
@@ -97,11 +121,9 @@ describe('MongoEventStorage', () => {
 		it('inserts events and assigns ids back', async () => {
 			const event = { type: 'UserCreated', aggregateId: 'agg1', aggregateVersion: 1 };
 
-			mockCollection.insertMany.mockImplementation(async (docs: any[]) => ({ insertedCount: docs.length }));
-
 			const result = await storage.commitEvents([event as any]);
 
-			expect(mockCollection.insertMany).toHaveBeenCalledTimes(1);
+			expect(mockCollection.insertOne).toHaveBeenCalledTimes(1);
 			expect(result).toHaveLength(1);
 			expect(typeof (result[0] as any).id).toBe('string');
 			expect((result[0] as any).id).toMatch(/^[0-9a-f]{24}$/);
@@ -111,10 +133,10 @@ describe('MongoEventStorage', () => {
 			const aggregateId = padHex(1);
 			const event = { type: 'UserCreated', aggregateId, aggregateVersion: 1 };
 
-			mockCollection.insertMany.mockImplementation(async (docs: any[]) => {
-				expect(docs[0].aggregateId).toBeInstanceOf(ObjectId);
-				expect(docs[0].aggregateId.toHexString()).toBe(aggregateId);
-				return { insertedCount: docs.length };
+			mockCollection.insertOne.mockImplementation(async (doc: any) => {
+				expect(doc.aggregateId).toBeInstanceOf(ObjectId);
+				expect(doc.aggregateId.toHexString()).toBe(aggregateId);
+				return { acknowledged: true };
 			});
 
 			await storage.commitEvents([event as any]);
@@ -122,11 +144,30 @@ describe('MongoEventStorage', () => {
 
 		it('throws ConcurrencyError on duplicate key error (code 11000)', async () => {
 			const error = Object.assign(new Error('duplicate key'), { code: 11000 });
-			mockCollection.insertMany.mockRejectedValue(error);
+			mockCollection.insertOne.mockRejectedValue(error);
 
 			const event = { type: 'UserCreated', aggregateId: 'agg1', aggregateVersion: 1 };
 
 			await expect(storage.commitEvents([event as any])).rejects.toBeInstanceOf(ConcurrencyError);
+		});
+
+		it('rolls back earlier inserts when a later insert fails', async () => {
+			const error = Object.assign(new Error('duplicate key'), { code: 11000 });
+			mockCollection.insertOne
+				.mockResolvedValueOnce({ acknowledged: true })
+				.mockRejectedValueOnce(error);
+
+			const events = [
+				{ type: 'UserCreated', aggregateId: 'agg1', aggregateVersion: 1 },
+				{ type: 'UserCreated', aggregateId: 'agg1', aggregateVersion: 2 }
+			];
+
+			await expect(storage.commitEvents(events as any)).rejects.toBeInstanceOf(ConcurrencyError);
+			expect(mockCollection.deleteMany).toHaveBeenCalledTimes(1);
+
+			const rollbackFilter = mockCollection.deleteMany.mock.calls[0][0];
+			expect(rollbackFilter._id.$in).toHaveLength(1);
+			expect(rollbackFilter._id.$in[0]).toBeInstanceOf(ObjectId);
 		});
 
 		it('throws when ignoreConcurrencyError is true', async () => {
@@ -139,7 +180,7 @@ describe('MongoEventStorage', () => {
 
 		it('rethrows non-concurrency errors', async () => {
 			const error = new Error('connection lost');
-			mockCollection.insertMany.mockRejectedValue(error);
+			mockCollection.insertOne.mockRejectedValue(error);
 
 			const event = { type: 'UserCreated', aggregateId: 'agg1', aggregateVersion: 1 };
 
@@ -258,6 +299,9 @@ describe('MongoEventStorage', () => {
 			const originId = padHex(1);
 			const beforeId = padHex(10);
 
+			mockCollection.findOne
+				.mockResolvedValueOnce({ _id: makeObjectId(originId) })
+				.mockResolvedValueOnce({ _id: makeObjectId(beforeId) });
 			mockCollection.find.mockReturnValue({ async* [Symbol.asyncIterator]() {} });
 
 			const beforeEvent = {
@@ -278,11 +322,42 @@ describe('MongoEventStorage', () => {
 			expect(filter.$or[1]._id.$lt.toHexString()).toBe(beforeId);
 		});
 
+		it('throws when origin event cannot be found', async () => {
+			const originId = padHex(1);
+			const beforeId = padHex(10);
+
+			mockCollection.findOne
+				.mockResolvedValueOnce(null)
+				.mockResolvedValueOnce({ _id: makeObjectId(beforeId) });
+
+			const beforeEvent = { id: beforeId, type: 'x', sagaOrigins: { SagaA: originId } };
+			const stream = storage.getSagaEvents(`SagaA:${originId}`, { beforeEvent });
+
+			await expect(stream.next()).rejects.toThrow(`origin event ${originId} not found`);
+		});
+
+		it('throws when beforeEvent cannot be found', async () => {
+			const originId = padHex(1);
+			const beforeId = padHex(10);
+
+			mockCollection.findOne
+				.mockResolvedValueOnce({ _id: makeObjectId(originId) })
+				.mockResolvedValueOnce(null);
+
+			const beforeEvent = { id: beforeId, type: 'x', sagaOrigins: { SagaA: originId } };
+			const stream = storage.getSagaEvents(`SagaA:${originId}`, { beforeEvent });
+
+			await expect(stream.next()).rejects.toThrow(`beforeEvent ${beforeId} not found`);
+		});
+
 		it('yields events from the cursor', async () => {
 			const originId = padHex(1);
 			const beforeId = padHex(10);
 			const eventId = padHex(5);
 
+			mockCollection.findOne
+				.mockResolvedValueOnce({ _id: makeObjectId(originId) })
+				.mockResolvedValueOnce({ _id: makeObjectId(beforeId) });
 			mockCollection.find.mockReturnValue({
 				async* [Symbol.asyncIterator]() {
 					yield {
@@ -356,24 +431,32 @@ describe('MongoEventStorage', () => {
 		});
 
 		it('commits events from batch and returns batch', async () => {
-			mockCollection.insertMany.mockResolvedValue({ insertedCount: 1 });
-
 			const event = { type: 'UserCreated', aggregateId: 'agg1', aggregateVersion: 1 };
 			const batch = [{ event }];
 			const result = await storage.process(batch as any);
 
-			expect(mockCollection.insertMany).toHaveBeenCalledTimes(1);
+			expect(mockCollection.insertOne).toHaveBeenCalledTimes(1);
 			expect(result).toBe(batch);
 		});
 
 		it('propagates ConcurrencyError from commitEvents', async () => {
 			const error = Object.assign(new Error('duplicate key'), { code: 11000 });
-			mockCollection.insertMany.mockRejectedValue(error);
+			mockCollection.insertOne.mockRejectedValue(error);
 
 			const event = { type: 'UserCreated', aggregateId: 'agg1', aggregateVersion: 1 };
 			const batch = [{ event }];
 
 			await expect(storage.process(batch as any)).rejects.toBeInstanceOf(ConcurrencyError);
+		});
+
+		it('forwards ignoreConcurrencyError from batch to commitEvents', async () => {
+			const event = { type: 'UserCreated', aggregateId: 'agg1', aggregateVersion: 1 };
+			const batch = [{ event, ignoreConcurrencyError: true }];
+
+			await expect(storage.process(batch as any)).rejects.toThrow(
+				'ignoreConcurrencyError is not supported by MongoEventStorage'
+			);
+			expect(mockCollection.insertOne).not.toHaveBeenCalled();
 		});
 	});
 });

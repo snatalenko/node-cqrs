@@ -130,14 +130,18 @@ export class MongoEventStorage implements
 		const { collection } = await this.#initPromise;
 
 		const docs = events.map(toEventDocument);
+		const insertedIds: ObjectId[] = [];
 
-		// ordered: true is safe because all events in a batch share the same aggregateId
-		// with sequential versions - if any version conflicts, it will be the first one,
-		// so no events are partially committed
 		try {
-			await collection.insertMany(docs, { ordered: true });
+			for (const doc of docs) {
+				await collection.insertOne(doc);
+				insertedIds.push(doc._id);
+			}
 		}
 		catch (err: unknown) {
+			if (insertedIds.length)
+				await collection.deleteMany({ _id: { $in: insertedIds } });
+
 			if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: number }).code === 11000)
 				throw new ConcurrencyError('Concurrency conflict: duplicate event version');
 			throw err;
@@ -206,6 +210,16 @@ export class MongoEventStorage implements
 
 		const originObjectId = toObjectId(originEventId);
 		const beforeObjectId = toObjectId(beforeEvent.id);
+		const [originDoc, beforeDoc] = await Promise.all([
+			collection.findOne({ _id: originObjectId }),
+			collection.findOne({ _id: beforeObjectId })
+		]);
+
+		if (!originDoc)
+			throw new Error(`origin event ${originEventId} not found`);
+
+		if (!beforeDoc)
+			throw new Error(`beforeEvent ${beforeEvent.id} not found`);
 
 		const filter: Filter<EventDocument> = {
 			$or: [
@@ -264,7 +278,9 @@ export class MongoEventStorage implements
 			events.push(event);
 		}
 
-		await this.commitEvents(events);
+		await this.commitEvents(events, {
+			ignoreConcurrencyError: batch[0]?.ignoreConcurrencyError
+		});
 
 		return batch;
 	}
