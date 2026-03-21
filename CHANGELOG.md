@@ -1,10 +1,11 @@
-# [1.0.0-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.46...v1.0.0-beta.0) (2026-03-20)
+# [1.0.0-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.46...v1.0.0-beta.1) (2026-03-21)
 
 
 ### Build System
 
 * Refactor NPM publish step to handle pre-release and release tagging dynamically ([3f35a79](https://github.com/snatalenko/node-cqrs/commit/3f35a797785ddbb557c4d4030d7f409e7d9e1a5d))
 * Fix browser build with rollup ([cc70f71](https://github.com/snatalenko/node-cqrs/commit/cc70f71a93d40d00384b79f4ce0da6d1478866ee))
+* Default npm publish tag to "alpha" for numeric pre-ids; rework tag cleanup hierarchy ([6d89e7b](https://github.com/snatalenko/node-cqrs/commit/6d89e7b303213d30adf030015dca839490c69d75))
 
 
 # [1.0.0-rc.46](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.45...v1.0.0-rc.46) (2026-03-19)
