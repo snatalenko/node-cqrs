@@ -1,4 +1,7 @@
-import { SpanStatusCode, type Span } from '@opentelemetry/api';
+import type { Span } from '@opentelemetry/api';
+
+/** SpanStatusCode.ERROR — inlined to avoid a runtime dependency on @opentelemetry/api */
+const SPAN_STATUS_ERROR = 2;
 
 /**
  * Records the error on the provided span and marks the span status as ERROR.
@@ -10,7 +13,7 @@ export function recordSpanError(span: Span | undefined, error: unknown): void {
 
 	span.recordException(error as any);
 	span.setStatus({
-		code: SpanStatusCode.ERROR,
+		code: SPAN_STATUS_ERROR,
 		message: error instanceof Error ? error.message : String(error)
 	});
 }

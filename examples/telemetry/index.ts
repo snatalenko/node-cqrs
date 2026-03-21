@@ -1,147 +1,94 @@
 /**
- * OpenTelemetry console tracing example.
+ * OpenTelemetry tracing example.
  *
- * Run with Node 22+ (type stripping):
- *   node --experimental-strip-types examples/telemetry/index.ts
+ * Always prints spans to the console.
+ * When a local Jaeger is running, spans are also sent via OTLP/HTTP.
  *
- * Run with Node 24+:
+ * Start Jaeger:  docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/all-in-one
+ * View traces:   http://localhost:16686
+ *
+ * Run:
  *   node examples/telemetry/index.ts
  */
 
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { SimpleSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
-	AbstractAggregate,
-	AbstractProjection,
-	AbstractSaga,
 	ContainerBuilder,
 	EventIdAugmentor,
 	InMemoryEventStorage,
-	InMemoryView,
 	type IContainer
 } from '../../src/index.ts';
+import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
+import { UsersProjection, type UsersView } from '../user-domain-ts/UsersProjection.ts';
+import type { CreateUserCommandPayload } from '../user-domain-ts/messages.ts';
+import { TrialAggregate } from '../sagas-overlaps/TrialAggregate.ts';
+import { WelcomeEmailSaga } from '../sagas-overlaps/WelcomeEmailSaga.ts';
+import { ProvisionTrialSaga } from '../sagas-overlaps/ProvisionTrialSaga.ts';
 
-// ---------------------------------------------------------------------------
-// Set up OTel — must happen before any CQRS components are constructed
-// ---------------------------------------------------------------------------
 
-// Default: print spans to stdout as JSON (no extra dependencies)
-const exporter = new ConsoleSpanExporter();
-
-// ── Local Jaeger ────────────────────────────────────────────────────────────
-// Sends to http://localhost:4318/v1/traces (OTLP/HTTP).
-// Start Jaeger:  docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/all-in-one
-// View traces:   http://localhost:16686
-//
-// import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-// const exporter = new OTLPTraceExporter();
-
-// ── Honeycomb (cloud, free tier) ────────────────────────────────────────────
-//
-// import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-// const exporter = new OTLPTraceExporter({
-// 	url: 'https://api.honeycomb.io/v1/traces',
-// 	headers: { 'x-honeycomb-team': '<your-api-key>' }
-// });
+// --- Set up OTel — must happen before any CQRS components are constructed ---
 
 const provider = new NodeTracerProvider({
-	resource: resourceFromAttributes({ 'service.name': 'example' }),
-	spanProcessors: [new SimpleSpanProcessor(exporter)]
+	resource: resourceFromAttributes({ 'service.name': 'node-cqrs-example' }),
+	spanProcessors: [
+		new SimpleSpanProcessor(new ConsoleSpanExporter()),
+		new SimpleSpanProcessor(new OTLPTraceExporter({ url: 'http://localhost:4318/v1/traces', timeoutMillis: 500 }))
+	]
 });
+
 provider.register();
 
-// ---------------------------------------------------------------------------
-// Domain
-// ---------------------------------------------------------------------------
 
-class CounterAggregate extends AbstractAggregate {
-	increment() {
-		this.emit('incremented', {});
-	}
-	reset() {
-		this.emit('reset', {});
-	}
-}
-
-class NotificationAggregate extends AbstractAggregate {
-	prepareNotification(payload: { message: string }) {
-		this.emit('notificationPrepared', payload);
-	}
-}
-
-class CounterProjection extends AbstractProjection<InMemoryView<{ count: number }>> {
-	incremented({ aggregateId }) {
-		this.view.updateEnforcingNew(aggregateId, (v = { count: 0 }) => ({ count: v.count + 1 }));
-	}
-	reset({ aggregateId }) {
-		this.view.updateEnforcingNew(aggregateId, () => ({ count: 0 }));
-	}
-}
-
-/**
- * Multi-step saga:
- * incremented -> prepareNotification -> notificationPrepared -> notify
- */
-class NotifySaga extends AbstractSaga {
-	static startsWith = ['incremented'];
-	incremented(event: any) {
-		this.enqueue('prepareNotification', undefined, { message: `counter ${event.aggregateId} incremented` });
-	}
-	notificationPrepared(event: any) {
-		this.enqueue('notify', undefined, {
-			message: event.payload.message,
-			originEventId: event.id
-		});
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Wiring
-// ---------------------------------------------------------------------------
+// --- Wiring ---
 
 interface AppContainer extends IContainer {
-	counters: InMemoryView<{ count: number }>;
+	users: UsersView;
 }
 
 const builder = new ContainerBuilder<AppContainer>();
+builder.register(() => (name: string) => trace.getTracer(`cqrs.${name}`)).as('tracerFactory');
 builder.register(InMemoryEventStorage);
 builder.register(EventIdAugmentor).as('eventIdAugmenter');
-builder.registerAggregate(CounterAggregate);
-builder.registerAggregate(NotificationAggregate);
-builder.registerProjection(CounterProjection, 'counters');
-builder.registerSaga(NotifySaga);
+builder.registerAggregate(UserAggregate);
+builder.registerAggregate(TrialAggregate);
+builder.registerProjection(UsersProjection, 'users');
+builder.registerSaga(WelcomeEmailSaga);
+builder.registerSaga(ProvisionTrialSaga);
 
-const { commandBus, counters } = builder.container();
+const { commandBus, users } = builder.container();
 
-let notifyCount = 0;
-let resolveNotifies!: () => void;
-const allNotifies = new Promise<void>(resolve => {
-	resolveNotifies = resolve;
+let welcomeEmailCount = 0;
+let resolveAllWelcomeEmails!: () => void;
+const allWelcomeEmails = new Promise<void>(resolve => {
+	resolveAllWelcomeEmails = resolve;
 });
 
-commandBus.on('notify', command => {
-	notifyCount += 1;
-	console.log('notify command:', command);
-	if (notifyCount >= 2)
-		resolveNotifies();
+commandBus.on('sendWelcomeEmail', command => {
+	welcomeEmailCount += 1;
+	console.log('sendWelcomeEmail command:', command);
+	if (welcomeEmailCount >= 2)
+		resolveAllWelcomeEmails();
 });
 
-// ---------------------------------------------------------------------------
-// Run
-// ---------------------------------------------------------------------------
+
+// --- Run ---
 
 const tracer = trace.getTracer('telemetry-example');
 
 await tracer.startActiveSpan('example.run', async span => {
 	try {
-		const [ev] = await commandBus.send('increment');
-		await commandBus.send('increment', ev.aggregateId as string);
-		await commandBus.send('reset', ev.aggregateId as string);
-		await allNotifies;
+		const [userCreated] = await commandBus.send('createUser', undefined, {
+			payload: { username: 'john@example.com', password: 'magic' } satisfies CreateUserCommandPayload
+		});
 
-		console.log('Final counter state:', await counters.get(ev.aggregateId as string));
+		// Wait for both sagas to complete their multi-step flows
+		await allWelcomeEmails;
+
+		console.log('User:', users.get(userCreated.aggregateId as string));
 	}
 	catch (error: any) {
 		span.recordException(error);

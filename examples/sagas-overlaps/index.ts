@@ -1,42 +1,17 @@
 import {
-	AbstractAggregate,
-	AbstractSaga,
 	EventIdAugmentor,
 	EventStore,
 	InMemoryEventStorage,
 	InMemoryMessageBus
 } from '../../src/index.ts';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
-import type { CreateUserCommandPayload, UserCreatedEvent } from '../user-domain-ts/messages.ts';
-
-type ProvisionTrialPayload = { email: string };
-
-class TrialAggregate extends AbstractAggregate<void> {
-	provisionTrial(payload: ProvisionTrialPayload) {
-		console.log('provisionTrial command (received by TrialAggregate):', this.command);
-		this.emit('trialProvisioned', { email: payload.email });
-	}
-}
-
-class WelcomeEmailSaga extends AbstractSaga {
-	userCreated(event: UserCreatedEvent) {
-		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload!.username });
-	}
-}
-
-class ProvisionTrialSaga extends AbstractSaga {
-	userCreated(event: UserCreatedEvent) {
-		this.enqueue('provisionTrial', undefined, { email: event.payload!.username });
-	}
-	trialProvisioned(event: any) {
-		this.enqueue('sendWelcomeEmail', undefined, {
-			email: event.payload.email,
-			reason: 'trialProvisioned'
-		});
-	}
-}
+import type { CreateUserCommandPayload } from '../user-domain-ts/messages.ts';
+import { TrialAggregate } from './TrialAggregate.ts';
+import { WelcomeEmailSaga } from './WelcomeEmailSaga.ts';
+import { ProvisionTrialSaga } from './ProvisionTrialSaga.ts';
 
 async function main() {
+	const commandBus = new InMemoryMessageBus();
 	const eventBus = new InMemoryMessageBus();
 	const eventStorage = new InMemoryEventStorage();
 	const eventStore = new EventStore({
@@ -47,8 +22,6 @@ async function main() {
 		],
 		eventBus
 	});
-
-	const commandBus = new InMemoryMessageBus();
 
 	let welcomeEmailCount = 0;
 	let resolveAllWelcomeEmails: (() => void) | undefined;

@@ -49,6 +49,7 @@ Built around ES6/TypeScript classes and dependency injection - swap implementati
   - [RabbitMQ](#rabbitmq)
   - [Workers](#workers)
   - [MongoDB](#mongodb)
+- [OpenTelemetry](#opentelemetry)
 - [Examples](#examples)
 
 
@@ -96,15 +97,6 @@ npm install node-cqrs
 
 Node.js 16+ and browsers are supported.
 
-Optional peer dependencies:
-
-| Module | Packages |
-|--------|----------|
-| SQLite | `better-sqlite3`, `md5` |
-| Redis | `ioredis`, `md5` |
-| RabbitMQ | `amqplib` |
-| Worker threads | `comlink` |
-| MongoDB | `mongodb` |
 
 
 ## ContainerBuilder
@@ -397,14 +389,14 @@ interface ISaga {
 
 ## Infrastructure modules
 
-| Module | Import | Use case |
-|--------|--------|----------|
-| In-memory | `node-cqrs` | Tests and local development |
-| SQLite | `node-cqrs/sqlite` | Persistent views with catch-up |
-| Redis | `node-cqrs/redis` | Distributed persistent views with catch-up |
-| RabbitMQ | `node-cqrs/rabbitmq` | Cross-process event distribution |
-| Workers | `node-cqrs/workers` | CPU-heavy projections in worker threads |
-| MongoDB | `node-cqrs/mongodb` | Persistent event storage with concurrency control |
+| Module | Import | Peer dependencies | Use case |
+|--------|--------|-------------------|----------|
+| In-memory | `node-cqrs` | | Tests and local development |
+| SQLite | `node-cqrs/sqlite` | `better-sqlite3`, `md5` | Persistent views with catch-up |
+| Redis | `node-cqrs/redis` | `ioredis`, `md5` | Distributed persistent views with catch-up |
+| RabbitMQ | `node-cqrs/rabbitmq` | `amqplib` | Cross-process event distribution |
+| Workers | `node-cqrs/workers` | `comlink` | CPU-heavy projections in worker threads |
+| MongoDB | `node-cqrs/mongodb` | `mongodb` | Persistent event storage with concurrency control |
 
 ### In-memory
 
@@ -503,6 +495,19 @@ builder.register(EventIdAugmentor).as('eventIdAugmenter'); // required for sagas
 See [examples/mongodb/index.ts](examples/mongodb/index.ts) for a full working example.
 
 
+## OpenTelemetry
+
+Optional distributed tracing via [OpenTelemetry](https://opentelemetry.io/). Requires `@opentelemetry/api` peer dependency. Register a `tracerFactory` in the container to enable automatic span creation across CQRS components:
+
+```ts
+import { trace } from '@opentelemetry/api';
+
+builder.register(() => (name: string) => trace.getTracer(`cqrs.${name}`)).as('tracerFactory');
+```
+
+See [examples/telemetry/index.ts](examples/telemetry/index.ts) for a full working example.
+
+
 ## Examples
 
 - [examples/user-domain-framework-free](examples/user-domain-framework-free/index.ts) - minimal, no-framework CQRS/ES in one file
@@ -514,5 +519,6 @@ See [examples/mongodb/index.ts](examples/mongodb/index.ts) for a full working ex
 - [examples/browser](examples/browser) - browser smoke test
 - [examples/workers-projection](examples/workers-projection) - worker thread projection
 - [examples/mongodb](examples/mongodb/index.ts) - MongoDB event storage with DI container and manual wiring
+- [examples/telemetry](examples/telemetry/index.ts) - OpenTelemetry tracing with multiple exporters
 
 TS examples can be run with NodeJS 24+ without transpiling.
