@@ -1,3 +1,5 @@
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { SimpleSpanProcessor, InMemorySpanExporter } from '@opentelemetry/sdk-trace-base';
 import { RabbitMqGateway } from '../../../src/rabbitmq/RabbitMqGateway';
 import type { ILogger, IMessage } from '../../../src/interfaces';
 import * as amqplib from 'amqplib';
@@ -579,6 +581,85 @@ describe('RabbitMqGateway', () => {
 
 			expect(received1).toEqual([]);
 			expect(received2).toEqual([]);
+		});
+	});
+
+	describe('telemetry', () => {
+
+		let spanExporter: InMemorySpanExporter;
+		let tracerProvider: NodeTracerProvider;
+
+		beforeEach(() => {
+			spanExporter = new InMemorySpanExporter();
+			tracerProvider = new NodeTracerProvider({
+				spanProcessors: [new SimpleSpanProcessor(spanExporter)]
+			});
+			tracerProvider.register();
+		});
+
+		afterEach(async () => {
+			await tracerProvider.shutdown();
+		});
+
+		it('propagates trace context from publisher to consumer via AMQP headers', async () => {
+			const tracerFactory = (name: string) => tracerProvider.getTracer(name);
+
+			const publisherGateway = new RabbitMqGateway({
+				rabbitMqConnectionFactory: () => amqplib.connect('amqp://localhost'),
+				tracerFactory
+			});
+			const consumerGateway = new RabbitMqGateway({
+				rabbitMqConnectionFactory: () => amqplib.connect('amqp://localhost'),
+				tracerFactory
+			});
+
+			const received = new Deferred<{ traceId: string; parentSpanId: string }>();
+
+			await consumerGateway.subscribeToQueue(exchange, queueName, (_msg, meta) => {
+				// The consumer handler receives a span whose parent is the publish span
+				const activeSpan = meta?.span;
+				if (activeSpan) {
+					const spanCtx = activeSpan.spanContext();
+					received.resolve({
+						traceId: spanCtx.traceId,
+						parentSpanId: spanCtx.spanId
+					});
+				}
+				else {
+					received.reject(new Error('No span in meta'));
+				}
+			});
+
+			// Create a root span and publish within it
+			const tracer = tracerFactory('test');
+			const rootSpan = tracer.startSpan('test.publish');
+			const rootTraceId = rootSpan.spanContext().traceId;
+
+			await publisherGateway.publish(exchange, {
+				type: 'telemetry.test',
+				payload: { check: true }
+			}, { span: rootSpan });
+			rootSpan.end();
+
+			const result = await received.promise;
+
+			// The consumer span belongs to the same trace as the publisher
+			expect(result.traceId).toBe(rootTraceId);
+
+			// Verify exported spans contain both publish and consume
+			await tracerProvider.forceFlush();
+			const spans = spanExporter.getFinishedSpans();
+			const publishSpan = spans.find(s => s.name === 'RabbitMqGateway.publish telemetry.test');
+			const consumeSpan = spans.find(s => s.name === 'RabbitMqGateway.consume telemetry.test');
+
+			expect(publishSpan).toBeDefined();
+			expect(consumeSpan).toBeDefined();
+
+			// Consume span's parent is the publish span (both share the same trace)
+			expect(consumeSpan!.spanContext().traceId).toBe(publishSpan!.spanContext().traceId);
+
+			await publisherGateway.disconnect();
+			await consumerGateway.disconnect();
 		});
 	});
 

@@ -1,5 +1,5 @@
 import type { IContainer } from 'node-cqrs';
-import type { IEventBus, IMessage, IMessageHandler, IObservable, IObservableQueueProvider } from '../interfaces/index.ts';
+import type { IEventBus, IMessage, IMessageHandler, IMessageMeta, IObservable, IObservableQueueProvider } from '../interfaces/index.ts';
 import { assertBoolean, assertDefined, assertNonNegativeInteger, assertString } from '../utils/index.ts';
 import { RabbitMqCommandBus } from './RabbitMqCommandBus.ts';
 import { RabbitMqGateway, type Subscription, type SubscribeResult } from './RabbitMqGateway.ts';
@@ -79,9 +79,9 @@ export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 	 * Publishes a message to the event exchange.
 	 * The message will be delivered to all subscribers.
 	 */
-	async publish(message: IMessage): Promise<void> {
+	async publish(message: IMessage, meta?: IMessageMeta): Promise<void> {
 		const { exchange } = await this.#resolveConfig();
-		await this.#gateway.publish(exchange, message);
+		await this.#gateway.publish(exchange, message, meta);
 	}
 
 	/**

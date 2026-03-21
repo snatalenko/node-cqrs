@@ -80,8 +80,8 @@ describe('EventDispatcher', () => {
 
 			expect(processorMock.process).toHaveBeenCalledTimes(1);
 			expect(eventBus.publish).toHaveBeenCalledTimes(2);
-			expect(eventBus.publish).toHaveBeenCalledWith(event1, {});
-			expect(eventBus.publish).toHaveBeenCalledWith(event2, {});
+			expect(eventBus.publish).toHaveBeenCalledWith(event1, expect.objectContaining({}));
+			expect(eventBus.publish).toHaveBeenCalledWith(event2, expect.objectContaining({}));
 			expect(result).toEqual([event1, event2]);
 		});
 
@@ -144,7 +144,7 @@ describe('EventDispatcher', () => {
 			const result = await dispatcher.dispatch([event], { origin: 'internal' });
 
 			expect(eventBus.publish).toHaveBeenCalledTimes(1);
-			expect(eventBus.publish).toHaveBeenCalledWith(event, { origin: 'internal' });
+			expect(eventBus.publish).toHaveBeenCalledWith(event, expect.objectContaining({ origin: 'internal' }));
 			expect(result).toEqual([event]);
 		});
 
@@ -228,8 +228,8 @@ describe('EventDispatcher', () => {
 
 			expect(internalProcessor.process).toHaveBeenCalledTimes(1);
 			expect(externalProcessor.process).toHaveBeenCalledTimes(1);
-			expect(eventBus.publish).toHaveBeenCalledWith(internalEvent, { origin: 'internal' });
-			expect(eventBus.publish).toHaveBeenCalledWith(externalEvent, { origin: 'external' });
+			expect(eventBus.publish).toHaveBeenCalledWith(internalEvent, expect.objectContaining({ origin: 'internal' }));
+			expect(eventBus.publish).toHaveBeenCalledWith(externalEvent, expect.objectContaining({ origin: 'external' }));
 		});
 
 		it('routes events according to eventDispatchRouter if provided', async () => {
@@ -253,8 +253,8 @@ describe('EventDispatcher', () => {
 
 			expect(p1.process).toHaveBeenCalledTimes(1);
 			expect(p2.process).toHaveBeenCalledTimes(1);
-			expect(eventBus.publish).toHaveBeenCalledWith(e1, { route: 'p1' });
-			expect(eventBus.publish).toHaveBeenCalledWith(e2, { route: 'p2' });
+			expect(eventBus.publish).toHaveBeenCalledWith(e1, expect.objectContaining({ route: 'p1' }));
+			expect(eventBus.publish).toHaveBeenCalledWith(e2, expect.objectContaining({ route: 'p2' }));
 		});
 
 		it('routes events to default pipeline when no router is defined', async () => {
@@ -274,7 +274,7 @@ describe('EventDispatcher', () => {
 
 			expect(pDefault.process).toHaveBeenCalledTimes(1);
 			expect(pOther.process).not.toHaveBeenCalled();
-			expect(eventBus.publish).toHaveBeenCalledWith(e, {});
+			expect(eventBus.publish).toHaveBeenCalledWith(e, expect.objectContaining({}));
 		});
 
 		it('throws when targeted pipeline is missing (router or default)', async () => {

@@ -4,6 +4,7 @@ import type {
 	IEvent,
 	IEventBus,
 	IMessageHandler,
+	IMessageMeta,
 	IObservable,
 	IObservableQueueProvider
 } from '../interfaces/index.ts';
@@ -81,21 +82,30 @@ export class InMemoryMessageBus implements IEventBus, ICommandBus, IObservableQu
 	/**
 	 * Send command to exactly 1 command handler
 	 */
-	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object }): Promise<any>;
+	send(
+		commandType: string,
+		aggregateId?: string,
+		options?: { payload?: object, context?: object } & IMessageMeta
+	): Promise<any>;
 
 	/**
 	 * Send pre-built command to exactly 1 command handler
 	 */
-	send(command: ICommand): Promise<any>;
+	send(command: ICommand, meta?: IMessageMeta): Promise<any>;
 
-	async send(
-		commandOrType: ICommand | string,
-		aggregateId?: string,
-		options?: { payload?: object, context?: object }
-	): Promise<any> {
-		const command: ICommand = typeof commandOrType === 'string'
-			? { type: commandOrType, aggregateId, ...options }
-			: commandOrType;
+	async send(commandOrType: ICommand | string, aggregateIdOrMeta?: string | IMessageMeta, options?: {
+		payload?: object,
+		context?: object
+	} & IMessageMeta): Promise<any> {
+		let command: ICommand;
+		let meta: IMessageMeta | undefined;
+		if (typeof commandOrType === 'string') {
+			command = { type: commandOrType, aggregateId: aggregateIdOrMeta as string | undefined, ...options };
+		}
+		else {
+			command = commandOrType;
+			meta = aggregateIdOrMeta as IMessageMeta | undefined;
+		}
 
 		assertMessage(command, 'command');
 
@@ -107,7 +117,7 @@ export class InMemoryMessageBus implements IEventBus, ICommandBus, IObservableQu
 
 		const commandHandler = handlers.values().next().value;
 
-		return commandHandler!(command);
+		return commandHandler!(command, meta);
 	}
 
 	/** @deprecated Use {@link send} */

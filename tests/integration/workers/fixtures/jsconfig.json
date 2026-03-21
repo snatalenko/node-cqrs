@@ -26,7 +26,6 @@
   "exclude": [
     "../node_modules",
     "../dist",
-    "**/bundle.js",
-    "browser-smoke-test/**"
+    "**/bundle.js"
   ]
 }

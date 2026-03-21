@@ -1,4 +1,4 @@
-import type { IEvent } from 'node-cqrs';
+import type { IEvent } from '../../../src/index.ts';
 
 export type CreateUserCommandPayload = { username: string, password: string };
 export type UserCreatedEventPayload = { username: string, passwordHash: string };

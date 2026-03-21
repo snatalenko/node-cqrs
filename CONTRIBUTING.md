@@ -31,6 +31,7 @@ npm install
 | **src/rabbitmq/** | RabbitMQ buses (`node-cqrs/rabbitmq`) |
 | **src/redis/** | Redis-backed views (`node-cqrs/redis`) |
 | **src/sqlite/** | SQLite-backed views (`node-cqrs/sqlite`) |
+| **src/mongodb/** | MongoDB event storage (`node-cqrs/mongodb`) |
 | **src/workers/** | Worker thread projections (`node-cqrs/workers`) |
 | src/AbstractAggregate.ts | Base class for aggregates; auto-routes commands to methods by name |
 | src/AbstractProjection.ts | Base class for projections; auto-routes events to methods by name |
@@ -56,6 +57,7 @@ npm run test:examples  # Run unit tests of examples/user-domain/cjs
 npm run test:coverage  # Run tests with coverage report
 npm run test:rabbitmq  # Integration tests (requires RabbitMQ running)
 npm run test:sqlite    # Integration tests (requires better-sqlite3)
+npm run test:mongodb   # Integration tests (requires MongoDB running)
 npm run test:workers   # Integration tests (builds CJS)
 npm run examples       # Run examples with console output
 npm run lint           # Run ESLint
@@ -75,8 +77,7 @@ Build a single-file browser bundle (IIFE) with:
 npm run build:browser
 ```
 
-This runs TypeScript compilation (via `tsconfig.browser.json`) and then bundles using `npx browserify`.
-The output is written to `dist/browser/bundle.iife.js` and exposes the library as a global `Cqrs`.
+The output is written to `dist/browser/bundle.iife.js` and `dist/browser/bundle.iife.min.js`, and exposes the library as a global `Cqrs`.
 
 Example usage from a plain HTML page:
 
@@ -120,6 +121,15 @@ To stop it:
 
 ```bash
 docker compose -f tests/integration/rabbitmq/docker-compose.yml down
+```
+
+### MongoDB
+
+Tests connect to `mongodb://localhost:27017`. You can start a local MongoDB via Docker:
+
+```bash
+docker run -d -p 27017:27017 mongo:7
+npm run test:mongodb
 ```
 
 ## Code style

@@ -1,11 +1,10 @@
 import {
 	type IContainer,
-	CommandBus,
 	ContainerBuilder,
 	EventStore,
 	InMemoryEventStorage,
 	InMemoryMessageBus
-} from 'node-cqrs';
+} from '../../../src/index.ts';
 import type { ChangePasswordCommandPayload, CreateUserCommandPayload } from './messages.ts';
 import { UserAggregate } from './UserAggregate.ts';
 import { UsersProjection, type UsersView } from './UsersProjection.ts';
@@ -58,7 +57,7 @@ import { UsersProjection, type UsersView } from './UsersProjection.ts';
 		eventBus: inMemoryMessageBus
 	});
 
-	const commandBus = new CommandBus();
+	const commandBus = new InMemoryMessageBus();
 	UserAggregate.register(eventStore, commandBus);
 
 	const projection = new UsersProjection();
