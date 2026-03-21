@@ -1,4 +1,6 @@
+import type { Tracer } from '@opentelemetry/api';
 import type {
+	IContainer,
 	IIdentifierProvider,
 	IEvent,
 	IEventSet,
@@ -10,6 +12,7 @@ import type {
 	DispatchPipelineBatch,
 	AggregateEventsQueryParams
 } from '../interfaces/index.ts';
+import { recordSpanError, spanContext } from '../telemetry/index.ts';
 import { assertString, parseSagaId } from '../utils/index.ts';
 import { nextCycle } from './utils/index.ts';
 import { ConcurrencyError } from '../errors/index.ts';
@@ -23,8 +26,13 @@ export class InMemoryEventStorage implements
 	IIdentifierProvider,
 	IDispatchPipelineProcessor {
 
+	readonly #tracer: Tracer | undefined;
 	#nextId: number = 0;
 	#events: IEventSet = [];
+
+	constructor({ tracerFactory }: Pick<IContainer, 'tracerFactory'> = {}) {
+		this.#tracer = tracerFactory?.(new.target.name);
+	}
 
 	getNewId(): string {
 		this.#nextId += 1;
@@ -129,19 +137,30 @@ export class InMemoryEventStorage implements
 	 * This method is part of the `IDispatchPipelineProcessor` interface.
 	 */
 	async process(batch: DispatchPipelineBatch): Promise<DispatchPipelineBatch> {
-		const events: IEvent[] = [];
-		for (const { event } of batch) {
-			if (!event)
-				throw new Error('Event batch does not contain `event`');
+		const span = this.#tracer?.startSpan('InMemoryEventStorage.process', undefined, spanContext(batch[0]));
 
-			events.push(event);
+		try {
+			const events: IEvent[] = [];
+			for (const { event } of batch) {
+				if (!event)
+					throw new Error('Event batch does not contain `event`');
+
+				events.push(event);
+			}
+
+			if (batch.at(0)?.ignoreConcurrencyError)
+				await this.commitEvents(events, { ignoreConcurrencyError: true });
+			else
+				await this.commitEvents(events);
+
+			return batch;
 		}
-
-		if (batch.at(0)?.ignoreConcurrencyError)
-			await this.commitEvents(events, { ignoreConcurrencyError: true });
-		else
-			await this.commitEvents(events);
-
-		return batch;
+		catch (error: unknown) {
+			recordSpanError(span, error);
+			throw error;
+		}
+		finally {
+			span?.end();
+		}
 	}
 }

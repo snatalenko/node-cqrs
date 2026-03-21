@@ -59,7 +59,8 @@
   "scripts": {
     "cleanup": "rm -rf ./dist ./coverage",
     "test": "jest",
-    "examples": "npm run example:user-domain-framework-free && npm run example:user-domain-ts && npm run example:sagas-simple && npm run example:sagas-overlaps && npm run example:user-domain-cjs && npm run example:workers-worker-projection && npm run example:browser",
+    "examples": "npm run example:user-domain-framework-free && npm run example:user-domain-ts && npm run example:sagas-simple && npm run example:sagas-overlaps && npm run example:user-domain-cjs && npm run example:workers-worker-projection && npm run example:browser && npm run example:telemetry",
+    "example:telemetry": "node examples/telemetry/index.ts",
     "example:user-domain-ts": "node examples/user-domain/ts/index.ts",
     "example:user-domain-framework-free": "node examples/user-domain/framework-free/index.ts",
     "example:user-domain-cjs": "npm run build:cjs && node examples/user-domain/cjs/index.cjs",
@@ -103,6 +104,10 @@
     "di0": "^1.3.0"
   },
   "devDependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
+    "@opentelemetry/sdk-trace-base": "^2.6.0",
+    "@opentelemetry/sdk-trace-node": "^2.6.0",
     "@rollup/plugin-commonjs": "^29.0.2",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-terser": "^1.0.0",
@@ -129,6 +134,7 @@
     "typescript-eslint": "^8.57.0"
   },
   "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "amqplib": "^0.10.9",
     "better-sqlite3": "^12.6.2",
     "comlink": "^4.4.2",

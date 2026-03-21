@@ -1,7 +1,9 @@
 import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
+import { propagation, context, type Tracer } from '@opentelemetry/api';
 import type { IContainer } from 'node-cqrs';
-import type { ILogger, IMessage } from '../interfaces/index.ts';
+import type { ILogger, IMessage, IMessageMeta } from '../interfaces/index.ts';
 import * as Event from '../Event.ts';
+import { recordSpanError, spanAttributes, spanContext } from '../telemetry/index.ts';
 import { assertDefined, assertFunction, assertMessage, assertNonNegativeInteger, assertNotDefined, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
 import { ConfigProvider, registerExitCleanup, resolveProvider } from './utils/index.ts';
 import { EventEmitter } from 'events';
@@ -10,7 +12,7 @@ import { EventEmitter } from 'events';
 const getRandomAppId = () =>
 	`${Date.now().toString(36).slice(-4)}.${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
 
-type MessageHandler = (m: IMessage) => Promise<unknown> | unknown;
+type MessageHandler = (m: IMessage, meta?: IMessageMeta) => Promise<unknown> | unknown;
 
 /**
  * Represents a subscription to events from a RabbitMQ exchange.
@@ -133,6 +135,7 @@ export class RabbitMqGateway {
 	#appId: string | undefined;
 	readonly #logger: ILogger | undefined;
 	readonly #emitter: EventEmitter<GatewayEvents>;
+	readonly #tracer: Tracer | undefined;
 
 	#desiredState: 'connected' | 'disconnected' = 'disconnected';
 	readonly #stateChangeLock = new Lock();
@@ -162,8 +165,9 @@ export class RabbitMqGateway {
 		rabbitMqAppId = getRandomAppId(),
 		eventEmitterFactory,
 		logger,
-		process
-	}: Partial<Pick<IContainer, 'logger' | 'process' | 'rabbitMqConnectionFactory' | 'rabbitMqAppId'>> & {
+		process,
+		tracerFactory
+	}: Partial<Pick<IContainer, 'logger' | 'process' | 'rabbitMqConnectionFactory' | 'rabbitMqAppId' | 'tracerFactory'>> & {
 		eventEmitterFactory?: () => EventEmitter<GatewayEvents>
 	}) {
 		assertFunction(rabbitMqConnectionFactory, 'rabbitMqConnectionFactory');
@@ -172,6 +176,7 @@ export class RabbitMqGateway {
 		this.#emitter = eventEmitterFactory?.() ?? new EventEmitter();
 		this.#connectionFactory = rabbitMqConnectionFactory;
 		this.#appIdProvider = rabbitMqAppId;
+		this.#tracer = tracerFactory?.(new.target.name);
 		this.#logger = logger && 'child' in logger ?
 			logger.child({ service: new.target.name }) :
 			logger;
@@ -633,15 +638,23 @@ export class RabbitMqGateway {
 				}, handlerProcessTimeout)
 				: null;
 
+			this.#logger?.debug('Message received', {
+				queueName: queueGivenName,
+				msg: extractMessageMeta(msg)
+			});
+
+			const jsonContent = msg.content.toString();
+			const message: IMessage = JSON.parse(jsonContent);
+
+			// Extract OTel trace context from AMQP headers to continue the distributed trace
+			const parentContext = propagation.extract(context.active(), msg.properties?.headers ?? {});
+			const span = this.#tracer?.startSpan(
+				`RabbitMqGateway.consume ${message.type}`,
+				spanAttributes('rabbitmq', message, ['type', 'aggregateId']),
+				parentContext
+			);
+
 			try {
-				this.#logger?.debug('Message received', {
-					queueName: queueGivenName,
-					msg: extractMessageMeta(msg)
-				});
-
-				const jsonContent = msg.content.toString();
-				const message: IMessage = JSON.parse(jsonContent);
-
 				const handlers = this.#getHandlers(queueGivenName, message.type);
 				if (!handlers.length && !isSystemQueue(queueGivenName))
 					throw new Error(`Message from queue "${queueGivenName}" was delivered to a consumer that does not handle type "${message.type}"`);
@@ -651,7 +664,7 @@ export class RabbitMqGateway {
 					if (ignoreOwn && msg.properties.appId === ownAppId)
 						continue;
 
-					await handler(message);
+					await handler(message, { span });
 				}
 
 				if (messageFinalized) {
@@ -671,6 +684,8 @@ export class RabbitMqGateway {
 					msg: extractMessageMeta(msg)
 				});
 
+				recordSpanError(span, err);
+
 				if (!messageFinalized) {
 					this.#rejectMessage(channel, msg);
 					messageFinalized = true;
@@ -679,6 +694,8 @@ export class RabbitMqGateway {
 			finally {
 				if (keepAliveTimeout !== null)
 					clearTimeout(keepAliveTimeout);
+
+				span?.end();
 			}
 		}, {
 			noAck: options?.noAck
@@ -734,54 +751,76 @@ export class RabbitMqGateway {
 	 * Publishes an event to the fanout exchange.
 	 * The event will be delivered to all subscribers, except this instance's own consumer.
 	 */
-	async publish(exchange: string, message: IMessage): Promise<void> {
+	async publish(exchange: string, message: IMessage, meta?: IMessageMeta): Promise<void> {
 		assertString(exchange, 'exchange');
 		assertMessage(message, 'message');
 
-		if (!this.#pubChannel) {
-			const connection = await this.#assertConnection();
-			this.#pubChannel = await connection.createConfirmChannel();
+		const span = this.#tracer?.startSpan(`RabbitMqGateway.publish ${message.type}`,
+			spanAttributes('rabbitmq', message, ['type', 'aggregateId']),
+			spanContext(meta)
+		);
 
-			await this.#pubChannel.assertExchange(exchange, 'topic', { durable: true });
+		try {
+			if (!this.#pubChannel) {
+				const connection = await this.#assertConnection();
+				this.#pubChannel = await connection.createConfirmChannel();
+
+				await this.#pubChannel.assertExchange(exchange, 'topic', { durable: true });
+			}
+
+			const content = Buffer.from(JSON.stringify(message), 'utf8');
+			const sagaCorrelationId = (() => {
+				const sagaOrigins = message.sagaOrigins;
+				if (!sagaOrigins || typeof sagaOrigins !== 'object')
+					return undefined;
+
+				const sagaDescriptors = Object.keys(sagaOrigins);
+				if (sagaDescriptors.length !== 1)
+					return undefined;
+
+				return sagaOrigins[sagaDescriptors[0]];
+			})();
+
+			// Inject OTel trace context into AMQP headers so consumers can continue the trace
+			const headers: Record<string, string> = {};
+			const parentContext = span ?
+				spanContext({ span }) :
+				spanContext(meta);
+			propagation.inject(parentContext, headers);
+
+			const properties = {
+				contentType: 'application/json',
+				contentEncoding: 'utf8',
+				persistent: true,
+				timestamp: message.context?.ts ?? Date.now(),
+				appId: await this.getAppId(),
+				type: message.type,
+				messageId: 'id' in message && typeof message.id === 'string' ?
+					message.id :
+					undefined,
+				correlationId: sagaCorrelationId,
+				headers
+			};
+
+			return await new Promise<void>((resolve, reject) => {
+				if (!this.#pubChannel)
+					throw new Error('No channel available for publishing');
+
+				this.#logger?.debug(`Publishing message "${Event.describe(message)}" to exchange "${exchange}"`);
+
+				const published = this.#pubChannel.publish(exchange, message.type, content, properties, err =>
+					(err ? reject(err) : resolve()));
+				if (!published)
+					throw new Error(`Failed to send event ${Event.describe(message)}, channel buffer is full`);
+			});
 		}
-
-		const content = Buffer.from(JSON.stringify(message), 'utf8');
-		const sagaCorrelationId = (() => {
-			const sagaOrigins = message.sagaOrigins;
-			if (!sagaOrigins || typeof sagaOrigins !== 'object')
-				return undefined;
-
-			const sagaDescriptors = Object.keys(sagaOrigins);
-			if (sagaDescriptors.length !== 1)
-				return undefined;
-
-			return sagaOrigins[sagaDescriptors[0]];
-		})();
-		const appId = await this.getAppId();
-		const properties = {
-			contentType: 'application/json',
-			contentEncoding: 'utf8',
-			persistent: true,
-			timestamp: message.context?.ts ?? Date.now(),
-			appId,
-			type: message.type,
-			messageId: 'id' in message && typeof message.id === 'string' ?
-				message.id :
-				undefined,
-			correlationId: sagaCorrelationId
-		};
-
-		return new Promise<void>((resolve, reject) => {
-			if (!this.#pubChannel)
-				throw new Error('No channel available for publishing');
-
-			this.#logger?.debug(`Publishing message "${Event.describe(message)}" to exchange "${exchange}"`);
-
-			const published = this.#pubChannel.publish(exchange, message.type, content, properties, err =>
-				(err ? reject(err) : resolve()));
-			if (!published)
-				throw new Error(`Failed to send event ${Event.describe(message)}, channel buffer is full`);
-		});
+		catch (error: unknown) {
+			recordSpanError(span, error);
+			throw error;
+		}
+		finally {
+			span?.end();
+		}
 	}
 
 	on<K extends keyof GatewayEvents>(event: K, fn: (...args: GatewayEvents[K]) => void) {
