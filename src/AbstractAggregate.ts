@@ -70,7 +70,7 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 	 * Convenience helper to create an `AggregateCommandHandler` for this aggregate type and
 	 * subscribe it to the provided `commandBus`.
 	 */
-	static register<T extends AbstractAggregate, S extends IMutableState | object | void>(
+	static register<T extends AbstractAggregate<S>, S extends IMutableState | object | void>(
 		this: IAggregateConstructor<T, S> & (new (options: IAggregateConstructorParams<S>) => T),
 		eventStore: IEventStore,
 		commandBus: ICommandBus
