@@ -39,8 +39,8 @@ jobs:
             # e.g. "1.0.0-rc.1" → "rc", "1.0.0-beta.2" → "beta"
             PREID="${VERSION#*-}"
             PREID="${PREID%%.*}"
-            # purely numeric pre-id (e.g. "1.0.0-1") → "next"
-            [[ "$PREID" =~ ^[0-9]+$ ]] && PREID=next
+            # purely numeric pre-id (e.g. "1.0.0-1") → "alpha"
+            [[ "$PREID" =~ ^[0-9]+$ ]] && PREID=alpha
             TAG="--tag $PREID"
           fi
 
