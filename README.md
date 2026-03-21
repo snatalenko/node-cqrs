@@ -47,6 +47,7 @@ Built around ES6/TypeScript classes and dependency injection - swap implementati
   - [SQLite](#sqlite)
   - [RabbitMQ](#rabbitmq)
   - [Workers](#workers)
+  - [MongoDB](#mongodb)
 - [Examples](#examples)
 
 
@@ -101,6 +102,7 @@ Optional peer dependencies:
 | SQLite | `better-sqlite3`, `md5` |
 | RabbitMQ | `amqplib` |
 | Worker threads | `comlink` |
+| MongoDB | `mongodb` |
 
 
 ## ContainerBuilder
@@ -399,6 +401,7 @@ interface ISaga {
 | SQLite | `node-cqrs/sqlite` | Persistent views with catch-up |
 | RabbitMQ | `node-cqrs/rabbitmq` | Cross-process event distribution |
 | Workers | `node-cqrs/workers` | CPU-heavy projections in worker threads |
+| MongoDB | `node-cqrs/mongodb` | Persistent event storage with concurrency control |
 
 ### In-memory
 
@@ -491,6 +494,29 @@ const counter = await counterView.getCounter();
 If you need a custom proxy projection, you can still use `workerProxyFactory(...)` directly (advanced usage).
 
 
+### MongoDB
+
+```ts
+import { MongoEventStorage } from 'node-cqrs/mongodb';
+```
+
+Requires `mongodb` peer dependency (`npm install mongodb`).
+
+- [MongoEventStorage](src/mongodb/MongoEventStorage.ts) - MongoDB-backed event storage; implements `IEventStorageReader`, `IIdentifierProvider`, and `IDispatchPipelineProcessor`
+
+```ts
+// Register a Db factory — MongoEventStorage resolves it by name
+const client = new MongoClient('mongodb://localhost:27017/mydb');
+builder.register(() => client.connect().then(() => client.db())).as('mongoDbFactory');
+
+// Auto-resolved as eventStorage, eventStorageReader, identifierProvider
+builder.register(MongoEventStorage);
+builder.register(EventIdAugmentor).as('eventIdAugmenter'); // required for sagas
+```
+
+See [examples/mongodb](examples/mongodb/index.ts) for a full working example.
+
+
 ## Examples
 
 - [examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts) - minimal, no-framework CQRS/ES in one file
@@ -500,5 +526,6 @@ If you need a custom proxy projection, you can still use `workerProxyFactory(...
 - [examples/sagas/overlaps](examples/sagas/overlaps/index.ts) - overlapping sagas, multi-step flow
 - [examples/browser](examples/browser) - browser smoke test
 - [examples/workers/worker-projection](examples/workers/worker-projection) - worker thread projection
+- [examples/mongodb](examples/mongodb/index.ts) - MongoDB event storage with DI container and manual wiring
 
 TS examples can be run with NodeJS 24+ without transpiling.
