@@ -1,5 +1,5 @@
 import type { IContainer } from 'node-cqrs';
-import type { ICommand, ICommandBus, IMessage, IMessageHandler } from '../interfaces/index.ts';
+import type { ICommand, ICommandBus, IMessage, IMessageHandler, IMessageMeta } from '../interfaces/index.ts';
 import { assertBoolean, assertDefined, assertMessage, assertNonNegativeInteger, assertString } from '../utils/index.ts';
 import { RabbitMqGateway, type Subscription } from './RabbitMqGateway.ts';
 import { type ConfigProvider, resolveProvider } from './utils/index.ts';
@@ -66,32 +66,43 @@ export class RabbitMqCommandBus implements ICommandBus {
 	/**
 	 * Format and send a command for execution
 	 */
-	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object }): Promise<any>;
+	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object } & IMessageMeta): Promise<any>;
 
 	/**
 	 * Sends a pre-built command to the exchange, routed to the durable queue.
 	 * Exactly one consumer will process it.
 	 */
-	send(command: ICommand): Promise<any>;
+	send(command: ICommand, meta?: IMessageMeta): Promise<any>;
 
 	async send(
 		commandOrType: ICommand | string,
-		aggregateId?: string,
-		options?: { payload?: object, context?: object }
+		aggregateIdOrMeta?: string | IMessageMeta,
+		options?: { payload?: object, context?: object } & IMessageMeta
 	): Promise<any> {
-		const command: IMessage = typeof commandOrType === 'string'
-			? { type: commandOrType, aggregateId, ...options }
-			: commandOrType;
+		let command: IMessage;
+		let meta: IMessageMeta | undefined;
+
+		if (typeof commandOrType === 'string') {
+			const { span, ...commandOptions } = options ?? {};
+			command = { type: commandOrType, aggregateId: aggregateIdOrMeta as string | undefined, ...commandOptions };
+			if (span)
+				meta = { span };
+		}
+		else {
+			command = commandOrType;
+			if (aggregateIdOrMeta && typeof aggregateIdOrMeta === 'object')
+				meta = aggregateIdOrMeta as IMessageMeta;
+		}
 
 		assertMessage(command, 'command');
 
 		const { exchange } = await this.#resolveConfig();
-		await this.#gateway.publish(exchange, command);
+		await this.#gateway.publish(exchange, command, meta);
 	}
 
 	/** @deprecated Use {@link send} */
-	sendRaw(command: ICommand): Promise<any> {
-		return this.send(command);
+	sendRaw(command: ICommand, meta?: IMessageMeta): Promise<any> {
+		return this.send(command, meta);
 	}
 
 	/**
