@@ -2,7 +2,7 @@
  * Minimal in-process Redis mock for unit testing Redis locker classes.
  *
  * Supports: GET, SET (with PX + NX options), DEL, PEXPIRE, and EVAL for the
- * two Lua scripts used by RedisEventLocker.
+ * Lua scripts used by RedisEventLocker and RedisViewLocker.
  *
  * TTL is tracked via real wall-clock timestamps so the "re-lock after TTL" test
  * can simply use a very short TTL and real timers.
@@ -72,14 +72,34 @@ export function createMockRedisForLockers(): MockRedisForLockers {
 		},
 
 		/**
-		 * Simulates two Lua scripts used by RedisEventLocker.
-		 *
-		 * tryMarkAsProjecting  → rest = [key, ttl]   (1 extra arg)
-		 * markAsProjected      → rest = [key]         (no extra args)
-		 */
-		eval: (_script: string, _numkeys: number, ...rest: (string | number)[]): Promise<number> => {
+			 * Simulates the Lua scripts used by RedisEventLocker and RedisViewLocker.
+			 *
+			 * RedisEventLocker tryMarkAsProjecting  → rest = [key, ttl]
+			 * RedisEventLocker markAsProjected      → rest = [key]
+			 * RedisViewLocker prolongLock           → rest = [key, token, ttl]
+			 * RedisViewLocker unlock                → rest = [key, token]
+			 */
+		eval: (script: string, _numkeys: number, ...rest: (string | number)[]): Promise<number> => {
 			const key = String(rest[0]);
 			const extraArgs = rest.slice(1);
+
+			if (script.includes('PEXPIRE')) {
+				const token = String(extraArgs[0]);
+				const ttl = Number(extraArgs[1]);
+				const entry = store.get(key);
+				if (!entry || getAlive(key) !== token)
+					return Promise.resolve(0);
+				entry.expiresAt = Date.now() + ttl;
+				return Promise.resolve(1);
+			}
+
+			if (script.includes('DEL')) {
+				const token = String(extraArgs[0]);
+				if (getAlive(key) !== token)
+					return Promise.resolve(0);
+				store.delete(key);
+				return Promise.resolve(1);
+			}
 
 			if (extraArgs.length === 1) {
 				// tryMarkAsProjecting: SET key "processing" PX ttl only if absent

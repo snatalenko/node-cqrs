@@ -9,7 +9,7 @@
  */
 
 import EventEmitter from 'events';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import type {
 	IAggregate, ICommand, ICommandHandler, Identifier, IEvent, IEventSet, IEventStorageReader,
 	IObservable, IProjection

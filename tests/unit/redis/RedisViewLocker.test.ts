@@ -77,7 +77,7 @@ describe('RedisViewLocker', () => {
 		it('stores the lock key in Redis', async () => {
 			await firstLock.lock();
 			const key = 'ncqrs:viewlock:test:1.0';
-			expect(mockRedis.store.has(key)).toBe(true);
+			expect(mockRedis.getAlive(key)).toEqual(expect.any(String));
 		});
 
 		it('removes the lock key from Redis after unlock', async () => {
@@ -136,9 +136,8 @@ describe('RedisViewLocker', () => {
 			// Advance by half the TTL to trigger prolongation
 			await jest.advanceTimersByTimeAsync((viewLockTtl / 2) + 10);
 
-			// PEXPIRE is called — mock just checks existence, not actual TTL extension
-			// The key should still be present (not deleted)
-			expect(mockRedis.getAlive('ncqrs:viewlock:test:1.0')).toBe('1');
+			// PEXPIRE is called — the key should still be present and owned
+			expect(mockRedis.getAlive('ncqrs:viewlock:test:1.0')).toEqual(expect.any(String));
 		});
 
 		it('throws if prolongation is attempted after unlock', async () => {
@@ -147,6 +146,25 @@ describe('RedisViewLocker', () => {
 
 			await expect((firstLock as any).prolongLock())
 				.rejects.toThrow('"test" lock could not be prolonged');
+		});
+
+		it('does not prolong or delete another process lock after ownership changes', async () => {
+			await firstLock.lock();
+
+			const key = 'ncqrs:viewlock:test:1.0';
+			const firstEntry = mockRedis.store.get(key)!;
+			firstEntry.expiresAt = Date.now() - 1;
+
+			await secondLock.lock();
+			const secondToken = mockRedis.getAlive(key);
+			expect(secondToken).toEqual(expect.any(String));
+
+			await expect((firstLock as any).prolongLock())
+				.rejects.toThrow('"test" lock could not be prolonged');
+
+			await firstLock.unlock();
+
+			expect(mockRedis.getAlive(key)).toBe(secondToken);
 		});
 	});
 
@@ -188,7 +206,7 @@ describe('RedisViewLocker', () => {
 			await locker.assertConnection();
 			await locker.lock();
 
-			expect(mockRedis.store.has('myapp:viewlock:myproj:2')).toBe(true);
+			expect(mockRedis.getAlive('myapp:viewlock:myproj:2')).toEqual(expect.any(String));
 		});
 	});
 });

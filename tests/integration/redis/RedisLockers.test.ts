@@ -11,7 +11,7 @@ const KEY_PATTERN = 'ncqrs:*';
  * Integration tests for RedisViewLocker and RedisEventLocker.
  *
  * Requires a running Redis at redis://localhost:6379.
- * Start with: docker compose -f tests/integration/redis/docker-compose.yml up -d
+ * Start with: docker run -d --rm --name node-cqrs-redis -p 6379:6379 redis:7-alpine
  */
 describe('Redis Lockers (integration)', () => {
 
@@ -68,7 +68,7 @@ describe('Redis Lockers (integration)', () => {
 		it('stores the lock key in Redis', async () => {
 			await firstLock.lock();
 			const val = await redis.get('ncqrs:viewlock:inttest:1');
-			expect(val).toBe('1');
+			expect(val).toEqual(expect.any(String));
 			await firstLock.unlock();
 		});
 

@@ -7,7 +7,7 @@ type Item = { name: string; value: number };
  * Integration tests for RedisObjectStorage.
  *
  * Requires a running Redis at redis://localhost:6379.
- * Start with: docker compose -f tests/integration/redis/docker-compose.yml up -d
+ * Start with: docker run -d --rm --name node-cqrs-redis -p 6379:6379 redis:7-alpine
  */
 describe('RedisObjectStorage (integration)', () => {
 

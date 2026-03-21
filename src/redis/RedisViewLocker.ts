@@ -3,10 +3,25 @@ import type { IContainer } from 'node-cqrs';
 import type { ILogger, IViewLocker } from '../interfaces/index.ts';
 import { assertString, Deferred } from '../utils/index.ts';
 import { promisify } from 'util';
+import { randomUUID } from 'node:crypto';
 import { AbstractRedisAccessor } from './AbstractRedisAccessor.ts';
 import type { RedisProjectionDataParams } from './RedisProjectionDataParams.ts';
 
 const delay = promisify(setTimeout);
+
+const SCRIPT_PROLONG_LOCK = `
+local val = redis.call("GET", KEYS[1])
+if val ~= ARGV[1] then return 0 end
+redis.call("PEXPIRE", KEYS[1], ARGV[2])
+return 1
+`;
+
+const SCRIPT_RELEASE_LOCK = `
+local val = redis.call("GET", KEYS[1])
+if val ~= ARGV[1] then return 0 end
+redis.call("DEL", KEYS[1])
+return 1
+`;
 
 export type RedisViewLockerParams = RedisProjectionDataParams & {
 
@@ -33,6 +48,7 @@ export class RedisViewLocker extends AbstractRedisAccessor implements IViewLocke
 	#projectionName: string;
 	#lockKey: string;
 	#viewLockTtl: number;
+	#lockToken: string | undefined;
 	#lockMarker: Deferred<void> | undefined;
 	#lockProlongationTimeout: NodeJS.Timeout | undefined;
 	#logger: ILogger | undefined;
@@ -65,12 +81,13 @@ export class RedisViewLocker extends AbstractRedisAccessor implements IViewLocke
 
 	async lock(): Promise<boolean> {
 		this.#lockMarker = new Deferred();
+		this.#lockToken = randomUUID();
 
 		await this.assertConnection();
 
 		let lockAcquired = false;
 		while (!lockAcquired) {
-			const result = await this.redis!.set(this.#lockKey, '1', 'PX', this.#viewLockTtl, 'NX');
+			const result = await this.redis!.set(this.#lockKey, this.#lockToken, 'PX', this.#viewLockTtl, 'NX');
 			lockAcquired = result === 'OK';
 			if (!lockAcquired) {
 				this.#logger?.debug(`"${this.#projectionName}" is locked by another process`);
@@ -102,7 +119,13 @@ export class RedisViewLocker extends AbstractRedisAccessor implements IViewLocke
 	private async prolongLock() {
 		await this.assertConnection();
 
-		const result = await this.redis!.pexpire(this.#lockKey, this.#viewLockTtl);
+		const result = await this.redis!.eval(
+			SCRIPT_PROLONG_LOCK,
+			1,
+			this.#lockKey,
+			this.#lockToken!,
+			String(this.#viewLockTtl)
+		) as number;
 		if (result !== 1)
 			throw new Error(`"${this.#projectionName}" lock could not be prolonged`);
 
@@ -119,7 +142,13 @@ export class RedisViewLocker extends AbstractRedisAccessor implements IViewLocke
 
 		await this.assertConnection();
 
-		const deleted = await this.redis!.del(this.#lockKey);
+		const deleted = await this.redis!.eval(
+			SCRIPT_RELEASE_LOCK,
+			1,
+			this.#lockKey,
+			this.#lockToken!
+		) as number;
+		this.#lockToken = undefined;
 		if (deleted === 1)
 			this.#logger?.debug(`"${this.#projectionName}" lock released`);
 		else
