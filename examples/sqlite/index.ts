@@ -1,6 +1,6 @@
 import createDb from 'better-sqlite3';
-import { type IContainer, ContainerBuilder } from 'node-cqrs';
-import { AbstractSqliteObjectProjection, SqliteEventStorage } from 'node-cqrs/sqlite';
+import { type IContainer, ContainerBuilder, EventIdAugmentor } from 'node-cqrs';
+import { AbstractSqliteObjectProjection, SqliteEventStorage, type SqliteObjectView } from 'node-cqrs/sqlite';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
 import type { CreateUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
 
@@ -32,17 +32,17 @@ class UsersProjection extends AbstractSqliteObjectProjection<UserRecord> {
 // -- Setup & Run --
 
 interface MyContainer extends IContainer {
-	users: InstanceType<typeof UsersProjection>['view'];
+	users: SqliteObjectView<UserRecord>;
 }
 
 const builder = new ContainerBuilder<MyContainer>();
-builder.register(SqliteEventStorage);
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'users');
+builder.register(SqliteEventStorage);
+builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerInstance(() => createDb(':memory:'), 'viewModelSqliteDbFactory');
 
-const container = builder.container();
-const { commandBus, users } = container;
+const { commandBus, users } = builder.container();
 
 const [userCreated] = await commandBus.send('createUser', undefined, {
 	payload: { username: 'Alice', password: 'magic' } satisfies CreateUserCommandPayload

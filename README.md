@@ -392,17 +392,23 @@ interface ISaga {
 | Module | Import | Peer dependencies | Use case |
 |--------|--------|-------------------|----------|
 | In-memory | `node-cqrs` | | Tests and local development |
-| SQLite | `node-cqrs/sqlite` | `better-sqlite3`, `md5` | Persistent views with catch-up |
-| Redis | `node-cqrs/redis` | `ioredis`, `md5` | Distributed persistent views with catch-up |
+| SQLite | `node-cqrs/sqlite` | `better-sqlite3` | Persistent views with catch-up |
+| Redis | `node-cqrs/redis` | `ioredis` | Distributed persistent views with catch-up |
 | RabbitMQ | `node-cqrs/rabbitmq` | `amqplib` | Cross-process event distribution |
 | Workers | `node-cqrs/workers` | `comlink` | CPU-heavy projections in worker threads |
 | MongoDB | `node-cqrs/mongodb` | `mongodb` | Persistent event storage with concurrency control |
 
 ### In-memory
 
-- [InMemoryEventStorage](src/in-memory/InMemoryEventStorage.ts) - event storage + identifier provider
-- [InMemoryMessageBus](src/in-memory/InMemoryMessageBus.ts) - event/command bus
-- [InMemoryView](src/in-memory/InMemoryView.ts) - in-memory view with locking support
+```ts
+import {
+  InMemoryEventStorage,    // event storage + identifier provider
+  InMemoryMessageBus,      // event/command bus
+  InMemoryView,            // in-memory view with locking support
+  InMemoryLock,            // in-memory lock
+  InMemorySnapshotStorage  // aggregate snapshot storage
+} from 'node-cqrs';
+```
 
 See [examples/user-domain-ts/index.ts](examples/user-domain-ts/index.ts) for a DI-based example and
 [examples/user-domain-framework-free/index.ts](examples/user-domain-framework-free/index.ts) for a plain implementation.
@@ -410,12 +416,12 @@ See [examples/user-domain-ts/index.ts](examples/user-domain-ts/index.ts) for a D
 ### SQLite
 
 ```ts
-import { AbstractSqliteView, SqliteObjectView } from 'node-cqrs/sqlite';
+import {
+  SqliteEventStorage,      // SQLite-backed event storage
+  AbstractSqliteView,      // SQLite view with restore locking and checkpoint tracking
+  SqliteObjectView         // SQLite-backed object view
+} from 'node-cqrs/sqlite';
 ```
-
-- [AbstractSqliteView](src/sqlite/AbstractSqliteView.ts) - SQLite view with restore locking and checkpoint tracking
-- [SqliteEventStorage](src/sqlite/SqliteEventStorage.ts) - SQLite-backed event storage
-- [SqliteObjectView](src/sqlite/SqliteObjectView.ts) - SQLite-backed object view
 
 See [examples/sqlite/index.ts](examples/sqlite/index.ts) for a runnable example.
 
@@ -424,72 +430,48 @@ See [examples/sqlite/index.ts](examples/sqlite/index.ts) for a runnable example.
 > **Experimental** — the Redis module is new and has not been validated in production. APIs may change in minor versions.
 
 ```ts
-import { AbstractRedisProjection, RedisView } from 'node-cqrs/redis';
+import {
+  AbstractRedisProjection, // base class for Redis-backed projections
+  RedisView,               // object view with distributed locking and checkpoint tracking
+  RedisObjectStorage,      // low-level key/value object store
+  RedisViewLocker,         // distributed view lock with auto-prolongation via PEXPIRE
+  RedisEventLocker         // per-event deduplication and last-event checkpoint
+} from 'node-cqrs/redis';
 ```
-
-Requires `ioredis` and `md5` peer dependencies.
-
-- [RedisView](src/redis/RedisView.ts) - Redis-backed object view with distributed locking and checkpoint tracking
-- [AbstractRedisProjection](src/redis/AbstractRedisProjection.ts) - base class for Redis-backed projections
-- [RedisObjectStorage](src/redis/RedisObjectStorage.ts) - low-level key/value object store backed by Redis
-- [RedisViewLocker](src/redis/RedisViewLocker.ts) - distributed view lock with auto-prolongation via `PEXPIRE`
-- [RedisEventLocker](src/redis/RedisEventLocker.ts) - per-event deduplication and last-event checkpoint
 
 See [examples/redis/index.ts](examples/redis/index.ts) for a runnable example.
 
 ### RabbitMQ
 
 ```ts
-import { RabbitMqEventBus, RabbitMqCommandBus, RabbitMqGateway } from 'node-cqrs/rabbitmq';
+import {
+  RabbitMqGateway,         // publish/subscribe gateway with durable and transient queue support
+  RabbitMqEventBus,        // RabbitMQ-backed IEventBus (fanout delivery to all subscribers)
+  RabbitMqCommandBus       // RabbitMQ-backed ICommandBus (point-to-point delivery via durable queue)
+} from 'node-cqrs/rabbitmq';
 ```
-
-- [RabbitMqGateway](src/rabbitmq/RabbitMqGateway.ts) - publish/subscribe gateway with durable and transient queue support
-- [RabbitMqEventBus](src/rabbitmq/RabbitMqEventBus.ts) - RabbitMQ-backed `IEventBus` (fanout delivery to all subscribers)
-- [RabbitMqCommandBus](src/rabbitmq/RabbitMqCommandBus.ts) - RabbitMQ-backed `ICommandBus` (point-to-point delivery via durable queue)
 
 ### Workers
 
 ```ts
-import { AbstractWorkerProjection } from 'node-cqrs/workers';
+import {
+  AbstractWorkerProjection // projections running in worker threads
+} from 'node-cqrs/workers';
 ```
 
-Workers are an execution mode for projections.
-
-You still define one projection class, but it runs as:
-1. A real projection inside a worker thread (handles events, mutates the view).
-2. A proxy projection in the main thread (forwards calls to the worker and exposes the remote view).
-
-This lets you keep your projection code unchanged while moving heavy work off the main thread.
-
-Quickstart:
-1. Create your projection by extending `AbstractWorkerProjection`.
+Define one projection class that runs as a real projection inside a worker thread and a proxy in the main thread. Quickstart:
+1. Extend `AbstractWorkerProjection`.
 2. In the worker module, call `YourProjection.createInstanceInWorkerThread()`.
-3. In your app container, register `YourProjection.workerProxyFactory` and use it like a normal projection.
-
-`workerModulePath` should point to executable JavaScript (`__filename` in CJS, `fileURLToPath(import.meta.url)` in ESM).
-If you need a custom proxy projection, you can still use `workerProxyFactory(...)` directly (advanced usage).
+3. In the app container, register `YourProjection.workerProxyFactory` like a normal projection.
 
 See [examples/workers-projection/index.cjs](examples/workers-projection/index.cjs) for a runnable example.
-
 
 ### MongoDB
 
 ```ts
-import { MongoEventStorage } from 'node-cqrs/mongodb';
-```
-
-Requires `mongodb` peer dependency (`npm install mongodb`).
-
-- [MongoEventStorage](src/mongodb/MongoEventStorage.ts) - MongoDB-backed event storage; implements `IEventStorageReader`, `IIdentifierProvider`, and `IDispatchPipelineProcessor`
-
-```ts
-// Register a Db factory — MongoEventStorage resolves it by name
-const client = new MongoClient('mongodb://localhost:27017/mydb');
-builder.register(() => client.connect().then(() => client.db())).as('mongoDbFactory');
-
-// Auto-resolved as eventStorage, eventStorageReader, identifierProvider
-builder.register(MongoEventStorage);
-builder.register(EventIdAugmentor).as('eventIdAugmenter'); // required for sagas
+import {
+  MongoEventStorage        // event storage, identifier provider, and dispatch pipeline processor
+} from 'node-cqrs/mongodb';
 ```
 
 See [examples/mongodb/index.ts](examples/mongodb/index.ts) for a full working example.
