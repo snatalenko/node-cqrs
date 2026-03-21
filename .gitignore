@@ -10,7 +10,6 @@ app/tests/coverage/
 coverage/
 .nyc_output/
 dist/
-types/
 *.tgz
 
 # IDE's

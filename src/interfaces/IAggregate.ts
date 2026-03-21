@@ -89,9 +89,10 @@ export interface IAggregateConstructor<
 	 * - `undefined` (default): retry up to 5 times on ConcurrencyError
 	 * - `false`: no retry
 	 * - `true`: retry up to 5 times on ConcurrencyError
+	 * - `'ignore'`: on ConcurrencyError, force-dispatch immediately with `ignoreConcurrencyError: true`
 	 * - `number`: retry up to the specified number of times on ConcurrencyError
 	 * - `{ maxRetries?: number, ignoreAfterMaxRetries?: boolean }`: configure retries
-	 * - `(err, attempt) => RetryOnConcurrencyErrorDecision`:
+	 * - `(err, events, attempt) => RetryOnConcurrencyErrorDecision`:
 	 *   custom function to decide whether to retry (`true`), stop (`false`) or ignore (`'ignore'`)
 	 */
 	readonly retryOnConcurrencyError?: RetryOnConcurrencyErrorOptions;

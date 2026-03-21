@@ -1,5 +1,6 @@
 import type { Database, Statement } from 'better-sqlite3';
-import type { IContainer, IEvent, IEventLocker } from '../interfaces/index.ts';
+import type { IContainer } from 'node-cqrs';
+import type { IEvent, IEventLocker } from '../interfaces/index.ts';
 import { getEventId } from './utils/index.ts';
 import { viewLockTableInit, eventLockTableInit } from './queries/index.ts';
 import type { SqliteViewLockerParams } from './SqliteViewLocker.ts';
@@ -113,15 +114,15 @@ export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventL
 
 		const eventId = getEventId(event);
 
-		const transaction = this.db!.transaction(() => {
-			const updateResult = this.#finalizeEventLockQuery.run(this.#projectionName, this.#schemaVersion, eventId);
-			if (updateResult.changes === 0)
-				throw new Error(`Event ${event.id} could not be marked as processed`);
+		const updateResult = this.#finalizeEventLockQuery.run(this.#projectionName, this.#schemaVersion, eventId);
+		if (updateResult.changes === 0)
+			throw new Error(`Event ${event.id} could not be marked as processed`);
+	}
 
-			this.#upsertLastEventQuery.run(this.#projectionName, this.#schemaVersion, JSON.stringify(event));
-		});
+	async markAsLastEvent(event: IEvent<any>) {
+		await this.assertConnection();
 
-		transaction();
+		this.#upsertLastEventQuery.run(this.#projectionName, this.#schemaVersion, JSON.stringify(event));
 	}
 
 	async getLastEvent(): Promise<IEvent<any> | undefined> {

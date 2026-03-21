@@ -50,12 +50,12 @@ describe('CqrsContainerBuilder', function () {
 
 			builder.registerAggregate(MyAggregate);
 
-			await builder.container().commandBus.sendRaw({ type: 'doSomething' });
+			await builder.container().commandBus.send({ type: 'doSomething' });
 			expect(dependencyMet).toBe(false);
 
 			builder.register(SomeService, 'aggregateDependency');
 
-			await builder.container().commandBus.sendRaw({ type: 'doSomething' });
+			await builder.container().commandBus.send({ type: 'doSomething' });
 			expect(dependencyMet).toBe(true);
 		});
 
@@ -81,7 +81,7 @@ describe('CqrsContainerBuilder', function () {
 				throw new ConcurrencyError();
 			});
 
-			const events = await container.commandBus.sendRaw({ type: 'doSomething' } as any);
+			const events = await container.commandBus.send({ type: 'doSomething' } as any);
 
 			expect(events).toHaveLength(1);
 			expect(dispatchCallCount).toBe(2);

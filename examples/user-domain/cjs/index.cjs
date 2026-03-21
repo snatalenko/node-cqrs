@@ -3,7 +3,6 @@
 const {
 	ContainerBuilder,
 	InMemoryEventStorage,
-	CommandBus,
 	EventStore,
 	InMemoryMessageBus,
 	EventDispatcher,
@@ -43,7 +42,7 @@ exports.createBaseInstances = () => {
 	eventDispatcher.addPipelineProcessor(storage);
 
 	const eventStore = new EventStore({ eventStorageReader: storage, eventBus, eventDispatcher });
-	const commandBus = new CommandBus();
+	const commandBus = new InMemoryMessageBus();
 
 	UserAggregate.register(eventStore, commandBus);
 

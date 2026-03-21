@@ -8,7 +8,8 @@ export default defineConfig([
 	globalIgnores([
 		"coverage/*",
 		"dist/*",
-		"types/*"
+		"types/*",
+		".*/*"
 	]),
 	{
 		files: [

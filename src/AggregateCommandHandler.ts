@@ -34,7 +34,7 @@ function normalizeRetryResolver(value?: RetryOnConcurrencyErrorOptions): RetryOn
 	if (value === false)
 		return () => false;
 	if (value === 'ignore')
-		return () => 'ignore';
+		return err => (err instanceof ConcurrencyError ? 'ignore' : false);
 	if (typeof value === 'number')
 		return (err, events, attempt) => err instanceof ConcurrencyError && attempt < value;
 
@@ -170,6 +170,33 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		return aggregate;
 	}
 
+	/**
+	 * Register interest in the cache entry before acquiring the lock, so concurrent callers for the same aggregateId
+	 * share one restoration promise instead of each triggering a separate event-store read
+	 */
+	#allocateCacheEntry(aggregateId: Identifier | undefined) {
+		if (aggregateId)
+			this.#aggregatesCache.assert(aggregateId, () => this.#restoreAggregate(aggregateId));
+	}
+
+	/**
+	 * Replace the dirty cache entry with a fresh restoration promise
+	 * so both the retry and any commands queued on the lock start from a clean state.
+	 */
+	#resetCacheEntry(aggregateId: Identifier | undefined) {
+		if (aggregateId)
+			this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
+	}
+
+	/**
+	 * Decrement the usage counter registered above;
+	 * deletes the entry when the last concurrent caller for this aggregateId is done.
+	 */
+	#releaseCacheEntry(aggregateId: Identifier | undefined) {
+		if (aggregateId)
+			this.#aggregatesCache.release(aggregateId);
+	}
+
 	/** Pass a command to corresponding aggregate */
 	async execute(cmd: ICommand, meta?: IMessageMeta): Promise<IEventSet> {
 		assertMessage(cmd, 'cmd');
@@ -181,70 +208,56 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			spanContext(meta)
 		);
 
+		this.#allocateCacheEntry(aggregateId);
+
+		// Serialize execution per aggregate — commands for the same id queue here.
+		const lease = aggregateId ?
+			await this.#executionLock.acquire(String(aggregateId)) :
+			undefined;
+
 		try {
-			// Register interest in the cache entry before acquiring the lock, so concurrent
-			// callers for the same aggregateId share one restoration promise instead of each
-			// triggering a separate event-store read.
-			if (aggregateId)
-				this.#aggregatesCache.assert(aggregateId, () => this.#restoreAggregate(aggregateId));
+			for (let attempt = 0; ; attempt++) {
+				// Read the current cache entry after acquiring the lock. On the first attempt
+				// this is the pre-warmed (possibly shared) instance; on retries it is the
+				// fresh instance placed into the cache by the error handler below.
+				const aggregate = aggregateId ?
+					await this.#aggregatesCache.get(aggregateId)! :
+					await this.#createAggregate();
 
-			// Serialize execution per aggregate — commands for the same id queue here.
-			const lease = aggregateId ?
-				await this.#executionLock.acquire(String(aggregateId)) :
-				undefined;
+				let events: IEventSet;
+				try {
+					events = await aggregate.handle(cmd);
 
-			try {
-				for (let attempt = 0; ; attempt++) {
-					if (attempt > 0)
-						this.#logger?.warn(`retrying "${cmd.type}" command on aggregate ${aggregateId}, attempt ${attempt + 1}`);
+					this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
+				}
+				catch (error: unknown) {
+					this.#resetCacheEntry(aggregateId);
+					throw error;
+				}
 
-					// Read the current cache entry after acquiring the lock. On the first attempt
-					// this is the pre-warmed (possibly shared) instance; on retries it is the
-					// fresh instance placed into the cache by the error handler below.
-					const aggregate = aggregateId ?
-						await this.#aggregatesCache.get(aggregateId)! :
-						await this.#createAggregate();
+				try {
+					if (events.length)
+						await this.#eventStore.dispatch(events);
 
-					let events: IEventSet | undefined;
-					try {
-						events = await aggregate.handle(cmd);
+					return events;
+				}
+				catch (error: unknown) {
+					this.#resetCacheEntry(aggregateId);
 
-						this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
+					const retryDecision = this.#shouldRetry(error, events, attempt);
+					if (!retryDecision)
+						throw error;
 
+					if (retryDecision === 'ignore') {
+						this.#logger?.warn(`"${cmd.type}" command error ignored after ${attempt + 1} attempt(s), force-dispatching`, { error });
 						if (events.length)
-							await this.#eventStore.dispatch(events, { span });
+							await this.#eventStore.dispatch(events, { ignoreConcurrencyError: true });
 
 						return events;
 					}
-					catch (err: unknown) {
-						// The aggregate is now dirty (mutated by handle). Replace the cache entry
-						// with a fresh restoration promise so both the retry below and any commands
-						// queued on the lock start from a clean state.
-						if (aggregateId)
-							this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
 
-						const retryDecision = this.#shouldRetry(err, events, attempt);
-						if (!retryDecision)
-							throw err;
-
-						if (retryDecision === 'ignore' && events?.length) {
-							this.#logger?.warn(`"${cmd.type}" concurrency error ignored after ${attempt + 1} attempt(s), force-dispatching`);
-							await this.#eventStore.dispatch(events, {
-								ignoreConcurrencyError: true,
-								span
-							});
-							return events;
-						}
-					}
+					this.#logger?.warn(`"${cmd.type}" command failed on attempt ${attempt + 1}, will retry`, { error });
 				}
-			}
-			finally {
-				lease?.release();
-
-				// Decrement the usage counter registered above; deletes the entry when
-				// the last concurrent caller for this aggregateId is done.
-				if (aggregateId)
-					this.#aggregatesCache.release(aggregateId);
 			}
 		}
 		catch (error: any) {
@@ -253,6 +266,9 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		}
 		finally {
 			span?.end();
+			lease?.release();
+
+			this.#releaseCacheEntry(aggregateId);
 		}
 	}
 }

@@ -1,3 +1,82 @@
+# [1.0.0-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.46...v1.0.0-beta.0) (2026-03-20)
+
+
+### Build System
+
+* Refactor NPM publish step to handle pre-release and release tagging dynamically ([3f35a79](https://github.com/snatalenko/node-cqrs/commit/3f35a797785ddbb557c4d4030d7f409e7d9e1a5d))
+* Fix browser build with rollup ([cc70f71](https://github.com/snatalenko/node-cqrs/commit/cc70f71a93d40d00384b79f4ce0da6d1478866ee))
+
+
+# [1.0.0-rc.46](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.45...v1.0.0-rc.46) (2026-03-19)
+
+
+### Changes
+
+* Pass event meta through projection chain, allow skipping last event update for internal-origin events ([dd36395](https://github.com/snatalenko/node-cqrs/commit/dd36395a2ad4be712df0a81e60514701ec7e03b8))
+
+
+# [1.0.0-rc.45](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.44...v1.0.0-rc.45) (2026-03-19)
+
+
+### Features
+
+* Add RabbitMQ command bus implementation and enhance MQ configuration options ([a565c59](https://github.com/snatalenko/node-cqrs/commit/a565c59f87fa46f2279781329ebacf55b1245805))
+
+### Changes
+
+* Resolve RabbitMQ appId from injected `rabbitMqAppId` provider ([56c2fe1](https://github.com/snatalenko/node-cqrs/commit/56c2fe1b4c5d1e9d85bf72ae6364a5012daec48d))
+* Return established subscription details from `subscribe` method of RabbitMqGateway ([7768256](https://github.com/snatalenko/node-cqrs/commit/7768256639c58194d0792813afdb5ec9a0c2ee9c))
+* Add option for queue expiration ([7073832](https://github.com/snatalenko/node-cqrs/commit/7073832aa5287f5786d6f8f06d4ad67698ac3f19))
+* Add option to disable handler timeout on rabbitmq subscription ([dd76d5e](https://github.com/snatalenko/node-cqrs/commit/dd76d5e9c728739620ba7d4399108db97293772f))
+
+### Fixes
+
+* Avoid finalization of already finalized MQ messages ([a9a1ea6](https://github.com/snatalenko/node-cqrs/commit/a9a1ea63fc85ba8cd6b09e2c2330636e22639b2c))
+
+### Internal Fixes
+
+* Consolidate CommandBus into InMemoryMessageBus ([62b1b0a](https://github.com/snatalenko/node-cqrs/commit/62b1b0ad23e71ea78bafef780cd06d9366d8c803))
+* Enable "x-single-active-consumer" on event queues ([6cf8e74](https://github.com/snatalenko/node-cqrs/commit/6cf8e74485201b157bb4265feeb4b5d3088cf531))
+
+
+# [1.0.0-rc.44](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.43...v1.0.0-rc.44) (2026-03-18)
+
+
+### Internal Fixes
+
+* Upgrade di0 to latest stable version with resolvers ([5f2c9ad](https://github.com/snatalenko/node-cqrs/commit/5f2c9adfd101bb53e7250db95c89f1cbd1730362))
+
+
+# [1.0.0-rc.43](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.42...v1.0.0-rc.43) (2026-03-18)
+
+
+### Changes
+
+* Allow extending WorkerProxyProjection via workerProxyFactory custom proxy type ([c9860b6](https://github.com/snatalenko/node-cqrs/commit/c9860b605a52e0cf0be167917b66e5efeb0fe29c))
+
+### Fixes
+
+* All errors being ignored with concurrency resolution set to 'ignore' ([0cb10bc](https://github.com/snatalenko/node-cqrs/commit/0cb10bcaef5ec76050b14caf6d5ad710a005b6d0))
+
+### Documentation
+
+* Update package description and keywords ([15ef847](https://github.com/snatalenko/node-cqrs/commit/15ef847b4b7dc7007f38423580704604901fc588))
+* Add AbstractWorkerProjection description to readme.md ([dd3952c](https://github.com/snatalenko/node-cqrs/commit/dd3952cc79d8a5762cd5b5bc320429ac9d0e7403))
+
+### Tests
+
+* Migrate chai+sinon tests to pure jest and remove legacy deps ([86840dd](https://github.com/snatalenko/node-cqrs/commit/86840dd7313e6af217fb74b7c32227d09860433b))
+
+### Build System
+
+* Remove comments from compiled dists ([d7124bd](https://github.com/snatalenko/node-cqrs/commit/d7124bdb47d8cef12280f404146b4f4d8e0ae1e7))
+
+### Internal Fixes
+
+* Allow EventStore to resolve reader from eventStorage alias ([91cd778](https://github.com/snatalenko/node-cqrs/commit/91cd778171ed1ace11802a4ef1fb05384de11433))
+* Update dependencies ([8c7478e](https://github.com/snatalenko/node-cqrs/commit/8c7478e6f569426c8ad94fed9bc84a159f31bf1c))
+
+
 # [1.0.0-rc.42](https://github.com/snatalenko/node-cqrs/compare/v1.0.0-rc.41...v1.0.0-rc.42) (2026-02-27)
 
 

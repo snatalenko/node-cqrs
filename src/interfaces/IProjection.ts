@@ -13,7 +13,7 @@ export interface IProjection<TView> extends IObserver {
 	restore(eventStore: IEventStorageReader): Promise<void> | void;
 
 	/** Project new event */
-	project(event: IEvent): Promise<void> | void;
+	project(event: IEvent, meta?: Record<string, any>): Promise<void> | void;
 }
 
 export interface IProjectionConstructor {

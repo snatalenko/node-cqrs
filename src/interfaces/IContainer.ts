@@ -1,5 +1,5 @@
-import { Container } from 'di0';
 import type { Tracer } from '@opentelemetry/api';
+import type { Container } from 'di0';
 import type { ICommandBus } from './ICommandBus.ts';
 import type { IEventDispatcher } from './IEventDispatcher.ts';
 import type { IEventStore } from './IEventStore.ts';

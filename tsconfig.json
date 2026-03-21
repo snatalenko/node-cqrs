@@ -16,13 +16,15 @@
     "strictBindCallApply": true,
     "strictPropertyInitialization": true,
     "isolatedModules": true,
-    "removeComments": true,
     "sourceMap": true,
     "alwaysStrict": false,
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
-    "noImplicitOverride": true
+    "noImplicitOverride": true,
+    "paths": {
+      "node-cqrs": ["./src/index.ts"]
+    }
   },
   "include": [
     "src/**/*"

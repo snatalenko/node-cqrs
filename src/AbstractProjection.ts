@@ -141,7 +141,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	}
 
 	/** Pass event to projection event handler */
-	async project(event: IEvent, meta?: IMessageMeta): Promise<void> {
+	async project(event: IEvent, meta?: Record<string, any>): Promise<void> {
 		if (this._viewLocker && !this._viewLocker.ready) {
 			this._logger?.debug(`view is locked, awaiting until it is ready to process ${describe(event)}`);
 			await this._viewLocker.once('ready');
@@ -165,8 +165,17 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 		}
 	}
 
+	/**
+	 * Determines whether an event should be recorded as the last projected event (restore checkpoint).
+	 * Override in derived classes to control checkpoint behavior based on event metadata.
+	 */
+	// eslint-disable-next-line class-methods-use-this
+	protected shouldRecordLastEvent(_event: IEvent, _meta?: Record<string, any>): boolean {
+		return true;
+	}
+
 	/** Pass event to projection event handler, without awaiting for restore operation to complete */
-	protected async _project(event: IEvent): Promise<void> {
+	protected async _project(event: IEvent, meta?: Record<string, any>): Promise<void> {
 		const handler = getHandler(this, event.type);
 		if (!handler)
 			throw new Error(`'${event.type}' handler is not defined or not a function`);
@@ -179,8 +188,11 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 
 		await handler.call(this, event);
 
-		if (this._eventLocker)
+		if (this._eventLocker) {
 			await this._eventLocker.markAsProjected(event);
+			if (this.shouldRecordLastEvent(event, meta))
+				await this._eventLocker.markAsLastEvent(event);
+		}
 	}
 
 	/**
@@ -227,17 +239,22 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 		const eventsIterable = eventStore.getEventsByTypes(messageTypes, { afterEvent: lastEvent });
 
 		let eventsCount = 0;
+		let lastRestoredEvent: IEvent | undefined;
 		const startTs = Date.now();
 
 		for await (const event of eventsIterable) {
 			try {
 				await this._project(event);
+				lastRestoredEvent = event;
 				eventsCount += 1;
 			}
 			catch (err: unknown) {
 				this._onRestoringError(err, event);
 			}
 		}
+
+		if (this._eventLocker && lastRestoredEvent)
+			await this._eventLocker.markAsLastEvent(lastRestoredEvent);
 
 		this._logger?.info(`view restored from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}

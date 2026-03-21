@@ -636,6 +636,47 @@ describe('AggregateCommandHandler', function () {
 			});
 		});
 
+		it('allows custom retry resolver to return "ignore" for a custom error type', async () => {
+
+			class CustomDispatchError extends Error {}
+
+			class IgnoreCustomErrorAggregate extends MyAggregate {
+				static retryOnConcurrencyError = (err: unknown) =>
+					(err instanceof CustomDispatchError ? 'ignore' : false);
+			}
+
+			const aggregateId = 'custom-error-ignore-test-id';
+			let dispatchCallCount = 0;
+			let ignoredDispatchMeta: Record<string, any> | undefined;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: IgnoreCustomErrorAggregate
+			});
+
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			commitSpy.mockRestore();
+			const originalDispatch = eventStore.dispatch.bind(eventStore);
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async (events, meta?: Record<string, any>) => {
+				dispatchCallCount++;
+				if (meta?.ignoreConcurrencyError) {
+					ignoredDispatchMeta = meta;
+					return originalDispatch(events, meta);
+				}
+
+				throw new CustomDispatchError('custom error');
+			});
+
+			const events = await handler.execute({ type: 'doSomething', aggregateId });
+
+			expect(events).toHaveLength(1);
+			expect(dispatchCallCount).toBe(2); // initial failure + ignored concurrency check
+			expect(ignoredDispatchMeta).toMatchObject({
+				ignoreConcurrencyError: true
+			});
+		});
+
 		it('ignores concurrency errors when retryOnConcurrencyError is set to "ignore"', async () => {
 
 			class IgnoreByOptionAggregate extends MyAggregate {
@@ -672,6 +713,37 @@ describe('AggregateCommandHandler', function () {
 			expect(ignoredDispatchMeta).toMatchObject({
 				ignoreConcurrencyError: true
 			});
+		});
+
+		it('throws errors produced by command handler even when retryOnConcurrencyError is set to "ignore"', async () => {
+
+			class FailInCommandHandlerAggregate extends MyAggregate {
+				static retryOnConcurrencyError = 'ignore' as const;
+
+				override async doSomething() {
+					await delay(5);
+					throw new Error('command handler failed');
+				}
+			}
+
+			const aggregateId = 'command-handler-error-ignore-test-id';
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateType: FailInCommandHandlerAggregate
+			});
+
+			await handler.execute({ type: 'createAggregate', aggregateId });
+			commitSpy.mockClear();
+
+			try {
+				await handler.execute({ type: 'doSomething', aggregateId });
+				throw new Error('Expected error to be thrown');
+			}
+			catch (err: any) {
+				expect(err.message).toBe('command handler failed');
+				expect(commitSpy).not.toHaveBeenCalled();
+			}
 		});
 
 		it('does not retry non-ConcurrencyError errors', async () => {
@@ -878,6 +950,42 @@ describe('AggregateCommandHandler', function () {
 				expect(err).toBeInstanceOf(ConcurrencyError);
 				expect(dispatchCallCount).toBe(1);
 			}
+		});
+
+		it('accepts retryOnConcurrencyError set to "ignore" via constructor options with aggregateFactory', async () => {
+
+			const aggregateId = 'factory-ignore-test-id';
+			let dispatchCallCount = 0;
+			let ignoredDispatchMeta: Record<string, any> | undefined;
+
+			const handler = new AggregateCommandHandler({
+				eventStore,
+				aggregateFactory: params => new MyAggregate(params),
+				handles: MyAggregate.handles,
+				retryOnConcurrencyError: 'ignore'
+			});
+
+			await handler.execute({ type: 'createAggregate', aggregateId });
+
+			commitSpy.mockRestore();
+			const originalDispatch = eventStore.dispatch.bind(eventStore);
+			jest.spyOn(eventStore, 'dispatch').mockImplementation(async (events, meta?: Record<string, any>) => {
+				dispatchCallCount++;
+				if (meta?.ignoreConcurrencyError) {
+					ignoredDispatchMeta = meta;
+					return originalDispatch(events, meta);
+				}
+
+				throw new ConcurrencyError();
+			});
+
+			const events = await handler.execute({ type: 'doSomething', aggregateId });
+
+			expect(events).toHaveLength(1);
+			expect(dispatchCallCount).toBe(2); // initial failure + ignored concurrency check
+			expect(ignoredDispatchMeta).toMatchObject({
+				ignoreConcurrencyError: true
+			});
 		});
 
 		it('accepts retryOnConcurrencyError config with ignoreAfterMaxRetries via constructor options with aggregateFactory', async () => {

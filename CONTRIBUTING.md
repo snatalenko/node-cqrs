@@ -28,14 +28,13 @@ npm install
 | **examples/** | Runnable examples (TS, CJS, sagas, browser, workers) |
 | **src/interfaces/** | TypeScript contracts (`IEvent`, `IAggregate`, `ISaga`, etc.) |
 | **src/in-memory/** | Default in-process implementations |
-| **src/rabbitmq/** | RabbitMQ event bus (`node-cqrs/rabbitmq`) |
+| **src/rabbitmq/** | RabbitMQ buses (`node-cqrs/rabbitmq`) |
 | **src/sqlite/** | SQLite-backed views (`node-cqrs/sqlite`) |
 | **src/workers/** | Worker thread projections (`node-cqrs/workers`) |
 | src/AbstractAggregate.ts | Base class for aggregates; auto-routes commands to methods by name |
 | src/AbstractProjection.ts | Base class for projections; auto-routes events to methods by name |
 | src/AbstractSaga.ts | Base class for sagas; `enqueue()` produces follow-up commands |
 | src/AggregateCommandHandler.ts | Restores aggregate from events, executes command |
-| src/CommandBus.ts | |
 | src/CqrsContainerBuilder.ts | DI container, implements `registerAggregate/Projection/Saga()` |
 | src/EventDispatcher.ts | `dispatch(events)`, chains `IEventDispatchPipeline[]` processors |
 | src/EventIdAugmentor.ts | Adds `event.id`; required in pipeline for sagas |
@@ -66,7 +65,7 @@ npm run lint           # Run ESLint
 ### Running a single test file
 
 ```bash
-npm test tests/unit/CommandBus.test.ts
+npm test tests/unit/memory/InMemoryMessageBus.test.ts
 ```
 
 ## Browser bundle
@@ -77,8 +76,7 @@ Build a single-file browser bundle (IIFE) with:
 npm run build:browser
 ```
 
-This runs TypeScript compilation (via `tsconfig.browser.json`) and then bundles using `npx browserify`.
-The output is written to `dist/browser/bundle.iife.js` and exposes the library as a global `Cqrs`.
+The output is written to `dist/browser/bundle.iife.js` and `dist/browser/bundle.iife.min.js`, and exposes the library as a global `Cqrs`.
 
 Example usage from a plain HTML page:
 
@@ -86,8 +84,7 @@ Example usage from a plain HTML page:
 <script src="./dist/browser/bundle.iife.js"></script>
 <script>
   // Library exports are available on window.Cqrs
-  const { CommandBus } = Cqrs;
-  const bus = new CommandBus();
+  const bus = new Cqrs.InMemoryMessageBus();
 </script>
 ```
 
