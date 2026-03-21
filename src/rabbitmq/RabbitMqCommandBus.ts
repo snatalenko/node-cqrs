@@ -66,7 +66,8 @@ export class RabbitMqCommandBus implements ICommandBus {
 	/**
 	 * Format and send a command for execution
 	 */
-	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object } & IMessageMeta): Promise<any>;
+	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object } & IMessageMeta):
+		Promise<any>;
 
 	/**
 	 * Sends a pre-built command to the exchange, routed to the durable queue.
