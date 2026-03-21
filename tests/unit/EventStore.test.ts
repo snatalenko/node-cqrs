@@ -1,352 +1,290 @@
-import { expect } from 'chai';
-import * as sinon from 'sinon';
-import { EventStore } from '../../src/EventStore';
-import { InMemoryEventStorage } from '../../src/infrastructure/InMemoryEventStorage';
-import { InMemorySnapshotStorage } from '../../src/infrastructure/InMemorySnapshotStorage';
-import { InMemoryMessageBus } from '../../src/infrastructure/InMemoryMessageBus';
-import { IAggregateSnapshotStorage, IEvent, IEventStorage, IEventStore, IEventSet, IMessageBus } from '../../src/interfaces';
+import {
+	type IEventDispatcher,
+	EventDispatcher,
+	InMemoryMessageBus,
+	EventStore
+} from '../../src';
+import type {
+	IEvent,
+	IEventBus,
+	IEventStorageReader,
+	IAggregateSnapshotStorage,
+	IIdentifierProvider
+} from '../../src/interfaces';
 
-const goodContext = {
-	uid: '1',
-	ip: '127.0.0.1',
-	browser: 'test',
-	serverTime: Date.now()
-};
+describe('EventStore', () => {
 
-const goodEvent = {
-	aggregateId: '1',
-	aggregateVersion: 0,
-	type: 'somethingHappened',
-	context: goodContext
-};
-
-const goodEvent2 = {
-	aggregateId: '2',
-	aggregateVersion: 0,
-	type: 'somethingHappened',
-	context: goodContext
-};
-
-const snapshotEvent = {
-	aggregateId: '2',
-	aggregateVersion: 1,
-	type: 'snapshot',
-	payload: { foo: 'bar' }
-};
-
-
-describe('EventStore', function () {
-
-	let es: IEventStore;
-	let storage: IEventStorage;
-	let snapshotStorage: IAggregateSnapshotStorage;
-	let messageBus: IMessageBus;
+	let store: EventStore;
+	let eventBus: IEventBus;
+	let eventDispatcher: IEventDispatcher;
+	let mockStorage: jest.Mocked<IEventStorageReader>;
+	let mockSnapshotStorage: jest.Mocked<IAggregateSnapshotStorage>;
+	let mockIdentifierProvider: jest.Mocked<IIdentifierProvider>;
+	const mockId = 'test-id';
 
 	beforeEach(() => {
-		storage = new InMemoryEventStorage();
-		snapshotStorage = new InMemorySnapshotStorage();
-		messageBus = new InMemoryMessageBus();
-		es = new EventStore({ storage, snapshotStorage, messageBus });
-	});
+		eventBus = new InMemoryMessageBus();
+		eventDispatcher = new EventDispatcher({ eventBus });
 
-	describe('validator', () => {
+		mockStorage = {
+			getAggregateEvents: jest.fn().mockResolvedValue([]),
+			getSagaEvents: jest.fn().mockResolvedValue([]),
+			getEventsByTypes: jest.fn().mockResolvedValue([])
+		} as any;
 
-		it('allows to validate events before they are committed', () => {
+		mockSnapshotStorage = {
+			getAggregateSnapshot: jest.fn().mockResolvedValue(undefined)
+		} as any;
 
-			const events = [
-				{ type: 'somethingHappened', aggregateId: 1 }
-			];
+		mockIdentifierProvider = {
+			getNewId: jest.fn().mockResolvedValue(mockId)
+		} as any;
 
-			return es.commit(events).then(() => {
-
-				es = new EventStore({
-					storage,
-					eventValidator: event => {
-						throw new Error('test validation error');
-					},
-					messageBus
-				});
-
-				return es.commit(events).then(() => {
-					throw new Error('must fail');
-				}, err => {
-					expect(err).to.have.property('message', 'test validation error');
-				});
-			});
+		store = new EventStore({
+			eventBus,
+			eventDispatcher,
+			eventStorageReader: mockStorage,
+			identifierProvider: mockIdentifierProvider,
+			snapshotStorage: mockSnapshotStorage,
+			logger: undefined
 		});
 	});
 
-	describe('commit', () => {
+	describe('constructor', () => {
 
-		it('validates event format', () => {
+		it('uses eventStorage as fallback when eventStorageReader is not provided', async () => {
+			const storage = {
+				getAggregateEvents: jest.fn().mockResolvedValue([]),
+				getSagaEvents: jest.fn().mockResolvedValue([]),
+				getEventsByTypes: jest.fn().mockResolvedValue([]),
+				getNewId: jest.fn().mockResolvedValue('storage-id')
+			} as unknown as IEventStorageReader & IIdentifierProvider;
 
-			const badEvent = {
-				type: 'somethingHappened',
-				context: goodContext
-			};
+			const storeWithFallback = new EventStore({
+				eventBus,
+				eventDispatcher,
+				eventStorage: storage,
+				logger: undefined
+			});
 
-			return es.commit([badEvent]).then(() => {
-				throw new Error('must fail');
-			}, err => {
-				expect(err).exist;
-				expect(err).to.be.an.instanceof(TypeError);
-				expect(err.message).to.equal('either event.aggregateId or event.sagaId is required');
+			await expect(storeWithFallback.getNewId()).resolves.toBe('storage-id');
+			expect(storage.getNewId).toHaveBeenCalledTimes(1);
+
+			for await (const _ of storeWithFallback.getEventsByTypes(['test']))
+				void _;
+			expect(storage.getEventsByTypes).toHaveBeenCalledWith(['test'], undefined);
+		});
+
+		it('prefers eventStorageReader when both eventStorageReader and eventStorage are provided', async () => {
+			const reader = {
+				getAggregateEvents: jest.fn().mockResolvedValue([]),
+				getSagaEvents: jest.fn().mockResolvedValue([]),
+				getEventsByTypes: jest.fn().mockResolvedValue([]),
+				getNewId: jest.fn().mockResolvedValue('reader-id')
+			} as unknown as IEventStorageReader & IIdentifierProvider;
+			const storage = {
+				getAggregateEvents: jest.fn().mockResolvedValue([]),
+				getSagaEvents: jest.fn().mockResolvedValue([]),
+				getEventsByTypes: jest.fn().mockResolvedValue([]),
+				getNewId: jest.fn().mockResolvedValue('storage-id')
+			} as unknown as IEventStorageReader & IIdentifierProvider;
+
+			const storeWithBoth = new EventStore({
+				eventBus,
+				eventDispatcher,
+				eventStorageReader: reader,
+				eventStorage: storage,
+				logger: undefined
+			});
+
+			await expect(storeWithBoth.getNewId()).resolves.toBe('reader-id');
+			expect(reader.getNewId).toHaveBeenCalledTimes(1);
+			expect(storage.getNewId).not.toHaveBeenCalled();
+		});
+
+		it('throws when neither eventStorageReader nor eventStorage is provided', () => {
+			expect(() => new EventStore({
+				eventBus,
+				eventDispatcher,
+				identifierProvider: mockIdentifierProvider,
+				logger: undefined
+			} as any)).toThrow('eventStorageReader or eventStorage is required');
+		});
+	});
+
+	describe('dispatch', () => {
+
+		it('throws error when called with non-array argument', async () => {
+
+			await expect(store.dispatch(null as any)).rejects.toThrow(TypeError);
+		});
+
+		it('forwards events unchanged to dispatcher', async () => {
+			const event: IEvent<void> = Object.freeze({
+				id: 'event-1',
+				type: 'StartSaga',
+				sagaOrigins: { SagaA: 'event-1' },
+				payload: undefined
+			});
+			const dispatchSpy = jest.spyOn(eventDispatcher, 'dispatch');
+
+			const [processed] = await store.dispatch([event]);
+
+			expect(processed).toBe(event);
+			expect(dispatchSpy).toHaveBeenCalledWith([event], { origin: 'internal' });
+		});
+
+		it('merges custom dispatch metadata with internal origin', async () => {
+			const event: IEvent<void> = Object.freeze({
+				id: 'event-1',
+				type: 'StartSaga',
+				payload: undefined
+			});
+			const dispatchSpy = jest.spyOn(eventDispatcher, 'dispatch');
+
+			await store.dispatch([event], { ignoreConcurrencyError: true });
+
+			expect(dispatchSpy).toHaveBeenCalledWith([event], {
+				ignoreConcurrencyError: true,
+				origin: 'internal'
 			});
 		});
 
-		it('commits events to storage', async () => {
+		it('does not assign id to events when missing', async () => {
+			const event: IEvent = { type: 'RegularEvent' } as IEvent;
+			const [processed] = await store.dispatch([event]);
 
-			await es.commit([goodEvent]);
-
-			const events: IEvent[] = [];
-			for await (const e of es.getAllEvents())
-				events.push(e);
-
-			expect(events[0]).to.have.property('type', 'somethingHappened');
-			expect(events[0]).to.have.property('context');
-			expect(events[0].context).to.have.property('ip', goodContext.ip);
+			expect(processed.id).toBeUndefined();
+			expect(event.id).toBeUndefined();
 		});
 
-		it('submits aggregate snapshot to storage.saveAggregateSnapshot, when provided', async () => {
+		it('does not modify sagaOrigins when dispatching', async () => {
+			const event: IEvent = {
+				id: 'event-2',
+				type: 'RegularEvent',
+				sagaOrigins: { SagaA: 'starter-1' },
+				payload: undefined
+			} as IEvent;
 
-			snapshotStorage.getAggregateSnapshot = <T>() => snapshotEvent as IEvent<T>;
+			const [processed] = await store.dispatch([event]);
 
-			// storage.saveAggregateSnapshot = () => { };
-			const saveAggregateSnapshotSpy = sinon.spy(snapshotStorage, 'saveAggregateSnapshot');
-			const commitEventsSpy = sinon.spy(storage, 'commitEvents');
+			expect(processed.sagaOrigins).toEqual({ SagaA: 'starter-1' });
+		});
+	});
 
-			expect(es).to.have.property('snapshotsSupported', true);
+	describe('getAggregateEvents', () => {
 
-			es.commit([goodEvent]);
-			expect(snapshotStorage).to.have.nested.property('saveAggregateSnapshot.called', false);
+		it('retrieves aggregate events including snapshot if available', async () => {
+			const snapshotEvent = { type: 'SnapshotEvent' } as IEvent;
+			const storedEvents = [{ type: 'Event1' }, { type: 'Event2' }] as IEvent[];
+			mockSnapshotStorage.getAggregateSnapshot.mockResolvedValueOnce(snapshotEvent);
+			mockStorage.getAggregateEvents.mockResolvedValueOnce(storedEvents);
 
-			es.commit([goodEvent2, snapshotEvent]);
-			expect(snapshotStorage).to.have.nested.property('saveAggregateSnapshot.calledOnce', true);
+			const result: IEvent[] = [];
+			for await (const event of store.getAggregateEvents('aggregate-1'))
+				result.push(event);
 
-			{
-				const { args } = saveAggregateSnapshotSpy.lastCall;
-				expect(args).to.have.length(1);
-				expect(args[0]).to.eq(snapshotEvent);
-			}
 
-			{
-				const { args } = commitEventsSpy.lastCall;
-				expect(args).to.have.length(1);
-				expect(args[0]).to.have.length(1);
-				expect(args[0][0]).to.have.property('type', goodEvent2.type);
-			}
+			expect(result).toEqual([snapshotEvent, ...storedEvents]);
+			expect(mockSnapshotStorage.getAggregateSnapshot).toHaveBeenCalledWith('aggregate-1');
+			expect(mockStorage.getAggregateEvents).toHaveBeenCalledWith('aggregate-1', { snapshot: snapshotEvent });
+		});
+	});
+
+	describe('getSagaEvents', () => {
+
+		it('retrieves saga events with provided filter', async () => {
+			const sagaEvents = [{ type: 'SagaEvent1' }] as IEvent[];
+			mockStorage.getSagaEvents.mockResolvedValueOnce(sagaEvents);
+			const filter = { beforeEvent: { id: 'before-1', sagaOrigins: { SagaA: 'origin-1' } } };
+
+			const result: IEvent[] = [];
+			for await (const event of store.getSagaEvents('SagaA:origin-1', filter as any))
+				result.push(event);
+
+
+			expect(result).toEqual(sagaEvents);
+			expect(mockStorage.getSagaEvents).toHaveBeenCalledWith('SagaA:origin-1', filter);
 		});
 
-		it('returns a promise that resolves to events committed', () => es.commit([goodEvent, goodEvent2]).then(events => {
+		it('throws when filter.beforeEvent.sagaOrigins does not match sagaId', async () => {
+			const filter = { beforeEvent: { id: 'before-1', sagaOrigins: { SagaA: 'other-origin' } } };
 
-			expect(events).to.be.an('Array');
-			expect(events).to.have.length(2);
-			expect(events).to.have.nested.property('[0].type', 'somethingHappened');
-		}));
-
-		it('returns a promise that rejects, when commit doesn\'t succeed', () => {
-
-			const storage = Object.create(InMemoryEventStorage.prototype, {
-				commitEvents: {
-					value: () => {
-						throw new Error('storage commit failure');
-					}
-				}
-			});
-
-			es = new EventStore({ storage, messageBus });
-
-			return es.commit([goodEvent, goodEvent2]).then(() => {
-				throw new Error('should fail');
-			}, err => {
-				expect(err).to.be.an('Error');
-				expect(err).to.have.property('message', 'storage commit failure');
-			});
-		});
-
-		it('emits events asynchronously after processing is done', function (done) {
-
-			let committed = 0;
-			let emitted = 0;
-
-			es.on('somethingHappened', function (event) {
-
-				expect(committed).to.not.equal(0);
-				expect(emitted).to.equal(0);
-				emitted++;
-
-				expect(event).to.have.property('type', 'somethingHappened');
-				expect(event).to.have.property('context');
-				expect(event.context).to.have.property('ip', goodContext.ip);
-
-				done();
-			});
-
-			es.commit([goodEvent]).then(() => committed++).catch(done);
+			await expect(async () => {
+				for await (const _ of store.getSagaEvents('SagaA:origin-1', filter as any))
+					void _;
+			}).rejects.toThrow('filter.beforeEvent.sagaOrigins does not match sagaId');
 		});
 	});
 
 	describe('getNewId', () => {
 
-		it('retrieves a unique ID for new aggregate from storage', () => Promise.resolve(es.getNewId()).then(id => {
-			expect(id).to.equal(1);
-		}));
-	});
-
-	describe('getAggregateEvents(aggregateId)', () => {
-
-		it('returns all events committed for a specific aggregate', async () => {
-
-			await es.commit([goodEvent, goodEvent2]);
-
-			const events = await es.getAggregateEvents(goodEvent.aggregateId);
-
-			expect(events).to.be.an('Array');
-			expect(events).to.have.length(1);
-			expect(events).to.have.nested.property('[0].type', 'somethingHappened');
-		});
-
-		it('tries to retrieve aggregate snapshot', async () => {
-
-			snapshotStorage.getAggregateSnapshot = <T>() => snapshotEvent as IEvent<T>;
-			snapshotStorage.saveAggregateSnapshot = () => { };
-			sinon.spy(snapshotStorage, 'getAggregateSnapshot');
-			const getAggregateEventsSpy = sinon.spy(storage, 'getAggregateEvents');
-
-			expect(es).to.have.property('snapshotsSupported', true);
-
-			const events = await es.getAggregateEvents(goodEvent2.aggregateId);
-
-			expect(snapshotStorage).to.have.nested.property('getAggregateSnapshot.calledOnce', true);
-			expect(storage).to.have.nested.property('getAggregateEvents.calledOnce', true);
-
-			const [, eventFilter] = getAggregateEventsSpy.lastCall.args;
-
-			expect(eventFilter).to.have.property('snapshot');
-			expect(eventFilter).to.have.nested.property('snapshot.type');
-			expect(eventFilter).to.have.nested.property('snapshot.aggregateId');
-			expect(eventFilter).to.have.nested.property('snapshot.aggregateVersion');
+		it('delegates to the identifierProvider', async () => {
+			const id = await store.getNewId();
+			expect(id).toBe(mockId);
+			expect(mockIdentifierProvider.getNewId).toHaveBeenCalled();
 		});
 	});
 
-	describe('getSagaEvents(sagaId, options)', () => {
+	describe('on/off/queue', () => {
 
-		it('returns events committed by saga prior to event that triggered saga execution', () => {
+		it('delegates on, off, and queue calls to eventBus', () => {
+			const handler = jest.fn();
+			const onSpy = jest.spyOn(eventBus, 'on');
+			const offSpy = jest.spyOn(eventBus, 'off');
+			const queueSpy = jest.spyOn(eventBus, 'queue');
 
-			const events = [
-				{ sagaId: 1, sagaVersion: 1, type: 'somethingHappened' },
-				{ sagaId: 1, sagaVersion: 2, type: 'anotherHappened' },
-				{ sagaId: 2, sagaVersion: 1, type: 'somethingHappened' }
-			];
+			store.on('testEvent', handler);
+			expect(onSpy).toHaveBeenCalledWith('testEvent', handler);
 
-			const triggeredBy = events[1];
+			store.off('testEvent', handler);
+			expect(offSpy).toHaveBeenCalledWith('testEvent', handler);
 
-			return es.commit(events).then(() => es.getSagaEvents(1, { beforeEvent: triggeredBy }).then(events => {
+			const queueResult = store.queue('testQueue');
+			expect(queueResult).toBeInstanceOf(InMemoryMessageBus);
+			expect(queueSpy).toHaveBeenCalledWith('testQueue');
+		});
 
-				expect(events).to.be.an('Array');
-				expect(events).to.have.length(1);
-				expect(events).to.have.nested.property('[0].type', 'somethingHappened');
-			}));
+		it('throws when injected eventBus does not support queue()', () => {
+			(store as any).eventBus = {
+				publish: jest.fn(),
+				on: jest.fn(),
+				off: jest.fn()
+			};
+
+			expect(() => store.queue('testQueue'))
+				.toThrow('Injected eventBus does not support named queues');
 		});
 	});
 
-	describe('getAllEvents(eventTypes)', () => {
+	describe('once', () => {
 
-		it('returns a promise that resolves to all committed events of specific types', async () => {
-			await es.commit([goodEvent, goodEvent2]);
-
-			const events: IEvent[] = [];
-			for await (const e of es.getAllEvents(['somethingHappened']))
-				events.push(e);
-
-			expect(events).to.have.length(2);
-			expect(events).to.have.nested.property('[0].aggregateId', '1');
-			expect(events).to.have.nested.property('[1].aggregateId', '2');
-		});
-	});
-
-	describe('on(eventType, handler)', () => {
-
-		it('exists', () => {
-			expect(es).to.respondTo('on');
-		});
-
-		it('fails, when trying to set up second messageType handler within the same node and named queue (Receptors)', () => {
-
-			es = new EventStore({ storage, messageBus });
-
-			expect(() => {
-				es.queue('namedQueue').on('somethingHappened', () => { });
-			}).to.not.throw();
-
-			expect(() => {
-				es.queue('anotherNamedQueue').on('somethingHappened', () => { });
-			}).to.not.throw();
-
-			expect(() => {
-				es.queue('namedQueue').on('somethingHappened', () => { });
-			}).to.throw('"somethingHappened" handler is already set up on the "namedQueue" queue');
-		});
-
-		it('sets up multiple handlers for same messageType, when queue name is not defined (Projections)', () => {
-
-			es = new EventStore({ storage, eventStoreConfig: { publishAsync: false }, messageBus });
-
-			const projection1Handler = sinon.spy();
-			const projection2Handler = sinon.spy();
-
-			es.on('somethingHappened', projection1Handler);
-			es.on('somethingHappened', projection2Handler);
-
-			return es.commit([
-				{ type: 'somethingHappened', aggregateId: 1, aggregateVersion: 0 }
-			]).then(() => {
-				expect(projection1Handler).to.have.property('calledOnce', true);
-				expect(projection2Handler).to.have.property('calledOnce', true);
-			});
-		});
-	});
-
-	describe('once(eventType, handler, filter)', () => {
-
-		it('executes handler only once, when event matches filter', done => {
-			let firstAggregateCounter = 0;
-			let secondAggregateCounter = 0;
-
-			es.once('somethingHappened',
-				event => ++firstAggregateCounter,
-				event => event.aggregateId === '1');
-
-			es.once('somethingHappened',
-				event => ++secondAggregateCounter,
-				event => event.aggregateId === '2');
-
-			es.commit([goodEvent, goodEvent, goodEvent, goodEvent2]);
-			es.commit([goodEvent2, goodEvent2]);
-
-			setTimeout(() => {
-				try {
-					expect(firstAggregateCounter).to.equal(1);
-					expect(secondAggregateCounter).to.equal(1);
-
-					done();
-				}
-				catch (err) {
-					done(err);
-				}
-			}, 100);
-		});
-
-		it('returns a promise', () => {
-
-			setImmediate(() => {
-				es.commit([goodEvent]);
+		it('sets up a one-time subscription and resolves with an event', async () => {
+			let callCount = 0;
+			const testEvent = { type: 'onceEvent' } as IEvent;
+			const promise = store.once('onceEvent', (_e: IEvent) => {
+				callCount++;
 			});
 
-			return es.once('somethingHappened').then(e => {
-				expect(e).to.exist;
-				expect(e).to.have.property('type', goodEvent.type);
+			await store.dispatch([testEvent]);
+
+			await expect(promise).resolves.toMatchObject(testEvent);
+			expect(callCount).toBe(1);
+		});
+
+		it('works only once', async () => {
+			let callCount = 0;
+			const testEvent = { type: 'onceEvent' } as IEvent;
+			const testEvent2 = { type: 'onceEvent' } as IEvent;
+			const promise = store.once('onceEvent', (_e: IEvent) => {
+				callCount++;
 			});
+
+			await store.dispatch([testEvent, testEvent2]);
+			await store.dispatch([testEvent2]);
+
+			await expect(promise).resolves.toMatchObject(testEvent);
+			expect(callCount).toBe(1);
 		});
 	});
 });

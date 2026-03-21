@@ -1,7 +1,3 @@
-const KNOWN_METHOD_NAMES = new Set([
-	'subscribe'
-]);
-
 function getInheritedPropertyNames(prototype: object): string[] {
 	const parentPrototype = prototype && Object.getPrototypeOf(prototype);
 	if (!parentPrototype)
@@ -16,11 +12,25 @@ function getInheritedPropertyNames(prototype: object): string[] {
 	];
 }
 
+type ObserverConstructor<T extends object> = abstract new (...args: any[]) => T;
+
 /**
- * Get message handler names from a command/event handler class.
- * Assumes all private method names start from underscore ("_").
+ * Get message handler names from an observer instance.
+ * Assumes private method names start with underscore (`_`).
  */
-export function getMessageHandlerNames(observerInstanceOrClass: (object | Function)): string[] {
+export function getMessageHandlerNames<T extends object>(observerInstance: T): Extract<keyof T, string>[];
+
+/**
+ * Get message handler names from an observer class constructor.
+ * Assumes private method names start with underscore (`_`).
+ */
+export function getMessageHandlerNames<T extends object>(
+	observerClass: ObserverConstructor<T>
+): Extract<keyof T, string>[];
+
+export function getMessageHandlerNames<T extends object>(
+	observerInstanceOrClass: T | ObserverConstructor<T>
+): Extract<keyof T, string>[] {
 	if (!observerInstanceOrClass)
 		throw new TypeError('observerInstanceOrClass argument required');
 
@@ -31,14 +41,13 @@ export function getMessageHandlerNames(observerInstanceOrClass: (object | Functi
 	if (!prototype)
 		throw new TypeError('prototype cannot be resolved');
 
-	const inheritedProperties = new Set(getInheritedPropertyNames(prototype));
-
+	const inheritedProperties = getInheritedPropertyNames(prototype);
 	const propDescriptors = Object.getOwnPropertyDescriptors(prototype);
 	const propNames = Object.keys(propDescriptors);
 
 	return propNames.filter(key =>
 		!key.startsWith('_') &&
-		!inheritedProperties.has(key) &&
-		!KNOWN_METHOD_NAMES.has(key) &&
-		typeof propDescriptors[key].value === 'function');
+		!inheritedProperties.includes(key) &&
+		typeof propDescriptors[key].value === 'function'
+	) as Extract<keyof T, string>[];
 }

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ES2022",
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo.cjs",
+    "outDir": "./dist/cjs",
+    "noEmit": false,
+    "declaration": false
+  }
+}

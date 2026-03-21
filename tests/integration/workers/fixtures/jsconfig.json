@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "checkJs": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "lib": [
+      "es2022",
+      "dom"
+    ],
+    "baseUrl": "..",
+    "paths": {
+      "node-cqrs": [
+        "types/index.d.ts"
+      ],
+      "node-cqrs/*": [
+        "types/*/index.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "**/*"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../dist",
+    "**/bundle.js"
+  ]
+}

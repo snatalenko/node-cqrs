@@ -1,20 +1,55 @@
-import { ICommand, Identifier, IEvent, ISaga, ISagaConstructorParams } from "./interfaces";
-
-import { getClassName, validateHandlers, getHandler } from './utils';
+import type {
+	ICommand, ICommandBus, Identifier, IEvent, IEventStore, IMutableState, ISaga, ISagaConstructor,
+	ISagaConstructorParams
+} from './interfaces/index.ts';
+import { SagaEventHandler } from './SagaEventHandler.ts';
+import {
+	validateHandlers,
+	getHandler,
+	getClassName,
+	getMessageHandlerNames,
+	assertDefined,
+	assertString,
+	assertMessage,
+	assertEvent,
+	assertFunction
+} from './utils/index.ts';
 
 /**
  * Base class for Saga definition
  */
 export abstract class AbstractSaga implements ISaga {
 
-	/** List of events that start new saga, must be overridden in Saga implementation */
-	static get startsWith(): string[] {
-		throw new Error('startsWith must be overridden to return a list of event types that start saga');
+	/**
+	 * Optional list of events that start new saga.
+	 *
+	 * When not defined, saga start is inferred by the absence of `message.sagaOrigins[sagaDescriptor]`.
+	 */
+	static get startsWith(): string[] | undefined {
+		return undefined;
 	}
 
-	/** List of event types being handled by Saga, must be overridden in Saga implementation */
+	/** List of event types being handled by Saga, can be overridden in Saga implementation */
 	static get handles(): string[] {
-		return [];
+		return getMessageHandlerNames(this);
+	}
+
+	/**
+	 * Convenience helper to create a `SagaEventHandler` for this saga type and subscribe it to
+	 * the provided `eventStore`.
+	 */
+	static register<T extends AbstractSaga>(
+		this: ISagaConstructor & (new (options: ISagaConstructorParams) => T),
+		eventStore: IEventStore,
+		commandBus: ICommandBus
+	): SagaEventHandler {
+		const handler = new SagaEventHandler({
+			sagaType: this,
+			eventStore,
+			commandBus
+		});
+		handler.subscribe(eventStore);
+		return handler;
 	}
 
 	/** Saga ID */
@@ -27,88 +62,85 @@ export abstract class AbstractSaga implements ISaga {
 		return this.#version;
 	}
 
-	/** Command execution queue */
-	get uncommittedMessages(): ICommand[] {
-		return Array.from(this.#messages);
-	}
+	protected state?: IMutableState | object;
 
 	#id: Identifier;
 	#version = 0;
 	#messages: ICommand[] = [];
+	#handling = false;
 
 	/**
 	 * Creates an instance of AbstractSaga
 	 */
 	constructor(options: ISagaConstructorParams) {
-		if (!options)
-			throw new TypeError('options argument required');
-		if (!options.id)
-			throw new TypeError('options.id argument required');
+		assertDefined(options, 'options');
+		assertDefined(options.id, 'options.id');
+		if (options.events)
+			throw new TypeError('options.events argument is deprecated');
 
 		this.#id = options.id;
 
 		validateHandlers(this, 'startsWith');
 		validateHandlers(this, 'handles');
-
-		if (options.events) {
-			options.events.forEach(e => this.apply(e));
-			this.resetUncommittedMessages();
-		}
-
-		Object.defineProperty(this, 'restored', { value: true });
 	}
 
 	/** Modify saga state by applying an event */
-	apply(event: IEvent): Promise<void> | void {
-		if (!event)
-			throw new TypeError('event argument required');
-		if (!event.type)
-			throw new TypeError('event.type argument required');
+	mutate(event: IEvent): void {
+		assertEvent(event, 'event');
 
-		const handler = getHandler(this, event.type);
-		if (!handler)
-			throw new Error(`'${event.type}' handler is not defined or not a function`);
-
-		const r = handler.call(this, event);
-		if (r instanceof Promise) {
-			return r.then(() => {
-				this.#version += 1;
-			});
+		if (this.state) {
+			const handler = 'mutate' in this.state ?
+				this.state.mutate :
+				getHandler(this.state, event.type);
+			if (handler)
+				handler.call(this.state, event);
 		}
 
 		this.#version += 1;
-		return undefined;
+	}
+
+	/** Process saga event and return produced commands */
+	async handle(event: IEvent): Promise<ReadonlyArray<ICommand>> {
+		assertEvent(event, 'event');
+
+		if (this.#handling)
+			throw new Error('Another event is being processed, concurrent handling is not allowed');
+
+		const handler = getHandler(this, event.type);
+		assertFunction(handler, `${event.type} handler`);
+
+		this.#handling = true;
+		this.#messages.length = 0;
+
+		try {
+			await handler.call(this, event);
+			this.mutate(event);
+			return this.#messages.splice(0);
+		}
+		finally {
+			this.#handling = false;
+		}
 	}
 
 	/** Format a command and put it to the execution queue */
-	protected enqueue(commandType: string, aggregateId: Identifier | undefined, payload: object) {
-		if (typeof commandType !== 'string' || !commandType.length)
-			throw new TypeError('commandType argument must be a non-empty String');
-		if (!['string', 'number', 'undefined'].includes(typeof aggregateId))
-			throw new TypeError('aggregateId argument must be either string, number or undefined');
+	protected enqueue(commandType: string): void;
+	protected enqueue(commandType: string, aggregateId: Identifier): void;
+	protected enqueue<T>(commandType: string, aggregateId: Identifier | undefined, payload: T): void;
+	protected enqueue<T>(commandType: string, aggregateId?: Identifier, payload?: T) {
+		assertString(commandType, 'commandType');
 
 		this.enqueueRaw({
 			aggregateId,
-			sagaId: this.id,
-			sagaVersion: this.version,
 			type: commandType,
 			payload
 		});
 	}
 
 	/** Put a command to the execution queue */
-	 protected enqueueRaw(command: ICommand) {
-		if (typeof command !== 'object' || !command)
-			throw new TypeError('command argument must be an Object');
-		if (typeof command.type !== 'string' || !command.type.length)
-			throw new TypeError('command.type argument must be a non-empty String');
+	protected enqueueRaw(command: ICommand) {
+		assertMessage(command, 'command');
 
 		this.#messages.push(command);
-	}
-
-	/** Clear the execution queue */
-	 resetUncommittedMessages() {
-		this.#messages.length = 0;
 	}
 
 	/** Get human-readable Saga name */

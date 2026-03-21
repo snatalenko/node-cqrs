@@ -1,22 +1,60 @@
 import {
+	assertBoolean, assertDefined, assertMessage, assertNonNegativeInteger, assertObservable, assertStringArray,
+	Lock, MapAssertable
+} from './utils/index.ts';
+import { ConcurrencyError } from './errors/index.ts';
+import type {
+	AggregateEventsQueryParams,
 	IAggregate,
 	IAggregateConstructor,
 	IAggregateFactory,
 	ICommand,
-	ICommandBus,
 	ICommandHandler,
+	IContainer,
 	Identifier,
 	IEventSet,
 	IEventStore,
-	IExtendableLogger,
-	ILogger
-} from "./interfaces";
+	ILocker,
+	ILogger,
+	IObservable,
+	RetryOnConcurrencyErrorDecision,
+	RetryOnConcurrencyErrorOptions,
+	RetryOnConcurrencyErrorResolver
+} from './interfaces/index.ts';
+import { isObject } from './interfaces/isObject.ts';
 
-import {
-	getClassName,
-	getHandledMessageTypes,
-	subscribe
-} from './utils';
+const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
+
+function normalizeRetryResolver(value?: RetryOnConcurrencyErrorOptions): RetryOnConcurrencyErrorResolver {
+	if (typeof value === 'function')
+		return value;
+	if (value === false)
+		return () => false;
+	if (value === 'ignore')
+		return err => (err instanceof ConcurrencyError ? 'ignore' : false);
+	if (typeof value === 'number')
+		return (err, events, attempt) => err instanceof ConcurrencyError && attempt < value;
+
+	if (isObject(value)) {
+		const { maxRetries = DEFAULT_MAX_RETRY_ATTEMPTS, ignoreAfterMaxRetries = false } = value;
+		assertNonNegativeInteger(maxRetries, 'retryOnConcurrencyError.maxRetries');
+		assertBoolean(ignoreAfterMaxRetries, 'retryOnConcurrencyError.ignoreAfterMaxRetries');
+
+		return (err, events, attempt): RetryOnConcurrencyErrorDecision => {
+			if (!(err instanceof ConcurrencyError))
+				return false;
+
+			if (attempt < maxRetries)
+				return true;
+
+			return ignoreAfterMaxRetries ? 'ignore' : false;
+		};
+	}
+
+	// undefined or true — default behavior
+	return (err, events, attempt) =>
+		err instanceof ConcurrencyError && attempt < DEFAULT_MAX_RETRY_ATTEMPTS;
+}
 
 /**
  * Aggregate command handler.
@@ -25,46 +63,60 @@ import {
  * Upon command receiving creates an instance of aggregate,
  * restores its state, passes command and commits emitted events to event store.
  */
-export class AggregateCommandHandler implements ICommandHandler {
+export class AggregateCommandHandler<TAggregate extends IAggregate> implements ICommandHandler {
 
-	#eventStore: IEventStore;
-	#logger?: ILogger;
+	readonly #eventStore: IEventStore;
+	readonly #logger?: ILogger;
+	readonly #aggregateFactory: IAggregateFactory<TAggregate, any>;
+	readonly #handles: Readonly<string[]>;
+	readonly #restoresFrom?: Readonly<string[]>;
+	readonly #shouldRetry: RetryOnConcurrencyErrorResolver;
 
-	#aggregateFactory: IAggregateFactory<any>;
-	#handles: string[];
+	/** Aggregate instances cache for concurrent command handling */
+	#aggregatesCache: MapAssertable<Identifier, Promise<TAggregate>> = new MapAssertable();
+
+	/** Lock for sequential aggregate command execution */
+	#executionLock: ILocker;
 
 	constructor({
 		eventStore,
 		aggregateType,
 		aggregateFactory,
 		handles,
+		executionLocker = new Lock(),
+		restoresFrom,
+		retryOnConcurrencyError,
 		logger
-	}: {
-		eventStore: IEventStore,
-		aggregateType?: IAggregateConstructor<any>,
-		aggregateFactory?: IAggregateFactory<any>,
-		handles?: string[],
-		logger?: ILogger | IExtendableLogger
+	}: Pick<IContainer, 'eventStore' | 'executionLocker' | 'logger'> & {
+		aggregateType?: IAggregateConstructor<TAggregate, any>,
+		aggregateFactory?: IAggregateFactory<TAggregate, any>,
+		handles?: Readonly<string[]>,
+		restoresFrom?: Readonly<string[]>,
+		retryOnConcurrencyError?: RetryOnConcurrencyErrorOptions
 	}) {
-		if (!eventStore)
-			throw new TypeError('eventStore argument required');
+		assertDefined(eventStore, 'eventStore');
 
 		this.#eventStore = eventStore;
+		this.#executionLock = executionLocker;
 		this.#logger = logger && 'child' in logger ?
-			logger.child({ service: getClassName(this) }) :
+			logger.child({ service: new.target.name }) :
 			logger;
 
 		if (aggregateType) {
 			const AggregateType = aggregateType;
 			this.#aggregateFactory = params => new AggregateType(params);
-			this.#handles = getHandledMessageTypes(AggregateType);
+			this.#handles = AggregateType.handles;
+			this.#restoresFrom = AggregateType.restoresFrom;
+			this.#shouldRetry = normalizeRetryResolver(retryOnConcurrencyError ??
+				AggregateType.retryOnConcurrencyError);
 		}
 		else if (aggregateFactory) {
-			if (!Array.isArray(handles) || !handles.length)
-				throw new TypeError('handles argument must be an non-empty Array');
+			assertStringArray(handles, 'handles');
 
 			this.#aggregateFactory = aggregateFactory;
 			this.#handles = handles;
+			this.#restoresFrom = restoresFrom;
+			this.#shouldRetry = normalizeRetryResolver(retryOnConcurrencyError);
 		}
 		else {
 			throw new TypeError('either aggregateType or aggregateFactory is required');
@@ -72,28 +124,38 @@ export class AggregateCommandHandler implements ICommandHandler {
 	}
 
 	/** Subscribe to all command types handled by aggregateType */
-	subscribe(commandBus: ICommandBus) {
-		subscribe(commandBus, this, {
-			messageTypes: this.#handles,
-			masterHandler: (c: ICommand) => this.execute(c)
-		});
+	subscribe(commandBus: IObservable) {
+		assertObservable(commandBus, 'commandBus');
+
+		for (const commandType of this.#handles)
+			commandBus.on(commandType, (cmd: ICommand) => this.execute(cmd));
 	}
 
 	/** Restore aggregate from event store events */
-	async #restoreAggregate(id: Identifier): Promise<IAggregate> {
-		if (!id)
-			throw new TypeError('id argument required');
+	async #restoreAggregate(id: Identifier): Promise<TAggregate> {
+		assertDefined(id, 'id');
 
-		const events = await this.#eventStore.getAggregateEvents(id);
-		const aggregate = this.#aggregateFactory({ id, events });
+		const aggregate = this.#aggregateFactory({ id });
 
-		this.#logger?.info(`${aggregate} state restored from ${events.length} event(s)`);
+		const queryOptions = this.#restoresFrom?.length ?
+			{ eventTypes: this.#restoresFrom, tail: 'last' } satisfies AggregateEventsQueryParams :
+			undefined;
+
+		const eventsIterable = this.#eventStore.getAggregateEvents(id, queryOptions);
+
+		let eventCount = 0;
+		for await (const event of eventsIterable) {
+			aggregate.mutate(event);
+			eventCount += 1;
+		}
+
+		this.#logger?.info(`${aggregate} state restored from ${eventCount} event(s)`);
 
 		return aggregate;
 	}
 
 	/** Create new aggregate with new Id generated by event store */
-	async #createAggregate(): Promise<IAggregate> {
+	async #createAggregate(): Promise<TAggregate> {
 		const id = await this.#eventStore.getNewId();
 		const aggregate = this.#aggregateFactory({ id });
 		this.#logger?.info(`${aggregate} created`);
@@ -101,29 +163,95 @@ export class AggregateCommandHandler implements ICommandHandler {
 		return aggregate;
 	}
 
+	/**
+	 * Register interest in the cache entry before acquiring the lock, so concurrent callers for the same aggregateId
+	 * share one restoration promise instead of each triggering a separate event-store read
+	 */
+	#allocateCacheEntry(aggregateId: Identifier | undefined) {
+		if (aggregateId)
+			this.#aggregatesCache.assert(aggregateId, () => this.#restoreAggregate(aggregateId));
+	}
+
+	/**
+	 * Replace the dirty cache entry with a fresh restoration promise
+	 * so both the retry and any commands queued on the lock start from a clean state.
+	 */
+	#resetCacheEntry(aggregateId: Identifier | undefined) {
+		if (aggregateId)
+			this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
+	}
+
+	/**
+	 * Decrement the usage counter registered above;
+	 * deletes the entry when the last concurrent caller for this aggregateId is done.
+	 */
+	#releaseCacheEntry(aggregateId: Identifier | undefined) {
+		if (aggregateId)
+			this.#aggregatesCache.release(aggregateId);
+	}
+
 	/** Pass a command to corresponding aggregate */
 	async execute(cmd: ICommand): Promise<IEventSet> {
-		if (!cmd) throw new TypeError('cmd argument required');
-		if (!cmd.type) throw new TypeError('cmd.type argument required');
+		assertMessage(cmd, 'cmd');
 
-		const aggregate = cmd.aggregateId ?
-			await this.#restoreAggregate(cmd.aggregateId) :
-			await this.#createAggregate();
+		const { aggregateId } = cmd;
 
-		await aggregate.handle(cmd);
+		this.#allocateCacheEntry(aggregateId);
 
-		let events = aggregate.changes;
-		this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
-		if (!events.length)
-			return events;
+		// Serialize execution per aggregate — commands for the same id queue here.
+		const lease = aggregateId ?
+			await this.#executionLock.acquire(String(aggregateId)) :
+			undefined;
 
-		if (aggregate.shouldTakeSnapshot && this.#eventStore.snapshotsSupported) {
-			aggregate.takeSnapshot();
-			events = aggregate.changes;
+		try {
+			for (let attempt = 0; ; attempt++) {
+				// Read the current cache entry after acquiring the lock. On the first attempt
+				// this is the pre-warmed (possibly shared) instance; on retries it is the
+				// fresh instance placed into the cache by the error handler below.
+				const aggregate = aggregateId ?
+					await this.#aggregatesCache.get(aggregateId)! :
+					await this.#createAggregate();
+
+				let events: IEventSet;
+				try {
+					events = await aggregate.handle(cmd);
+
+					this.#logger?.info(`${aggregate} "${cmd.type}" command processed, ${events.length} event(s) produced`);
+				}
+				catch (error: unknown) {
+					this.#resetCacheEntry(aggregateId);
+					throw error;
+				}
+
+				try {
+					if (events.length)
+						await this.#eventStore.dispatch(events);
+
+					return events;
+				}
+				catch (error: unknown) {
+					this.#resetCacheEntry(aggregateId);
+
+					const retryDecision = this.#shouldRetry(error, events, attempt);
+					if (!retryDecision)
+						throw error;
+
+					if (retryDecision === 'ignore') {
+						this.#logger?.warn(`"${cmd.type}" command error ignored after ${attempt + 1} attempt(s), force-dispatching`, { error });
+						if (events.length)
+							await this.#eventStore.dispatch(events, { ignoreConcurrencyError: true });
+
+						return events;
+					}
+
+					this.#logger?.warn(`"${cmd.type}" command failed on attempt ${attempt + 1}, will retry`, { error });
+				}
+			}
 		}
+		finally {
+			lease?.release();
 
-		await this.#eventStore.commit(events);
-
-		return events;
+			this.#releaseCacheEntry(aggregateId);
+		}
 	}
 }

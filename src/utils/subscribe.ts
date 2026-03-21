@@ -1,8 +1,22 @@
-import { IMessageHandler, IObservable } from "../interfaces";
-import { getHandler } from './getHandler';
-import { getHandledMessageTypes } from './getHandledMessageTypes';
+import { type IMessageHandler, type IObservable, isObservableQueueProvider } from '../interfaces/index.ts';
+import { assertStringArray, assertDefined, assertFunction, assertObject, assertObservable } from './assert.ts';
+import { getHandler } from './getHandler.ts';
+import { getMessageHandlerNames } from './getMessageHandlerNames.ts';
 
 const unique = <T>(arr: T[]): T[] => [...new Set(arr)];
+
+/**
+ * Get a list of message types handled by observer
+ */
+function getHandledMessageTypes(observerInstanceOrClass: (object | Function)): string[] {
+	assertDefined(observerInstanceOrClass, 'observerInstanceOrClass');
+
+	const prototype = Object.getPrototypeOf(observerInstanceOrClass);
+	if (prototype && prototype.constructor && prototype.constructor.handles)
+		return prototype.constructor.handles;
+
+	return getMessageHandlerNames(observerInstanceOrClass);
+}
 
 /**
  * Subscribe observer to observable
@@ -16,36 +30,28 @@ export function subscribe(
 		queueName?: string
 	} = {}
 ) {
-	if (typeof observable !== 'object' || !observable)
-		throw new TypeError('observable argument must be an Object');
-	if (typeof observable.on !== 'function')
-		throw new TypeError('observable.on must be a Function');
-	if (typeof observer !== 'object' || !observer)
-		throw new TypeError('observer argument must be an Object');
+	assertObservable(observable, 'observable');
+	assertObject(observer, 'observer');
 
 	const { masterHandler, messageTypes, queueName } = options;
-	if (masterHandler && typeof masterHandler !== 'function')
-		throw new TypeError('masterHandler parameter, when provided, must be a Function');
-	if (queueName && typeof observable.queue !== 'function')
-		throw new TypeError('observable.queue, when queueName is specified, must be a Function');
+	if (masterHandler)
+		assertFunction(masterHandler, 'masterHandler');
 
 	const subscribeTo = messageTypes || getHandledMessageTypes(observer);
-	if (!Array.isArray(subscribeTo))
-		throw new TypeError('either options.messageTypes, observer.handles or ObserverType.handles is required');
+	assertStringArray(subscribeTo, 'either options.messageTypes, observer.handles or ObserverType.handles');
 
 	for (const messageType of unique(subscribeTo)) {
 		const handler = masterHandler || getHandler(observer, messageType);
-			if (!handler)
-			throw new Error(`'${messageType}' handler is not defined or not a function`);
+		assertFunction(handler, `'${messageType}' handler`);
 
 		if (queueName) {
-			if(!observable.queue)
+			if (!isObservableQueueProvider(observable))
 				throw new TypeError('Observer does not support named queues');
 
-			observable.queue(queueName).on(messageType, handler);
+			observable.queue(queueName).on(messageType, (event, meta) => handler.call(observer, event, meta));
 		}
 		else {
-			observable.on(messageType, handler);
+			observable.on(messageType, (event, meta) => handler.call(observer, event, meta));
 		}
 	}
 }
