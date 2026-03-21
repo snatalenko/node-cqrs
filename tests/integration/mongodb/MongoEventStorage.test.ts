@@ -76,6 +76,28 @@ describe('MongoEventStorage (integration)', () => {
 			).rejects.toBeInstanceOf(ConcurrencyError);
 		});
 
+		it('rolls back earlier inserts when a later event in the batch conflicts', async () => {
+			const conflictingAggregateId = storage.getNewId();
+			const otherAggregateId = storage.getNewId();
+
+			await storage.commitEvents([
+				{ type: 'ExistingEvent', aggregateId: conflictingAggregateId, aggregateVersion: 1 }
+			] as any);
+
+			await expect(
+				storage.commitEvents([
+					{ type: 'InsertedThenRolledBack', aggregateId: otherAggregateId, aggregateVersion: 1 },
+					{ type: 'ConflictingEvent', aggregateId: conflictingAggregateId, aggregateVersion: 1 }
+				])
+			).rejects.toBeInstanceOf(ConcurrencyError);
+
+			const rolledBack: any[] = [];
+			for await (const e of storage.getAggregateEvents(otherAggregateId))
+				rolledBack.push(e);
+
+			expect(rolledBack).toEqual([]);
+		});
+
 		it('throws when ignoreConcurrencyError is true', async () => {
 			const aggregateId = storage.getNewId();
 
@@ -184,7 +206,7 @@ describe('MongoEventStorage (integration)', () => {
 	describe('getSagaEvents', () => {
 		it('retrieves origin event and saga events up to beforeEvent', async () => {
 			// Drop and recreate with a fresh storage
-			await db.collection(COLLECTION).drop().catch(() => {});
+			await db.collection(COLLECTION).drop().catch(() => { });
 			const newStorage = new MongoEventStorage({
 				mongoDbFactory: () => db,
 				mongoEventStorageConfig: { collection: COLLECTION }
@@ -209,6 +231,40 @@ describe('MongoEventStorage (integration)', () => {
 			expect(results[0].type).toBe('SagaStarted');
 			expect(results[0].id).toBe(originEventId);
 			expect(results[1].type).toBe('SagaProgressed');
+		});
+
+		it('throws when origin event cannot be found', async () => {
+			await storage.commitEvents([
+				{ type: 'SagaProgressed', sagaOrigins: { SagaA: storage.getNewId() } }
+			] as any);
+
+			const missingOriginId = storage.getNewId();
+			const beforeEvent = {
+				id: storage.getNewId(),
+				type: 'SagaFinished',
+				sagaOrigins: { SagaA: missingOriginId }
+			};
+
+			await storage.commitEvents([beforeEvent] as any);
+
+			const stream = storage.getSagaEvents(`SagaA:${missingOriginId}`, { beforeEvent });
+			await expect(stream.next()).rejects.toThrow(`origin event ${missingOriginId} not found`);
+		});
+
+		it('throws when beforeEvent cannot be found', async () => {
+			const originEventId = storage.getNewId();
+			await storage.commitEvents([
+				{ id: originEventId, type: 'SagaStarted' }
+			] as any);
+
+			const beforeEvent = {
+				id: storage.getNewId(),
+				type: 'SagaFinished',
+				sagaOrigins: { SagaA: originEventId }
+			};
+
+			const stream = storage.getSagaEvents(`SagaA:${originEventId}`, { beforeEvent });
+			await expect(stream.next()).rejects.toThrow(`beforeEvent ${beforeEvent.id} not found`);
 		});
 	});
 
