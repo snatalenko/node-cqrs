@@ -180,12 +180,14 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 	}
 
 	/**
-	 * Replace the dirty cache entry with a fresh restoration promise
+	 * Replace the dirty cache entry with a lazy restoration factory
 	 * so both the retry and any commands queued on the lock start from a clean state.
+	 * The actual restore is deferred until the entry is awaited,
+	 * avoiding orphaned resources when the entry is released before consumption.
 	 */
 	#resetCacheEntry(aggregateId: Identifier | undefined) {
 		if (aggregateId)
-			this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
+			this.#aggregatesCache.setLazy(aggregateId, () => this.#restoreAggregate(aggregateId));
 	}
 
 	/**
