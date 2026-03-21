@@ -1,18 +1,20 @@
 import { ObjectId, type Collection, type Db, type Document, type Filter } from 'mongodb';
+import type { IContainer } from 'node-cqrs';
 import type {
-	IIdentifierProvider,
+	EventQueryAfter,
+	AggregateEventsQueryParams,
+	DispatchPipelineBatch,
+	IDispatchPipelineProcessor,
 	IEvent,
 	IEventSet,
-	EventQueryAfter,
 	IEventStorageReader,
 	IEventStream,
-	Identifier,
-	IDispatchPipelineProcessor,
-	DispatchPipelineBatch,
-	AggregateEventsQueryParams
+	IIdentifierProvider,
+	Identifier
 } from '../interfaces/index.ts';
 import { parseSagaId } from '../utils/index.ts';
 import { ConcurrencyError } from '../errors/index.ts';
+import { assertFunction, assertString } from '../utils/assert.ts';
 import { registerExitCleanup } from './registerExitCleanup.ts';
 
 type EventDocument = Document & {
@@ -82,15 +84,11 @@ export class MongoEventStorage implements
 		mongoDbFactory,
 		mongoEventStorageConfig,
 		process
-	}: {
-		mongoDbFactory: () => Promise<Db> | Db;
-		mongoEventStorageConfig?: { collection?: string };
-		process?: NodeJS.Process;
-	}) {
-		if (typeof mongoDbFactory !== 'function')
-			throw new TypeError('mongoDbFactory must be a Function');
+	}: Pick<IContainer, 'mongoDbFactory' | 'mongoEventStorageConfig' | 'process'>) {
+		assertFunction(mongoDbFactory, 'mongoDbFactory');
 
 		const collectionName = mongoEventStorageConfig?.collection ?? MongoEventStorage.EVENTS_COLLECTION;
+		assertString(collectionName, 'mongoEventStorageConfig.collection');
 
 		this.#initPromise = MongoEventStorage.#init(mongoDbFactory, collectionName);
 
