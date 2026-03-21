@@ -131,7 +131,7 @@ describe('EventStore', () => {
 			const [processed] = await store.dispatch([event]);
 
 			expect(processed).toBe(event);
-			expect(dispatchSpy).toHaveBeenCalledWith([event], { origin: 'internal' });
+			expect(dispatchSpy).toHaveBeenCalledWith([event], expect.objectContaining({ origin: 'internal' }));
 		});
 
 		it('merges custom dispatch metadata with internal origin', async () => {
@@ -144,10 +144,10 @@ describe('EventStore', () => {
 
 			await store.dispatch([event], { ignoreConcurrencyError: true });
 
-			expect(dispatchSpy).toHaveBeenCalledWith([event], {
+			expect(dispatchSpy).toHaveBeenCalledWith([event], expect.objectContaining({
 				ignoreConcurrencyError: true,
 				origin: 'internal'
-			});
+			}));
 		});
 
 		it('does not assign id to events when missing', async () => {

@@ -1,12 +1,11 @@
 import {
 	AbstractAggregate,
 	AbstractSaga,
-	CommandBus,
 	EventIdAugmentor,
 	EventStore,
 	InMemoryEventStorage,
 	InMemoryMessageBus
-} from 'node-cqrs';
+} from '../../../src/index.ts';
 
 type SignupUserPayload = { email: string };
 
@@ -56,7 +55,7 @@ async function main() {
 		eventBus
 	});
 
-	const commandBus = new CommandBus();
+	const commandBus = new InMemoryMessageBus();
 
 	let welcomeEmailCount = 0;
 	let resolveAllWelcomeEmails: (() => void) | undefined;

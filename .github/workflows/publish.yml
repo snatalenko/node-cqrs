@@ -29,10 +29,19 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-optional
 
-      - name: Publish pre-release to NPM
-        if: contains(github.ref_name, '-')
-        run: npm publish --provenance --tag next
+      - name: Publish to NPM
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAG=""
 
-      - name: Publish release to NPM
-        if: "!contains(github.ref_name, '-')"
-        run: npm publish --provenance
+          if [[ "$VERSION" == *-* ]]; then
+            # e.g. "1.0.0-rc.1" → "rc", "1.0.0-beta.2" → "beta"
+            PREID="${VERSION#*-}"
+            PREID="${PREID%%.*}"
+            # purely numeric pre-id (e.g. "1.0.0-1") → "next"
+            [[ "$PREID" =~ ^[0-9]+$ ]] && PREID=next
+            TAG="--tag $PREID"
+          fi
+
+          npm publish --provenance $TAG

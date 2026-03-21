@@ -1,5 +1,7 @@
+import type { Tracer } from '@opentelemetry/api';
 import { describe } from './Event.ts';
 import { InMemoryView } from './in-memory/InMemoryView.ts';
+import { recordSpanError, spanAttributes, spanContext } from './telemetry/index.ts';
 import {
 	type IViewLocker,
 	type IEventLocker,
@@ -41,7 +43,9 @@ export type AbstractProjectionParams<T> = {
 	 */
 	eventLocker?: IEventLocker,
 
-	logger?: ILogger | IExtendableLogger
+	logger?: ILogger | IExtendableLogger,
+
+	tracerFactory?: (name: string) => Tracer
 }
 
 /**
@@ -61,6 +65,8 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	#viewLocker?: IViewLocker | null;
 	#eventLocker?: IEventLocker | null;
 	protected _logger?: ILogger;
+	readonly #serviceName: string;
+	readonly #tracer: Tracer | undefined;
 
 	/**
 	 * The default view associated with the projection.
@@ -107,6 +113,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 		view,
 		viewLocker,
 		eventLocker,
+		tracerFactory,
 		logger
 	}: AbstractProjectionParams<TView> = {}) {
 		validateHandlers(this);
@@ -114,6 +121,8 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 		this.#view = view;
 		this.#viewLocker = viewLocker;
 		this.#eventLocker = eventLocker;
+		this.#serviceName = getClassName(this);
+		this.#tracer = tracerFactory?.(this.#serviceName);
 
 		this._logger = logger && 'child' in logger ?
 			logger.child({ service: getClassName(this) }) :
@@ -138,7 +147,21 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 			this._logger?.debug(`view is ready, processing ${describe(event)}`);
 		}
 
-		return this._project(event, meta);
+		const span = this.#tracer?.startSpan(`${this.#serviceName}.project ${event.type}`,
+			spanAttributes('projection', event, ['type', 'aggregateId']),
+			spanContext(meta)
+		);
+
+		try {
+			await this._project(event, meta);
+		}
+		catch (error: any) {
+			recordSpanError(span, error);
+			throw error;
+		}
+		finally {
+			span?.end();
+		}
 	}
 
 	/**
@@ -178,13 +201,24 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	 * won't be performed by another projection instance.
 	 * */
 	async restore(eventStore: IEventStorageReader): Promise<void> {
-		if (this._viewLocker)
-			await this._viewLocker.lock();
+		const span = this.#tracer?.startSpan(`${this.#serviceName}.restore`);
 
-		await this._restore(eventStore);
+		try {
+			if (this._viewLocker)
+				await this._viewLocker.lock();
 
-		if (this._viewLocker)
-			this._viewLocker.unlock();
+			await this._restore(eventStore);
+
+			if (this._viewLocker)
+				this._viewLocker.unlock();
+		}
+		catch (error: any) {
+			recordSpanError(span, error);
+			throw error;
+		}
+		finally {
+			span?.end();
+		}
 	}
 
 	/** Restore view state from not-yet-projected events */

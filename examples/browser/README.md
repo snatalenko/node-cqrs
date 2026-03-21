@@ -12,4 +12,4 @@ npm run build:browser
 
 The bundle is written to `dist/browser/node-cqrs.iife.js`.
 
-Then open `examples/browser-smoke-test/index.html` in a browser (e.g. double-click it).
+Then open `examples/browser/index.html` in a browser (e.g. double-click it).

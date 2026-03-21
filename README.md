@@ -93,7 +93,7 @@ Message delivery is handled by the following components, in order:
 npm install node-cqrs
 ```
 
-Node.js 16+ and [browsers](https://browserify.org) are supported.
+Node.js 16+ and browsers are supported.
 
 Optional peer dependencies:
 
@@ -524,7 +524,7 @@ See [examples/mongodb](examples/mongodb/index.ts) for a full working example.
 - [examples/user-domain/cjs](examples/user-domain/cjs) - CommonJS
 - [examples/sagas/simple](examples/sagas/simple/index.ts) - simple saga
 - [examples/sagas/overlaps](examples/sagas/overlaps/index.ts) - overlapping sagas, multi-step flow
-- [examples/browser/smoke-test](examples/browser/smoke-test) - browser smoke test
+- [examples/browser](examples/browser) - browser smoke test
 - [examples/workers/worker-projection](examples/workers/worker-projection) - worker thread projection
 - [examples/mongodb](examples/mongodb/index.ts) - MongoDB event storage with DI container and manual wiring
 

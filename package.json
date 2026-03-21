@@ -1,6 +1,6 @@
 {
   "name": "node-cqrs",
-  "version": "1.0.0-rc.46",
+  "version": "1.0.0-beta.0",
   "description": "TypeScript CQRS/Event Sourcing toolkit for Node.js with DI, sagas, projections, and optional Worker, RabbitMQ, and SQLite adapters",
   "type": "module",
   "keywords": [
@@ -64,7 +64,15 @@
   "scripts": {
     "cleanup": "rm -rf ./dist ./coverage",
     "test": "jest",
-    "examples": "bash scripts/test-examples.sh",
+    "examples": "npm run example:user-domain-framework-free && npm run example:user-domain-ts && npm run example:sagas-simple && npm run example:sagas-overlaps && npm run example:user-domain-cjs && npm run example:workers-worker-projection && npm run example:browser && npm run example:telemetry",
+    "example:telemetry": "node examples/telemetry/index.ts",
+    "example:user-domain-ts": "node examples/user-domain/ts/index.ts",
+    "example:user-domain-framework-free": "node examples/user-domain/framework-free/index.ts",
+    "example:user-domain-cjs": "npm run build:cjs && node examples/user-domain/cjs/index.cjs",
+    "example:sagas-simple": "node examples/sagas/simple/index.ts",
+    "example:sagas-overlaps": "node examples/sagas/overlaps/index.ts",
+    "example:workers-worker-projection": "npm run build:cjs && node examples/workers/worker-projection/index.cjs",
+    "example:browser": "npm run build:browser && echo \"\nOpen ./examples/browser/index.html in your browser (check DevTools console)\n\"",
     "pretest:examples": "npm run build:cjs",
     "test:examples": "jest --roots='<rootDir>/examples'",
     "test:coverage": "npm t -- --collect-coverage",
@@ -76,7 +84,9 @@
     "changelog": "conventional-changelog -n ./scripts/changelog/index.cjs -r 0 > CHANGELOG.md",
     "build:cjs": "tsc -p ./tsconfig.cjs.json && cp ./scripts/etc/cjs-package.json ./dist/cjs/package.json",
     "build:esm": "tsc -p ./tsconfig.esm.json",
-    "build:browser": "tsc -p ./tsconfig.browser.json && npx browserify dist/browser/cjs/index.js --standalone Cqrs --outfile ./dist/browser/bundle.iife.js",
+    "build:browser:bundle-min": "rollup -c ./rollup.browser.config.mjs --environment MINIFY:true",
+    "build:browser:bundle": "rollup -c ./rollup.browser.config.mjs",
+    "build:browser": "npm run build:esm && npm run build:browser:bundle && npm run build:browser:bundle-min",
     "build": "npm run build:esm && npm run build:cjs",
     "prepare": "npm run build",
     "preversion": "npm test",
@@ -86,12 +96,27 @@
   "author": "@snatalenko",
   "license": "Apache-2.0",
   "homepage": "https://github.com/snatalenko/node-cqrs#readme",
+  "files": [
+    "dist/**",
+    "!dist/.tsbuildinfo*",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md"
+  ],
   "dependencies": {
     "async-iterable-buffer": "^1.1.0",
     "async-parallel-pipe": "^1.0.2",
     "di0": "^1.3.0"
   },
   "devDependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
+    "@opentelemetry/sdk-trace-base": "^2.6.0",
+    "@opentelemetry/sdk-trace-node": "^2.6.0",
+    "@rollup/plugin-commonjs": "^29.0.2",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^1.0.0",
     "@types/amqplib": "^0.10.8",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^29.5.14",
@@ -109,12 +134,14 @@
     "jest": "^29.7.0",
     "md5": "^2.3.0",
     "mongodb": "^6.21.0",
+    "rollup": "^4.59.0",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.0"
   },
   "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "amqplib": "^0.10.9",
     "better-sqlite3": "^12.6.2",
     "comlink": "^4.4.2",

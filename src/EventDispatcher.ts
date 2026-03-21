@@ -1,3 +1,5 @@
+import type { Tracer } from '@opentelemetry/api';
+import { recordSpanError, spanContext } from './telemetry/index.ts';
 import {
 	type IEventDispatcher,
 	type IDispatchPipelineProcessor,
@@ -35,15 +37,17 @@ export class EventDispatcher implements IEventDispatcher {
 	/** Router that selects a pipeline name given events and meta */
 	eventDispatchRouter?: (events: IEventSet, meta?: Record<string, any>) => string | undefined;
 
-	#pipelines = new Map<string, EventDispatchPipeline>();
+	readonly #pipelines = new Map<string, EventDispatchPipeline>();
+	readonly #tracer: Tracer | undefined;
 
-	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchPipeline'> & {
+	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchPipeline' | 'tracerFactory'> & {
 		eventDispatcherConfig?: {
 			concurrentLimit?: number
 		},
 		eventDispatchPipelines?: Record<string, IDispatchPipelineProcessor[]>,
 		eventDispatchRouter?: (events: IEventSet, meta?: Record<string, any>) => string | undefined
 	}) {
+		this.#tracer = o?.tracerFactory?.(new.target.name);
 		this.eventBus = o?.eventBus ?? new InMemoryMessageBus();
 		this.concurrentLimit = o?.eventDispatcherConfig?.concurrentLimit ?? EventDispatcher.DEFAULT_CONCURRENT_LIMIT;
 		this.eventDispatchRouter = o?.eventDispatchRouter ?? EventDispatcher.DEFAULT_ROUTER;
@@ -100,6 +104,8 @@ export class EventDispatcher implements IEventDispatcher {
 		if (!isEventSet(events) || events.length === 0)
 			throw new TypeError('dispatch requires a non-empty array of events');
 
+		const span = this.#tracer?.startSpan('EventDispatcher.dispatch', undefined, spanContext(meta));
+
 		let resolve!: (value: IEventSet | PromiseLike<IEventSet>) => void;
 		let reject!: (reason?: any) => void;
 		const promise = new Promise<IEventSet>((res, rej) => {
@@ -108,7 +114,11 @@ export class EventDispatcher implements IEventDispatcher {
 		});
 
 		const envelope: EventBatchEnvelope = {
-			data: events.map(event => ({ event, ...meta })),
+			data: events.map(event => ({
+				event,
+				...meta,
+				span
+			})),
 			resolve,
 			reject
 		};
@@ -120,6 +130,11 @@ export class EventDispatcher implements IEventDispatcher {
 
 		pipeline.push(envelope);
 
-		return promise;
+		return promise.catch(error => {
+			recordSpanError(span, error);
+			throw error;
+		}).finally(() => {
+			span?.end();
+		});
 	}
 }

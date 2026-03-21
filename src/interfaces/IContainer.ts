@@ -1,3 +1,4 @@
+import type { Tracer } from '@opentelemetry/api';
 import type { Container } from 'di0';
 import type { ICommandBus } from './ICommandBus.ts';
 import type { IEventDispatcher } from './IEventDispatcher.ts';
@@ -42,6 +43,8 @@ export interface IContainer extends Container {
 	executionLocker?: ILocker;
 
 	logger?: ILogger | IExtendableLogger;
+
+	tracerFactory?: (name: string) => Tracer;
 
 	process?: NodeJS.Process
 }

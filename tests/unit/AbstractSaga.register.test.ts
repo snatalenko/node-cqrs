@@ -1,6 +1,5 @@
 import {
 	AbstractSaga,
-	CommandBus,
 	EventDispatcher,
 	EventStore,
 	InMemoryEventStorage,
@@ -29,7 +28,7 @@ describe('AbstractSaga.register', function () {
 			eventDispatcher
 		});
 
-		const commandBus = new CommandBus();
+		const commandBus = new InMemoryMessageBus();
 		RegisteredSaga.register(eventStore, commandBus);
 
 		const deferred = new Deferred<any>();
