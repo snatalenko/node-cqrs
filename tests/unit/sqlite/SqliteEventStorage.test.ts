@@ -107,6 +107,18 @@ describe('SqliteEventStorage', () => {
 
 			expect(results).toEqual([event1, event2]);
 		});
+
+		it('does not duplicate tail event when it already matches eventTypes filter', async () => {
+			const event1 = { id: 'a0000000000000000000000000000001', aggregateId: 'a0000000000000000000000000000010', aggregateVersion: 1, type: 'TypeA' };
+			const event2 = { id: 'a0000000000000000000000000000002', aggregateId: 'a0000000000000000000000000000010', aggregateVersion: 2, type: 'TypeA' };
+			await storage.commitEvents([event1, event2]);
+
+			const results = [];
+			for await (const event of storage.getAggregateEvents('a0000000000000000000000000000010', { eventTypes: ['TypeA'], tail: 'last' }))
+				results.push(event);
+
+			expect(results).toEqual([event1, event2]);
+		});
 	});
 
 	describe('getSagaEvents', () => {
@@ -156,6 +168,21 @@ describe('SqliteEventStorage', () => {
 			const beforeEvent = { id: 'a0000000000000000000000000000003', sagaOrigins: { SagaB: 'a0000000000000000000000000000001' } };
 			const results = [];
 			for await (const event of storage.getSagaEvents('SagaB:a0000000000000000000000000000001', { beforeEvent } as any))
+				results.push(event);
+
+			expect(results).toEqual([event1, event2]);
+		});
+
+		it('excludes unrelated events interleaved in the rowid range', async () => {
+			const event1 = { id: 'a0000000000000000000000000000001', sagaOrigins: { SagaA: 'a0000000000000000000000000000001' }, type: 'SagaStarted' };
+			const unrelated = { id: 'a0000000000000000000000000000002', type: 'Unrelated' };
+			const event2 = { id: 'a0000000000000000000000000000003', sagaOrigins: { SagaA: 'a0000000000000000000000000000001' }, type: 'SagaProgressed' };
+			const event3 = { id: 'a0000000000000000000000000000004', sagaOrigins: { SagaA: 'a0000000000000000000000000000001' }, type: 'SagaProgressed' };
+			await storage.commitEvents([event1, unrelated, event2, event3]);
+
+			const beforeEvent = { id: 'a0000000000000000000000000000004', sagaOrigins: { SagaA: 'a0000000000000000000000000000001' } };
+			const results = [];
+			for await (const event of storage.getSagaEvents('SagaA:a0000000000000000000000000000001', { beforeEvent } as any))
 				results.push(event);
 
 			expect(results).toEqual([event1, event2]);
@@ -246,6 +273,19 @@ describe('SqliteEventStorage', () => {
 			expect(results).toEqual([event2, event3]);
 		});
 
+		it('yields no events when afterEvent id is provided but not found in storage', async () => {
+			const event1 = { id: 'a0000000000000000000000000000001', type: 'A' };
+			const event2 = { id: 'a0000000000000000000000000000002', type: 'A' };
+			await storage.commitEvents([event1, event2]);
+
+			const options = { afterEvent: { id: 'a0000000000000000000000000000099' } };
+			const results = [];
+			for await (const event of storage.getEventsByTypes(['A'], options as any))
+				results.push(event);
+
+			expect(results).toEqual([]);
+		});
+
 		it('throws error if afterEvent is provided without id', async () => {
 			const event1 = { id: 'a0000000000000000000000000000001', type: 'A' };
 			await storage.commitEvents([event1]);
@@ -288,6 +328,15 @@ describe('SqliteEventStorage', () => {
 				results.push(e);
 
 			expect(results).toEqual([event]);
+		});
+
+		it('forwards ignoreConcurrencyError from the envelope', async () => {
+			const event = { id: 'a0000000000000000000000000000001', aggregateId: 'a0000000000000000000000000000010', aggregateVersion: 0, type: 'Created' };
+			await storage.process([{ event }]);
+
+			const duplicate = { id: 'a0000000000000000000000000000002', aggregateId: 'a0000000000000000000000000000010', aggregateVersion: 0, type: 'Created' };
+			await expect(storage.process([{ event: duplicate }])).rejects.toBeInstanceOf(ConcurrencyError);
+			await expect(storage.process([{ event: duplicate, ignoreConcurrencyError: true }])).resolves.toBeDefined();
 		});
 
 		it('throws when batch item does not contain event', async () => {

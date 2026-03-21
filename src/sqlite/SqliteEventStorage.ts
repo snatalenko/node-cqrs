@@ -52,7 +52,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 
 	#insertEventQuery!: Statement<[Buffer, Buffer | null, number | null, string, string, string | null]>;
 	#insertSagaRefQuery!: Statement<[string, Buffer, Buffer]>;
-	#checkConcurrencyQuery!: Statement<[Buffer, number]>;
+	#checkConcurrencyQuery!: Statement<[Buffer, number], 1 | null>;
 	#getRowidQuery!: Statement<[Buffer], RowidRow>;
 	#getAggregateEventsQuery!: Statement<[{
 		aggregateId: Buffer;
@@ -171,28 +171,23 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 	}): Promise<IEventSet> {
 		await this.assertConnection();
 
-		type EventWithSagas = IEvent & { sagaOrigins?: Record<string, string> };
 		const metaJson = options?.meta ? JSON.stringify(options.meta) : null;
 
 		this.db!.transaction(() => {
 			for (const event of events) {
-				if (!options?.ignoreConcurrencyError
-					&& event.aggregateId !== undefined
-					&& event.aggregateVersion !== undefined) {
-					const conflict = this.#checkConcurrencyQuery.get(
-						guid(String(event.aggregateId)),
-						event.aggregateVersion
-					);
+				if (!options?.ignoreConcurrencyError && event.aggregateId && event.aggregateVersion !== undefined) {
+					const conflict = this.#checkConcurrencyQuery.get(guid(event.aggregateId), event.aggregateVersion);
 					if (conflict)
 						throw new ConcurrencyError(`Duplicate aggregateVersion ${event.aggregateVersion} for aggregate ${event.aggregateId}`);
 				}
 
-				const { sagaOrigins, id, ...eventData } = event as EventWithSagas;
-				const eventId = guid(String(id));
+				const { sagaOrigins, id, ...eventData } = event;
+				assertString(id, 'event.id');
+				const eventId = guid(id);
 
 				this.#insertEventQuery.run(
 					eventId,
-					event.aggregateId !== undefined ? guid(String(event.aggregateId)) : null,
+					event.aggregateId !== undefined ? guid(event.aggregateId) : null,
 					event.aggregateVersion ?? null,
 					event.type,
 					JSON.stringify(eventData),
@@ -218,7 +213,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 		await this.assertConnection();
 
 		const rows = this.#getAggregateEventsQuery.all({
-			aggregateId: guid(String(aggregateId)),
+			aggregateId: guid(aggregateId),
 			afterVersion: options?.snapshot?.aggregateVersion ?? null,
 			eventTypes: options?.eventTypes
 				? JSON.stringify(options.eventTypes)
@@ -243,7 +238,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 		if (!originRowid)
 			throw new Error(`origin event ${originEventId} not found`);
 
-		const beforeRowid = this.#getRowidQuery.get(guid(String(beforeEvent.id)));
+		const beforeRowid = this.#getRowidQuery.get(guid(beforeEvent.id));
 		if (!beforeRowid)
 			throw new Error(`beforeEvent ${beforeEvent.id} not found`);
 
@@ -267,9 +262,11 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 
 		let afterRowid = 0;
 		if (lastEventId) {
-			const row = this.#getRowidQuery.get(guid(String(lastEventId)));
-			if (row)
-				afterRowid = row.rowid;
+			const row = this.#getRowidQuery.get(guid(lastEventId));
+			if (!row)
+				return;
+
+			afterRowid = row.rowid;
 		}
 
 		const rows = this.#getEventsByTypesQuery.all(afterRowid);
@@ -285,6 +282,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 		for (const item of batch) {
 			if (!item.event)
 				throw new Error('Event batch does not contain `event`');
+
 			events.push(item.event);
 		}
 
@@ -304,6 +302,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 		const sagaOrigins: Record<string, string> = {};
 		for (const ref of refs)
 			sagaOrigins[ref.saga_descriptor] = bufferToGuid(ref.origin_id);
+
 		return sagaOrigins;
 	}
 
