@@ -9,7 +9,6 @@ import {
 	type ILogger,
 	type IExtendableLogger,
 	type IEvent,
-	type IMessageMeta,
 	type IObservable,
 	type IEventStorageReader,
 	isViewLocker,
@@ -154,7 +153,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 		);
 
 		try {
-			await this._project(event);
+			await this._project(event, meta);
 		}
 		catch (error: any) {
 			recordSpanError(span, error);

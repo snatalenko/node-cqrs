@@ -21,7 +21,7 @@ import {
 	InMemoryEventStorage,
 	InMemoryView,
 	type IContainer
-} from 'node-cqrs';
+} from '../../src/index.ts';
 
 // ---------------------------------------------------------------------------
 // Set up OTel — must happen before any CQRS components are constructed

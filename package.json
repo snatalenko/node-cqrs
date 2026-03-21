@@ -59,7 +59,8 @@
   "scripts": {
     "cleanup": "rm -rf ./dist ./coverage",
     "test": "jest",
-    "examples": "npm run example:user-domain-framework-free && npm run example:user-domain-ts && npm run example:sagas-simple && npm run example:sagas-overlaps && npm run example:user-domain-cjs && npm run example:workers-worker-projection && npm run example:browser",
+    "examples": "npm run example:user-domain-framework-free && npm run example:user-domain-ts && npm run example:sagas-simple && npm run example:sagas-overlaps && npm run example:user-domain-cjs && npm run example:workers-worker-projection && npm run example:browser && npm run example:telemetry",
+    "example:telemetry": "node examples/telemetry/index.ts",
     "example:user-domain-ts": "node examples/user-domain/ts/index.ts",
     "example:user-domain-framework-free": "node examples/user-domain/framework-free/index.ts",
     "example:user-domain-cjs": "npm run build:cjs && node examples/user-domain/cjs/index.cjs",

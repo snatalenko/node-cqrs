@@ -89,7 +89,7 @@ describe('InMemoryMessageBus', function () {
 			const command = { type: 'doSomething', aggregateId: 1, payload: { foo: 'bar' } };
 			await bus.send(command);
 
-			expect(handler).toHaveBeenCalledWith(command);
+			expect(handler).toHaveBeenCalledWith(command, undefined);
 		});
 
 		it('fails if no handlers found', async () => {
@@ -157,7 +157,7 @@ describe('InMemoryMessageBus', function () {
 			const command = { type: 'doSomething', aggregateId: '0' };
 			await bus.sendRaw(command);
 
-			expect(handler).toHaveBeenCalledWith(command);
+			expect(handler).toHaveBeenCalledWith(command, undefined);
 		});
 
 		it('validates parameters', async () => {

@@ -237,7 +237,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 				try {
 					if (events.length)
-						await this.#eventStore.dispatch(events);
+						await this.#eventStore.dispatch(events, span ? { span } : undefined);
 
 					return events;
 				}
@@ -250,8 +250,10 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 					if (retryDecision === 'ignore') {
 						this.#logger?.warn(`"${cmd.type}" command error ignored after ${attempt + 1} attempt(s), force-dispatching`, { error });
-						if (events.length)
-							await this.#eventStore.dispatch(events, { ignoreConcurrencyError: true });
+						if (events.length) {
+							const dispatchMeta = { ignoreConcurrencyError: true, ...(span ? { span } : undefined) };
+							await this.#eventStore.dispatch(events, dispatchMeta);
+						}
 
 						return events;
 					}

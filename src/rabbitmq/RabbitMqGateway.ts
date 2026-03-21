@@ -638,44 +638,33 @@ export class RabbitMqGateway {
 				}, handlerProcessTimeout)
 				: null;
 
+			this.#logger?.debug('Message received', {
+				queueName: queueGivenName,
+				msg: extractMessageMeta(msg)
+			});
+
+			const jsonContent = msg.content.toString();
+			const message: IMessage = JSON.parse(jsonContent);
+
+			// Extract OTel trace context from AMQP headers to continue the distributed trace
+			const parentContext = propagation.extract(context.active(), msg.properties?.headers ?? {});
+			const span = this.#tracer?.startSpan(
+				`RabbitMqGateway.consume ${message.type}`,
+				spanAttributes('rabbitmq', message, ['type', 'aggregateId']),
+				parentContext
+			);
+
 			try {
-				this.#logger?.debug('Message received', {
-					queueName: queueGivenName,
-					msg: extractMessageMeta(msg)
-				});
+				const handlers = this.#getHandlers(queueGivenName, message.type);
+				if (!handlers.length && !isSystemQueue(queueGivenName))
+					throw new Error(`Message from queue "${queueGivenName}" was delivered to a consumer that does not handle type "${message.type}"`);
 
-				const jsonContent = msg.content.toString();
-				const message: IMessage = JSON.parse(jsonContent);
+				const ownAppId = handlers.some(s => s.ignoreOwn) ? await this.getAppId() : undefined;
+				for (const { handler, ignoreOwn } of handlers) {
+					if (ignoreOwn && msg.properties.appId === ownAppId)
+						continue;
 
-				// Extract OTel trace context from AMQP headers to continue the distributed trace
-				const parentContext = propagation.extract(context.active(), msg.properties?.headers ?? {});
-				const span = this.#tracer?.startSpan(
-					`RabbitMqGateway.consume ${message.type}`,
-					spanAttributes('rabbitmq', message, ['type', 'aggregateId']),
-					parentContext
-				);
-
-				try {
-					const handlers = this.#getHandlers(queueGivenName, message.type);
-					if (!handlers.length && !isSystemQueue(queueGivenName))
-						throw new Error(`Message from queue "${queueGivenName}" was delivered to a consumer that does not handle type "${message.type}"`);
-
-					const ownAppId = handlers.some(s => s.ignoreOwn) ? await this.getAppId() : undefined;
-					for (const { handler, ignoreOwn } of handlers) {
-						if (ignoreOwn && msg.properties.appId === ownAppId)
-							continue;
-
-						await handler(message, { span });
-					}
-
-					channel.ack(msg);
-				}
-				catch (err: unknown) {
-					recordSpanError(span, err);
-					throw err;
-				}
-				finally {
-					span?.end();
+					await handler(message, { span });
 				}
 
 				if (messageFinalized) {
@@ -695,6 +684,8 @@ export class RabbitMqGateway {
 					msg: extractMessageMeta(msg)
 				});
 
+				recordSpanError(span, err);
+
 				if (!messageFinalized) {
 					this.#rejectMessage(channel, msg);
 					messageFinalized = true;
@@ -703,6 +694,8 @@ export class RabbitMqGateway {
 			finally {
 				if (keepAliveTimeout !== null)
 					clearTimeout(keepAliveTimeout);
+
+				span?.end();
 			}
 		}, {
 			noAck: options?.noAck
@@ -800,7 +793,7 @@ export class RabbitMqGateway {
 				contentEncoding: 'utf8',
 				persistent: true,
 				timestamp: message.context?.ts ?? Date.now(),
-				appId: this.#appId,
+				appId: await this.getAppId(),
 				type: message.type,
 				messageId: 'id' in message && typeof message.id === 'string' ?
 					message.id :
