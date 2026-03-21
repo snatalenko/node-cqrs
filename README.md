@@ -412,6 +412,9 @@ interface ISaga {
 - [InMemoryMessageBus](src/in-memory/InMemoryMessageBus.ts) - event/command bus
 - [InMemoryView](src/in-memory/InMemoryView.ts) - in-memory view with locking support
 
+See [examples/user-domain-ts/index.ts](examples/user-domain-ts/index.ts) for a DI-based example and
+[examples/user-domain-framework-free/index.ts](examples/user-domain-framework-free/index.ts) for a plain implementation.
+
 ### SQLite
 
 ```ts
@@ -419,7 +422,10 @@ import { AbstractSqliteView, SqliteObjectView } from 'node-cqrs/sqlite';
 ```
 
 - [AbstractSqliteView](src/sqlite/AbstractSqliteView.ts) - SQLite view with restore locking and checkpoint tracking
+- [SqliteEventStorage](src/sqlite/SqliteEventStorage.ts) - SQLite-backed event storage
 - [SqliteObjectView](src/sqlite/SqliteObjectView.ts) - SQLite-backed object view
+
+See [examples/sqlite/index.ts](examples/sqlite/index.ts) for a runnable example.
 
 ### Redis
 
@@ -429,26 +435,7 @@ import { AbstractSqliteView, SqliteObjectView } from 'node-cqrs/sqlite';
 import { AbstractRedisProjection, RedisView } from 'node-cqrs/redis';
 ```
 
-Requires `ioredis` and `md5` peer dependencies. Register a shared `Redis` instance as `viewModelRedis` in the DI container:
-
-```ts
-import Redis from 'ioredis';
-import { AbstractRedisProjection } from 'node-cqrs/redis';
-
-class UsersProjection extends AbstractRedisProjection<{ username: string }> {
-	static override get tableName() { return 'users'; }
-	static override get schemaVersion() { return '1'; }
-
-	userCreated(event: IEvent) {
-		this.view.updateEnforcingNew(event.aggregateId as string, () => ({
-			username: event.payload.username
-		}));
-	}
-}
-
-builder.register(() => new Redis({ host: 'localhost', port: 6379 })).as('viewModelRedis');
-builder.registerProjection(UsersProjection, 'usersView');
-```
+Requires `ioredis` and `md5` peer dependencies.
 
 - [RedisView](src/redis/RedisView.ts) - Redis-backed object view with distributed locking and checkpoint tracking
 - [AbstractRedisProjection](src/redis/AbstractRedisProjection.ts) - base class for Redis-backed projections
@@ -456,7 +443,7 @@ builder.registerProjection(UsersProjection, 'usersView');
 - [RedisViewLocker](src/redis/RedisViewLocker.ts) - distributed view lock with auto-prolongation via `PEXPIRE`
 - [RedisEventLocker](src/redis/RedisEventLocker.ts) - per-event deduplication and last-event checkpoint
 
-See [examples/redis](examples/redis) for a runnable example.
+See [examples/redis/index.ts](examples/redis/index.ts) for a runnable example.
 
 ### RabbitMQ
 
@@ -487,51 +474,10 @@ Quickstart:
 2. In the worker module, call `YourProjection.createInstanceInWorkerThread()`.
 3. In your app container, register `YourProjection.workerProxyFactory` and use it like a normal projection.
 
-Worker module example (CJS):
-
-```js
-const { AbstractWorkerProjection } = require('node-cqrs/workers');
-
-class CounterView {
-	counter = 0;
-	increment() { this.counter += 1; }
-	getCounter() { return this.counter; }
-}
-
-class CounterProjection extends AbstractWorkerProjection {
-	static get workerModulePath() {
-		return __filename;
-	}
-
-	constructor() {
-		super({ view: new CounterView() });
-	}
-
-	somethingHappened() {
-		this.view.increment();
-	}
-}
-
-CounterProjection.createInstanceInWorkerThread();
-module.exports = CounterProjection;
-```
-
-Main thread usage (DI):
-
-```js
-const CounterProjection = require('./CounterProjection.cjs');
-const { ContainerBuilder } = require('node-cqrs');
-
-const builder = new ContainerBuilder();
-builder.registerProjection(CounterProjection.workerProxyFactory, 'counterView');
-
-const { eventStore, counterView } = builder.container();
-await eventStore.dispatch([{ id: '1', type: 'somethingHappened', payload: {} }]);
-const counter = await counterView.getCounter();
-```
-
 `workerModulePath` should point to executable JavaScript (`__filename` in CJS, `fileURLToPath(import.meta.url)` in ESM).
 If you need a custom proxy projection, you can still use `workerProxyFactory(...)` directly (advanced usage).
+
+See [examples/workers-projection/index.cjs](examples/workers-projection/index.cjs) for a runnable example.
 
 
 ### MongoDB
@@ -554,7 +500,7 @@ builder.register(MongoEventStorage);
 builder.register(EventIdAugmentor).as('eventIdAugmenter'); // required for sagas
 ```
 
-See [examples/mongodb](examples/mongodb/index.ts) for a full working example.
+See [examples/mongodb/index.ts](examples/mongodb/index.ts) for a full working example.
 
 
 ## Examples
