@@ -53,7 +53,7 @@ npm run build:esm      # Build ESM only (generates types/ and dist/esm/)
 npm run build:cjs      # Build CJS only (generates dist/cjs/)
 npm run cleanup        # Remove dist/, types/, coverage/
 npm test               # Run unit tests
-npm run test:examples  # Run unit tests of examples/user-domain/cjs
+npm run test:examples  # Run unit tests of examples/user-domain-cjs
 npm run test:coverage  # Run tests with coverage report
 npm run test:rabbitmq  # Integration tests (requires RabbitMQ running)
 npm run test:sqlite    # Integration tests (requires better-sqlite3)

@@ -9,25 +9,10 @@
  */
 
 import { Redis } from 'ioredis';
-import {
-	type IContainer,
-	type IEvent,
-	AbstractAggregate,
-	ContainerBuilder,
-	EventIdAugmentor,
-	InMemoryEventStorage
-} from 'node-cqrs';
+import { type IContainer, ContainerBuilder, EventIdAugmentor, InMemoryEventStorage } from 'node-cqrs';
 import { AbstractRedisProjection, type RedisView } from 'node-cqrs/redis';
-
-// ── Domain ────────────────────────────────────────────────────────────────────
-
-class UserAggregate extends AbstractAggregate {
-	createUser({ username }: { username: string }) {
-		this.emit('userCreated', { username });
-	}
-}
-
-type UserRecord = { username: string };
+import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
+import type { CreateUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
 
 class UsersProjection extends AbstractRedisProjection<UserRecord> {
 
@@ -39,9 +24,15 @@ class UsersProjection extends AbstractRedisProjection<UserRecord> {
 		return '1';
 	}
 
-	userCreated(event: IEvent<UserRecord>) {
+	userCreated(event: UserCreatedEvent) {
 		this.view.updateEnforcingNew(event.aggregateId as string, () => ({
 			username: event.payload!.username
+		}));
+	}
+
+	userRenamed(event: UserRenamedEvent) {
+		this.view.updateEnforcingNew(event.aggregateId as string, r => ({
+			username: event.payload!.username ?? r!.username
 		}));
 	}
 }
@@ -66,7 +57,7 @@ const { commandBus, usersView } = container;
 // ── Run ───────────────────────────────────────────────────────────────────────
 
 const [userCreated] = await commandBus.send('createUser', undefined, {
-	payload: { username: 'alice' }
+	payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload
 });
 
 const user = await usersView.get(userCreated.aggregateId as string);

@@ -12,7 +12,7 @@ node-cqrs
 Infrastructure-agnostic building blocks for CQRS/ES, inspired by Lokad.CQRS.
 
 CQRS/ES can be simple in a single process - minimal code, no framework:
-[examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts).
+[examples/user-domain-framework-free](examples/user-domain-framework-free/index.ts).
 This library handles the "boring but hard" parts required in distributed environments:
 
 - safer async command + event handling (per-aggregate FIFO, shared restore, fewer footguns)
@@ -559,14 +559,14 @@ See [examples/mongodb](examples/mongodb/index.ts) for a full working example.
 
 ## Examples
 
-- [examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts) - minimal, no-framework CQRS/ES in one file
-- [examples/user-domain/ts](examples/user-domain/ts) - TypeScript with DI container
-- [examples/user-domain/cjs](examples/user-domain/cjs) - CommonJS
+- [examples/user-domain-framework-free](examples/user-domain-framework-free/index.ts) - minimal, no-framework CQRS/ES in one file
+- [examples/user-domain-ts](examples/user-domain-ts) - TypeScript with DI container
+- [examples/user-domain-cjs](examples/user-domain-cjs) - CommonJS
 - [examples/redis](examples/redis/index.ts) - Redis-backed persistent projection
-- [examples/sagas/simple](examples/sagas/simple/index.ts) - simple saga
-- [examples/sagas/overlaps](examples/sagas/overlaps/index.ts) - overlapping sagas, multi-step flow
+- [examples/sagas-simple](examples/sagas-simple/index.ts) - simple saga
+- [examples/sagas-overlaps](examples/sagas-overlaps/index.ts) - overlapping sagas, multi-step flow
 - [examples/browser](examples/browser) - browser smoke test
-- [examples/workers/worker-projection](examples/workers/worker-projection) - worker thread projection
+- [examples/workers-projection](examples/workers-projection) - worker thread projection
 - [examples/mongodb](examples/mongodb/index.ts) - MongoDB event storage with DI container and manual wiring
 
 TS examples can be run with NodeJS 24+ without transpiling.

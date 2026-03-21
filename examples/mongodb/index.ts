@@ -8,71 +8,11 @@
  *   npx tsx examples/mongodb/index.ts
  */
 import { MongoClient } from 'mongodb';
-import {
-	type IContainer,
-	type IEvent,
-	AbstractAggregate,
-	AbstractProjection,
-	ContainerBuilder,
-	EventIdAugmentor
-} from 'node-cqrs';
+import { type IContainer, ContainerBuilder, EventIdAugmentor } from 'node-cqrs';
 import { MongoEventStorage } from 'node-cqrs/mongodb';
-
-// ─── Domain ──────────────────────────────────────────────────────────────────
-
-type CreateUserPayload = { username: string };
-type RenameUserPayload = { username: string };
-
-type UserCreatedEvent = IEvent<{ username: string }>;
-type UserRenamedEvent = IEvent<{ username: string }>;
-
-class UserAggregateState {
-	username = '';
-
-	userCreated(event: UserCreatedEvent) {
-		this.username = event.payload!.username;
-	}
-
-	userRenamed(event: UserRenamedEvent) {
-		this.username = event.payload!.username;
-	}
-}
-
-class UserAggregate extends AbstractAggregate<UserAggregateState> {
-	protected readonly state = new UserAggregateState();
-
-	createUser({ username }: CreateUserPayload) {
-		this.emit('userCreated', { username });
-	}
-
-	renameUser({ username }: RenameUserPayload) {
-		if (username === this.state.username)
-			throw new Error(`Username is already '${username}'`);
-
-		this.emit('userRenamed', { username });
-	}
-}
-
-type UsersView = Map<string, { username: string }>;
-
-class UsersProjection extends AbstractProjection<UsersView> {
-	constructor() {
-		super();
-		this.view = new Map();
-	}
-
-	userCreated(event: UserCreatedEvent) {
-		this.view.set(event.aggregateId as string, {
-			username: event.payload!.username
-		});
-	}
-
-	userRenamed(event: UserRenamedEvent) {
-		this.view.set(event.aggregateId as string, {
-			username: event.payload!.username
-		});
-	}
-}
+import type { CreateUserCommandPayload, RenameUserCommandPayload } from '../user-domain-ts/messages.ts';
+import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
+import { UsersProjection, type UsersView } from '../user-domain-ts/UsersProjection.ts';
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
@@ -105,7 +45,7 @@ const { commandBus, users } = builder.container();
 
 // 1. Create a new user — MongoDB stores the first event for this aggregate
 const [userCreated] = await commandBus.send('createUser', undefined, {
-	payload: { username: 'alice' } satisfies CreateUserPayload
+	payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload
 });
 
 const aggregateId = userCreated.aggregateId as string;
@@ -113,14 +53,14 @@ console.log('Created user:', users.get(aggregateId)); // { username: 'alice' }
 
 // 2. Rename the same user — aggregate state is restored from MongoDB before the command runs
 await commandBus.send('renameUser', aggregateId, {
-	payload: { username: 'alice-smith' } satisfies RenameUserPayload
+	payload: { username: 'alice-smith' } satisfies RenameUserCommandPayload
 });
 
 console.log('Renamed user:', users.get(aggregateId)); // { username: 'alice-smith' }
 
 // 3. Sending the same rename again hits the business-rule guard (state is still restored)
 await commandBus.send('renameUser', aggregateId, {
-	payload: { username: 'alice-smith' } satisfies RenameUserPayload
+	payload: { username: 'alice-smith' } satisfies RenameUserCommandPayload
 }).catch(err => console.log('Expected error:', err.message)); // Username is already 'alice-smith'
 
 await client.close();

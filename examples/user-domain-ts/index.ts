@@ -4,8 +4,12 @@ import {
 	EventStore,
 	InMemoryEventStorage,
 	InMemoryMessageBus
-} from '../../../src/index.ts';
-import type { ChangePasswordCommandPayload, CreateUserCommandPayload } from './messages.ts';
+} from '../../src/index.ts';
+import type {
+	ChangePasswordCommandPayload,
+	CreateUserCommandPayload,
+	RenameUserCommandPayload
+} from './messages.ts';
 import { UserAggregate } from './UserAggregate.ts';
 import { UsersProjection, type UsersView } from './UsersProjection.ts';
 
@@ -40,9 +44,15 @@ import { UsersProjection, type UsersView } from './UsersProjection.ts';
 		} satisfies ChangePasswordCommandPayload
 	});
 
+	await commandBus.send('renameUser', userCreated.aggregateId as string, {
+		payload: {
+			username: 'john-smith'
+		} satisfies RenameUserCommandPayload
+	});
+
 	const user = users.get(userCreated.aggregateId as string);
 
-	console.log(user); // { username: 'john' }
+	console.log(user); // { username: 'john-smith' }
 }
 
 
@@ -77,6 +87,12 @@ import { UsersProjection, type UsersView } from './UsersProjection.ts';
 			oldPassword: 'magic',
 			newPassword: 'no magic'
 		} satisfies ChangePasswordCommandPayload
+	});
+
+	await commandBus.send('renameUser', userCreatedEvent.aggregateId as string, {
+		payload: {
+			username: 'john-smith'
+		} satisfies RenameUserCommandPayload
 	});
 
 	const user = await users.get(userCreatedEvent.aggregateId as string);

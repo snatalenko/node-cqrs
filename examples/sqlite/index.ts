@@ -1,36 +1,8 @@
 import createDb from 'better-sqlite3';
-import {
-	type IContainer,
-	type IEvent,
-	AbstractAggregate,
-	ContainerBuilder
-} from 'node-cqrs';
-import {
-	AbstractSqliteObjectProjection,
-	SqliteEventStorage
-} from 'node-cqrs/sqlite';
-
-// -- Messages --
-
-type UserRecord = { name: string };
-
-// -- Aggregate --
-
-class UserState {
-	name!: string;
-
-	userCreated(event: IEvent<{ name: string }>) {
-		this.name = event.payload!.name;
-	}
-}
-
-class UserAggregate extends AbstractAggregate<UserState> {
-	protected readonly state = new UserState();
-
-	createUser(payload: { name: string }) {
-		this.emit('userCreated', { name: payload.name });
-	}
-}
+import { type IContainer, ContainerBuilder } from 'node-cqrs';
+import { AbstractSqliteObjectProjection, SqliteEventStorage } from 'node-cqrs/sqlite';
+import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
+import type { CreateUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
 
 // -- Projection (SQLite-backed view) --
 
@@ -43,8 +15,17 @@ class UsersProjection extends AbstractSqliteObjectProjection<UserRecord> {
 		return '1';
 	}
 
-	async userCreated(event: IEvent<{ name: string }>) {
-		await this.view.updateEnforcingNew(String(event.aggregateId), () => event.payload!);
+	async userCreated(event: UserCreatedEvent) {
+		await this.view.updateEnforcingNew(String(event.aggregateId), () => ({
+			username: event.payload!.username
+		}));
+	}
+
+	async userRenamed(event: UserRenamedEvent) {
+		await this.view.updateEnforcingNew(String(event.aggregateId), r => ({
+			...r!,
+			username: event.payload!.username
+		}));
 	}
 }
 
@@ -64,10 +45,10 @@ const container = builder.container();
 const { commandBus, users } = container;
 
 const [userCreated] = await commandBus.send('createUser', undefined, {
-	payload: { name: 'Alice' }
+	payload: { username: 'Alice', password: 'magic' } satisfies CreateUserCommandPayload
 });
 
 const userId = String(userCreated.aggregateId);
 const user = await users.get(userId);
 
-console.log('User:', user); // { name: 'Alice' }
+console.log('User:', user); // { username: 'Alice' }

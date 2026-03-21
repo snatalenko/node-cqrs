@@ -13,7 +13,7 @@ import crypto from 'node:crypto';
 import type {
 	IAggregate, ICommand, ICommandHandler, Identifier, IEvent, IEventSet, IEventStorageReader,
 	IObservable, IProjection
-} from '../../../types';
+} from '../../types';
 
 const md5 = (v: string): string => crypto.createHash('md5').update(v).digest('hex');
 

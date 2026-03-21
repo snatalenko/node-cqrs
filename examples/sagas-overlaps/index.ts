@@ -5,15 +5,9 @@ import {
 	EventStore,
 	InMemoryEventStorage,
 	InMemoryMessageBus
-} from '../../../src/index.ts';
-
-type SignupUserPayload = { email: string };
-
-class SignupAggregate extends AbstractAggregate<void> {
-	signupUser(payload: SignupUserPayload) {
-		this.emit('userSignedUp', { email: payload.email });
-	}
-}
+} from '../../src/index.ts';
+import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
+import type { CreateUserCommandPayload, UserCreatedEvent } from '../user-domain-ts/messages.ts';
 
 type ProvisionTrialPayload = { email: string };
 
@@ -25,14 +19,14 @@ class TrialAggregate extends AbstractAggregate<void> {
 }
 
 class WelcomeEmailSaga extends AbstractSaga {
-	userSignedUp(event: any) {
-		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload.email });
+	userCreated(event: UserCreatedEvent) {
+		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload!.username });
 	}
 }
 
 class ProvisionTrialSaga extends AbstractSaga {
-	userSignedUp(event: any) {
-		this.enqueue('provisionTrial', undefined, { email: event.payload.email });
+	userCreated(event: UserCreatedEvent) {
+		this.enqueue('provisionTrial', undefined, { email: event.payload!.username });
 	}
 	trialProvisioned(event: any) {
 		this.enqueue('sendWelcomeEmail', undefined, {
@@ -46,8 +40,7 @@ async function main() {
 	const eventBus = new InMemoryMessageBus();
 	const eventStorage = new InMemoryEventStorage();
 	const eventStore = new EventStore({
-		eventStorageReader: eventStorage,
-		identifierProvider: eventStorage,
+		eventStorage,
 		eventDispatchPipeline: [
 			new EventIdAugmentor({ identifierProvider: eventStorage }),
 			eventStorage
@@ -79,7 +72,7 @@ async function main() {
 	});
 
 	// Wire aggregate handler
-	SignupAggregate.register(eventStore, commandBus);
+	UserAggregate.register(eventStore, commandBus);
 
 	// Provisioning is handled by a different aggregate that emits events, which the saga then handles again
 	TrialAggregate.register(eventStore, commandBus);
@@ -88,11 +81,14 @@ async function main() {
 	WelcomeEmailSaga.register(eventStore, commandBus);
 	ProvisionTrialSaga.register(eventStore, commandBus);
 
-	const [userSignedUp] = await commandBus.send('signupUser', undefined, {
-		payload: { email: 'john@example.com' } satisfies SignupUserPayload
+	const [userCreated] = await commandBus.send('createUser', undefined, {
+		payload: {
+			username: 'john@example.com',
+			password: 'magic'
+		} satisfies CreateUserCommandPayload
 	});
 
-	console.log('userSignedUp event (starter id used as saga origin):', userSignedUp);
+	console.log('userCreated event (starter id used as saga origin):', userCreated);
 
 	// wait for the multi-step saga to emit the follow-up command after trial provisioning
 	await allWelcomeEmails;
