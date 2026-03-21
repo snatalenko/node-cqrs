@@ -29,6 +29,7 @@ npm install
 | **src/interfaces/** | TypeScript contracts (`IEvent`, `IAggregate`, `ISaga`, etc.) |
 | **src/in-memory/** | Default in-process implementations |
 | **src/rabbitmq/** | RabbitMQ buses (`node-cqrs/rabbitmq`) |
+| **src/redis/** | Redis-backed views (`node-cqrs/redis`) |
 | **src/sqlite/** | SQLite-backed views (`node-cqrs/sqlite`) |
 | **src/mongodb/** | MongoDB event storage (`node-cqrs/mongodb`) |
 | **src/workers/** | Worker thread projections (`node-cqrs/workers`) |
@@ -42,9 +43,7 @@ npm install
 | src/EventStore.ts | Facade for `IEventDispatcher`, `IEventStorageReader`, `IIdentifierProvider` |
 | src/SagaEventHandler.ts | Restores saga state, dispatches events to sagas |
 | **tests/unit/** | Jest unit tests; one test suite per class |
-| **tests/integration/rabbitmq/** | Requires local RabbitMQ (see docker-compose.yml) |
-| **tests/integration/sqlite/** | Requires better-sqlite3 |
-| **tests/integration/workers/** | |
+| **tests/integration/** | Integration tests; see [Integration tests](#integration-tests) for setup |
 
 ## Common tasks
 
@@ -98,6 +97,15 @@ Runs Jest tests in `tests/integration/sqlite`:
 
 ```bash
 npm run test:sqlite
+```
+
+### Redis
+
+Tests connect to `redis://localhost:6379`. You can start a local Redis via Docker:
+
+```bash
+docker run -d -p 6379:6379 redis:7-alpine
+npm run test:redis
 ```
 
 ### RabbitMQ
