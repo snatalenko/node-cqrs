@@ -14,10 +14,11 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqCommandBusConfig>
 	const {
 		// eslint-disable-next-line no-use-before-define
 		exchange = RabbitMqCommandBus.DEFAULT_EXCHANGE,
+		// eslint-disable-next-line no-use-before-define
+		queueName = RabbitMqCommandBus.DEFAULT_QUEUE_NAME,
 		ignoreOwn = false,
 		concurrentLimit,
 		handlerProcessTimeout,
-		queueName,
 		queueExpires
 	} = await resolveProvider(provider) ?? {};
 
@@ -43,6 +44,7 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqCommandBusConfig>
 export class RabbitMqCommandBus implements ICommandBus {
 
 	static DEFAULT_EXCHANGE = 'node-cqrs.commands';
+	static DEFAULT_QUEUE_NAME = 'node-cqrs.commands.default';
 
 	readonly #gateway: RabbitMqGateway;
 	readonly #configProvider?: ConfigProvider<RabbitMqCommandBusConfig>;

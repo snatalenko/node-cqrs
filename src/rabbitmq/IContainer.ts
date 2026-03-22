@@ -6,8 +6,8 @@ import type { ConfigProvider } from './utils/index.ts';
 
 declare module 'node-cqrs' {
 	interface IContainer {
-		rabbitMqGateway?: RabbitMqGateway;
-		rabbitMqConnectionFactory?: () => Promise<ChannelModel>;
+		rabbitMqGateway: RabbitMqGateway;
+		rabbitMqConnectionFactory: () => Promise<ChannelModel>;
 
 		/**
 		 * Provides app id for publish metadata and `ignoreOwn` filtering.
