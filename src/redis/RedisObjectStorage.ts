@@ -1,7 +1,8 @@
 import type { Redis } from 'ioredis';
 import type { IContainer } from 'node-cqrs';
 import type { IObjectStorage } from '../interfaces/index.ts';
-import { assertFunction, assertString } from '../utils/assert.ts';
+import { assertDefined, assertFunction, assertString } from '../utils/assert.ts';
+import type { Identifier } from '../interfaces/index.ts';
 import { AbstractRedisAccessor } from './AbstractRedisAccessor.ts';
 
 /**
@@ -58,13 +59,12 @@ export class RedisObjectStorage<TRecord> extends AbstractRedisAccessor implement
 		// No Redis-level setup required for object storage
 	}
 
-	#key(id: string): string {
-		return `${this.#tableName}:${id}`;
+	#key(id: Identifier): string {
+		return `${this.#tableName}:${String(id)}`;
 	}
 
-	async get(id: string): Promise<TRecord | undefined> {
-		assertString(id, 'id');
-
+	async get(id: Identifier): Promise<TRecord | undefined> {
+		assertDefined(id, 'id');
 		await this.assertConnection();
 
 		const raw = await this.redis!.get(this.#key(id));
@@ -75,9 +75,8 @@ export class RedisObjectStorage<TRecord> extends AbstractRedisAccessor implement
 		return envelope.d;
 	}
 
-	async create(id: string, data: TRecord): Promise<void> {
-		assertString(id, 'id');
-
+	async create(id: Identifier, data: TRecord): Promise<void> {
+		assertDefined(id, 'id');
 		await this.assertConnection();
 
 		const envelope: RecordEnvelope<TRecord> = { d: data, v: 1 };
@@ -86,8 +85,8 @@ export class RedisObjectStorage<TRecord> extends AbstractRedisAccessor implement
 			throw new Error(`Record '${id}' could not be created`);
 	}
 
-	async update(id: string, update: (r: TRecord) => TRecord): Promise<void> {
-		assertString(id, 'id');
+	async update(id: Identifier, update: (r: TRecord) => TRecord): Promise<void> {
+		assertDefined(id, 'id');
 		assertFunction(update, 'update');
 
 		await this.assertConnection();
@@ -123,8 +122,8 @@ export class RedisObjectStorage<TRecord> extends AbstractRedisAccessor implement
 		throw new Error(`Record '${id}' could not be updated after ${this.#maxRetries} retries`);
 	}
 
-	async updateEnforcingNew(id: string, update: (r?: TRecord) => TRecord): Promise<void> {
-		assertString(id, 'id');
+	async updateEnforcingNew(id: Identifier, update: (r?: TRecord) => TRecord): Promise<void> {
+		assertDefined(id, 'id');
 		assertFunction(update, 'update');
 
 		await this.assertConnection();
@@ -165,9 +164,8 @@ export class RedisObjectStorage<TRecord> extends AbstractRedisAccessor implement
 		throw new Error(`Record '${id}' could not be upserted after ${this.#maxRetries} retries`);
 	}
 
-	async delete(id: string): Promise<boolean> {
-		assertString(id, 'id');
-
+	async delete(id: Identifier): Promise<boolean> {
+		assertDefined(id, 'id');
 		await this.assertConnection();
 
 		const count = await this.redis!.del(this.#key(id));

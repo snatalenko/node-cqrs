@@ -57,10 +57,6 @@ describe('RedisObjectStorage', () => {
 			expect(await storage.get('a1')).toEqual({ name: 'Alice', value: 1 });
 		});
 
-		it('throws on non-string id', async () => {
-			await expect(() => storage.get(123 as unknown as string))
-				.rejects.toThrow('id must be a non-empty String');
-		});
 	});
 
 	describe('create', () => {
@@ -81,10 +77,6 @@ describe('RedisObjectStorage', () => {
 				.rejects.toThrow("Record 'b2' could not be created");
 		});
 
-		it('throws on non-string id', async () => {
-			await expect(() => storage.create('' as string, { name: 'x', value: 0 }))
-				.rejects.toThrow('id must be a non-empty String');
-		});
 	});
 
 	describe('update', () => {
@@ -102,11 +94,6 @@ describe('RedisObjectStorage', () => {
 		it('throws when record does not exist', async () => {
 			await expect(() => storage.update('ghost', r => r))
 				.rejects.toThrow("Record 'ghost' does not exist");
-		});
-
-		it('throws on non-string id', async () => {
-			await expect(() => storage.update('' as string, r => r))
-				.rejects.toThrow('id must be a non-empty String');
 		});
 
 		it('throws on non-function update callback', async () => {
@@ -263,9 +250,5 @@ describe('RedisObjectStorage', () => {
 			expect(await storage.delete('no-such-record')).toBe(false);
 		});
 
-		it('throws on non-string id', async () => {
-			await expect(() => storage.delete('' as string))
-				.rejects.toThrow('id must be a non-empty String');
-		});
 	});
 });

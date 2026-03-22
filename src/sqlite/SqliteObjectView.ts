@@ -1,5 +1,5 @@
 import { AbstractSqliteView } from './AbstractSqliteView.ts';
-import type { IObjectStorage, IEventLocker } from '../interfaces/index.ts';
+import type { IObjectStorage, IEventLocker, Identifier } from '../interfaces/index.ts';
 import { SqliteObjectStorage } from './SqliteObjectStorage.ts';
 import type { Database } from 'better-sqlite3';
 import { assertString } from '../utils/assert.ts';
@@ -31,30 +31,30 @@ export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IOb
 		// No need to initialize the table here, it's done in SqliteObjectStorage
 	}
 
-	async get(id: string): Promise<TRecord | undefined> {
+	async get(id: Identifier): Promise<TRecord | undefined> {
 		if (!this.ready)
 			await this.once('ready');
 
 		return this.#sqliteObjectStorage.get(id);
 	}
 
-	getSync(id: string) {
+	getSync(id: Identifier) {
 		return this.#sqliteObjectStorage.getSync(id);
 	}
 
-	async create(id: string, data: TRecord) {
+	async create(id: Identifier, data: TRecord) {
 		await this.#sqliteObjectStorage.create(id, data);
 	}
 
-	async update(id: string, update: (r: TRecord) => TRecord) {
+	async update(id: Identifier, update: (r: TRecord) => TRecord) {
 		await this.#sqliteObjectStorage.update(id, update);
 	}
 
-	async updateEnforcingNew(id: string, update: (r?: TRecord) => TRecord) {
+	async updateEnforcingNew(id: Identifier, update: (r?: TRecord) => TRecord) {
 		await this.#sqliteObjectStorage.updateEnforcingNew(id, update);
 	}
 
-	async delete(id: string): Promise<boolean> {
+	async delete(id: Identifier): Promise<boolean> {
 		return this.#sqliteObjectStorage.delete(id);
 	}
 }
