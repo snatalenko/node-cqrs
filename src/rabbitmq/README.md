@@ -3,6 +3,8 @@ node-cqrs/rabbitmq
 
 RabbitMQ transport for `node-cqrs`. Use this package when commands or events must cross process boundaries and be delivered through durable broker queues instead of in-memory buses.
 
+All exchanges are declared as `topic` type. The message type (e.g. `userCreated`) is used as the routing key, so event-type filtering happens at the broker level rather than in the handler.
+
 ## rabbitMqConnectionFactory
 
 Register `rabbitMqConnectionFactory` to provide the RabbitMQ connection used by the gateway and buses. The factory is async, so it can load credentials or other connection settings before connecting.
@@ -34,6 +36,13 @@ import { RabbitMqGateway } from 'node-cqrs/rabbitmq';
 builder.register(RabbitMqGateway);
 ```
 
+The gateway emits lifecycle events you can listen to for health checks or metrics:
+
+```ts
+gateway.on('connected', () => { /* connection established or restored */ });
+gateway.on('disconnected', (reason) => { /* connection lost */ });
+```
+
 ## RabbitMqEventBus
 
 Use `RabbitMqEventBus` when each published event should be delivered to every subscriber.
@@ -45,6 +54,9 @@ Event bus configuration parameters can be optionally registered in `rabbitMqEven
 | `exchange` | `node-cqrs.events` | RabbitMQ exchange used to publish and subscribe to events. |
 | `ignoreOwn` | `true` | Whether to skip events published by the same app instance. |
 | `queueName` | none | Optional durable queue for this subscriber. Without it, the bus creates an exclusive temporary queue per connection. When provided, the queue survives process restarts. In most cases an event bus is expected to receive all events, so the value should be unique per process or per consumer. |
+| `concurrentLimit` | none | Maximum number of events from this queue handled at the same time by one bus instance. |
+| `handlerProcessTimeout` | `RabbitMqGateway.HANDLER_PROCESS_TIMEOUT` | How long event handling may run before the message is treated as failed and rejected. |
+| `queueExpires` | none | How long an unused durable queue may live before RabbitMQ deletes it automatically. |
 
 ```ts
 import { RabbitMqEventBus } from 'node-cqrs/rabbitmq';
@@ -98,3 +110,7 @@ builder.registerInstance({
 
 builder.register(RabbitMqCommandBus).as('commandBus');
 ```
+
+## Dead-letter queues
+
+When a durable `queueName` is configured on either bus, the gateway automatically asserts a dead-letter exchange and a dead-letter queue named `${queueName}.failed`. Messages that are rejected (handler throws) or time out (`handlerProcessTimeout` exceeded) are routed there instead of being lost or requeued indefinitely. Monitor this queue in production to catch and investigate processing failures.

@@ -14,6 +14,12 @@ builder.registerInstance(async () => {
 }, 'viewModelSqliteDbFactory');
 ```
 
+Alternatively, register a `Database` instance directly as `viewModelSqliteDb` when you already have an open connection (common in tests):
+
+```ts
+builder.registerInstance(createDb(':memory:'), 'viewModelSqliteDb');
+```
+
 ## SqliteEventStorage
 
 Use `SqliteEventStorage` when you want local persistence beyond in-memory storage. It is mainly for development and tests, not for multi-process setups. Register it in the container so the event store can append, read, and replay events from the same database.
