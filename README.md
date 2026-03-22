@@ -392,7 +392,7 @@ interface ISaga {
 | Module | Import | Peer dependencies | Use case |
 |--------|--------|-------------------|----------|
 | In-memory | `node-cqrs` | | Tests and local development |
-| SQLite | `node-cqrs/sqlite` | `better-sqlite3` | Persistent views with catch-up |
+| SQLite | `node-cqrs/sqlite` | `better-sqlite3` | SQLite-backed event storage and persistent views |
 | Redis | `node-cqrs/redis` | `ioredis` | Distributed persistent views with catch-up |
 | RabbitMQ | `node-cqrs/rabbitmq` | `amqplib` | Cross-process event distribution |
 | Workers | `node-cqrs/workers` | `comlink` | CPU-heavy projections in worker threads |
@@ -423,7 +423,7 @@ import {
 } from 'node-cqrs/sqlite';
 ```
 
-See [examples/sqlite/index.ts](examples/sqlite/index.ts) for a runnable example.
+Use the SQLite module when you want a local embedded database for persisted events or read models. See [src/sqlite](src/sqlite) for SQLite-specific setup patterns and [examples/sqlite/index.ts](examples/sqlite/index.ts) for a runnable projection example.
 
 ### Redis
 
@@ -450,6 +450,8 @@ import {
   RabbitMqCommandBus       // RabbitMQ-backed ICommandBus (point-to-point delivery via durable queue)
 } from 'node-cqrs/rabbitmq';
 ```
+
+Use the RabbitMQ module when commands or events need to move between processes through broker-managed queues. See [src/rabbitmq](src/rabbitmq) for RabbitMQ-specific setup patterns.
 
 ### Workers
 
