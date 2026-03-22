@@ -439,7 +439,7 @@ import {
 } from 'node-cqrs/redis';
 ```
 
-See [examples/redis/index.ts](examples/redis/index.ts) for a runnable example.
+See [src/redis](src/redis) for Redis-specific setup patterns and [examples/redis/index.ts](examples/redis/index.ts) for a runnable example.
 
 ### RabbitMQ
 
@@ -476,7 +476,7 @@ import {
 } from 'node-cqrs/mongodb';
 ```
 
-See [examples/mongodb/index.ts](examples/mongodb/index.ts) for a full working example.
+See [src/mongodb](src/mongodb) for MongoDB-specific setup patterns and [examples/mongodb/index.ts](examples/mongodb/index.ts) for a full working example.
 
 
 ## OpenTelemetry
