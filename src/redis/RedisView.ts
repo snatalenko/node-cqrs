@@ -1,5 +1,5 @@
 import type { IContainer } from 'node-cqrs';
-import type { IEvent, IEventLocker, ILogger, IObjectStorage, IViewLocker } from '../interfaces/index.ts';
+import type { IEvent, IEventLocker, ILogger, IObjectStorage, IViewLocker, Identifier } from '../interfaces/index.ts';
 import { RedisViewLocker, RedisViewLockerParams } from './RedisViewLocker.ts';
 import { RedisEventLocker, RedisEventLockerParams } from './RedisEventLocker.ts';
 import { RedisObjectStorage } from './RedisObjectStorage.ts';
@@ -78,26 +78,26 @@ export class RedisView<TRecord> extends AbstractRedisAccessor
 		return this.eventLocker.markAsLastEvent(event);
 	}
 
-	async get(id: string): Promise<TRecord | undefined> {
+	async get(id: Identifier): Promise<TRecord | undefined> {
 		if (!this.ready)
 			await this.once('ready');
 
 		return this.#objectStorage.get(id);
 	}
 
-	async create(id: string, data: TRecord) {
+	async create(id: Identifier, data: TRecord) {
 		await this.#objectStorage.create(id, data);
 	}
 
-	async update(id: string, update: (r: TRecord) => TRecord) {
+	async update(id: Identifier, update: (r: TRecord) => TRecord) {
 		await this.#objectStorage.update(id, update);
 	}
 
-	async updateEnforcingNew(id: string, update: (r?: TRecord) => TRecord) {
+	async updateEnforcingNew(id: Identifier, update: (r?: TRecord) => TRecord) {
 		await this.#objectStorage.updateEnforcingNew(id, update);
 	}
 
-	async delete(id: string): Promise<boolean> {
+	async delete(id: Identifier): Promise<boolean> {
 		return this.#objectStorage.delete(id);
 	}
 }

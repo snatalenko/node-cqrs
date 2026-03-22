@@ -3,7 +3,8 @@ import { guid } from './utils/index.ts';
 import type { IContainer } from 'node-cqrs';
 import type { IObjectStorage } from '../interfaces/index.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
-import { assertFunction, assertString } from '../utils/assert.ts';
+import { assertDefined, assertFunction } from '../utils/assert.ts';
+import type { Identifier } from '../interfaces/index.ts';
 
 export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor implements IObjectStorage<TRecord> {
 
@@ -55,9 +56,8 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 		`);
 	}
 
-	async get(id: string): Promise<TRecord | undefined> {
-		assertString(id, 'id');
-
+	async get(id: Identifier): Promise<TRecord | undefined> {
+		assertDefined(id, 'id');
 		await this.assertConnection();
 
 		const r = this.#getQuery.get(guid(id));
@@ -67,9 +67,8 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 		return JSON.parse(r.data);
 	}
 
-	getSync(id: string): TRecord | undefined {
-		assertString(id, 'id');
-
+	getSync(id: Identifier): TRecord | undefined {
+		assertDefined(id, 'id');
 		const r = this.#getQuery.get(guid(id));
 		if (!r)
 			return undefined;
@@ -77,22 +76,21 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 		return JSON.parse(r.data);
 	}
 
-	async create(id: string, data: TRecord) {
-		assertString(id, 'id');
-
+	async create(id: Identifier, data: TRecord) {
+		assertDefined(id, 'id');
 		await this.assertConnection();
 
 		this.#createSync(id, data);
 	}
 
-	#createSync(id: string, data: TRecord) {
+	#createSync(id: Identifier, data: TRecord) {
 		const r = this.#insertQuery.run(guid(id), JSON.stringify(data));
 		if (r.changes !== 1)
 			throw new Error(`Record '${id}' could not be created`);
 	}
 
-	async update(id: string, update: (r: TRecord) => TRecord) {
-		assertString(id, 'id');
+	async update(id: Identifier, update: (r: TRecord) => TRecord) {
+		assertDefined(id, 'id');
 		assertFunction(update, 'update');
 
 		await this.assertConnection();
@@ -100,7 +98,7 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 		this.#updateSync(id, update);
 	}
 
-	#updateSync(id: string, update: (r: TRecord) => TRecord) {
+	#updateSync(id: Identifier, update: (r: TRecord) => TRecord) {
 		const gid = guid(id);
 		const record = this.#getQuery.get(gid);
 		if (!record)
@@ -109,7 +107,7 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 		this.#updateExistingSync(id, record, update);
 	}
 
-	#updateExistingSync(id: string, record: { data: string, version: number }, update: (r: TRecord) => TRecord) {
+	#updateExistingSync(id: Identifier, record: { data: string, version: number }, update: (r: TRecord) => TRecord) {
 		const gid = guid(id);
 		const data = JSON.parse(record.data);
 		const updatedData = update(data);
@@ -123,8 +121,8 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 			throw new Error(`Record '${id}' could not be updated`);
 	}
 
-	async updateEnforcingNew(id: string, update: (r?: TRecord) => TRecord) {
-		assertString(id, 'id');
+	async updateEnforcingNew(id: Identifier, update: (r?: TRecord) => TRecord) {
+		assertDefined(id, 'id');
 		assertFunction(update, 'update');
 
 		await this.assertConnection();
@@ -136,9 +134,8 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 			this.#createSync(id, update());
 	}
 
-	async delete(id: string): Promise<boolean> {
-		assertString(id, 'id');
-
+	async delete(id: Identifier): Promise<boolean> {
+		assertDefined(id, 'id');
 		await this.assertConnection();
 
 		const r = this.#deleteQuery.run(guid(id));
