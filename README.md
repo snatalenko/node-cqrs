@@ -33,22 +33,20 @@ Built around ES6/TypeScript classes and dependency injection - swap implementati
 - [Installation](#installation)
 - [ContainerBuilder](#containerbuilder)
 - [Commands](#commands)
-- [Aggregates (write model)](#aggregates-write-model)
+- [Write Model (Aggregates)](#write-model-aggregates)
   - [AbstractAggregate](#abstractaggregate)
   - [Aggregate State](#aggregate-state)
   - [External Dependencies](#external-dependencies)
-- [Projections and Views (read model)](#projections-and-views-read-model)
+- [Read Model (Projections and Views)](#read-model-projections-and-views)
   - [AbstractProjection](#abstractprojection)
   - [View restoring on start](#view-restoring-on-start)
   - [Accessing views](#accessing-views)
 - [Sagas](#sagas)
-- [Infrastructure modules](#infrastructure-modules)
-  - [In-memory](#in-memory)
-  - [SQLite](#sqlite)
-  - [Redis](#redis)
-  - [RabbitMQ](#rabbitmq)
-  - [Workers](#workers)
-  - [MongoDB](#mongodb)
+- [Infrastructure Modules](#infrastructure-modules)
+  - [Event Storage](#event-storage)
+  - [Read Model](#read-model)
+  - [Message Buses](#message-buses)
+  - [Other](#other)
 - [OpenTelemetry](#opentelemetry)
 - [Examples](#examples)
 
@@ -75,15 +73,15 @@ interface IMessage<TPayload = any> {
 
 Domain logic lives in three building blocks:
 
-- **[Aggregates](#aggregates-write-model)** - handle commands and emit events
-- **[Projections](#projections-and-views-read-model)** - consume events and update views
+- **[Aggregates](#write-model-aggregates)** - handle commands and emit events
+- **[Projections](#read-model-projections-and-views)** - consume events and update views
 - **[Sagas](#sagas)** - manage processes by reacting to events and enqueueing follow-up commands
 
 Message delivery is handled by the following components, in order:
 
 - **[Command Bus](src/in-memory/InMemoryMessageBus.ts)** - routes commands to handlers
 - **[Aggregate Command Handler](src/AggregateCommandHandler.ts)** - restores aggregate state and executes commands
-- **[Event Store](src/EventStore.ts)** — runs the event dispatch pipeline (e.g. encoding, persistence), then publishes events to the event bus for delivery to all subscribers
+- **[Event Store](src/EventStore.ts)** - runs the event dispatch pipeline (e.g. encoding, persistence), then publishes events to the event bus for delivery to all subscribers
 - **[Saga Event Handler](src/SagaEventHandler.ts)** - restores saga state and applies events
 
 > `src/`, `tests/`, and `examples/` are good entry points - the codebase is intentionally small and readable.
@@ -150,10 +148,10 @@ commandBus.send('signupUser', undefined, { payload: { profile, password } });
 commandBus.send({ type: 'signupUser', payload: { profile, password } });
 ```
 
-Commands are handled by [Aggregates](#aggregates-write-model) and may also be enqueued by [Sagas](#sagas).
+Commands are handled by [Aggregates](#write-model-aggregates) and may also be enqueued by [Sagas](#sagas).
 
 
-## Aggregates (write model)
+## Write Model (Aggregates)
 
 Aggregates handle commands, validate business rules, and emit events.
 Minimal contract ([IAggregate](src/interfaces/IAggregate.ts)):
@@ -245,7 +243,7 @@ builder.registerAggregate(UserAggregate);
 ```
 
 
-## Projections and Views (read model)
+## Read Model (Projections and Views)
 
 Projections listen to events and update views.
 Minimal contract ([IProjection](src/interfaces/IProjection.ts)):
@@ -270,14 +268,18 @@ interface IProjection<TView> extends IObserver {
 Same name-matching rule as AbstractAggregate - `userCreated()` handles the `userCreated` event:
 
 ```ts
-class UsersProjection extends AbstractProjection<Map<string, { username: string }>> {
+class UsersProjection extends AbstractProjection<Map<string, { 
+	username: string
+}>> {
 	constructor() {
 		super();
 		this.view = new Map();
 	}
 
 	userCreated(event: IEvent<UserCreatedEventPayload>) {
-		this.view.set(event.aggregateId as string, { username: event.payload.username });
+		this.view.set(event.aggregateId, {
+			username: event.payload.username
+		});
 	}
 }
 ```
@@ -291,7 +293,8 @@ For persistent views and safe restarts, implement [IViewLocker](src/interfaces/I
 ### Accessing views
 
 ```ts
-interface IMyContainer extends IContainer { // optional interface for container typing
+// optional interface for container typing
+interface IMyContainer extends IContainer {
 	usersView: UsersView;
 }
 
@@ -317,7 +320,9 @@ Sagas coordinate multi-step processes by reacting to events and enqueueing follo
 ```ts
 class WelcomeEmailSaga extends AbstractSaga {
 	userSignedUp(event) {
-		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload.email });
+		this.enqueue('sendWelcomeEmail', undefined, {
+			email: event.payload.email
+		});
 	}
 }
 
@@ -387,97 +392,101 @@ interface ISaga {
 ```
 
 
-## Infrastructure modules
+## Infrastructure Modules
 
-| Module | Import | Peer dependencies | Use case |
-|--------|--------|-------------------|----------|
-| In-memory | `node-cqrs` | | Tests and local development |
-| SQLite | `node-cqrs/sqlite` | `better-sqlite3` | SQLite-backed event storage and persistent views |
-| Redis | `node-cqrs/redis` | `ioredis` | Distributed persistent views with catch-up |
-| RabbitMQ | `node-cqrs/rabbitmq` | `amqplib` | Cross-process event distribution |
-| Workers | `node-cqrs/workers` | `comlink` | CPU-heavy projections in worker threads |
-| MongoDB | `node-cqrs/mongodb` | `mongodb` | Persistent event storage with concurrency control |
+Swap implementations by registering different classes in the DI container.
+All modules below implement the same interfaces - pick what fits your deployment.
 
-### In-memory
+### Event Storage
 
-```ts
-import {
-  InMemoryEventStorage,    // event storage + identifier provider
-  InMemoryMessageBus,      // event/command bus
-  InMemoryView,            // in-memory view with locking support
-  InMemoryLock,            // in-memory lock
-  InMemorySnapshotStorage  // aggregate snapshot storage
-} from 'node-cqrs';
-```
+Where aggregate events are persisted and replayed from.
 
-See [examples/user-domain-ts/index.ts](examples/user-domain-ts/index.ts) for a DI-based example and
-[examples/user-domain-framework-free/index.ts](examples/user-domain-framework-free/index.ts) for a plain implementation.
+| Implementation         | Import              | Peer deps        | Notes                                                                             |
+| ---------------------- | ------------------- | ---------------- | --------------------------------------------------------------------------------- |
+| `InMemoryEventStorage` | `node-cqrs`         | -                | Dev/test only; data lost on restart ([example](examples/user-domain-ts/index.ts)) |
+| `SqliteEventStorage`   | `node-cqrs/sqlite`  | `better-sqlite3` | Embedded, single-process ([example](examples/sqlite/index.ts))                    |
+| `MongoEventStorage`    | `node-cqrs/mongodb` | `mongodb`        | Distributed, multi-process ([example](examples/mongodb-eventstore/index.ts))      |
 
-### SQLite
+### Read Model
 
-```ts
-import {
-  SqliteEventStorage,      // SQLite-backed event storage
-  AbstractSqliteView,      // SQLite view with restore locking and checkpoint tracking
-  SqliteObjectView         // SQLite-backed object view
-} from 'node-cqrs/sqlite';
-```
+Where projections store and query their read-side state.
+Each persistent backend provides the same layered set of building blocks:
 
-Use the SQLite module when you want a local embedded database for persisted events or read models. See [src/sqlite](src/sqlite) for SQLite-specific setup patterns and [examples/sqlite/index.ts](examples/sqlite/index.ts) for a runnable projection example.
+| Layer               | Purpose                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| **Object storage**  | Key/value CRUD with optimistic concurrency                                                       |
+| **View locker**     | Prevents concurrent schema-migration rebuilds - only one process rebuilds at a time; others wait |
+| **Event locker**    | Per-event deduplication and last-projected checkpoint                                            |
+| **Composite view**  | Combines the above into a single view object                                                     |
+| **Base projection** | Wires locking, checkpointing, and error handling automatically                                   |
 
-### Redis
+#### In-memory
 
-> **Experimental** — the Redis module is new and has not been validated in production. APIs may change in minor versions.
+| Class          | Notes                                                          |
+| -------------- | -------------------------------------------------------------- |
+| `InMemoryLock` | Simple in-process lock                                         |
+| `InMemoryView` | Simple `Map`-backed view; restores from events on each restart |
 
-```ts
-import {
-  AbstractRedisProjection, // base class for Redis-backed projections
-  RedisView,               // object view with distributed locking and checkpoint tracking
-  RedisObjectStorage,      // low-level key/value object store
-  RedisViewLocker,         // distributed view lock with auto-prolongation via PEXPIRE
-  RedisEventLocker         // per-event deduplication and last-event checkpoint
-} from 'node-cqrs/redis';
-```
+#### SQLite (`node-cqrs/sqlite`, peer dep: `better-sqlite3`)
 
-See [src/redis](src/redis) for Redis-specific setup patterns and [examples/redis/index.ts](examples/redis/index.ts) for a runnable example.
+| Class                            | Role                                                                                   |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| `SqliteObjectStorage`            | Key/value object storage with version-based concurrency                                |
+| `SqliteViewLocker`               | Prevents concurrent schema-migration rebuilds via SQLite row lock                      |
+| `SqliteEventLocker`              | Event deduplication and last-event checkpoint                                          |
+| `AbstractSqliteView`             | Base class for relational (non-object) SQLite views with view and event locks embedded |
+| `SqliteObjectView`               | Composite view combining the above                                                     |
+| `AbstractSqliteObjectProjection` | Base projection wired to `SqliteObjectView`                                            |
 
-### RabbitMQ
+See [src/sqlite](src/sqlite) for additional documentation, and [examples/sqlite](examples/sqlite/index.ts) for runnable project examples
 
-```ts
-import {
-  RabbitMqGateway,         // publish/subscribe gateway with durable and transient queue support
-  RabbitMqEventBus,        // RabbitMQ-backed IEventBus (fanout delivery to all subscribers)
-  RabbitMqCommandBus       // RabbitMQ-backed ICommandBus (point-to-point delivery via durable queue)
-} from 'node-cqrs/rabbitmq';
-```
+#### MongoDB (`node-cqrs/mongodb`, peer dep: `mongodb`)
 
-Use the RabbitMQ module when commands or events need to move between processes through broker-managed queues. See [src/rabbitmq](src/rabbitmq) for RabbitMQ-specific setup patterns.
+> **Experimental** - not yet validated in production. APIs may change in minor versions.
 
-### Workers
+| Class                           | Role                                                                              |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| `MongoObjectStorage`            | Document storage with version-based optimistic concurrency                        |
+| `MongoViewLocker`               | Prevents concurrent schema-migration rebuilds; auto-prolongs lock via token + TTL |
+| `MongoEventLocker`              | Event deduplication and last-event checkpoint                                     |
+| `AbstractMongoView`             | Base class combining `MongoViewLocker` + `MongoEventLocker`                       |
+| `MongoObjectView`               | Composite view combining the above                                                |
+| `AbstractMongoObjectProjection` | Base projection wired to `MongoObjectView`                                        |
 
-```ts
-import {
-  AbstractWorkerProjection // projections running in worker threads
-} from 'node-cqrs/workers';
-```
+See [src/mongodb](src/mongodb) for additional documentation, and [examples/mongodb-views](examples/mongodb-views/index.ts) for runnable projection examples.
 
-Define one projection class that runs as a real projection inside a worker thread and a proxy in the main thread. Quickstart:
-1. Extend `AbstractWorkerProjection`.
-2. In the worker module, call `YourProjection.createInstanceInWorkerThread()`.
-3. In the app container, register `YourProjection.workerProxyFactory` like a normal projection.
+#### Redis (`node-cqrs/redis`, peer dep: `ioredis`)
 
-See [examples/workers-projection/index.cjs](examples/workers-projection/index.cjs) for a runnable example.
+> **Experimental** - not yet validated in production. APIs may change in minor versions.
 
-### MongoDB
+| Class                     | Role                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| `RedisObjectStorage`      | Key/value object storage backed by Redis hashes                               |
+| `RedisViewLocker`         | Prevents concurrent schema-migration rebuilds; auto-prolongs lock via PEXPIRE |
+| `RedisEventLocker`        | Event deduplication and last-event checkpoint                                 |
+| `RedisView`               | Composite view combining the above                                            |
+| `AbstractRedisProjection` | Base projection wired to `RedisView`                                          |
 
-```ts
-import {
-  MongoEventStorage        // event storage, identifier provider, and dispatch pipeline processor
-} from 'node-cqrs/mongodb';
-```
+See [src/redis](src/redis) for additional documentation, and [examples/redis](examples/redis/index.ts) for runnable projection examples.
 
-See [src/mongodb](src/mongodb) for MongoDB-specific setup patterns and [examples/mongodb/index.ts](examples/mongodb/index.ts) for a full working example.
+### Message Buses
 
+How commands and events move between producers and consumers.
+
+| Implementation       | Import               | Peer deps | Notes                                                                                            |
+| -------------------- | -------------------- | --------- | ------------------------------------------------------------------------------------------------ |
+| `InMemoryMessageBus` | `node-cqrs`          | -         | Single-process; used as both command and event bus ([example](examples/user-domain-ts/index.ts)) |
+| `RabbitMqEventBus`   | `node-cqrs/rabbitmq` | `amqplib` | Fanout delivery to all subscribers ([instructions](src/rabbitmq))                                |
+| `RabbitMqCommandBus` | `node-cqrs/rabbitmq` | `amqplib` | Point-to-point via durable queue ([instructions](src/rabbitmq))                                  |
+
+### Other
+
+| Implementation             | Import              | Notes                                                         |
+| -------------------------- | ------------------- | ------------------------------------------------------------- |
+| `InMemorySnapshotStorage`  | `node-cqrs`         | Aggregate snapshot cache in memory, resets on process restart |
+| `AbstractWorkerProjection` | `node-cqrs/workers` | Run projections in worker threads ([instructions](src/workers), [example](examples/workers-projection/index.cjs)) |
+
+> **Experimental** — the Workers module is new and has not been validated in production. APIs may change in minor versions.
 
 ## OpenTelemetry
 
@@ -502,7 +511,8 @@ See [examples/telemetry/index.ts](examples/telemetry/index.ts) for a full workin
 - [examples/sagas-overlaps](examples/sagas-overlaps/index.ts) - overlapping sagas, multi-step flow
 - [examples/browser](examples/browser) - browser smoke test
 - [examples/workers-projection](examples/workers-projection) - worker thread projection
-- [examples/mongodb](examples/mongodb/index.ts) - MongoDB event storage with DI container and manual wiring
+- [examples/mongodb-eventstore](examples/mongodb-eventstore/index.ts) - MongoDB event storage with DI container and manual wiring
+- [examples/mongodb-views](examples/mongodb-views/index.ts) - MongoDB-backed projection views with object storage and locking
 - [examples/telemetry](examples/telemetry/index.ts) - OpenTelemetry tracing with multiple exporters
 
 TS examples can be run with NodeJS 24+ without transpiling.

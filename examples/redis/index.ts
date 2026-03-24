@@ -37,7 +37,7 @@ class UsersProjection extends AbstractRedisProjection<UserRecord> {
 	}
 }
 
-// ── Wire up ───────────────────────────────────────────────────────────────────
+// --- Wire up ---
 
 interface MyContainer extends IContainer {
 	viewModelRedis: Redis;
@@ -54,7 +54,7 @@ builder.registerProjection(UsersProjection, 'usersView');
 const container = builder.container();
 const { commandBus, usersView } = container;
 
-// ── Run ───────────────────────────────────────────────────────────────────────
+// --- Run ---
 
 const [userCreated] = await commandBus.send('createUser', undefined, {
 	payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload

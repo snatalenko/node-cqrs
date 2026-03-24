@@ -18,7 +18,7 @@ Clone and install:
 ```bash
 git clone git@github.com:snatalenko/node-cqrs.git
 cd node-cqrs
-npm install
+npm ci
 ```
 
 ## Project structure
@@ -31,7 +31,7 @@ npm install
 | **src/rabbitmq/** | RabbitMQ buses (`node-cqrs/rabbitmq`) |
 | **src/redis/** | Redis-backed views (`node-cqrs/redis`) |
 | **src/sqlite/** | SQLite-backed views (`node-cqrs/sqlite`) |
-| **src/mongodb/** | MongoDB event storage (`node-cqrs/mongodb`) |
+| **src/mongodb/** | MongoDB event storage and views (`node-cqrs/mongodb`) |
 | **src/workers/** | Worker thread projections (`node-cqrs/workers`) |
 | src/AbstractAggregate.ts | Base class for aggregates; auto-routes commands to methods by name |
 | src/AbstractProjection.ts | Base class for projections; auto-routes events to methods by name |
@@ -67,6 +67,12 @@ npm run lint           # Run ESLint
 
 ```bash
 npm test tests/unit/memory/InMemoryMessageBus.test.ts
+```
+
+### Linting a single file
+
+```bash
+npm run lint src/path/to/File.ts
 ```
 
 ## Browser bundle
@@ -145,6 +151,7 @@ Code style and formatting are enforced via [EditorConfig](https://editorconfig.o
 - **Line length:** Warn at 120 chars
 - **Type-only imports:** Use the `type` keyword for imports that are only used as types
 - **`.ts` file extensions in imports:** Always use explicit `.ts` extensions in relative import paths
+- **`readonly` fields:** Mark class fields (including private `#fields`) as `readonly` when they are assigned only in the constructor or at declaration and never reassigned
 
 ## Verification
 

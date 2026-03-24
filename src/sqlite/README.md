@@ -46,7 +46,7 @@ class UsersProjection extends AbstractSqliteObjectProjection<UserRecord> {
 	static get schemaVersion() { return '1'; }
 
 	async userCreated(event: UserCreatedEvent) {
-		await this.view.updateEnforcingNew(String(event.aggregateId), () => ({
+		await this.view.updateEnforcingNew(event.aggregateId, () => ({
 			username: event.payload.username
 		}));
 	}
@@ -114,7 +114,7 @@ class UsersByStatusProjection extends AbstractProjection<UsersByStatusView> {
 	}
 
 	async userCreated(event: UserCreatedEvent) {
-		await this.view.upsertUser(String(event.aggregateId), event.payload.username, 'active');
+		await this.view.upsertUser(event.aggregateId, event.payload.username, 'active');
 	}
 }
 
