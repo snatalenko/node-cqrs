@@ -24,13 +24,16 @@ export class EventDispatchPipeline {
 	#processors: Array<IDispatchPipelineProcessor> = [];
 	#pipeline: AsyncIterableIterator<EventBatchEnvelope> | IterableIterator<EventBatchEnvelope> = this.#pipelineInput;
 	#processing = false;
+	#pending = new Set<Promise<unknown>>();
 
 	readonly #eventBus;
 	readonly #concurrentLimit: number;
+	readonly #onError?: (error: Error) => void;
 
-	constructor(eventBus: IEventBus, concurrentLimit: number) {
+	constructor(eventBus: IEventBus, concurrentLimit: number, onError?: (error: Error) => void) {
 		this.#eventBus = eventBus;
 		this.#concurrentLimit = concurrentLimit;
+		this.#onError = onError;
 	}
 
 	addProcessor(preprocessor: IDispatchPipelineProcessor) {
@@ -84,7 +87,11 @@ export class EventDispatchPipeline {
 						if (isSnapshotEvent(event))
 							continue;
 
-						void this.#eventBus.publish(event, meta);
+						const p = this.#eventBus.publish(event, meta)
+							.catch(this.#onError);
+
+						this.#pending.add(p);
+						p.finally(() => this.#pending.delete(p));
 
 						events.push(event);
 					}
@@ -95,6 +102,11 @@ export class EventDispatchPipeline {
 				}
 			}
 		})();
+	}
+
+	/** Get a promise that resolves when all in-flight fire-and-forget event bus publishes have settled */
+	async drain(): Promise<unknown> {
+		return Promise.allSettled(this.#pending);
 	}
 
 	async revert(batch: DispatchPipelineBatch) {

@@ -158,6 +158,11 @@ export class EventStore implements IEventStore {
 		});
 	}
 
+	/** Get a promise that resolves when all in-flight fire-and-forget event bus publishes have settled */
+	drain(): Promise<unknown> {
+		return this.#eventDispatcher.drain();
+	}
+
 	on(messageType: string, handler: IMessageHandler) {
 		this.eventBus.on(messageType, handler);
 	}

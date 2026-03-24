@@ -4,10 +4,12 @@ import { EventDispatcher } from '../../src/EventDispatcher';
 describe('EventDispatcher', () => {
 	let dispatcher: EventDispatcher;
 	let eventBus: jest.Mocked<IEventBus>;
+	let eventPublishErrorHandler: (error: Error) => void;
 
 	beforeEach(() => {
-		eventBus = { publish: jest.fn() };
-		dispatcher = new EventDispatcher({ eventBus });
+		eventBus = { publish: jest.fn().mockResolvedValue(Promise.resolve()) };
+		eventPublishErrorHandler = jest.fn();
+		dispatcher = new EventDispatcher({ eventBus, eventPublishErrorHandler });
 	});
 
 	describe('constructor(o)', () => {
@@ -207,6 +209,47 @@ describe('EventDispatcher', () => {
 			]);
 		});
 
+		it('processes batches serially when eventDispatcherConfig.concurrentLimit is defined', async () => {
+			let releaseFirst!: () => void;
+			let firstStarted!: () => void;
+			const firstStartedPromise = new Promise<void>(resolve => {
+				firstStarted = resolve;
+			});
+			const firstReleasePromise = new Promise<void>(resolve => {
+				releaseFirst = resolve;
+			});
+
+			const processorMock: IDispatchPipelineProcessor = {
+				process: jest.fn(async batch => {
+					if (processorMock.process.mock.calls.length === 1) {
+						firstStarted();
+						await firstReleasePromise;
+					}
+					return batch;
+				})
+			};
+
+			dispatcher = new EventDispatcher({
+				eventBus,
+				eventDispatcherConfig: { concurrentLimit: 1 },
+				eventDispatchPipeline: [processorMock]
+			});
+
+			const event1: IEvent = { type: 'serial-1' };
+			const event2: IEvent = { type: 'serial-2' };
+
+			const firstDispatch = dispatcher.dispatch([event1]);
+			await firstStartedPromise;
+
+			const secondDispatch = dispatcher.dispatch([event2]);
+			await Promise.resolve();
+
+			expect(processorMock.process).toHaveBeenCalledTimes(1);
+
+			releaseFirst();
+			await Promise.all([firstDispatch, secondDispatch]);
+		});
+
 		it('routes events to pipelines based on meta.origin', async () => {
 
 			const internalProcessor: IDispatchPipelineProcessor = { process: jest.fn(async b => b) };
@@ -296,6 +339,107 @@ describe('EventDispatcher', () => {
 				eventDispatchPipelines: { other: [] }
 			});
 			await expect(d.dispatch([e])).rejects.toThrow('No "default" pipeline configured');
+		});
+	});
+
+	describe('drain()', () => {
+
+		it('resolves immediately when no events have been dispatched', async () => {
+			await expect(dispatcher.drain()).resolves.toBeDefined();
+		});
+
+		it('resolves after all fire-and-forget publishes settle', async () => {
+			const event: IEvent = { type: 'slow-publish' };
+
+			let resolvePublish!: () => void;
+			const publishPromise = new Promise<void>(res => {
+				resolvePublish = res;
+			});
+			eventBus.publish.mockReturnValue(publishPromise);
+
+			await dispatcher.dispatch([event]);
+
+			let drainResolved = false;
+			const drainPromise = dispatcher.drain().then(() => {
+				drainResolved = true;
+			});
+
+			// drain should still be pending while publish is in-flight
+			await Promise.resolve();
+			expect(drainResolved).toBe(false);
+
+			resolvePublish();
+			await drainPromise;
+
+			expect(drainResolved).toBe(true);
+		});
+
+		it('resolves even when publish rejects', async () => {
+			const event: IEvent = { type: 'failing-publish' };
+
+			eventBus.publish.mockReturnValue(Promise.reject(new Error('bus error')));
+
+			await dispatcher.dispatch([event]);
+			await expect(dispatcher.drain()).resolves.toBeDefined();
+		});
+
+		it('aggregates drain across all named pipelines', async () => {
+			let resolveP1!: () => void;
+			let resolveP2!: () => void;
+
+			// Use a shared bus but two separate dispatchers to verify pipeline-level drain
+			const d = new EventDispatcher({
+				eventBus,
+				eventDispatchPipelines: { p1: [], p2: [] },
+				eventDispatchRouter: (_e, meta) => meta?.pipe as string
+			});
+
+			// Intercept publish on each pipeline's eventBus (same bus)
+			let callCount = 0;
+			eventBus.publish.mockImplementation(() => {
+				callCount++;
+				return callCount === 1 ?
+					new Promise<void>(res => {
+						resolveP1 = res;
+					})
+					: new Promise<void>(res => {
+						resolveP2 = res;
+					});
+			});
+
+			await d.dispatch([{ type: 'e1' }], { pipe: 'p1' });
+			await d.dispatch([{ type: 'e2' }], { pipe: 'p2' });
+
+			let drainResolved = false;
+			const drainPromise = d.drain().then(() => {
+				drainResolved = true;
+			});
+
+			await Promise.resolve();
+			expect(drainResolved).toBe(false);
+
+			resolveP1();
+			await Promise.resolve();
+			expect(drainResolved).toBe(false);
+
+			resolveP2();
+			await drainPromise;
+			expect(drainResolved).toBe(true);
+		});
+	});
+
+	describe('eventPublishErrorHandler', () => {
+
+		it('calls the handler when fire-and-forget publish rejects', async () => {
+			const event: IEvent = { type: 'error-event' };
+			const publishError = new Error('publish failed async');
+
+			eventBus.publish.mockReturnValue(Promise.reject(publishError));
+
+			await dispatcher.dispatch([event]);
+			await dispatcher.drain();
+
+			expect(eventPublishErrorHandler).toHaveBeenCalledWith(publishError);
 		});
 	});
 });
