@@ -1,6 +1,6 @@
 import createDb from 'better-sqlite3';
-import { type IContainer, ContainerBuilder, EventIdAugmentor } from 'node-cqrs';
-import { AbstractSqliteObjectProjection, SqliteEventStorage, type SqliteObjectView } from 'node-cqrs/sqlite';
+import { type IContainer, ContainerBuilder, EventIdAugmentor } from '../../src/index.ts';
+import { AbstractSqliteObjectProjection, SqliteEventStorage, type SqliteObjectView } from '../../src/sqlite/index.ts';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
 import type { CreateUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
 

@@ -1,7 +1,7 @@
 import type { IContainer } from 'node-cqrs';
 import type { IEvent, IEventLocker, ILogger, IObjectStorage, IViewLocker, Identifier } from '../interfaces/index.ts';
-import { RedisViewLocker, RedisViewLockerParams } from './RedisViewLocker.ts';
-import { RedisEventLocker, RedisEventLockerParams } from './RedisEventLocker.ts';
+import { RedisViewLocker, type RedisViewLockerParams } from './RedisViewLocker.ts';
+import { RedisEventLocker, type RedisEventLockerParams } from './RedisEventLocker.ts';
 import { RedisObjectStorage } from './RedisObjectStorage.ts';
 import { AbstractRedisAccessor } from './AbstractRedisAccessor.ts';
 import { assertString } from '../utils/assert.ts';

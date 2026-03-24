@@ -1,8 +1,7 @@
 import type { Redis } from 'ioredis';
 import type { IContainer } from 'node-cqrs';
-import type { IObjectStorage } from '../interfaces/index.ts';
+import type { IObjectStorage, Identifier } from '../interfaces/index.ts';
 import { assertDefined, assertFunction, assertString } from '../utils/assert.ts';
-import type { Identifier } from '../interfaces/index.ts';
 import { AbstractRedisAccessor } from './AbstractRedisAccessor.ts';
 
 /**

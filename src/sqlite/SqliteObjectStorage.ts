@@ -1,10 +1,9 @@
 import type { Statement, Database } from 'better-sqlite3';
 import { guid } from './utils/index.ts';
 import type { IContainer } from 'node-cqrs';
-import type { IObjectStorage } from '../interfaces/index.ts';
+import type { IObjectStorage, Identifier } from '../interfaces/index.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
 import { assertDefined, assertFunction } from '../utils/assert.ts';
-import type { Identifier } from '../interfaces/index.ts';
 
 export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor implements IObjectStorage<TRecord> {
 

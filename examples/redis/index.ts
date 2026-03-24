@@ -9,8 +9,8 @@
  */
 
 import { Redis } from 'ioredis';
-import { type IContainer, ContainerBuilder, EventIdAugmentor, InMemoryEventStorage } from 'node-cqrs';
-import { AbstractRedisProjection, type RedisView } from 'node-cqrs/redis';
+import { type IContainer, ContainerBuilder, EventIdAugmentor, InMemoryEventStorage } from '../../src/index.ts'; // 'node-cqrs'
+import { AbstractRedisProjection, type RedisView } from '../../src/redis/index.ts'; // 'node-cqrs/redis'
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
 import type { CreateUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
 

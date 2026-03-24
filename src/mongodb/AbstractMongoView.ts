@@ -1,8 +1,8 @@
 import type { Db } from 'mongodb';
 import type { IContainer } from 'node-cqrs';
 import type { IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces/index.ts';
-import { MongoViewLocker, MongoViewLockerParams } from './MongoViewLocker.ts';
-import { MongoEventLocker, MongoEventLockerParams } from './MongoEventLocker.ts';
+import { MongoViewLocker, type MongoViewLockerParams } from './MongoViewLocker.ts';
+import { MongoEventLocker, type MongoEventLockerParams } from './MongoEventLocker.ts';
 import { AbstractMongoAccessor } from './AbstractMongoAccessor.ts';
 import { assertString } from '../utils/assert.ts';
 

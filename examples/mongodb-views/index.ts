@@ -8,8 +8,8 @@
  *   node examples/mongodb-views/index.ts
  */
 import { MongoClient } from 'mongodb';
-import { type IContainer, ContainerBuilder, EventIdAugmentor, InMemoryEventStorage } from 'node-cqrs';
-import { AbstractMongoObjectProjection, type MongoObjectView } from 'node-cqrs/mongodb';
+import { type IContainer, ContainerBuilder, EventIdAugmentor, InMemoryEventStorage } from '../../src/index.ts'; // 'node-cqrs';
+import { AbstractMongoObjectProjection, type MongoObjectView } from '../../src/mongodb/index.ts'; // 'node-cqrs/mongodb';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
 import type { CreateUserCommandPayload, RenameUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
 

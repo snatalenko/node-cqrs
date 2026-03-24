@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { IEvent } from '../../interfaces/index.ts';
+import type { IEvent } from '../../interfaces/index.ts';
 import { guid } from './guid.ts';
 
 /**
