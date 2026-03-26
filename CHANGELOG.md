@@ -1,3 +1,13 @@
+# [1.1.0-alpha.3](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.2...v1.1.0-alpha.3) (2026-03-26)
+
+
+### Internal Fixes
+
+* Fix vulnerability in dev dependency ([610757b](https://github.com/snatalenko/node-cqrs/commit/610757ba24d39939b3827d99e2af2183758225b6))
+* Rename telemetry metadata span field to `otelSpan`, enhance typings ([2ca2494](https://github.com/snatalenko/node-cqrs/commit/2ca2494625ea8dde11f86fdf078d85c1d848d10a))
+* Compiled AbstractWorkerProjection type compatibility ([bf8ca08](https://github.com/snatalenko/node-cqrs/commit/bf8ca08a09faacb4cbf0da141dd4f09d4647e86e))
+
+
 # [1.1.0-alpha.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.0...v1.1.0-alpha.2) (2026-03-24)
 
 
