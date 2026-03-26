@@ -142,7 +142,7 @@ export class EventDispatcher implements IEventDispatcher {
 			data: events.map(event => ({
 				event,
 				...meta,
-				otelSpan
+				...otelSpan && { otelSpan }
 			}) satisfies DispatchPipelineEnvelope),
 			resolve,
 			reject
