@@ -1,4 +1,5 @@
-import type { Context, Span } from '@opentelemetry/api';
+import type { Context } from '@opentelemetry/api';
+import type { IMessageMeta } from '../interfaces';
 import { createRequire } from 'node:module';
 
 let _api: typeof import('@opentelemetry/api') | undefined;
@@ -19,7 +20,9 @@ function getOtelApi(): typeof import('@opentelemetry/api') {
  * Imports `@opentelemetry/api` lazily so the core library has no hard runtime
  * dependency on it — the browser bundle and environments without OTel stay lean.
  */
-export function spanContext(meta?: { span?: Span }): Context {
+export function spanContext(meta?: IMessageMeta): Context {
 	const { trace, context } = getOtelApi();
-	return meta?.span ? trace.setSpan(context.active(), meta.span) : context.active();
+	return meta?.otelSpan ?
+		trace.setSpan(context.active(), meta.otelSpan) :
+		context.active();
 }

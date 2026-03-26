@@ -197,8 +197,8 @@ describe('RabbitMqGateway tracing', () => {
 			expect(consumeSpan.end).toHaveBeenCalled();
 
 			// Handler received meta with span
-			expect(receivedMeta).toHaveProperty('span');
-			expect(receivedMeta.span).toBe(consumeSpan);
+			expect(receivedMeta).toHaveProperty('otelSpan');
+			expect(receivedMeta.otelSpan).toBe(consumeSpan);
 
 			// Message was acknowledged
 			expect(channel.ack).toHaveBeenCalledWith(fakeMsg);

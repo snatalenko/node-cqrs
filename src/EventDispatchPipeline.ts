@@ -1,4 +1,5 @@
 import {
+	type DispatchPipelineEnvelope,
 	type DispatchPipelineBatch,
 	type IEvent,
 	type IDispatchPipelineProcessor,
@@ -12,7 +13,7 @@ import { AsyncIterableBuffer } from 'async-iterable-buffer';
 import { getClassName } from './utils/index.ts';
 
 export type EventBatchEnvelope = {
-	data: DispatchPipelineBatch<{ event?: IEvent }>;
+	data: DispatchPipelineBatch<DispatchPipelineEnvelope>;
 	error?: Error;
 	resolve: (event: IEvent[]) => void;
 	reject: (error: Error) => void;
@@ -81,7 +82,7 @@ export class EventDispatchPipeline {
 
 					const events: IEvent[] = [];
 					for (const batch of data) {
-						const { event, ...meta } = batch as any;
+						const { event, ...meta } = batch;
 						if (!event)
 							continue;
 						if (isSnapshotEvent(event))

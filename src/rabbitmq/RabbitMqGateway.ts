@@ -648,7 +648,7 @@ export class RabbitMqGateway {
 
 			// Extract OTel trace context from AMQP headers to continue the distributed trace
 			const parentContext = propagation.extract(context.active(), msg.properties?.headers ?? {});
-			const span = this.#tracer?.startSpan(
+			const otelSpan = this.#tracer?.startSpan(
 				`RabbitMqGateway.consume ${message.type}`,
 				spanAttributes('rabbitmq', message, ['type', 'aggregateId']),
 				parentContext
@@ -664,7 +664,7 @@ export class RabbitMqGateway {
 					if (ignoreOwn && msg.properties.appId === ownAppId)
 						continue;
 
-					await handler(message, { span });
+					await handler(message, { otelSpan });
 				}
 
 				if (messageFinalized) {
@@ -684,7 +684,7 @@ export class RabbitMqGateway {
 					msg: extractMessageMeta(msg)
 				});
 
-				recordSpanError(span, err);
+				recordSpanError(otelSpan, err);
 
 				if (!messageFinalized) {
 					this.#rejectMessage(channel, msg);
@@ -695,7 +695,7 @@ export class RabbitMqGateway {
 				if (keepAliveTimeout !== null)
 					clearTimeout(keepAliveTimeout);
 
-				span?.end();
+				otelSpan?.end();
 			}
 		}, {
 			noAck: options?.noAck
@@ -755,7 +755,7 @@ export class RabbitMqGateway {
 		assertString(exchange, 'exchange');
 		assertMessage(message, 'message');
 
-		const span = this.#tracer?.startSpan(`RabbitMqGateway.publish ${message.type}`,
+		const otelSpan = this.#tracer?.startSpan(`RabbitMqGateway.publish ${message.type}`,
 			spanAttributes('rabbitmq', message, ['type', 'aggregateId']),
 			spanContext(meta)
 		);
@@ -783,8 +783,8 @@ export class RabbitMqGateway {
 
 			// Inject OTel trace context into AMQP headers so consumers can continue the trace
 			const headers: Record<string, string> = {};
-			const parentContext = span ?
-				spanContext({ span }) :
+			const parentContext = otelSpan ?
+				spanContext({ otelSpan }) :
 				spanContext(meta);
 			propagation.inject(parentContext, headers);
 
@@ -815,11 +815,11 @@ export class RabbitMqGateway {
 			});
 		}
 		catch (error: unknown) {
-			recordSpanError(span, error);
+			recordSpanError(otelSpan, error);
 			throw error;
 		}
 		finally {
-			span?.end();
+			otelSpan?.end();
 		}
 	}
 

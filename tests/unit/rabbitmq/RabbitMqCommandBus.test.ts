@@ -140,7 +140,7 @@ describe('RabbitMqCommandBus', () => {
 		it('forwards meta to gateway.publish when provided', async () => {
 			const gateway = createGateway();
 			const bus = createBus(gateway);
-			const meta = { span: { end: jest.fn() } as any };
+			const meta = { otelSpan: { end: jest.fn() } as any };
 
 			await bus.send({ type: 'doSomething' }, meta);
 
@@ -159,13 +159,13 @@ describe('RabbitMqCommandBus', () => {
 		it('extracts span from options in string-form send and passes it as meta', async () => {
 			const gateway = createGateway();
 			const bus = createBus(gateway);
-			const span = { end: jest.fn() } as any;
+			const otelSpan = { end: jest.fn() } as any;
 
-			await bus.send('doSomething', '1', { span });
+			await bus.send('doSomething', '1', { otelSpan });
 
 			const [, publishedCommand, publishedMeta] = gateway.publish.mock.calls[0];
-			expect(publishedMeta).toEqual({ span });
-			expect(publishedCommand).not.toHaveProperty('span');
+			expect(publishedMeta).toEqual({ otelSpan });
+			expect(publishedCommand).not.toHaveProperty('otelSpan');
 		});
 	});
 });

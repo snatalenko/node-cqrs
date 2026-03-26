@@ -225,7 +225,7 @@ describe('AggregateCommandHandler', function () {
 
 		const handleSpan = spans.find(span => span.name === 'AggregateCommandHandler.execute doSomething');
 		expect(handleSpan).toBeDefined();
-		expect(commitSpy.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({ span: handleSpan }));
+		expect(commitSpy.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({ otelSpan: handleSpan }));
 	});
 
 	it('attaches command context and sagaOrigins to produced events', async () => {

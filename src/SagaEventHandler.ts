@@ -106,7 +106,7 @@ export class SagaEventHandler implements IEventReceptor {
 		assertDefined(event.type, 'event.type');
 		assertString(event.id, 'event.id');
 
-		const span = this.#tracer?.startSpan(`${this.#sagaDescriptor}.handle ${event.type}`,
+		const otelSpan = this.#tracer?.startSpan(`${this.#sagaDescriptor}.handle ${event.type}`,
 			spanAttributes('saga', event, ['type', 'aggregateId']),
 			spanContext(meta)
 		);
@@ -146,7 +146,7 @@ export class SagaEventHandler implements IEventReceptor {
 						};
 					}
 
-					await this.#commandBus.send(command, { span });
+					await this.#commandBus.send(command, { otelSpan });
 				}
 			}
 			finally {
@@ -155,11 +155,11 @@ export class SagaEventHandler implements IEventReceptor {
 			}
 		}
 		catch (error: any) {
-			recordSpanError(span, error);
+			recordSpanError(otelSpan, error);
 			throw error;
 		}
 		finally {
-			span?.end();
+			otelSpan?.end();
 		}
 	}
 

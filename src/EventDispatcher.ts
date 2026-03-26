@@ -3,6 +3,7 @@ import { recordSpanError, spanContext } from './telemetry/index.ts';
 import {
 	type IEventDispatcher,
 	type IDispatchPipelineProcessor,
+	type DispatchPipelineEnvelope,
 	type IEventSet,
 	type IEventBus,
 	type IContainer,
@@ -128,7 +129,7 @@ export class EventDispatcher implements IEventDispatcher {
 		if (!isEventSet(events) || events.length === 0)
 			throw new TypeError('dispatch requires a non-empty array of events');
 
-		const span = this.#tracer?.startSpan('EventDispatcher.dispatch', undefined, spanContext(meta));
+		const otelSpan = this.#tracer?.startSpan('EventDispatcher.dispatch', undefined, spanContext(meta));
 
 		let resolve!: (value: IEventSet | PromiseLike<IEventSet>) => void;
 		let reject!: (reason?: any) => void;
@@ -141,8 +142,8 @@ export class EventDispatcher implements IEventDispatcher {
 			data: events.map(event => ({
 				event,
 				...meta,
-				span
-			})),
+				otelSpan
+			}) satisfies DispatchPipelineEnvelope),
 			resolve,
 			reject
 		};
@@ -155,10 +156,10 @@ export class EventDispatcher implements IEventDispatcher {
 		pipeline.push(envelope);
 
 		return promise.catch(error => {
-			recordSpanError(span, error);
+			recordSpanError(otelSpan, error);
 			throw error;
 		}).finally(() => {
-			span?.end();
+			otelSpan?.end();
 		});
 	}
 }

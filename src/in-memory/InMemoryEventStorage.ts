@@ -137,7 +137,7 @@ export class InMemoryEventStorage implements
 	 * This method is part of the `IDispatchPipelineProcessor` interface.
 	 */
 	async process(batch: DispatchPipelineBatch): Promise<DispatchPipelineBatch> {
-		const span = this.#tracer?.startSpan('InMemoryEventStorage.process', undefined, spanContext(batch[0]));
+		const otelSpan = this.#tracer?.startSpan('InMemoryEventStorage.process', undefined, spanContext(batch[0]));
 
 		try {
 			const events: IEvent[] = [];
@@ -156,11 +156,11 @@ export class InMemoryEventStorage implements
 			return batch;
 		}
 		catch (error: unknown) {
-			recordSpanError(span, error);
+			recordSpanError(otelSpan, error);
 			throw error;
 		}
 		finally {
-			span?.end();
+			otelSpan?.end();
 		}
 	}
 }

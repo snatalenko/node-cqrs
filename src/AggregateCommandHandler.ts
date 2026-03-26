@@ -205,7 +205,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 		const { aggregateId } = cmd;
 
-		const span = this.#tracer?.startSpan(`AggregateCommandHandler.execute ${cmd.type}`,
+		const otelSpan = this.#tracer?.startSpan(`AggregateCommandHandler.execute ${cmd.type}`,
 			spanAttributes('aggregate', cmd, ['type', 'aggregateId']),
 			spanContext(meta)
 		);
@@ -239,7 +239,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 				try {
 					if (events.length)
-						await this.#eventStore.dispatch(events, span ? { span } : undefined);
+						await this.#eventStore.dispatch(events, { otelSpan });
 
 					return events;
 				}
@@ -253,7 +253,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 					if (retryDecision === 'ignore') {
 						this.#logger?.warn(`"${cmd.type}" command error ignored after ${attempt + 1} attempt(s), force-dispatching`, { error });
 						if (events.length) {
-							const dispatchMeta = { ignoreConcurrencyError: true, ...(span ? { span } : undefined) };
+							const dispatchMeta = { ignoreConcurrencyError: true, otelSpan };
 							await this.#eventStore.dispatch(events, dispatchMeta);
 						}
 
@@ -265,11 +265,11 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			}
 		}
 		catch (error: any) {
-			recordSpanError(span, error);
+			recordSpanError(otelSpan, error);
 			throw error;
 		}
 		finally {
-			span?.end();
+			otelSpan?.end();
 			lease?.release();
 
 			this.#releaseCacheEntry(aggregateId);

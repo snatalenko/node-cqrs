@@ -256,8 +256,8 @@ describe('SagaEventHandler', function () {
 			await handlerWithTracer.handle({ id: 'starter-span-1', type: 'somethingHappened', aggregateId: 1 } as any);
 
 			const meta = (ownCommandBus.send as jest.Mock).mock.calls.at(-1)?.[1];
-			expect(meta).toHaveProperty('span');
-			expect(typeof meta.span.end).toBe('function');
+			expect(meta).toHaveProperty('otelSpan');
+			expect(typeof meta.otelSpan.end).toBe('function');
 		});
 
 		it('works without tracerFactory', async () => {

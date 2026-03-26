@@ -147,7 +147,7 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 			this._logger?.debug(`view is ready, processing ${describe(event)}`);
 		}
 
-		const span = this.#tracer?.startSpan(`${this.#serviceName}.project ${event.type}`,
+		const otelSpan = this.#tracer?.startSpan(`${this.#serviceName}.project ${event.type}`,
 			spanAttributes('projection', event, ['type', 'aggregateId']),
 			spanContext(meta)
 		);
@@ -156,11 +156,11 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 			await this._project(event, meta);
 		}
 		catch (error: any) {
-			recordSpanError(span, error);
+			recordSpanError(otelSpan, error);
 			throw error;
 		}
 		finally {
-			span?.end();
+			otelSpan?.end();
 		}
 	}
 

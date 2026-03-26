@@ -617,7 +617,7 @@ describe('RabbitMqGateway', () => {
 
 			await consumerGateway.subscribeToQueue(exchange, queueName, (_msg, meta) => {
 				// The consumer handler receives a span whose parent is the publish span
-				const activeSpan = meta?.span;
+				const activeSpan = meta?.otelSpan;
 				if (activeSpan) {
 					const spanCtx = activeSpan.spanContext();
 					received.resolve({
@@ -638,7 +638,7 @@ describe('RabbitMqGateway', () => {
 			await publisherGateway.publish(exchange, {
 				type: 'telemetry.test',
 				payload: { check: true }
-			}, { span: rootSpan });
+			}, { otelSpan: rootSpan });
 			rootSpan.end();
 
 			const result = await received.promise;
