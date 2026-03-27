@@ -1,6 +1,6 @@
 {
   "name": "node-cqrs",
-  "version": "1.0.0",
+  "version": "1.0.1-beta.0",
   "description": "TypeScript CQRS/Event Sourcing toolkit for Node.js with DI, sagas, projections, and optional Worker, RabbitMQ, and SQLite adapters",
   "type": "module",
   "keywords": [
