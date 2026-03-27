@@ -1,3 +1,7 @@
+# [1.1.0-alpha.4](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.3...v1.1.0-alpha.4) (2026-03-27)
+
+
+
 # [1.1.0-alpha.3](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.2...v1.1.0-alpha.3) (2026-03-26)
 
 
