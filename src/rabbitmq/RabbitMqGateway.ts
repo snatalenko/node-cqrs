@@ -441,6 +441,7 @@ export class RabbitMqGateway {
 			queueName,
 			eventType,
 			queueExpires,
+			handlerProcessTimeout,
 			singleActiveConsumer
 		} = subscription;
 
@@ -479,7 +480,8 @@ export class RabbitMqGateway {
 			const reply = await this.#assetQueue(channel, exchange, queueGivenName, eventType, {
 				deadLetterExchangeName,
 				...singleActiveConsumer && { singleActiveConsumer },
-				...queueExpires && { queueExpires }
+				...queueExpires && { queueExpires },
+				handlerProcessTimeout
 			});
 			messageCount = reply.messageCount;
 			consumerCount = reply.consumerCount;
@@ -557,13 +559,17 @@ export class RabbitMqGateway {
 
 		/** Auto-delete the queue after this many ms of idleness (no consumers, no new messages) */
 		queueExpires?: number,
+
+		/** Handler process timeout used to derive the per-queue `x-consumer-timeout` argument */
+		handlerProcessTimeout?: number,
 	}) {
 		const {
 			durable = true,
 			exclusive = false,
 			singleActiveConsumer = false,
 			deadLetterExchangeName,
-			queueExpires
+			queueExpires,
+			handlerProcessTimeout = RabbitMqGateway.HANDLER_PROCESS_TIMEOUT
 		} = options ?? {};
 
 		await channel.assertExchange(exchange, 'topic', { durable: true });
@@ -583,6 +589,9 @@ export class RabbitMqGateway {
 				},
 				...singleActiveConsumer && {
 					'x-single-active-consumer': true
+				},
+				...handlerProcessTimeout && {
+					'x-consumer-timeout': handlerProcessTimeout + 1_000
 				}
 			}
 		});
