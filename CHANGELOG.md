@@ -1,3 +1,11 @@
+## [1.0.2-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.0.1...v1.0.2-beta.1) (2026-03-31)
+
+
+### Changes
+
+* Set `x-consumer-timeout` on MQ according to configured `handlerProcessTimeout` ([3e272ea](https://github.com/snatalenko/node-cqrs/commit/3e272ea66da5d1ed44253c4b620b6a677e2038dc))
+
+
 ## [1.0.1](https://github.com/snatalenko/node-cqrs/compare/v1.0.0...v1.0.1) (2026-03-31)
 
 
