@@ -1,3 +1,15 @@
+## [1.0.1-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.0.0...v1.0.1-beta.1) (2026-03-31)
+
+
+### Fixes
+
+* Use setImmediate in Node.js for nextCycle to avoid setTimeout performance overhead ([4b63706](https://github.com/snatalenko/node-cqrs/commit/4b63706c4271afd85470dff8b956605133863e9d))
+
+### Internal Fixes
+
+* Fix vulnerability in dev dependency ([610757b](https://github.com/snatalenko/node-cqrs/commit/610757ba24d39939b3827d99e2af2183758225b6))
+
+
 # [1.0.0](https://github.com/snatalenko/node-cqrs/compare/v0.17.0...v1.0.0) (2026-03-21)
 
 
