@@ -1,3 +1,11 @@
+## [1.0.2-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.2-beta.1...v1.0.2-beta.2) (2026-04-01)
+
+
+### Changes
+
+* Disable DLQ setup for RabbitMqEventBus by default ([b953829](https://github.com/snatalenko/node-cqrs/commit/b95382924e3377e26574f36613e546ea6155ad73))
+
+
 ## [1.0.2-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.0.1...v1.0.2-beta.1) (2026-03-31)
 
 
