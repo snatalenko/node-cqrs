@@ -6,7 +6,7 @@ import { RabbitMqGateway, type Subscription, type SubscribeResult } from './Rabb
 import { type ConfigProvider, resolveProvider } from './utils/index.ts';
 
 export type RabbitMqEventBusConfig = Partial<Pick<Subscription,
-	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires'>>;
+	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires' | 'deadLetterQueue'>>;
 
 type ResolvedRabbitMqEventBusConfig = RabbitMqEventBusConfig
 	& Required<Pick<RabbitMqEventBusConfig, 'exchange' | 'ignoreOwn'>>;
@@ -19,7 +19,8 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqEventBusConfig>) 
 		concurrentLimit,
 		handlerProcessTimeout,
 		queueName,
-		queueExpires
+		queueExpires,
+		deadLetterQueue = false
 	} = await resolveProvider(provider) ?? {};
 
 	assertString(exchange, 'rabbitMqEventConfig.exchange');
@@ -32,8 +33,9 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqEventBusConfig>) 
 		assertString(queueName, 'rabbitMqEventConfig.queueName');
 	if (queueExpires !== undefined)
 		assertNonNegativeInteger(queueExpires, 'rabbitMqEventConfig.queueExpires');
+	assertBoolean(deadLetterQueue, 'rabbitMqEventConfig.deadLetterQueue');
 
-	return { exchange, ignoreOwn, concurrentLimit, handlerProcessTimeout, queueName, queueExpires };
+	return { exchange, ignoreOwn, concurrentLimit, handlerProcessTimeout, queueName, queueExpires, deadLetterQueue };
 }
 
 /**
@@ -42,6 +44,10 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqEventBusConfig>) 
  *
  * By default uses an exclusive (non-durable) queue per connection.
  * Set `queueName` in config for a durable queue that survives restarts.
+ *
+ * Dead letter queue is disabled by default (`deadLetterQueue: false`).
+ * When a handler fails or times out, the message is discarded.
+ * Set `deadLetterQueue: true` to route rejected messages to a `.failed` queue.
  *
  * Optionally ignores messages published by this instance (default: true).
  *
@@ -92,18 +98,12 @@ export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 	 * (non-durable) queue that is deleted on disconnect.
 	 */
 	async on(eventType: string, handler: IMessageHandler): Promise<SubscribeResult> {
-		const { exchange, queueName, ignoreOwn, concurrentLimit, handlerProcessTimeout, queueExpires } =
-			await this.#resolveConfig();
+		const subscriptionParams = await this.#resolveConfig();
 
 		return this.#gateway.subscribe({
-			exchange,
-			queueName,
+			...subscriptionParams,
 			eventType,
 			handler,
-			ignoreOwn,
-			concurrentLimit,
-			handlerProcessTimeout,
-			queueExpires,
 			singleActiveConsumer: true
 		});
 	}
@@ -133,7 +133,7 @@ export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 			queue = new RabbitMqCommandBus({
 				rabbitMqGateway: this.#gateway,
 				rabbitMqCommandBusConfig: async () => {
-					const { exchange, concurrentLimit, handlerProcessTimeout, queueExpires } =
+					const { exchange, concurrentLimit, handlerProcessTimeout, queueExpires, deadLetterQueue } =
 						await this.#resolveConfig();
 
 					return {
@@ -141,7 +141,8 @@ export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 						queueName,
 						concurrentLimit,
 						handlerProcessTimeout,
-						queueExpires
+						queueExpires,
+						deadLetterQueue
 					};
 				}
 			});

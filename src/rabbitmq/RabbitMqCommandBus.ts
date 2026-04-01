@@ -5,7 +5,7 @@ import { RabbitMqGateway, type Subscription } from './RabbitMqGateway.ts';
 import { type ConfigProvider, resolveProvider } from './utils/index.ts';
 
 export type RabbitMqCommandBusConfig = Partial<Pick<Subscription,
-	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires'>>;
+	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires' | 'deadLetterQueue'>>;
 
 type ResolvedRabbitMqCommandBusConfig = RabbitMqCommandBusConfig
 	& Required<Pick<RabbitMqCommandBusConfig, 'exchange' | 'queueName' | 'ignoreOwn'>>;
@@ -18,7 +18,8 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqCommandBusConfig>
 		concurrentLimit,
 		handlerProcessTimeout,
 		queueName,
-		queueExpires
+		queueExpires,
+		deadLetterQueue
 	} = await resolveProvider(provider) ?? {};
 
 	assertString(exchange, 'rabbitMqCommandConfig.exchange');
@@ -30,8 +31,10 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqCommandBusConfig>
 		assertNonNegativeInteger(handlerProcessTimeout, 'rabbitMqCommandConfig.handlerProcessTimeout');
 	if (queueExpires !== undefined)
 		assertNonNegativeInteger(queueExpires, 'rabbitMqCommandConfig.queueExpires');
+	if (deadLetterQueue !== undefined)
+		assertBoolean(deadLetterQueue, 'rabbitMqCommandConfig.deadLetterQueue');
 
-	return { exchange, queueName, ignoreOwn, concurrentLimit, handlerProcessTimeout, queueExpires };
+	return { exchange, queueName, ignoreOwn, concurrentLimit, handlerProcessTimeout, queueExpires, deadLetterQueue };
 }
 
 /**
@@ -99,18 +102,12 @@ export class RabbitMqCommandBus implements ICommandBus {
 	 * Only one consumer receives each message.
 	 */
 	async on(messageType: string, handler: IMessageHandler): Promise<void> {
-		const { exchange, queueName, ignoreOwn, concurrentLimit, handlerProcessTimeout, queueExpires } =
-			await this.#resolveConfig();
+		const subscriptionParams = await this.#resolveConfig();
 
 		await this.#gateway.subscribe({
-			exchange,
-			queueName,
+			...subscriptionParams,
 			eventType: messageType,
-			handler,
-			ignoreOwn,
-			concurrentLimit,
-			handlerProcessTimeout,
-			queueExpires
+			handler
 		});
 	}
 

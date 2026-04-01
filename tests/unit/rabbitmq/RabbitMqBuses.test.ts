@@ -37,6 +37,7 @@ describe('RabbitMq bus config forwarding', () => {
 			concurrentLimit: 2,
 			handlerProcessTimeout: 1234,
 			queueExpires: 5678,
+			deadLetterQueue: false,
 			singleActiveConsumer: true
 		});
 	});
@@ -61,6 +62,7 @@ describe('RabbitMq bus config forwarding', () => {
 			concurrentLimit: undefined,
 			handlerProcessTimeout: undefined,
 			queueExpires: undefined,
+			deadLetterQueue: false,
 			singleActiveConsumer: true
 		});
 	});
@@ -88,7 +90,8 @@ describe('RabbitMq bus config forwarding', () => {
 			ignoreOwn: false,
 			concurrentLimit: 3,
 			handlerProcessTimeout: 2345,
-			queueExpires: 6789
+			queueExpires: 6789,
+			deadLetterQueue: undefined
 		});
 	});
 
@@ -114,7 +117,61 @@ describe('RabbitMq bus config forwarding', () => {
 			ignoreOwn: false,
 			concurrentLimit: 4,
 			handlerProcessTimeout: 3456,
-			queueExpires: 7890
+			queueExpires: 7890,
+			deadLetterQueue: false
 		});
+	});
+
+	it('forwards deadLetterQueue: false from event bus config to subscribe()', async () => {
+		const rabbitMqGateway = createGateway();
+		const bus = new RabbitMqEventBus({
+			rabbitMqGateway: rabbitMqGateway as any,
+			rabbitMqEventBusConfig: {
+				exchange: 'events',
+				queueName: 'event-queue',
+				deadLetterQueue: false
+			}
+		});
+
+		await bus.on('test.event', handler);
+
+		expect(rabbitMqGateway.subscribe).toHaveBeenCalledWith(
+			expect.objectContaining({ deadLetterQueue: false })
+		);
+	});
+
+	it('forwards deadLetterQueue: false from command bus config to subscribe()', async () => {
+		const rabbitMqGateway = createGateway();
+		const bus = new RabbitMqCommandBus({
+			rabbitMqGateway: rabbitMqGateway as any,
+			rabbitMqCommandBusConfig: {
+				exchange: 'commands',
+				queueName: 'command-queue',
+				deadLetterQueue: false
+			}
+		});
+
+		await bus.on('test.command', handler);
+
+		expect(rabbitMqGateway.subscribe).toHaveBeenCalledWith(
+			expect.objectContaining({ deadLetterQueue: false })
+		);
+	});
+
+	it('forwards deadLetterQueue from event bus queue() config to subscribe()', async () => {
+		const rabbitMqGateway = createGateway();
+		const bus = new RabbitMqEventBus({
+			rabbitMqGateway: rabbitMqGateway as any,
+			rabbitMqEventBusConfig: {
+				exchange: 'events',
+				deadLetterQueue: false
+			}
+		});
+
+		await bus.queue('shared-queue').on('test.event', handler);
+
+		expect(rabbitMqGateway.subscribe).toHaveBeenCalledWith(
+			expect.objectContaining({ deadLetterQueue: false })
+		);
 	});
 });

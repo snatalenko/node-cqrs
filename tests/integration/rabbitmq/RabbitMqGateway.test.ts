@@ -227,6 +227,33 @@ describe('RabbitMqGateway', () => {
 			await cn2.close();
 		});
 
+		it('does not create DLQ when deadLetterQueue is false', async () => {
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: 'dlq.disabled',
+				handler: _msg => {
+					throw new Error('intentional failure');
+				},
+				deadLetterQueue: false
+			});
+
+			const message: IMessage = {
+				type: 'dlq.disabled',
+				payload: { shouldFail: true }
+			};
+
+			await gateway1.publish(exchange, message);
+			await delay(50);
+
+			// Verify the .failed queue does not exist
+			const res = await fetch(`http://localhost:15672/api/queues/%2F/${encodeURIComponent(`${queueName}.failed`)}`, {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+
+			expect(res.status).toBe(404);
+		});
+
 		it('does not ack a message after timeout and logs it while consumer keeps processing', async () => {
 			const errorLogs: Array<{ message: string, meta?: { [key: string]: any } }> = [];
 			const logger: ILogger = {

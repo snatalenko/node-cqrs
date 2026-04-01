@@ -65,6 +65,13 @@ export type Subscription = {
 	 * Enables RabbitMQ single active consumer mode (`x-single-active-consumer`).
 	 */
 	singleActiveConsumer?: boolean;
+
+	/**
+	 * Whether to create a dead letter queue for rejected or timed out messages.
+	 * Only applicable to durable queues (when `queueName` is set).
+	 * Defaults to `true` when `queueName` is set, `false` otherwise.
+	 */
+	deadLetterQueue?: boolean;
 };
 
 export type SubscribeResult = {
@@ -442,8 +449,12 @@ export class RabbitMqGateway {
 			eventType,
 			queueExpires,
 			handlerProcessTimeout,
-			singleActiveConsumer
+			singleActiveConsumer,
+			deadLetterQueue = !!queueName
 		} = subscription;
+
+		if (deadLetterQueue && !queueName)
+			throw new Error('deadLetterQueue requires a durable queue (queueName must be set)');
 
 		const channel = await this.#assertQueueChannel(queueName);
 
@@ -471,14 +482,17 @@ export class RabbitMqGateway {
 		}
 		else {
 			// Handle durable queue case
-			const deadLetterExchangeName = `${exchange}.failed`;
+			let deadLetterExchangeName: string | undefined;
+			if (deadLetterQueue) {
+				deadLetterExchangeName = `${exchange}.failed`;
 
-			// Assert dead letter queue for rejected or timed out messages
-			await this.#assetQueue(channel, deadLetterExchangeName, `${queueGivenName}.failed`);
+				// Assert dead letter queue for rejected or timed out messages
+				await this.#assetQueue(channel, deadLetterExchangeName, `${queueGivenName}.failed`);
+			}
 
 			// Assert durable queue that will survive broker restart
 			const reply = await this.#assetQueue(channel, exchange, queueGivenName, eventType, {
-				deadLetterExchangeName,
+				...deadLetterExchangeName && { deadLetterExchangeName },
 				...singleActiveConsumer && { singleActiveConsumer },
 				...queueExpires && { queueExpires },
 				handlerProcessTimeout
