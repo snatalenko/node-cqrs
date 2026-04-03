@@ -1,6 +1,6 @@
 import type { IEvent } from './IEvent.ts';
 import { isObject } from './isObject.ts';
-import { IMessageMeta } from './IMessageMeta.ts';
+import type { IMessageMeta } from './IMessageMeta.ts';
 
 /**
  * Represents a wrapper for an event that can optionally contain additional metadata.
