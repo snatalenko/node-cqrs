@@ -261,7 +261,6 @@ export default defineConfig([
 			"prefer-numeric-literals": "error",
 			"prefer-rest-params": "error",
 			"prefer-spread": "error",
-			"prefer-template": "error",
 			"require-yield": "error",
 			"rest-spread-spacing": [
 				"error",

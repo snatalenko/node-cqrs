@@ -37,6 +37,7 @@ describe('RabbitMqEventBus', () => {
 				handler,
 				ignoreOwn: true,
 				concurrentLimit: 2,
+				deadLetterQueue: false,
 				handlerProcessTimeout: 1234,
 				queueExpires: 5678,
 				singleActiveConsumer: true
@@ -59,6 +60,7 @@ describe('RabbitMqEventBus', () => {
 				handler,
 				ignoreOwn: true,
 				concurrentLimit: undefined,
+				deadLetterQueue: false,
 				handlerProcessTimeout: undefined,
 				queueExpires: undefined,
 				singleActiveConsumer: true
@@ -89,6 +91,7 @@ describe('RabbitMqEventBus', () => {
 				handler,
 				ignoreOwn: false,
 				concurrentLimit: 4,
+				deadLetterQueue: false,
 				handlerProcessTimeout: 3456,
 				queueExpires: 7890
 			});

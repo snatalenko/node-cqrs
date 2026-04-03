@@ -4,7 +4,9 @@ import type { IEvent } from './interfaces/IEvent.ts';
  * Get text description of an event for logging purposes
  */
 export function describe(event: IEvent): string {
-	return `'${event.type}' of ${event.aggregateId} (v${event.aggregateVersion})`;
+	return `'${event.type}'`
+		+ (event.id ? ` (id: ${event.id})` : '')
+		+ (event.aggregateId ? ` of ${event.aggregateId} (v${event.aggregateVersion})` : '');
 }
 
 /**

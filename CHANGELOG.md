@@ -4,6 +4,26 @@
 
 # [1.1.0-alpha.3](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.2...v1.1.0-alpha.3) (2026-03-26)
 
+## [1.0.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.1...v1.0.2) (2026-04-03)
+
+
+### Changes
+
+* Set `x-consumer-timeout` on MQ according to configured `handlerProcessTimeout` ([3e272ea](https://github.com/snatalenko/node-cqrs/commit/3e272ea66da5d1ed44253c4b620b6a677e2038dc))
+* Disable DLQ setup for RabbitMqEventBus by default ([b953829](https://github.com/snatalenko/node-cqrs/commit/b95382924e3377e26574f36613e546ea6155ad73))
+
+### Internal Fixes
+
+* Event description formatting in logging ([419cc7d](https://github.com/snatalenko/node-cqrs/commit/419cc7d3da7ce45385605968e1e3b70174a44661))
+* Fix vulnerabilities in dev dependencies ([203ef19](https://github.com/snatalenko/node-cqrs/commit/203ef191cc1d64b1927427d02495d0a7997d567e))
+
+
+## [1.0.1](https://github.com/snatalenko/node-cqrs/compare/v1.0.0...v1.0.1) (2026-03-31)
+
+
+### Fixes
+
+* Use setImmediate in Node.js for nextCycle to avoid setTimeout performance overhead ([4b63706](https://github.com/snatalenko/node-cqrs/commit/4b63706c4271afd85470dff8b956605133863e9d))
 
 ### Internal Fixes
 
