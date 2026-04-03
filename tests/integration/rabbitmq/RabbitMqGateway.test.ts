@@ -227,6 +227,33 @@ describe('RabbitMqGateway', () => {
 			await cn2.close();
 		});
 
+		it('does not create DLQ when deadLetterQueue is false', async () => {
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: 'dlq.disabled',
+				handler: _msg => {
+					throw new Error('intentional failure');
+				},
+				deadLetterQueue: false
+			});
+
+			const message: IMessage = {
+				type: 'dlq.disabled',
+				payload: { shouldFail: true }
+			};
+
+			await gateway1.publish(exchange, message);
+			await delay(50);
+
+			// Verify the .failed queue does not exist
+			const res = await fetch(`http://localhost:15672/api/queues/%2F/${encodeURIComponent(`${queueName}.failed`)}`, {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+
+			expect(res.status).toBe(404);
+		});
+
 		it('does not ack a message after timeout and logs it while consumer keeps processing', async () => {
 			const errorLogs: Array<{ message: string, meta?: { [key: string]: any } }> = [];
 			const logger: ILogger = {
@@ -370,6 +397,63 @@ describe('RabbitMqGateway', () => {
 
 			expect(exists).toBe(false);
 		}, 20_000);
+
+		it('sets x-consumer-timeout on durable queue when handlerProcessTimeout is specified', async () => {
+			const customTimeout = 30_000;
+			const handler = jest.fn();
+
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: 'timeout.test',
+				handler,
+				handlerProcessTimeout: customTimeout
+			});
+
+			const res = await fetch(`http://localhost:15672/api/queues/%2F/${encodeURIComponent(queueName)}`, {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+			const queue: any = await res.json();
+
+			expect(queue.arguments['x-consumer-timeout']).toBe(customTimeout + 1_000);
+		});
+
+		it('sets default x-consumer-timeout on durable queue when handlerProcessTimeout is not specified', async () => {
+			const handler = jest.fn();
+
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: 'timeout.default',
+				handler
+			});
+
+			const res = await fetch(`http://localhost:15672/api/queues/%2F/${encodeURIComponent(queueName)}`, {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+			const queue: any = await res.json();
+
+			expect(queue.arguments['x-consumer-timeout']).toBe(RabbitMqGateway.HANDLER_PROCESS_TIMEOUT + 1_000);
+		});
+
+		it('does not set x-consumer-timeout when handlerProcessTimeout is 0', async () => {
+			const handler = jest.fn();
+
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: 'timeout.disabled',
+				handler,
+				handlerProcessTimeout: 0
+			});
+
+			const res = await fetch(`http://localhost:15672/api/queues/%2F/${encodeURIComponent(queueName)}`, {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+			const queue: any = await res.json();
+
+			expect(queue.arguments['x-consumer-timeout']).toBeUndefined();
+		});
 	});
 
 	describe('subscribe', () => {
