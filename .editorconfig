@@ -41,6 +41,7 @@ insert_final_newline = false
 indent_style = space
 indent_size = 2
 
-[package.json]
+[{package.json,package-lock.json,tsconfig*.json}]
 indent_style = space
 indent_size = 2
+insert_final_newline = true
