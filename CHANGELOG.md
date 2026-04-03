@@ -1,3 +1,12 @@
+## [1.0.2-beta.3](https://github.com/snatalenko/node-cqrs/compare/v1.0.2-beta.2...v1.0.2-beta.3) (2026-04-03)
+
+
+### Internal Fixes
+
+* Event description formatting in logging ([419cc7d](https://github.com/snatalenko/node-cqrs/commit/419cc7d3da7ce45385605968e1e3b70174a44661))
+* Fix vulnerabilities in dev dependencies ([203ef19](https://github.com/snatalenko/node-cqrs/commit/203ef191cc1d64b1927427d02495d0a7997d567e))
+
+
 ## [1.0.2-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.2-beta.1...v1.0.2-beta.2) (2026-04-01)
 
 
