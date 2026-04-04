@@ -40,6 +40,7 @@ describe('RabbitMqEventBus', () => {
 				deadLetterQueue: false,
 				handlerProcessTimeout: 1234,
 				queueExpires: 5678,
+				messageTtl: undefined,
 				singleActiveConsumer: true
 			});
 		});
@@ -63,8 +64,29 @@ describe('RabbitMqEventBus', () => {
 				deadLetterQueue: false,
 				handlerProcessTimeout: undefined,
 				queueExpires: undefined,
+				messageTtl: undefined,
 				singleActiveConsumer: true
 			});
+		});
+	});
+
+	describe('messageTtl', () => {
+
+		it('forwards messageTtl to gateway.subscribe() when set in config', async () => {
+			const gateway = createGateway();
+			const bus = new RabbitMqEventBus({
+				rabbitMqGateway: gateway as any,
+				rabbitMqEventBusConfig: {
+					exchange: 'events',
+					messageTtl: 0
+				}
+			});
+
+			await bus.on('test.event', handler);
+
+			expect(gateway.subscribe).toHaveBeenCalledWith(
+				expect.objectContaining({ messageTtl: 0 })
+			);
 		});
 	});
 
@@ -93,7 +115,8 @@ describe('RabbitMqEventBus', () => {
 				concurrentLimit: 4,
 				deadLetterQueue: false,
 				handlerProcessTimeout: 3456,
-				queueExpires: 7890
+				queueExpires: 7890,
+				messageTtl: undefined
 			});
 		});
 	});

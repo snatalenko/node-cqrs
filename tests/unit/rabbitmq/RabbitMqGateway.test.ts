@@ -353,6 +353,57 @@ describe('RabbitMqGateway', () => {
 		});
 	});
 
+	describe('messageTtl', () => {
+
+		it('sets x-message-ttl on durable queue when messageTtl is specified', async () => {
+			await gateway.subscribe({
+				exchange: 'test-exchange',
+				queueName: 'test-queue',
+				eventType: 'test.event',
+				handler: jest.fn(),
+				messageTtl: 60_000
+			});
+
+			const mainQueueCall = channel.assertQueueCalls.find(
+				c => c.options.arguments?.['x-dead-letter-exchange']
+			);
+
+			expect(mainQueueCall).toBeDefined();
+			expect(mainQueueCall!.options.arguments['x-message-ttl']).toBe(60_000);
+		});
+
+		it('sets x-message-ttl on exclusive queue when messageTtl is specified', async () => {
+			await gateway.subscribe({
+				exchange: 'test-exchange',
+				handler: jest.fn(),
+				messageTtl: 30_000
+			});
+
+			const exclusiveQueueCall = channel.assertQueueCalls.find(
+				c => c.options.exclusive === true
+			);
+
+			expect(exclusiveQueueCall).toBeDefined();
+			expect(exclusiveQueueCall!.options.arguments['x-message-ttl']).toBe(30_000);
+		});
+
+		it('does not set x-message-ttl when messageTtl is not specified', async () => {
+			await gateway.subscribe({
+				exchange: 'test-exchange',
+				queueName: 'test-queue',
+				eventType: 'test.event',
+				handler: jest.fn()
+			});
+
+			const mainQueueCall = channel.assertQueueCalls.find(
+				c => c.options.arguments?.['x-dead-letter-exchange']
+			);
+
+			expect(mainQueueCall).toBeDefined();
+			expect(mainQueueCall!.options.arguments['x-message-ttl']).toBeUndefined();
+		});
+	});
+
 	describe('deadLetterQueue', () => {
 
 		it('creates dead letter queue by default for durable queues', async () => {

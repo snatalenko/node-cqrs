@@ -74,6 +74,13 @@ export type Subscription = {
 	 * Defaults to `true` when `queueName` is set, `false` otherwise.
 	 */
 	deadLetterQueue?: boolean;
+
+	/**
+	 * Queue-level message TTL in milliseconds (`x-message-ttl`).
+	 * Messages that remain in the queue longer than this duration are discarded (or dead-lettered).
+	 * Set to `0` or leave `undefined` to keep messages indefinitely.
+	 */
+	messageTtl?: number;
 };
 
 export type SubscribeResult = {
@@ -421,6 +428,8 @@ export class RabbitMqGateway {
 			assertNonNegativeInteger(subscription.handlerProcessTimeout, 'subscription.handlerProcessTimeout');
 		if (subscription.queueExpires !== undefined)
 			assertNonNegativeInteger(subscription.queueExpires, 'subscription.queueExpires');
+		if (subscription.messageTtl !== undefined)
+			assertNonNegativeInteger(subscription.messageTtl, 'subscription.messageTtl');
 		if (!subscription.queueName)
 			assertNotDefined(subscription.queueExpires, 'subscription.queueExpires');
 
@@ -455,7 +464,8 @@ export class RabbitMqGateway {
 			queueExpires,
 			handlerProcessTimeout,
 			singleActiveConsumer,
-			deadLetterQueue = !!queueName
+			deadLetterQueue = !!queueName,
+			messageTtl
 		} = subscription;
 
 		if (deadLetterQueue && !queueName)
@@ -473,7 +483,8 @@ export class RabbitMqGateway {
 				// Assert temporary "exclusive" queue that will be destroyed on connection termination
 				const reply = await this.#assetQueue(channel, exchange, '', eventType, {
 					exclusive: true,
-					durable: false
+					durable: false,
+					messageTtl
 				});
 				this.#exclusiveQueueName = reply.queue;
 				messageCount = reply.messageCount;
@@ -500,7 +511,8 @@ export class RabbitMqGateway {
 				...deadLetterExchangeName && { deadLetterExchangeName },
 				...singleActiveConsumer && { singleActiveConsumer },
 				...queueExpires && { queueExpires },
-				handlerProcessTimeout
+				handlerProcessTimeout,
+				messageTtl
 			});
 			messageCount = reply.messageCount;
 			consumerCount = reply.consumerCount;
@@ -581,6 +593,9 @@ export class RabbitMqGateway {
 
 		/** Handler process timeout used to derive the per-queue `x-consumer-timeout` argument */
 		handlerProcessTimeout?: number,
+
+		/** Queue-level message TTL in milliseconds (`x-message-ttl`) */
+		messageTtl?: number,
 	}) {
 		const {
 			durable = true,
@@ -588,7 +603,8 @@ export class RabbitMqGateway {
 			singleActiveConsumer = false,
 			deadLetterExchangeName,
 			queueExpires,
-			handlerProcessTimeout = RabbitMqGateway.HANDLER_PROCESS_TIMEOUT
+			handlerProcessTimeout = RabbitMqGateway.HANDLER_PROCESS_TIMEOUT,
+			messageTtl
 		} = options ?? {};
 
 		await channel.assertExchange(exchange, 'topic', { durable: true });
@@ -611,6 +627,9 @@ export class RabbitMqGateway {
 				},
 				...handlerProcessTimeout && {
 					'x-consumer-timeout': handlerProcessTimeout + 1_000
+				},
+				...messageTtl && {
+					'x-message-ttl': messageTtl
 				}
 			}
 		});

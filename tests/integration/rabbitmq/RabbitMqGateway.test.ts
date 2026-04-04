@@ -438,6 +438,43 @@ describe('RabbitMqGateway', () => {
 			expect(queue.arguments['x-consumer-timeout']).toBe(RabbitMqGateway.HANDLER_PROCESS_TIMEOUT + 1_000);
 		});
 
+		it('sets x-message-ttl on durable queue when messageTtl is specified', async () => {
+			const handler = jest.fn();
+
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: 'ttl.test',
+				handler,
+				messageTtl: 60_000
+			});
+
+			const res = await fetch(`http://localhost:15672/api/queues/%2F/${encodeURIComponent(queueName)}`, {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+			const queue: any = await res.json();
+
+			expect(queue.arguments['x-message-ttl']).toBe(60_000);
+		});
+
+		it('does not set x-message-ttl on durable queue when messageTtl is not specified', async () => {
+			const handler = jest.fn();
+
+			await gateway1.subscribe({
+				exchange,
+				queueName,
+				eventType: 'ttl.default',
+				handler
+			});
+
+			const res = await fetch(`http://localhost:15672/api/queues/%2F/${encodeURIComponent(queueName)}`, {
+				headers: { Authorization: `Basic ${btoa('guest:guest')}` }
+			});
+			const queue: any = await res.json();
+
+			expect(queue.arguments['x-message-ttl']).toBeUndefined();
+		});
+
 		it('does not set x-consumer-timeout when handlerProcessTimeout is 0', async () => {
 			const handler = jest.fn();
 

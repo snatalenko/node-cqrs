@@ -5,7 +5,7 @@ import { RabbitMqGateway, type Subscription } from './RabbitMqGateway.ts';
 import { type ConfigProvider, resolveProvider } from './utils/index.ts';
 
 export type RabbitMqCommandBusConfig = Partial<Pick<Subscription,
-	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires' | 'deadLetterQueue'>>;
+	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires' | 'deadLetterQueue' | 'messageTtl'>>;
 
 type ResolvedRabbitMqCommandBusConfig = RabbitMqCommandBusConfig
 	& Required<Pick<RabbitMqCommandBusConfig, 'exchange' | 'queueName' | 'ignoreOwn'>>;
@@ -20,7 +20,8 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqCommandBusConfig>
 		concurrentLimit,
 		handlerProcessTimeout,
 		queueExpires,
-		deadLetterQueue
+		deadLetterQueue,
+		messageTtl
 	} = await resolveProvider(provider) ?? {};
 
 	assertString(exchange, 'rabbitMqCommandConfig.exchange');
@@ -34,8 +35,19 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqCommandBusConfig>
 		assertNonNegativeInteger(queueExpires, 'rabbitMqCommandConfig.queueExpires');
 	if (deadLetterQueue !== undefined)
 		assertBoolean(deadLetterQueue, 'rabbitMqCommandConfig.deadLetterQueue');
+	if (messageTtl !== undefined)
+		assertNonNegativeInteger(messageTtl, 'rabbitMqCommandConfig.messageTtl');
 
-	return { exchange, queueName, ignoreOwn, concurrentLimit, handlerProcessTimeout, queueExpires, deadLetterQueue };
+	return {
+		exchange,
+		queueName,
+		ignoreOwn,
+		concurrentLimit,
+		handlerProcessTimeout,
+		queueExpires,
+		deadLetterQueue,
+		messageTtl
+	};
 }
 
 /**
