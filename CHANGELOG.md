@@ -1,3 +1,11 @@
+# [1.1.0-alpha.6](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.5...v1.1.0-alpha.6) (2026-04-04)
+
+
+### Features
+
+* Option for rabbitmq queue-level message TTL ([d4461e6](https://github.com/snatalenko/node-cqrs/commit/d4461e68b0e69696340bfdb80c7f947146bca08b))
+
+
 # [1.1.0-alpha.5](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0-alpha.5) (2026-04-03)
 
 
