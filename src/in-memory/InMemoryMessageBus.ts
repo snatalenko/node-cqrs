@@ -100,7 +100,12 @@ export class InMemoryMessageBus implements IEventBus, ICommandBus, IObservableQu
 		let command: ICommand;
 		let meta: IMessageMeta | undefined;
 		if (typeof commandOrType === 'string') {
-			command = { type: commandOrType, aggregateId: aggregateIdOrMeta as string | undefined, ...options };
+			command = {
+				type: commandOrType,
+				aggregateId: aggregateIdOrMeta as string | undefined,
+				payload: undefined,
+				...options
+			};
 		}
 		else {
 			command = commandOrType;

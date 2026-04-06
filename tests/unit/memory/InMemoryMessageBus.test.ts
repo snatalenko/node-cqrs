@@ -135,7 +135,7 @@ describe('InMemoryMessageBus', function () {
 			expect(sentCommand).toHaveProperty('type', 'doSomething');
 			expect(sentCommand).toHaveProperty('aggregateId', '1');
 			expect(sentCommand).toHaveProperty('context', context);
-			expect(sentCommand).not.toHaveProperty('payload');
+			expect(sentCommand.payload).toBeFalsy();
 
 			await bus.send('doSomething', '1', { context, payload, customParameter } as any);
 

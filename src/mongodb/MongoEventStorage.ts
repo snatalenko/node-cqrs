@@ -23,7 +23,7 @@ type EventDocument = Document & {
 	aggregateId?: ObjectId | string;
 	aggregateVersion?: number;
 	sagaOrigins?: Record<string, string>;
-	payload?: unknown;
+	payload: unknown;
 	context?: unknown;
 };
 

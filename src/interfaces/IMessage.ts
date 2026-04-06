@@ -3,7 +3,7 @@ import { isObject } from './isObject.ts';
 
 export type SagaOriginsMap = Record<string, string>;
 
-export interface IMessage<TPayload = any> {
+export interface IMessage<TPayload = unknown> {
 
 	/** Event or command type */
 	type: string;
@@ -21,7 +21,7 @@ export interface IMessage<TPayload = any> {
 	sagaOrigins?: SagaOriginsMap;
 
 	/** Business data */
-	payload?: TPayload;
+	payload: TPayload;
 
 	/**
 	 * Optional metadata/context (e.g. auth info, request id);

@@ -165,7 +165,8 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 	async handle(command: ICommand): Promise<IEventSet> {
 		assertMessage(command, 'command');
 
-		const handler = getHandler(this, command.type);
+		const handler = getHandler(this, command.type) as (payload: unknown, context?: unknown) =>
+			unknown | Promise<unknown>;
 		if (!handler)
 			throw new Error(`'${command.type}' handler is not defined or not a function`);
 

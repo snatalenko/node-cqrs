@@ -102,7 +102,12 @@ export class RabbitMqCommandBus implements ICommandBus {
 
 		if (typeof commandOrType === 'string') {
 			const { otelSpan, ...commandOptions } = options ?? {};
-			command = { type: commandOrType, aggregateId: aggregateIdOrMeta as string | undefined, ...commandOptions };
+			command = {
+				type: commandOrType,
+				aggregateId: aggregateIdOrMeta as string | undefined,
+				payload: undefined,
+				...commandOptions
+			};
 			if (otelSpan)
 				meta = { otelSpan };
 		}
