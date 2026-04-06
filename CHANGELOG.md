@@ -1,3 +1,11 @@
+# [1.1.0-alpha.7](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.6...v1.1.0-alpha.7) (2026-04-06)
+
+
+### Internal Fixes
+
+* Enhance message payload typing ([7911acc](https://github.com/snatalenko/node-cqrs/commit/7911accce07cba7c30ae4f5825a6e26e0934b8dc))
+
+
 # [1.1.0-alpha.6](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.5...v1.1.0-alpha.6) (2026-04-04)
 
 
