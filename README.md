@@ -11,21 +11,24 @@ node-cqrs
 
 Infrastructure-agnostic building blocks for CQRS/ES, inspired by Lokad.CQRS.
 
-CQRS/ES can be simple in a single process - minimal code, no framework:
-[examples/user-domain-framework-free](examples/user-domain-framework-free/index.ts).
-This library handles the "boring but hard" parts required in distributed environments:
+## Features
 
-- safer async command + event handling (per-aggregate FIFO, shared restore, fewer footguns)
-- restart-safe projections/views (catch-up with checkpoints, readiness gates, locking)
-- snapshots for fast rehydrate (automatic snapshot events + restore)
-- pluggable dispatch pipeline (encode/persist/fan-out; order is explicit)
-- conflict-safe writes (optimistic concurrency + retry with clean rehydrate)
-- routed pipelines with backpressure (named pipelines + concurrency limits)
-- competing-consumer delivery (named queues when supported)
-- selective restore with correct versioning (filter + tail to keep versions right)
-- sagas with built-in correlation (event-id origins + sagaOrigins propagation)
+CQRS and Event Sourcing are simple in a single process ([example](examples/user-domain-framework-free/index.ts)), but a minefield in the cloud.
+node-cqrs handles the "boring but hard" distributed plumbing - concurrency, message delivery, projections, and rehydration - so you can focus on your domain logic.
 
-Built around ES6/TypeScript classes and dependency injection - swap implementations without patching the library.
+- **Reliable Consistency**: Per-aggregate FIFO handling and conflict-safe writes with optimistic concurrency.
+- **Resilient Projections**: Restart-safe views with checkpoints, readiness gates, and locking.
+- **Fast Rehydration**: Automatic snapshotting and selective event restores.
+- **Distributed Sagas**: Built-in event correlation and origin propagation for complex workflows.
+- **Smart Pipelines**: Pluggable dispatching with back-pressure and concurrency limits.
+- **Pluggable by Design**: Thin interfaces on every component - swap any piece, from message buses to event storage, without touching your domain code.
+
+The heavy lifting for common stacks is done, so you can mix and match sub-modules to fit your environment:
+
+- `node-cqrs/sqlite` – Embedded per-process event storage and/or views.
+- `node-cqrs/mongodb` – Distributed event storage and persistent projection views for multi-process deployments.
+- `node-cqrs/rabbitmq` – Robust, distributed command and event bus.
+- `node-cqrs/redis` – Redis-backed persistent projection views for distributed deployments.
 
 ## Table of Contents
 
@@ -55,27 +58,37 @@ Built around ES6/TypeScript classes and dependency injection - swap implementati
 
 ![Overview](docs/images/node-cqrs-flow.svg)
 
+Domain logic lives in three building blocks:
+
+- **[Aggregates](#write-model-aggregates)** - handle commands and emit events
+- **[Sagas](#sagas)** - manage processes by reacting to events and enqueueing follow-up commands
+- **[Projections](#read-model-projections-and-views)** - consume events and update views
 
 Commands and events are loosely typed objects implementing the [`IMessage`](src/interfaces/IMessage.ts) interface:
 
 ```ts
-interface IMessage<TPayload = any> {
+interface IMessage<TPayload = unknown> {
+
+	/** Event or command type */
 	type: string;
 
-	aggregateId?: string | number;
+	/** Target aggregate identifier for commands, originating aggregate identifier for events */
+	aggregateId?: Identifier;
+
+	/** Aggregate version at the time of the message */
 	aggregateVersion?: number;
+
+	/** Starter event ids of sagas associated with this message, keyed by saga descriptor */
 	sagaOrigins?: Record<string, string>;
 
+	/** Business data */
 	payload: TPayload;
+
+	/** Optional metadata/context (e.g. auth info, request id); set on commands, copied to events */
 	context?: any;
 }
 ```
 
-Domain logic lives in three building blocks:
-
-- **[Aggregates](#write-model-aggregates)** - handle commands and emit events
-- **[Projections](#read-model-projections-and-views)** - consume events and update views
-- **[Sagas](#sagas)** - manage processes by reacting to events and enqueueing follow-up commands
 
 Message delivery is handled by the following components, in order:
 
@@ -486,7 +499,7 @@ How commands and events move between producers and consumers.
 | `InMemorySnapshotStorage`  | `node-cqrs`         | Aggregate snapshot cache in memory, resets on process restart |
 | `AbstractWorkerProjection` | `node-cqrs/workers` | Run projections in worker threads ([instructions](src/workers), [example](examples/workers-projection/index.cjs)) |
 
-> **Experimental** — the Workers module is new and has not been validated in production. APIs may change in minor versions.
+> **Experimental** - the Workers module is new and has not been validated in production. APIs may change in minor versions.
 
 ## OpenTelemetry
 

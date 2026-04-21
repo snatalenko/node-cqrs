@@ -1,32 +1,24 @@
 import type { Identifier } from './Identifier.ts';
 import { isObject } from './isObject.ts';
 
-export type SagaOriginsMap = Record<string, string>;
-
 export interface IMessage<TPayload = unknown> {
 
 	/** Event or command type */
 	type: string;
 
-	/**
- 	 * Target aggregate identifier for commands,
-	 * originating aggregate identifier for events
-	 */
+	/** Target aggregate identifier for commands, originating aggregate identifier for events */
 	aggregateId?: Identifier;
 
 	/** Aggregate version at the time of the message */
 	aggregateVersion?: number;
 
 	/** Starter event ids of sagas associated with this message, keyed by saga descriptor */
-	sagaOrigins?: SagaOriginsMap;
+	sagaOrigins?: Record<string, string>;
 
 	/** Business data */
 	payload: TPayload;
 
-	/**
-	 * Optional metadata/context (e.g. auth info, request id);
-	 * Commonly set on commands, then copied to emitted events
-	 */
+	/** Optional metadata/context (e.g. auth info, request id); set on commands, copied to events */
 	context?: any;
 }
 
