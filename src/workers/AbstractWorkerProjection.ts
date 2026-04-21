@@ -63,8 +63,8 @@ export abstract class AbstractWorkerProjection<TView>
 	}
 
 	/** @internal Expose protected projection path for worker RPC wiring */
-	public override _project(event: IEvent): Promise<void> {
-		return super._project(event);
+	public override _project(event: IEvent, meta?: Record<string, any>): Promise<void> {
+		return super._project(event, meta);
 	}
 
 	/**

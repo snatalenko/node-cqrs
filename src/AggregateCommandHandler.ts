@@ -1,7 +1,9 @@
+import type { Tracer } from '@opentelemetry/api';
 import {
 	assertBoolean, assertDefined, assertMessage, assertNonNegativeInteger, assertObservable, assertStringArray,
 	Lock, MapAssertable
 } from './utils/index.ts';
+import { recordSpanError, spanAttributes, spanContext } from './telemetry/index.ts';
 import { ConcurrencyError } from './errors/index.ts';
 import type {
 	AggregateEventsQueryParams,
@@ -16,6 +18,7 @@ import type {
 	IEventStore,
 	ILocker,
 	ILogger,
+	IMessageMeta,
 	IObservable,
 	RetryOnConcurrencyErrorDecision,
 	RetryOnConcurrencyErrorOptions,
@@ -71,12 +74,13 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 	readonly #handles: Readonly<string[]>;
 	readonly #restoresFrom?: Readonly<string[]>;
 	readonly #shouldRetry: RetryOnConcurrencyErrorResolver;
+	readonly #tracer: Tracer | undefined;
 
 	/** Aggregate instances cache for concurrent command handling */
-	#aggregatesCache: MapAssertable<Identifier, Promise<TAggregate>> = new MapAssertable();
+	readonly #aggregatesCache: MapAssertable<Identifier, Promise<TAggregate>> = new MapAssertable();
 
 	/** Lock for sequential aggregate command execution */
-	#executionLock: ILocker;
+	readonly #executionLock: ILocker;
 
 	constructor({
 		eventStore,
@@ -86,8 +90,9 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		executionLocker = new Lock(),
 		restoresFrom,
 		retryOnConcurrencyError,
+		tracerFactory,
 		logger
-	}: Pick<IContainer, 'eventStore' | 'executionLocker' | 'logger'> & {
+	}: Pick<IContainer, 'eventStore' | 'executionLocker' | 'logger' | 'tracerFactory'> & {
 		aggregateType?: IAggregateConstructor<TAggregate, any>,
 		aggregateFactory?: IAggregateFactory<TAggregate, any>,
 		handles?: Readonly<string[]>,
@@ -109,6 +114,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			this.#restoresFrom = AggregateType.restoresFrom;
 			this.#shouldRetry = normalizeRetryResolver(retryOnConcurrencyError ??
 				AggregateType.retryOnConcurrencyError);
+			this.#tracer = tracerFactory?.(new.target.name);
 		}
 		else if (aggregateFactory) {
 			assertStringArray(handles, 'handles');
@@ -117,6 +123,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 			this.#handles = handles;
 			this.#restoresFrom = restoresFrom;
 			this.#shouldRetry = normalizeRetryResolver(retryOnConcurrencyError);
+			this.#tracer = tracerFactory?.(new.target.name);
 		}
 		else {
 			throw new TypeError('either aggregateType or aggregateFactory is required');
@@ -128,7 +135,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 		assertObservable(commandBus, 'commandBus');
 
 		for (const commandType of this.#handles)
-			commandBus.on(commandType, (cmd: ICommand) => this.execute(cmd));
+			commandBus.on(commandType, (cmd: ICommand, meta?: IMessageMeta) => this.execute(cmd, meta));
 	}
 
 	/** Restore aggregate from event store events */
@@ -173,12 +180,14 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 	}
 
 	/**
-	 * Replace the dirty cache entry with a fresh restoration promise
+	 * Replace the dirty cache entry with a lazy restoration factory
 	 * so both the retry and any commands queued on the lock start from a clean state.
+	 * The actual restore is deferred until the entry is awaited,
+	 * avoiding orphaned resources when the entry is released before consumption.
 	 */
 	#resetCacheEntry(aggregateId: Identifier | undefined) {
 		if (aggregateId)
-			this.#aggregatesCache.set(aggregateId, this.#restoreAggregate(aggregateId));
+			this.#aggregatesCache.setLazy(aggregateId, () => this.#restoreAggregate(aggregateId));
 	}
 
 	/**
@@ -191,10 +200,15 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 	}
 
 	/** Pass a command to corresponding aggregate */
-	async execute(cmd: ICommand): Promise<IEventSet> {
+	async execute(cmd: ICommand, meta?: IMessageMeta): Promise<IEventSet> {
 		assertMessage(cmd, 'cmd');
 
 		const { aggregateId } = cmd;
+
+		const otelSpan = this.#tracer?.startSpan(`AggregateCommandHandler.execute ${cmd.type}`,
+			spanAttributes('aggregate', cmd, ['type', 'aggregateId']),
+			spanContext(meta)
+		);
 
 		this.#allocateCacheEntry(aggregateId);
 
@@ -225,7 +239,7 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 				try {
 					if (events.length)
-						await this.#eventStore.dispatch(events);
+						await this.#eventStore.dispatch(events, { otelSpan });
 
 					return events;
 				}
@@ -238,8 +252,10 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 
 					if (retryDecision === 'ignore') {
 						this.#logger?.warn(`"${cmd.type}" command error ignored after ${attempt + 1} attempt(s), force-dispatching`, { error });
-						if (events.length)
-							await this.#eventStore.dispatch(events, { ignoreConcurrencyError: true });
+						if (events.length) {
+							const dispatchMeta = { ignoreConcurrencyError: true, otelSpan };
+							await this.#eventStore.dispatch(events, dispatchMeta);
+						}
 
 						return events;
 					}
@@ -248,7 +264,12 @@ export class AggregateCommandHandler<TAggregate extends IAggregate> implements I
 				}
 			}
 		}
+		catch (error: any) {
+			recordSpanError(otelSpan, error);
+			throw error;
+		}
 		finally {
+			otelSpan?.end();
 			lease?.release();
 
 			this.#releaseCacheEntry(aggregateId);

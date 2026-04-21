@@ -17,13 +17,14 @@
     "strictPropertyInitialization": true,
     "isolatedModules": true,
     "sourceMap": true,
-    "alwaysStrict": false,
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "noImplicitOverride": true,
     "paths": {
-      "node-cqrs": ["./src/index.ts"]
+      "node-cqrs": [
+        "./src/index.ts"
+      ]
     }
   },
   "include": [

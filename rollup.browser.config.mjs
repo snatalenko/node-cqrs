@@ -6,15 +6,22 @@ const minify = process.env.MINIFY === 'true';
 
 export default {
 	input: './dist/esm/index.js',
+	external: ['node:module'],
 	output: {
 		file: minify ? './dist/browser/bundle.iife.min.js' : './dist/browser/bundle.iife.js',
 		format: 'iife',
 		name: 'Cqrs',
-		compact: minify
+		compact: minify,
+		globals: { 'node:module': '{}' }
 	},
 	plugins: [
 		nodeResolve({ browser: true }),
 		commonjs(),
 		...(minify ? [terser()] : [])
-	]
+	],
+	onwarn(warning, warn) {
+		// node:module is intentionally external — suppress the missing shim warning
+		if (warning.code === 'MISSING_NODE_BUILTINS') return;
+		warn(warning);
+	}
 };

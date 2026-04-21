@@ -2,7 +2,7 @@ import type { Identifier } from './Identifier.ts';
 import type { IMessage } from './IMessage.ts';
 import { isObject } from './isObject.ts';
 
-export type IEvent<TPayload = any> = IMessage<TPayload> & {
+export type IEvent<TPayload = unknown> = IMessage<TPayload> & {
 
 	/** Unique event identifier */
 	id?: Identifier;

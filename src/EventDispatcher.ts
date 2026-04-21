@@ -1,6 +1,9 @@
+import type { Tracer } from '@opentelemetry/api';
+import { recordSpanError, spanContext } from './telemetry/index.ts';
 import {
 	type IEventDispatcher,
 	type IDispatchPipelineProcessor,
+	type DispatchPipelineEnvelope,
 	type IEventSet,
 	type IEventBus,
 	type IContainer,
@@ -8,7 +11,7 @@ import {
 } from './interfaces/index.ts';
 import { InMemoryMessageBus } from './in-memory/index.ts';
 import { type EventBatchEnvelope, EventDispatchPipeline } from './EventDispatchPipeline.ts';
-import { assertDefined, assertArray } from './utils/index.ts';
+import { assertDefined, assertArray, assertNonNegativeInteger, assertFunction } from './utils/index.ts';
 
 export class EventDispatcher implements IEventDispatcher {
 
@@ -35,18 +38,35 @@ export class EventDispatcher implements IEventDispatcher {
 	/** Router that selects a pipeline name given events and meta */
 	eventDispatchRouter?: (events: IEventSet, meta?: Record<string, any>) => string | undefined;
 
-	#pipelines = new Map<string, EventDispatchPipeline>();
+	/**
+	 * Called when a fire-and-forget event bus publish fails.
+	 * If not set, publish errors are silently discarded.
+	 */
+	eventPublishErrorHandler?: (error: Error) => void;
 
-	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchPipeline'> & {
+	readonly #pipelines = new Map<string, EventDispatchPipeline>();
+	readonly #tracer: Tracer | undefined;
+
+	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchPipeline' | 'tracerFactory'> & {
 		eventDispatcherConfig?: {
 			concurrentLimit?: number
 		},
 		eventDispatchPipelines?: Record<string, IDispatchPipelineProcessor[]>,
-		eventDispatchRouter?: (events: IEventSet, meta?: Record<string, any>) => string | undefined
+		eventDispatchRouter?: (events: IEventSet, meta?: Record<string, any>) => string | undefined,
+		eventPublishErrorHandler?: (error: Error) => void
 	}) {
+		if (o?.eventDispatcherConfig?.concurrentLimit !== undefined)
+			assertNonNegativeInteger(o.eventDispatcherConfig.concurrentLimit, 'eventDispatcherConfig.concurrentLimit');
+		if (o?.eventDispatchRouter !== undefined)
+			assertFunction(o.eventDispatchRouter, 'eventDispatchRouter');
+		if (o?.eventPublishErrorHandler !== undefined)
+			assertFunction(o.eventPublishErrorHandler, 'eventPublishErrorHandler');
+
+		this.#tracer = o?.tracerFactory?.(new.target.name);
 		this.eventBus = o?.eventBus ?? new InMemoryMessageBus();
 		this.concurrentLimit = o?.eventDispatcherConfig?.concurrentLimit ?? EventDispatcher.DEFAULT_CONCURRENT_LIMIT;
 		this.eventDispatchRouter = o?.eventDispatchRouter ?? EventDispatcher.DEFAULT_ROUTER;
+		this.eventPublishErrorHandler = o?.eventPublishErrorHandler;
 
 		if (o?.eventDispatchPipelines) {
 			// Initialize pipelines if provided
@@ -86,7 +106,11 @@ export class EventDispatcher implements IEventDispatcher {
 		if (this.#pipelines.has(name))
 			throw new Error(`pipeline "${name}" already exists`);
 
-		const pipeline = new EventDispatchPipeline(this.eventBus, options?.concurrentLimit ?? this.concurrentLimit);
+		const pipeline = new EventDispatchPipeline(
+			this.eventBus,
+			options?.concurrentLimit ?? this.concurrentLimit,
+			this.eventPublishErrorHandler
+		);
 		for (const p of processors)
 			pipeline.addProcessor(p);
 
@@ -95,10 +119,17 @@ export class EventDispatcher implements IEventDispatcher {
 		return pipeline;
 	}
 
+	/** Get a promise that resolves when all in-flight fire-and-forget event bus publishes have settled */
+	async drain(): Promise<unknown> {
+		return Promise.all([...this.#pipelines.values()].map(p => p.drain()));
+	}
+
 	/** Dispatch events through a routed pipeline and publish to the shared eventBus */
 	async dispatch(events: IEventSet, meta?: Record<string, any>) {
 		if (!isEventSet(events) || events.length === 0)
 			throw new TypeError('dispatch requires a non-empty array of events');
+
+		const otelSpan = this.#tracer?.startSpan('EventDispatcher.dispatch', undefined, spanContext(meta));
 
 		let resolve!: (value: IEventSet | PromiseLike<IEventSet>) => void;
 		let reject!: (reason?: any) => void;
@@ -108,7 +139,11 @@ export class EventDispatcher implements IEventDispatcher {
 		});
 
 		const envelope: EventBatchEnvelope = {
-			data: events.map(event => ({ event, ...meta })),
+			data: events.map(event => ({
+				event,
+				...meta,
+				...otelSpan && { otelSpan }
+			}) satisfies DispatchPipelineEnvelope),
 			resolve,
 			reject
 		};
@@ -120,6 +155,11 @@ export class EventDispatcher implements IEventDispatcher {
 
 		pipeline.push(envelope);
 
-		return promise;
+		return promise.catch(error => {
+			recordSpanError(otelSpan, error);
+			throw error;
+		}).finally(() => {
+			otelSpan?.end();
+		});
 	}
 }

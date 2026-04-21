@@ -1,5 +1,6 @@
 import type { IEvent } from './IEvent.ts';
 import { isObject } from './isObject.ts';
+import type { IMessageMeta } from './IMessageMeta.ts';
 
 /**
  * Represents a wrapper for an event that can optionally contain additional metadata.
@@ -18,7 +19,8 @@ export type DispatchPipelineEnvelope = {
 	ignoreConcurrencyError?: boolean;
 
 	event?: IEvent;
-}
+
+} & IMessageMeta;
 
 /**
  * A batch of event envelopes. Can contain custom envelope types extending EventEnvelope.

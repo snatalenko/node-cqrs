@@ -205,5 +205,37 @@ describe('CqrsContainerBuilder', function () {
 			expect(container).toHaveProperty('myProjection');
 			expect((container as any).myProjection).toBeInstanceOf(MyProjection);
 		});
+
+		it('restorePromises resolves when all projection restores complete', async () => {
+			builder.registerProjection(MyProjection, 'myView');
+
+			const container = builder.container();
+
+			// access the view to trigger lazy instantiation + restore
+			expect((container as any).myView).toBeInstanceOf(InMemoryView);
+
+			await expect(Promise.all(container.restorePromises!)).resolves.toBeDefined();
+		});
+
+		it('restorePromises rejects when a projection restore fails', async () => {
+			class FailingProjection extends AbstractProjection<any> {
+				static get handles() {
+					return ['somethingHappened'];
+				}
+				_somethingHappened() { }
+				async restore() {
+					throw new Error('restore failed');
+				}
+			}
+
+			builder.registerProjection(FailingProjection, 'failView');
+
+			const container = builder.container();
+
+			// access the view to trigger lazy instantiation + restore
+			(container as any).failView;
+
+			await expect(Promise.all(container.restorePromises!)).rejects.toThrow('restore failed');
+		});
 	});
 });

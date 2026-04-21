@@ -1,3 +1,4 @@
+import type { Tracer } from '@opentelemetry/api';
 import type { Container } from 'di0';
 import type { ICommandBus } from './ICommandBus.ts';
 import type { IEventDispatcher } from './IEventDispatcher.ts';
@@ -43,5 +44,13 @@ export interface IContainer extends Container {
 
 	logger?: ILogger | IExtendableLogger;
 
+	tracerFactory?: (name: string) => Tracer;
+
 	process?: NodeJS.Process
+
+	/**
+	 * Promises from projection restore operations started during container creation.
+	 * Await `Promise.all(restorePromises)` before closing shared resources.
+	 */
+	restorePromises?: Promise<void>[];
 }

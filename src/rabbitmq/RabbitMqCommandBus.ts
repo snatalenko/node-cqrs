@@ -1,11 +1,11 @@
 import type { IContainer } from 'node-cqrs';
-import type { ICommand, ICommandBus, IMessage, IMessageHandler } from '../interfaces/index.ts';
+import type { ICommand, ICommandBus, IMessage, IMessageHandler, IMessageMeta } from '../interfaces/index.ts';
 import { assertBoolean, assertDefined, assertMessage, assertNonNegativeInteger, assertString } from '../utils/index.ts';
 import { RabbitMqGateway, type Subscription } from './RabbitMqGateway.ts';
 import { type ConfigProvider, resolveProvider } from './utils/index.ts';
 
 export type RabbitMqCommandBusConfig = Partial<Pick<Subscription,
-	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires' | 'deadLetterQueue'>>;
+	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires' | 'deadLetterQueue' | 'messageTtl'>>;
 
 type ResolvedRabbitMqCommandBusConfig = RabbitMqCommandBusConfig
 	& Required<Pick<RabbitMqCommandBusConfig, 'exchange' | 'queueName' | 'ignoreOwn'>>;
@@ -14,12 +14,14 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqCommandBusConfig>
 	const {
 		// eslint-disable-next-line no-use-before-define
 		exchange = RabbitMqCommandBus.DEFAULT_EXCHANGE,
+		// eslint-disable-next-line no-use-before-define
+		queueName = RabbitMqCommandBus.DEFAULT_QUEUE_NAME,
 		ignoreOwn = false,
 		concurrentLimit,
 		handlerProcessTimeout,
-		queueName,
 		queueExpires,
-		deadLetterQueue
+		deadLetterQueue,
+		messageTtl
 	} = await resolveProvider(provider) ?? {};
 
 	assertString(exchange, 'rabbitMqCommandConfig.exchange');
@@ -33,8 +35,19 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqCommandBusConfig>
 		assertNonNegativeInteger(queueExpires, 'rabbitMqCommandConfig.queueExpires');
 	if (deadLetterQueue !== undefined)
 		assertBoolean(deadLetterQueue, 'rabbitMqCommandConfig.deadLetterQueue');
+	if (messageTtl !== undefined)
+		assertNonNegativeInteger(messageTtl, 'rabbitMqCommandConfig.messageTtl');
 
-	return { exchange, queueName, ignoreOwn, concurrentLimit, handlerProcessTimeout, queueExpires, deadLetterQueue };
+	return {
+		exchange,
+		queueName,
+		ignoreOwn,
+		concurrentLimit,
+		handlerProcessTimeout,
+		queueExpires,
+		deadLetterQueue,
+		messageTtl
+	};
 }
 
 /**
@@ -46,6 +59,7 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqCommandBusConfig>
 export class RabbitMqCommandBus implements ICommandBus {
 
 	static DEFAULT_EXCHANGE = 'node-cqrs.commands';
+	static DEFAULT_QUEUE_NAME = 'node-cqrs.commands.default';
 
 	readonly #gateway: RabbitMqGateway;
 	readonly #configProvider?: ConfigProvider<RabbitMqCommandBusConfig>;
@@ -69,32 +83,49 @@ export class RabbitMqCommandBus implements ICommandBus {
 	/**
 	 * Format and send a command for execution
 	 */
-	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object }): Promise<any>;
+	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object } & IMessageMeta):
+		Promise<any>;
 
 	/**
 	 * Sends a pre-built command to the exchange, routed to the durable queue.
 	 * Exactly one consumer will process it.
 	 */
-	send(command: ICommand): Promise<any>;
+	send(command: ICommand, meta?: IMessageMeta): Promise<any>;
 
 	async send(
 		commandOrType: ICommand | string,
-		aggregateId?: string,
-		options?: { payload?: object, context?: object }
+		aggregateIdOrMeta?: string | IMessageMeta,
+		options?: { payload?: object, context?: object } & IMessageMeta
 	): Promise<any> {
-		const command: IMessage = typeof commandOrType === 'string'
-			? { type: commandOrType, aggregateId, ...options }
-			: commandOrType;
+		let command: IMessage;
+		let meta: IMessageMeta | undefined;
+
+		if (typeof commandOrType === 'string') {
+			const { otelSpan, ...commandOptions } = options ?? {};
+			command = {
+				type: commandOrType,
+				aggregateId: aggregateIdOrMeta as string | undefined,
+				payload: undefined,
+				...commandOptions
+			};
+			if (otelSpan)
+				meta = { otelSpan };
+		}
+		else {
+			command = commandOrType;
+			if (aggregateIdOrMeta && typeof aggregateIdOrMeta === 'object')
+				meta = aggregateIdOrMeta as IMessageMeta;
+		}
 
 		assertMessage(command, 'command');
 
 		const { exchange } = await this.#resolveConfig();
-		await this.#gateway.publish(exchange, command);
+		await this.#gateway.publish(exchange, command, meta);
 	}
 
 	/** @deprecated Use {@link send} */
-	sendRaw(command: ICommand): Promise<any> {
-		return this.send(command);
+	sendRaw(command: ICommand, meta?: IMessageMeta): Promise<any> {
+		return this.send(command, meta);
 	}
 
 	/**

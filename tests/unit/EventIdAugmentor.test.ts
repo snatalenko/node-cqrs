@@ -49,4 +49,5 @@ describe('EventIdAugmentor', function () {
 		expect(thrown).toBeInstanceOf(TypeError);
 		expect(thrown).toHaveProperty('message', 'identifierProvider is required');
 	});
+
 });

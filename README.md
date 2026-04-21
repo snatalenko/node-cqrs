@@ -11,21 +11,24 @@ node-cqrs
 
 Infrastructure-agnostic building blocks for CQRS/ES, inspired by Lokad.CQRS.
 
-CQRS/ES can be simple in a single process - minimal code, no framework:
-[examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts).
-This library handles the "boring but hard" parts required in distributed environments:
+## Features
 
-- safer async command + event handling (per-aggregate FIFO, shared restore, fewer footguns)
-- restart-safe projections/views (catch-up with checkpoints, readiness gates, locking)
-- snapshots for fast rehydrate (automatic snapshot events + restore)
-- pluggable dispatch pipeline (encode/persist/fan-out; order is explicit)
-- conflict-safe writes (optimistic concurrency + retry with clean rehydrate)
-- routed pipelines with backpressure (named pipelines + concurrency limits)
-- competing-consumer delivery (named queues when supported)
-- selective restore with correct versioning (filter + tail to keep versions right)
-- sagas with built-in correlation (event-id origins + sagaOrigins propagation)
+CQRS and Event Sourcing are simple in a single process ([example](examples/user-domain-framework-free/index.ts)), but a minefield in the cloud.
+node-cqrs handles the "boring but hard" distributed plumbing - concurrency, message delivery, projections, and rehydration - so you can focus on your domain logic.
 
-Built around ES6/TypeScript classes and dependency injection - swap implementations without patching the library.
+- **Reliable Consistency**: Per-aggregate FIFO handling and conflict-safe writes with optimistic concurrency.
+- **Resilient Projections**: Restart-safe views with checkpoints, readiness gates, and locking.
+- **Fast Rehydration**: Automatic snapshotting and selective event restores.
+- **Distributed Sagas**: Built-in event correlation and origin propagation for complex workflows.
+- **Smart Pipelines**: Pluggable dispatching with back-pressure and concurrency limits.
+- **Pluggable by Design**: Thin interfaces on every component - swap any piece, from message buses to event storage, without touching your domain code.
+
+The heavy lifting for common stacks is done, so you can mix and match sub-modules to fit your environment:
+
+- `node-cqrs/sqlite` – Embedded per-process event storage and/or views.
+- `node-cqrs/mongodb` – Distributed event storage and persistent projection views for multi-process deployments.
+- `node-cqrs/rabbitmq` – Robust, distributed command and event bus.
+- `node-cqrs/redis` – Redis-backed persistent projection views for distributed deployments.
 
 ## Table of Contents
 
@@ -33,20 +36,21 @@ Built around ES6/TypeScript classes and dependency injection - swap implementati
 - [Installation](#installation)
 - [ContainerBuilder](#containerbuilder)
 - [Commands](#commands)
-- [Aggregates (write model)](#aggregates-write-model)
+- [Write Model (Aggregates)](#write-model-aggregates)
   - [AbstractAggregate](#abstractaggregate)
   - [Aggregate State](#aggregate-state)
   - [External Dependencies](#external-dependencies)
-- [Projections and Views (read model)](#projections-and-views-read-model)
+- [Read Model (Projections and Views)](#read-model-projections-and-views)
   - [AbstractProjection](#abstractprojection)
   - [View restoring on start](#view-restoring-on-start)
   - [Accessing views](#accessing-views)
 - [Sagas](#sagas)
-- [Infrastructure modules](#infrastructure-modules)
-  - [In-memory](#in-memory)
-  - [SQLite](#sqlite)
-  - [RabbitMQ](#rabbitmq)
-  - [Workers](#workers)
+- [Infrastructure Modules](#infrastructure-modules)
+  - [Event Storage](#event-storage)
+  - [Read Model](#read-model)
+  - [Message Buses](#message-buses)
+  - [Other](#other)
+- [OpenTelemetry](#opentelemetry)
 - [Examples](#examples)
 
 
@@ -54,33 +58,43 @@ Built around ES6/TypeScript classes and dependency injection - swap implementati
 
 ![Overview](docs/images/node-cqrs-flow.svg)
 
+Domain logic lives in three building blocks:
+
+- **[Aggregates](#write-model-aggregates)** - handle commands and emit events
+- **[Sagas](#sagas)** - manage processes by reacting to events and enqueueing follow-up commands
+- **[Projections](#read-model-projections-and-views)** - consume events and update views
 
 Commands and events are loosely typed objects implementing the [`IMessage`](src/interfaces/IMessage.ts) interface:
 
 ```ts
-interface IMessage<TPayload = any> {
+interface IMessage<TPayload = unknown> {
+
+	/** Event or command type */
 	type: string;
 
-	aggregateId?: string | number;
+	/** Target aggregate identifier for commands, originating aggregate identifier for events */
+	aggregateId?: Identifier;
+
+	/** Aggregate version at the time of the message */
 	aggregateVersion?: number;
+
+	/** Starter event ids of sagas associated with this message, keyed by saga descriptor */
 	sagaOrigins?: Record<string, string>;
 
+	/** Business data */
 	payload: TPayload;
+
+	/** Optional metadata/context (e.g. auth info, request id); set on commands, copied to events */
 	context?: any;
 }
 ```
 
-Domain logic lives in three building blocks:
-
-- **[Aggregates](#aggregates-write-model)** - handle commands and emit events
-- **[Projections](#projections-and-views-read-model)** - consume events and update views
-- **[Sagas](#sagas)** - manage processes by reacting to events and enqueueing follow-up commands
 
 Message delivery is handled by the following components, in order:
 
 - **[Command Bus](src/in-memory/InMemoryMessageBus.ts)** - routes commands to handlers
 - **[Aggregate Command Handler](src/AggregateCommandHandler.ts)** - restores aggregate state and executes commands
-- **[Event Store](src/EventStore.ts)** — runs the event dispatch pipeline (e.g. encoding, persistence), then publishes events to the event bus for delivery to all subscribers
+- **[Event Store](src/EventStore.ts)** - runs the event dispatch pipeline (e.g. encoding, persistence), then publishes events to the event bus for delivery to all subscribers
 - **[Saga Event Handler](src/SagaEventHandler.ts)** - restores saga state and applies events
 
 > `src/`, `tests/`, and `examples/` are good entry points - the codebase is intentionally small and readable.
@@ -94,13 +108,6 @@ npm install node-cqrs
 
 Node.js 16+ and browsers are supported.
 
-Optional peer dependencies:
-
-| Module | Packages |
-|--------|----------|
-| SQLite | `better-sqlite3`, `md5` |
-| RabbitMQ | `amqplib` |
-| Worker threads | `comlink` |
 
 
 ## ContainerBuilder
@@ -154,10 +161,10 @@ commandBus.send('signupUser', undefined, { payload: { profile, password } });
 commandBus.send({ type: 'signupUser', payload: { profile, password } });
 ```
 
-Commands are handled by [Aggregates](#aggregates-write-model) and may also be enqueued by [Sagas](#sagas).
+Commands are handled by [Aggregates](#write-model-aggregates) and may also be enqueued by [Sagas](#sagas).
 
 
-## Aggregates (write model)
+## Write Model (Aggregates)
 
 Aggregates handle commands, validate business rules, and emit events.
 Minimal contract ([IAggregate](src/interfaces/IAggregate.ts)):
@@ -249,7 +256,7 @@ builder.registerAggregate(UserAggregate);
 ```
 
 
-## Projections and Views (read model)
+## Read Model (Projections and Views)
 
 Projections listen to events and update views.
 Minimal contract ([IProjection](src/interfaces/IProjection.ts)):
@@ -274,14 +281,18 @@ interface IProjection<TView> extends IObserver {
 Same name-matching rule as AbstractAggregate - `userCreated()` handles the `userCreated` event:
 
 ```ts
-class UsersProjection extends AbstractProjection<Map<string, { username: string }>> {
+class UsersProjection extends AbstractProjection<Map<string, { 
+	username: string
+}>> {
 	constructor() {
 		super();
 		this.view = new Map();
 	}
 
 	userCreated(event: IEvent<UserCreatedEventPayload>) {
-		this.view.set(event.aggregateId as string, { username: event.payload.username });
+		this.view.set(event.aggregateId, {
+			username: event.payload.username
+		});
 	}
 }
 ```
@@ -295,7 +306,8 @@ For persistent views and safe restarts, implement [IViewLocker](src/interfaces/I
 ### Accessing views
 
 ```ts
-interface IMyContainer extends IContainer { // optional interface for container typing
+// optional interface for container typing
+interface IMyContainer extends IContainer {
 	usersView: UsersView;
 }
 
@@ -321,7 +333,9 @@ Sagas coordinate multi-step processes by reacting to events and enqueueing follo
 ```ts
 class WelcomeEmailSaga extends AbstractSaga {
 	userSignedUp(event) {
-		this.enqueue('sendWelcomeEmail', undefined, { email: event.payload.email });
+		this.enqueue('sendWelcomeEmail', undefined, {
+			email: event.payload.email
+		});
 	}
 }
 
@@ -391,114 +405,127 @@ interface ISaga {
 ```
 
 
-## Infrastructure modules
+## Infrastructure Modules
 
-| Module | Import | Use case |
-|--------|--------|----------|
-| In-memory | `node-cqrs` | Tests and local development |
-| SQLite | `node-cqrs/sqlite` | Persistent views with catch-up |
-| RabbitMQ | `node-cqrs/rabbitmq` | Cross-process event distribution |
-| Workers | `node-cqrs/workers` | CPU-heavy projections in worker threads |
+Swap implementations by registering different classes in the DI container.
+All modules below implement the same interfaces - pick what fits your deployment.
 
-### In-memory
+### Event Storage
 
-- [InMemoryEventStorage](src/in-memory/InMemoryEventStorage.ts) - event storage + identifier provider
-- [InMemoryMessageBus](src/in-memory/InMemoryMessageBus.ts) - event/command bus
-- [InMemoryView](src/in-memory/InMemoryView.ts) - in-memory view with locking support
+Where aggregate events are persisted and replayed from.
 
-### SQLite
+| Implementation         | Import              | Peer deps        | Notes                                                                             |
+| ---------------------- | ------------------- | ---------------- | --------------------------------------------------------------------------------- |
+| `InMemoryEventStorage` | `node-cqrs`         | -                | Dev/test only; data lost on restart ([example](examples/user-domain-ts/index.ts)) |
+| `SqliteEventStorage`   | `node-cqrs/sqlite`  | `better-sqlite3` | Embedded, single-process ([example](examples/sqlite/index.ts))                    |
+| `MongoEventStorage`    | `node-cqrs/mongodb` | `mongodb`        | Distributed, multi-process ([example](examples/mongodb-eventstore/index.ts))      |
+
+### Read Model
+
+Where projections store and query their read-side state.
+Each persistent backend provides the same layered set of building blocks:
+
+| Layer               | Purpose                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| **Object storage**  | Key/value CRUD with optimistic concurrency                                                       |
+| **View locker**     | Prevents concurrent schema-migration rebuilds - only one process rebuilds at a time; others wait |
+| **Event locker**    | Per-event deduplication and last-projected checkpoint                                            |
+| **Composite view**  | Combines the above into a single view object                                                     |
+| **Base projection** | Wires locking, checkpointing, and error handling automatically                                   |
+
+#### In-memory
+
+| Class          | Notes                                                          |
+| -------------- | -------------------------------------------------------------- |
+| `InMemoryLock` | Simple in-process lock                                         |
+| `InMemoryView` | Simple `Map`-backed view; restores from events on each restart |
+
+#### SQLite (`node-cqrs/sqlite`, peer dep: `better-sqlite3`)
+
+| Class                            | Role                                                                                   |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| `SqliteObjectStorage`            | Key/value object storage with version-based concurrency                                |
+| `SqliteViewLocker`               | Prevents concurrent schema-migration rebuilds via SQLite row lock                      |
+| `SqliteEventLocker`              | Event deduplication and last-event checkpoint                                          |
+| `AbstractSqliteView`             | Base class for relational (non-object) SQLite views with view and event locks embedded |
+| `SqliteObjectView`               | Composite view combining the above                                                     |
+| `AbstractSqliteObjectProjection` | Base projection wired to `SqliteObjectView`                                            |
+
+See [src/sqlite](src/sqlite) for additional documentation, and [examples/sqlite](examples/sqlite/index.ts) for runnable project examples
+
+#### MongoDB (`node-cqrs/mongodb`, peer dep: `mongodb`)
+
+> **Experimental** - not yet validated in production. APIs may change in minor versions.
+
+| Class                           | Role                                                                              |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| `MongoObjectStorage`            | Document storage with version-based optimistic concurrency                        |
+| `MongoViewLocker`               | Prevents concurrent schema-migration rebuilds; auto-prolongs lock via token + TTL |
+| `MongoEventLocker`              | Event deduplication and last-event checkpoint                                     |
+| `AbstractMongoView`             | Base class combining `MongoViewLocker` + `MongoEventLocker`                       |
+| `MongoObjectView`               | Composite view combining the above                                                |
+| `AbstractMongoObjectProjection` | Base projection wired to `MongoObjectView`                                        |
+
+See [src/mongodb](src/mongodb) for additional documentation, and [examples/mongodb-views](examples/mongodb-views/index.ts) for runnable projection examples.
+
+#### Redis (`node-cqrs/redis`, peer dep: `ioredis`)
+
+> **Experimental** - not yet validated in production. APIs may change in minor versions.
+
+| Class                     | Role                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| `RedisObjectStorage`      | Key/value object storage backed by Redis hashes                               |
+| `RedisViewLocker`         | Prevents concurrent schema-migration rebuilds; auto-prolongs lock via PEXPIRE |
+| `RedisEventLocker`        | Event deduplication and last-event checkpoint                                 |
+| `RedisView`               | Composite view combining the above                                            |
+| `AbstractRedisProjection` | Base projection wired to `RedisView`                                          |
+
+See [src/redis](src/redis) for additional documentation, and [examples/redis](examples/redis/index.ts) for runnable projection examples.
+
+### Message Buses
+
+How commands and events move between producers and consumers.
+
+| Implementation       | Import               | Peer deps | Notes                                                                                            |
+| -------------------- | -------------------- | --------- | ------------------------------------------------------------------------------------------------ |
+| `InMemoryMessageBus` | `node-cqrs`          | -         | Single-process; used as both command and event bus ([example](examples/user-domain-ts/index.ts)) |
+| `RabbitMqEventBus`   | `node-cqrs/rabbitmq` | `amqplib` | Fanout delivery to all subscribers ([instructions](src/rabbitmq))                                |
+| `RabbitMqCommandBus` | `node-cqrs/rabbitmq` | `amqplib` | Point-to-point via durable queue ([instructions](src/rabbitmq))                                  |
+
+### Other
+
+| Implementation             | Import              | Notes                                                         |
+| -------------------------- | ------------------- | ------------------------------------------------------------- |
+| `InMemorySnapshotStorage`  | `node-cqrs`         | Aggregate snapshot cache in memory, resets on process restart |
+| `AbstractWorkerProjection` | `node-cqrs/workers` | Run projections in worker threads ([instructions](src/workers), [example](examples/workers-projection/index.cjs)) |
+
+> **Experimental** - the Workers module is new and has not been validated in production. APIs may change in minor versions.
+
+## OpenTelemetry
+
+Optional distributed tracing via [OpenTelemetry](https://opentelemetry.io/). Requires `@opentelemetry/api` peer dependency. Register a `tracerFactory` in the container to enable automatic span creation across CQRS components:
 
 ```ts
-import { AbstractSqliteView, SqliteObjectView } from 'node-cqrs/sqlite';
+import { trace } from '@opentelemetry/api';
+
+builder.register(() => (name: string) => trace.getTracer(`cqrs.${name}`)).as('tracerFactory');
 ```
 
-- [AbstractSqliteView](src/sqlite/AbstractSqliteView.ts) - SQLite view with restore locking and checkpoint tracking
-- [SqliteObjectView](src/sqlite/SqliteObjectView.ts) - SQLite-backed object view
-
-### RabbitMQ
-
-```ts
-import { RabbitMqEventBus, RabbitMqCommandBus, RabbitMqGateway } from 'node-cqrs/rabbitmq';
-```
-
-- [RabbitMqGateway](src/rabbitmq/RabbitMqGateway.ts) - publish/subscribe gateway with durable and transient queue support
-- [RabbitMqEventBus](src/rabbitmq/RabbitMqEventBus.ts) - RabbitMQ-backed `IEventBus` (fanout delivery to all subscribers)
-- [RabbitMqCommandBus](src/rabbitmq/RabbitMqCommandBus.ts) - RabbitMQ-backed `ICommandBus` (point-to-point delivery via durable queue)
-
-### Workers
-
-```ts
-import { AbstractWorkerProjection } from 'node-cqrs/workers';
-```
-
-Workers are an execution mode for projections.
-
-You still define one projection class, but it runs as:
-1. A real projection inside a worker thread (handles events, mutates the view).
-2. A proxy projection in the main thread (forwards calls to the worker and exposes the remote view).
-
-This lets you keep your projection code unchanged while moving heavy work off the main thread.
-
-Quickstart:
-1. Create your projection by extending `AbstractWorkerProjection`.
-2. In the worker module, call `YourProjection.createInstanceInWorkerThread()`.
-3. In your app container, register `YourProjection.workerProxyFactory` and use it like a normal projection.
-
-Worker module example (CJS):
-
-```js
-const { AbstractWorkerProjection } = require('node-cqrs/workers');
-
-class CounterView {
-	counter = 0;
-	increment() { this.counter += 1; }
-	getCounter() { return this.counter; }
-}
-
-class CounterProjection extends AbstractWorkerProjection {
-	static get workerModulePath() {
-		return __filename;
-	}
-
-	constructor() {
-		super({ view: new CounterView() });
-	}
-
-	somethingHappened() {
-		this.view.increment();
-	}
-}
-
-CounterProjection.createInstanceInWorkerThread();
-module.exports = CounterProjection;
-```
-
-Main thread usage (DI):
-
-```js
-const CounterProjection = require('./CounterProjection.cjs');
-const { ContainerBuilder } = require('node-cqrs');
-
-const builder = new ContainerBuilder();
-builder.registerProjection(CounterProjection.workerProxyFactory, 'counterView');
-
-const { eventStore, counterView } = builder.container();
-await eventStore.dispatch([{ id: '1', type: 'somethingHappened', payload: {} }]);
-const counter = await counterView.getCounter();
-```
-
-`workerModulePath` should point to executable JavaScript (`__filename` in CJS, `fileURLToPath(import.meta.url)` in ESM).
-If you need a custom proxy projection, you can still use `workerProxyFactory(...)` directly (advanced usage).
+See [examples/telemetry/index.ts](examples/telemetry/index.ts) for a full working example.
 
 
 ## Examples
 
-- [examples/user-domain/framework-free](examples/user-domain/framework-free/index.ts) - minimal, no-framework CQRS/ES in one file
-- [examples/user-domain/ts](examples/user-domain/ts) - TypeScript with DI container
-- [examples/user-domain/cjs](examples/user-domain/cjs) - CommonJS
-- [examples/sagas/simple](examples/sagas/simple/index.ts) - simple saga
-- [examples/sagas/overlaps](examples/sagas/overlaps/index.ts) - overlapping sagas, multi-step flow
+- [examples/user-domain-framework-free](examples/user-domain-framework-free/index.ts) - minimal, no-framework CQRS/ES in one file
+- [examples/user-domain-ts](examples/user-domain-ts) - TypeScript with DI container
+- [examples/user-domain-cjs](examples/user-domain-cjs) - CommonJS
+- [examples/redis](examples/redis/index.ts) - Redis-backed persistent projection
+- [examples/sagas-simple](examples/sagas-simple/index.ts) - simple saga
+- [examples/sagas-overlaps](examples/sagas-overlaps/index.ts) - overlapping sagas, multi-step flow
 - [examples/browser](examples/browser) - browser smoke test
-- [examples/workers/worker-projection](examples/workers/worker-projection) - worker thread projection
+- [examples/workers-projection](examples/workers-projection) - worker thread projection
+- [examples/mongodb-eventstore](examples/mongodb-eventstore/index.ts) - MongoDB event storage with DI container and manual wiring
+- [examples/mongodb-views](examples/mongodb-views/index.ts) - MongoDB-backed projection views with object storage and locking
+- [examples/telemetry](examples/telemetry/index.ts) - OpenTelemetry tracing with multiple exporters
 
 TS examples can be run with NodeJS 24+ without transpiling.

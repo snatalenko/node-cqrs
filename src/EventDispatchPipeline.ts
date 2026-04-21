@@ -1,4 +1,5 @@
 import {
+	type DispatchPipelineEnvelope,
 	type DispatchPipelineBatch,
 	type IEvent,
 	type IDispatchPipelineProcessor,
@@ -12,7 +13,7 @@ import { AsyncIterableBuffer } from 'async-iterable-buffer';
 import { getClassName } from './utils/index.ts';
 
 export type EventBatchEnvelope = {
-	data: DispatchPipelineBatch<{ event?: IEvent }>;
+	data: DispatchPipelineBatch<DispatchPipelineEnvelope>;
 	error?: Error;
 	resolve: (event: IEvent[]) => void;
 	reject: (error: Error) => void;
@@ -24,13 +25,16 @@ export class EventDispatchPipeline {
 	#processors: Array<IDispatchPipelineProcessor> = [];
 	#pipeline: AsyncIterableIterator<EventBatchEnvelope> | IterableIterator<EventBatchEnvelope> = this.#pipelineInput;
 	#processing = false;
+	#pending = new Set<Promise<unknown>>();
 
 	readonly #eventBus;
 	readonly #concurrentLimit: number;
+	readonly #onError?: (error: Error) => void;
 
-	constructor(eventBus: IEventBus, concurrentLimit: number) {
+	constructor(eventBus: IEventBus, concurrentLimit: number, onError?: (error: Error) => void) {
 		this.#eventBus = eventBus;
 		this.#concurrentLimit = concurrentLimit;
+		this.#onError = onError;
 	}
 
 	addProcessor(preprocessor: IDispatchPipelineProcessor) {
@@ -78,13 +82,17 @@ export class EventDispatchPipeline {
 
 					const events: IEvent[] = [];
 					for (const batch of data) {
-						const { event, ...meta } = batch as any;
+						const { event, ...meta } = batch;
 						if (!event)
 							continue;
 						if (isSnapshotEvent(event))
 							continue;
 
-						void this.#eventBus.publish(event, meta);
+						const p = this.#eventBus.publish(event, meta)
+							.catch(this.#onError);
+
+						this.#pending.add(p);
+						p.finally(() => this.#pending.delete(p));
 
 						events.push(event);
 					}
@@ -95,6 +103,11 @@ export class EventDispatchPipeline {
 				}
 			}
 		})();
+	}
+
+	/** Get a promise that resolves when all in-flight fire-and-forget event bus publishes have settled */
+	async drain(): Promise<unknown> {
+		return Promise.allSettled(this.#pending);
 	}
 
 	async revert(batch: DispatchPipelineBatch) {

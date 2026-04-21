@@ -10,10 +10,9 @@ export interface IWorkerProjection<TView> extends IProjection<TView> {
 	/**
 	 * Projects an event without waiting for view lock readiness.
 	 *
-	 * Implemented by AbstractWorkerProjection and used by worker RPC wiring
-	 * for restore and direct projection paths.
+	 * @internal Expose protected projection path for worker RPC wiring
 	 */
-	_project(event: IEvent): Promise<void>;
+	_project(event: IEvent, meta?: Record<string, any>): Promise<void>;
 }
 
 export interface IWorkerProjectionType<

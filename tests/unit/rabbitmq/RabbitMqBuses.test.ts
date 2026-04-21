@@ -38,6 +38,7 @@ describe('RabbitMq bus config forwarding', () => {
 			handlerProcessTimeout: 1234,
 			queueExpires: 5678,
 			deadLetterQueue: false,
+			messageTtl: undefined,
 			singleActiveConsumer: true
 		});
 	});
@@ -63,6 +64,7 @@ describe('RabbitMq bus config forwarding', () => {
 			handlerProcessTimeout: undefined,
 			queueExpires: undefined,
 			deadLetterQueue: false,
+			messageTtl: undefined,
 			singleActiveConsumer: true
 		});
 	});
@@ -118,7 +120,8 @@ describe('RabbitMq bus config forwarding', () => {
 			concurrentLimit: 4,
 			handlerProcessTimeout: 3456,
 			queueExpires: 7890,
-			deadLetterQueue: false
+			deadLetterQueue: false,
+			messageTtl: undefined
 		});
 	});
 

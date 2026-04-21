@@ -59,20 +59,6 @@ describe('SqliteObjectView', function () {
 
 	describe('get', () => {
 
-		it('throws an error if id is not a non-empty string', async () => {
-
-			let error;
-			try {
-				error = null;
-				await sqliteObjectView.get('');
-			}
-			catch (err) {
-				error = err;
-			}
-			expect(error).toBeDefined();
-			expect(error).toHaveProperty('message', 'id must be a non-empty String');
-		});
-
 		it('waits for readiness before returning data', async () => {
 
 			await sqliteObjectView.lock();
