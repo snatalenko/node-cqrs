@@ -1,3 +1,11 @@
+# [1.1.0-alpha.8](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.7...v1.1.0-alpha.8) (2026-04-21)
+
+
+### Documentation
+
+* Minor spec update ([6a2883a](https://github.com/snatalenko/node-cqrs/commit/6a2883adc7b6a7a48bb5f62562c2242826860e89))
+
+
 # [1.1.0-alpha.7](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.6...v1.1.0-alpha.7) (2026-04-06)
 
 
