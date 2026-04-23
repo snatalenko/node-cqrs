@@ -24,7 +24,7 @@ export class WorkerProxyProjection<
 	readonly #remoteView: Comlink.Remote<TView>;
 	readonly #logger?: ILogger;
 	readonly #messageTypes: string[];
-	readonly #viewLocker: IViewLocker = new InMemoryLock();
+	viewLocker?: IViewLocker = new InMemoryLock();
 
 	get remoteProjection(): Comlink.Remote<TProjection> {
 		return this.#remoteProjection;
@@ -74,13 +74,13 @@ export class WorkerProxyProjection<
 	}
 
 	async restore(eventStore: IEventStorageReader): Promise<void> {
-		if (this.#viewLocker)
-			await this.#viewLocker.lock();
+		if (this.viewLocker)
+			await this.viewLocker.lock();
 
 		await this._restore(eventStore);
 
-		if (this.#viewLocker)
-			this.#viewLocker.unlock();
+		if (this.viewLocker)
+			this.viewLocker.unlock();
 	}
 
 	/** Restore view state from not-yet-projected events */
@@ -122,14 +122,14 @@ export class WorkerProxyProjection<
 	}
 
 	async project(event: IEvent): Promise<void> {
-		if (!this.#worker)
-			await this.#workerInit;
-
-		if (!this.#viewLocker.ready) {
+		if (this.viewLocker && !this.viewLocker.ready) {
 			this.#logger?.debug(`view is locked, awaiting until it is ready to process ${describe(event)}`);
-			await this.#viewLocker.once('ready');
+			await this.viewLocker.once('ready');
 			this.#logger?.debug(`view is ready, processing ${describe(event)}`);
 		}
+
+		if (!this.#worker)
+			await this.#workerInit;
 
 		return this.#remoteProjection.project(event);
 	}

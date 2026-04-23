@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { IEvent } from '../../../src/interfaces/index.ts';
+import type { IEvent, IViewLocker } from '../../../src/interfaces/index.ts';
 import { WorkerProxyProjection, workerProxyFactory } from '../../../src/workers/index.ts';
 import ViewFixture from './fixtures/ViewFixture.cjs';
 
@@ -146,6 +146,58 @@ describe('AbstractWorkerProjection', () => {
 		await restorePromise;
 		await projectPromise;
 		expect(await projectionProxy.view.getCounter()).toBe(2);
+	});
+
+	it('uses externally assigned viewLocker on restore', async () => {
+
+		const lock = jest.fn().mockResolvedValue(true);
+		const unlock = jest.fn();
+		const once = jest.fn().mockResolvedValue(undefined);
+		const viewLocker: IViewLocker = {
+			ready: true,
+			lock,
+			unlock,
+			once
+		};
+
+		projectionProxy.viewLocker = viewLocker;
+
+		await projectionProxy.restore(createEventStore([]));
+
+		expect(lock).toHaveBeenCalledTimes(1);
+		expect(unlock).toHaveBeenCalledTimes(1);
+	});
+
+	it('awaits project calls using externally assigned viewLocker', async () => {
+
+		let releaseLocker: (() => void) | undefined;
+		const waitForReady = new Promise<void>(resolve => {
+			releaseLocker = resolve;
+		});
+		const once = jest.fn(() => waitForReady);
+		const viewLocker: IViewLocker = {
+			ready: false,
+			lock: jest.fn().mockResolvedValue(true),
+			unlock: jest.fn(),
+			once
+		};
+
+		projectionProxy.viewLocker = viewLocker;
+
+		const projectPromise = projectionProxy.project({ id: '1', type: 'somethingHappened' });
+		const resolvedEarly = await Promise.race([
+			projectPromise.then(() => true),
+			new Promise(resolve => setTimeout(() => resolve(false), 20))
+		]);
+
+		expect(resolvedEarly).toBe(false);
+		expect(once).toHaveBeenCalledWith('ready');
+
+		viewLocker.ready = true;
+		releaseLocker?.();
+
+		await projectPromise;
+		expect(await projectionProxy.view.getCounter()).toBe(1);
 	});
 
 	it('restores from event store and updates projection state', async () => {
