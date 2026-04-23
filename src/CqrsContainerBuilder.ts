@@ -22,10 +22,7 @@ import { assertClass, assertFunction } from './utils/assert.ts';
 export class CqrsContainerBuilder<TContainerInterface extends IContainer = IContainer>
 	extends ContainerBuilder<TContainerInterface> {
 
-	constructor(options?: {
-		types: Readonly<TypeConfig<any>[]>,
-		singletones: object
-	}) {
+	constructor(options?: ConstructorParameters<typeof ContainerBuilder>[0]) {
 		super(options);
 
 		super.addResolver(isIdentifierProvider, 'identifierProvider');
