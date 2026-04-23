@@ -1,3 +1,11 @@
+# [1.1.0-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.0...v1.1.0-beta.1) (2026-04-23)
+
+
+### Internal Fixes
+
+* Expose `viewLocker` on WorkerProxyProjection ([628fbe3](https://github.com/snatalenko/node-cqrs/commit/628fbe3c7af141443092cdf1fb6c0824c19a6324))
+
+
 # [1.1.0-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0-beta.0) (2026-04-21)
 
 
