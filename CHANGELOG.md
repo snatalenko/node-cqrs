@@ -1,3 +1,19 @@
+# [1.1.0-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.1...v1.1.0-beta.2) (2026-04-25)
+
+
+### Changes
+
+* Allow extra command parameters to be passed to AbstractAggregate handler as 3rd argument ([ae11b7e](https://github.com/snatalenko/node-cqrs/commit/ae11b7eb709e658fbc910aadb1376bc8a3fade1b))
+
+### Build System
+
+* Add "rebuild" npm script ([2e5e977](https://github.com/snatalenko/node-cqrs/commit/2e5e9771f760d15cc1cbbc2f68bc680cd6b97de3))
+
+### Internal Fixes
+
+* Make `getHandler` to throw error if handler is not defined ([ecbd73e](https://github.com/snatalenko/node-cqrs/commit/ecbd73e0604c74eb85a946b15a4b872b688da01e))
+
+
 # [1.1.0-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.0...v1.1.0-beta.1) (2026-04-23)
 
 
