@@ -88,8 +88,13 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 	/** List of emitted events */
 	protected changes: IEvent[] = [];
 
-	/** Internal aggregate state */
-	protected state: TState | undefined;
+	/**
+	 * Internal aggregate state.
+	 *
+	 * Stateful aggregates must initialize it either by passing `state` to the base
+	 * constructor, declaring a class field, or assigning it in the derived constructor.
+	 */
+	protected declare state: TState;
 
 	/** Command being handled by aggregate */
 	protected command?: ICommand;
