@@ -99,6 +99,7 @@
     "build:browser:bundle": "rollup -c ./rollup.browser.config.mjs",
     "build:browser": "npm run build:esm && npm run build:browser:bundle && npm run build:browser:bundle-min",
     "build": "npm run build:esm && npm run build:cjs",
+    "rebuild": "npm run cleanup && npm run build",
     "prepare": "npm run build",
     "preversion": "npm test",
     "version": "./scripts/cleanup_obsolete_tags.sh v$npm_package_version && npm run changelog && git add CHANGELOG.md",
