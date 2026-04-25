@@ -180,7 +180,8 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 		const eventsOffset = this.changes.length;
 
 		try {
-			await handler.call(this, command.payload, command.context);
+			const { payload, context, ...meta } = command;
+			await handler.call(this, payload, context, meta);
 
 			return this.getUncommittedEvents(eventsOffset);
 		}

@@ -1,5 +1,5 @@
 import type { IContainer } from 'node-cqrs';
-import type { ICommand, ICommandBus, IMessage, IMessageHandler, IMessageMeta } from '../interfaces/index.ts';
+import type { CommandOptions, ICommand, ICommandBus, IMessage, IMessageHandler, IMessageMeta } from '../interfaces/index.ts';
 import { assertBoolean, assertDefined, assertMessage, assertNonNegativeInteger, assertString } from '../utils/index.ts';
 import { RabbitMqGateway, type Subscription } from './RabbitMqGateway.ts';
 import { type ConfigProvider, resolveProvider } from './utils/index.ts';
@@ -83,7 +83,7 @@ export class RabbitMqCommandBus implements ICommandBus {
 	/**
 	 * Format and send a command for execution
 	 */
-	send(commandType: string, aggregateId?: string, options?: { payload?: object, context?: object } & IMessageMeta):
+	send(commandType: string, aggregateId?: string, options?: CommandOptions):
 		Promise<any>;
 
 	/**
@@ -95,7 +95,7 @@ export class RabbitMqCommandBus implements ICommandBus {
 	async send(
 		commandOrType: ICommand | string,
 		aggregateIdOrMeta?: string | IMessageMeta,
-		options?: { payload?: object, context?: object } & IMessageMeta
+		options?: CommandOptions
 	): Promise<any> {
 		let command: IMessage;
 		let meta: IMessageMeta | undefined;
