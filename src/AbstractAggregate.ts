@@ -19,6 +19,7 @@ import {
 	getClassName,
 	validateHandlers,
 	getHandler,
+	getOptionalHandler,
 	getMessageHandlerNames,
 	clone,
 	assertDefined,
@@ -153,7 +154,7 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 		else if (this.state) {
 			const handler = 'mutate' in this.state ?
 				this.state.mutate :
-				getHandler(this.state, event.type);
+				getOptionalHandler(this.state, event.type);
 			if (handler)
 				handler.call(this.state, event);
 		}
@@ -165,10 +166,7 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 	async handle(command: ICommand): Promise<IEventSet> {
 		assertMessage(command, 'command');
 
-		const handler = getHandler(this, command.type) as (payload: unknown, context?: unknown) =>
-			unknown | Promise<unknown>;
-		if (!handler)
-			throw new Error(`'${command.type}' handler is not defined or not a function`);
+		const handler = getHandler(this, command.type);
 
 		if (this.command)
 			throw new Error('Another command is being processed');

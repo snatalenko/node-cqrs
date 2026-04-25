@@ -1,5 +1,5 @@
 import { assertObject, assertOptionalArray, assertString } from './assert.ts';
-import { getHandler } from './getHandler.ts';
+import { getOptionalHandler } from './getHandler.ts';
 
 /**
  * Ensure instance has handlers declared for all handled message types
@@ -16,7 +16,7 @@ export function validateHandlers(instance: object, handlesFieldName = 'handles')
 	for (const type of messageTypes) {
 		assertString(type, 'type');
 
-		if (!getHandler(instance, type))
+		if (!getOptionalHandler(instance, type))
 			throw new Error(`'${type}' handler is not defined or not a function`);
 	}
 }

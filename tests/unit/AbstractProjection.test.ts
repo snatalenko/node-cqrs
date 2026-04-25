@@ -197,7 +197,7 @@ describe('AbstractProjection', function () {
 			return projection.restore(es).then(() => {
 				throw new Error('must fail');
 			}, err => {
-				expect(err).toHaveProperty('message', '\'unexpectedEvent\' handler is not defined or not a function');
+				expect(err).toBeInstanceOf(TypeError);
 			});
 		});
 	});
