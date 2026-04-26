@@ -137,7 +137,7 @@ describe('InMemoryMessageBus', function () {
 			expect(sentCommand).toHaveProperty('context', context);
 			expect(sentCommand.payload).toBeFalsy();
 
-			await bus.send('doSomething', '1', { context, payload, customParameter } as any);
+			await bus.send('doSomething', '1', { context, payload, customParameter });
 
 			sentCommand = handler.mock.calls.at(-1)?.[0];
 			expect(sentCommand).toHaveProperty('type', 'doSomething');

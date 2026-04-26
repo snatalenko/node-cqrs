@@ -1,45 +1,28 @@
-# [1.1.0-alpha.8](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.7...v1.1.0-alpha.8) (2026-04-21)
+# [1.1.0-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.1...v1.1.0-beta.2) (2026-04-25)
 
 
-### Documentation
+### Changes
 
-* Minor spec update ([6a2883a](https://github.com/snatalenko/node-cqrs/commit/6a2883adc7b6a7a48bb5f62562c2242826860e89))
+* Allow extra command parameters to be passed to AbstractAggregate handler as 3rd argument ([ae11b7e](https://github.com/snatalenko/node-cqrs/commit/ae11b7eb709e658fbc910aadb1376bc8a3fade1b))
+
+### Build System
+
+* Add "rebuild" npm script ([2e5e977](https://github.com/snatalenko/node-cqrs/commit/2e5e9771f760d15cc1cbbc2f68bc680cd6b97de3))
+
+### Internal Fixes
+
+* Make `getHandler` to throw error if handler is not defined ([ecbd73e](https://github.com/snatalenko/node-cqrs/commit/ecbd73e0604c74eb85a946b15a4b872b688da01e))
 
 
-# [1.1.0-alpha.7](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.6...v1.1.0-alpha.7) (2026-04-06)
+# [1.1.0-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.0...v1.1.0-beta.1) (2026-04-23)
 
 
 ### Internal Fixes
 
-* Enhance message payload typing ([7911acc](https://github.com/snatalenko/node-cqrs/commit/7911accce07cba7c30ae4f5825a6e26e0934b8dc))
+* Expose `viewLocker` on WorkerProxyProjection ([628fbe3](https://github.com/snatalenko/node-cqrs/commit/628fbe3c7af141443092cdf1fb6c0824c19a6324))
 
 
-# [1.1.0-alpha.6](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.5...v1.1.0-alpha.6) (2026-04-04)
-
-
-### Features
-
-* Option for rabbitmq queue-level message TTL ([d4461e6](https://github.com/snatalenko/node-cqrs/commit/d4461e68b0e69696340bfdb80c7f947146bca08b))
-
-
-# [1.1.0-alpha.5](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0-alpha.5) (2026-04-03)
-
-
-
-# [1.1.0-alpha.4](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.3...v1.1.0-alpha.4) (2026-03-27)
-
-
-
-# [1.1.0-alpha.3](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.2...v1.1.0-alpha.3) (2026-03-26)
-
-
-### Internal Fixes
-
-* Rename telemetry metadata span field to `otelSpan`, enhance typings ([2ca2494](https://github.com/snatalenko/node-cqrs/commit/2ca2494625ea8dde11f86fdf078d85c1d848d10a))
-* Compiled AbstractWorkerProjection type compatibility ([bf8ca08](https://github.com/snatalenko/node-cqrs/commit/bf8ca08a09faacb4cbf0da141dd4f09d4647e86e))
-
-
-# [1.1.0-alpha.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.0...v1.1.0-alpha.2) (2026-03-24)
+# [1.1.0-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0-beta.0) (2026-04-21)
 
 
 ### Features
@@ -50,6 +33,7 @@
 * SqliteEventStorage ([ffaf766](https://github.com/snatalenko/node-cqrs/commit/ffaf7669139e797488c50332cac94a234738cc62))
 * MongoDB-backed event storage ([53fb5e1](https://github.com/snatalenko/node-cqrs/commit/53fb5e1c0d7a027f9afebf88f8d3d516d06c3c48))
 * MongoDb-backed view model (`MongoObjectView`, `AbstractMongoObjectProjection`) ([4995bfe](https://github.com/snatalenko/node-cqrs/commit/4995bfe2daf53372d3e7e36d59ee103219ad6a35))
+* Option for rabbitmq queue-level message TTL ([d4461e6](https://github.com/snatalenko/node-cqrs/commit/d4461e68b0e69696340bfdb80c7f947146bca08b))
 
 ### Changes
 
@@ -69,6 +53,13 @@
 * Rearrange examples to use same aggregate and projection implementation ([5325901](https://github.com/snatalenko/node-cqrs/commit/532590143fd29a205b6eb3fd4d6c686b17956835))
 * Add detailed documentation for redis and mongodb modules ([72e66f5](https://github.com/snatalenko/node-cqrs/commit/72e66f5508a6df6c0a4a341e752cfab76830478a))
 * Detailed sqlite and rabbitmq instructions ([dd242fd](https://github.com/snatalenko/node-cqrs/commit/dd242fd73018bcfa0583ab1ddd12518c4f3a4777))
+* Minor spec update ([6a2883a](https://github.com/snatalenko/node-cqrs/commit/6a2883adc7b6a7a48bb5f62562c2242826860e89))
+
+### Internal Fixes
+
+* Rename telemetry metadata span field to `otelSpan`, enhance typings ([2ca2494](https://github.com/snatalenko/node-cqrs/commit/2ca2494625ea8dde11f86fdf078d85c1d848d10a))
+* Compiled AbstractWorkerProjection type compatibility ([bf8ca08](https://github.com/snatalenko/node-cqrs/commit/bf8ca08a09faacb4cbf0da141dd4f09d4647e86e))
+* Enhance message payload typing ([7911acc](https://github.com/snatalenko/node-cqrs/commit/7911accce07cba7c30ae4f5825a6e26e0934b8dc))
 
 
 ## [1.0.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.1...v1.0.2) (2026-04-03)
@@ -85,58 +76,16 @@
 * Fix vulnerabilities in dev dependencies ([203ef19](https://github.com/snatalenko/node-cqrs/commit/203ef191cc1d64b1927427d02495d0a7997d567e))
 
 
-## [1.0.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.4...v1.0.1) (2026-03-31)
+## [1.0.1](https://github.com/snatalenko/node-cqrs/compare/v1.0.0...v1.0.1) (2026-03-31)
 
 
 ### Fixes
 
 * Use setImmediate in Node.js for nextCycle to avoid setTimeout performance overhead ([4b63706](https://github.com/snatalenko/node-cqrs/commit/4b63706c4271afd85470dff8b956605133863e9d))
 
-
-# [1.1.0-alpha.4](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.3...v1.1.0-alpha.4) (2026-03-27)
-
-
-
-# [1.1.0-alpha.3](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-alpha.2...v1.1.0-alpha.3) (2026-03-26)
-
-
 ### Internal Fixes
 
 * Fix vulnerability in dev dependency ([610757b](https://github.com/snatalenko/node-cqrs/commit/610757ba24d39939b3827d99e2af2183758225b6))
-* Rename telemetry metadata span field to `otelSpan`, enhance typings ([2ca2494](https://github.com/snatalenko/node-cqrs/commit/2ca2494625ea8dde11f86fdf078d85c1d848d10a))
-* Compiled AbstractWorkerProjection type compatibility ([bf8ca08](https://github.com/snatalenko/node-cqrs/commit/bf8ca08a09faacb4cbf0da141dd4f09d4647e86e))
-
-
-# [1.1.0-alpha.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.0...v1.1.0-alpha.2) (2026-03-24)
-
-
-### Features
-
-* Integrate OpenTelemetry for command and event tracing ([b03997f](https://github.com/snatalenko/node-cqrs/commit/b03997f17b0e88cccaeca6ca599ad5d43457390a))
-* RabbitMQ trace context propagation via W3C TraceContext AMQP headers ([1db354a](https://github.com/snatalenko/node-cqrs/commit/1db354af099cfe9c3884d0ea46087da1610e73da))
-* Redis-backed projection views with distributed locking (experimental) ([8ff0f1e](https://github.com/snatalenko/node-cqrs/commit/8ff0f1e14a6fdcd676d549a9d4c7ad2d2ce7cd4c))
-* SqliteEventStorage ([ffaf766](https://github.com/snatalenko/node-cqrs/commit/ffaf7669139e797488c50332cac94a234738cc62))
-* MongoDB-backed event storage ([53fb5e1](https://github.com/snatalenko/node-cqrs/commit/53fb5e1c0d7a027f9afebf88f8d3d516d06c3c48))
-* MongoDb-backed view model (`MongoObjectView`, `AbstractMongoObjectProjection`) ([4995bfe](https://github.com/snatalenko/node-cqrs/commit/4995bfe2daf53372d3e7e36d59ee103219ad6a35))
-
-### Changes
-
-* Remove "md5" from peer dependencies ([87600bc](https://github.com/snatalenko/node-cqrs/commit/87600bc5a857b0e251ceed37d99cc5cf66f61ee5))
-* Expose `restorePromises` on DI container for tracking async projection restoring processes ([ebdaa2c](https://github.com/snatalenko/node-cqrs/commit/ebdaa2ca4ff6d1088deba5d4069d7a027be65107))
-* Use `Identifier` as id type in redis and sqlite views ([dfbe964](https://github.com/snatalenko/node-cqrs/commit/dfbe9648a8ea8e7e5550aa40e0094ca8af1758ef))
-* Add default queueName for RabbitMqCommandBus ([ee4b5a1](https://github.com/snatalenko/node-cqrs/commit/ee4b5a170e44db6227e76d2ffb1695b6dfaef6e4))
-* Add error handling and drain functionality to event publishing process ([d23ea62](https://github.com/snatalenko/node-cqrs/commit/d23ea621c8a71e2cda4baaf091166534c4f5af2e))
-
-### Fixes
-
-* Defer aggregate cache pre-warm to avoid orphaned async operations on command error ([677ed29](https://github.com/snatalenko/node-cqrs/commit/677ed29cd6dab5f80b021ee90ad1dd8c3586fcd3))
-
-### Documentation
-
-* Remove readme code samples in favor of runnable ./examples/ ([73417c3](https://github.com/snatalenko/node-cqrs/commit/73417c3b997f2d838b02dd0b91f05e0a6001e556))
-* Rearrange examples to use same aggregate and projection implementation ([5325901](https://github.com/snatalenko/node-cqrs/commit/532590143fd29a205b6eb3fd4d6c686b17956835))
-* Add detailed documentation for redis and mongodb modules ([72e66f5](https://github.com/snatalenko/node-cqrs/commit/72e66f5508a6df6c0a4a341e752cfab76830478a))
-* Detailed sqlite and rabbitmq instructions ([dd242fd](https://github.com/snatalenko/node-cqrs/commit/dd242fd73018bcfa0583ab1ddd12518c4f3a4777))
 
 
 # [1.0.0](https://github.com/snatalenko/node-cqrs/compare/v0.17.0...v1.0.0) (2026-03-21)

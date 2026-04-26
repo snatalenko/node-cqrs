@@ -176,8 +176,6 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	/** Pass event to projection event handler, without awaiting for restore operation to complete */
 	protected async _project(event: IEvent, meta?: Record<string, any>): Promise<void> {
 		const handler = getHandler(this, event.type);
-		if (!handler)
-			throw new Error(`'${event.type}' handler is not defined or not a function`);
 
 		if (this._eventLocker) {
 			const eventLockObtained = await this._eventLocker.tryMarkAsProjecting(event);

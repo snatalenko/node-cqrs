@@ -1,4 +1,5 @@
 import type {
+	CommandOptions,
 	ICommand,
 	ICommandBus,
 	IEvent,
@@ -85,7 +86,7 @@ export class InMemoryMessageBus implements IEventBus, ICommandBus, IObservableQu
 	send(
 		commandType: string,
 		aggregateId?: string,
-		options?: { payload?: object, context?: object } & IMessageMeta
+		options?: CommandOptions
 	): Promise<any>;
 
 	/**
@@ -93,10 +94,11 @@ export class InMemoryMessageBus implements IEventBus, ICommandBus, IObservableQu
 	 */
 	send(command: ICommand, meta?: IMessageMeta): Promise<any>;
 
-	async send(commandOrType: ICommand | string, aggregateIdOrMeta?: string | IMessageMeta, options?: {
-		payload?: object,
-		context?: object
-	} & IMessageMeta): Promise<any> {
+	async send(
+		commandOrType: ICommand | string,
+		aggregateIdOrMeta?: string | IMessageMeta,
+		options?: CommandOptions
+	): Promise<any> {
 		let command: ICommand;
 		let meta: IMessageMeta | undefined;
 		if (typeof commandOrType === 'string') {
