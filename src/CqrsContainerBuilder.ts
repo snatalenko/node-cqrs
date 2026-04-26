@@ -1,4 +1,4 @@
-import { ContainerBuilder, type TypeConfig, type ClassOrFactory } from 'di0';
+import { ContainerBuilder, type ClassOrFactory } from 'di0';
 import { AggregateCommandHandler } from './AggregateCommandHandler.ts';
 import { EventStore } from './EventStore.ts';
 import { SagaEventHandler } from './SagaEventHandler.ts';

@@ -79,9 +79,7 @@ describe('RabbitMqGateway', () => {
 				};
 				const tracerFactory = () => tracer as any;
 
-				const channel = createMockChannel();
-				const connection = createMockConnection(channel);
-				const gateway = new RabbitMqGateway({
+				gateway = new RabbitMqGateway({
 					rabbitMqConnectionFactory: async () => connection as any,
 					tracerFactory
 				});
@@ -116,12 +114,10 @@ describe('RabbitMqGateway', () => {
 				};
 				const tracerFactory = () => tracer as any;
 
-				const channel = createMockChannel();
 				channel.publish.mockImplementation(() => {
 					throw new Error('channel buffer full');
 				});
-				const connection = createMockConnection(channel);
-				const gateway = new RabbitMqGateway({
+				gateway = new RabbitMqGateway({
 					rabbitMqConnectionFactory: async () => connection as any,
 					tracerFactory
 				});
@@ -136,9 +132,7 @@ describe('RabbitMqGateway', () => {
 			});
 
 			it('works without tracerFactory and sets no trace headers', async () => {
-				const channel = createMockChannel();
-				const connection = createMockConnection(channel);
-				const gateway = new RabbitMqGateway({
+				gateway = new RabbitMqGateway({
 					rabbitMqConnectionFactory: async () => connection as any
 				});
 
@@ -153,9 +147,7 @@ describe('RabbitMqGateway', () => {
 		describe('consume (via subscribe)', () => {
 
 			it('passes no span in meta when tracerFactory is not provided', async () => {
-				const channel = createMockChannel();
-				const connection = createMockConnection(channel);
-				const gateway = new RabbitMqGateway({
+				gateway = new RabbitMqGateway({
 					rabbitMqConnectionFactory: async () => connection as any
 				});
 
@@ -192,9 +184,7 @@ describe('RabbitMqGateway', () => {
 				};
 				const tracerFactory = () => tracer as any;
 
-				const channel = createMockChannel();
-				const connection = createMockConnection(channel);
-				const gateway = new RabbitMqGateway({
+				gateway = new RabbitMqGateway({
 					rabbitMqConnectionFactory: async () => connection as any,
 					tracerFactory
 				});
@@ -248,9 +238,7 @@ describe('RabbitMqGateway', () => {
 				};
 				const tracerFactory = () => tracer as any;
 
-				const channel = createMockChannel();
-				const connection = createMockConnection(channel);
-				const gateway = new RabbitMqGateway({
+				gateway = new RabbitMqGateway({
 					rabbitMqConnectionFactory: async () => connection as any,
 					tracerFactory
 				});
