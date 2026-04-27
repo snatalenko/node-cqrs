@@ -48,6 +48,11 @@
       "require": "./dist/cjs/sqlite/index.js",
       "import": "./dist/esm/sqlite/index.js"
     },
+    "./sqlite-workers": {
+      "types": "./dist/types/sqlite-workers/index.d.ts",
+      "require": "./dist/cjs/sqlite-workers/index.js",
+      "import": "./dist/esm/sqlite-workers/index.js"
+    },
     "./redis": {
       "types": "./dist/types/redis/index.d.ts",
       "require": "./dist/cjs/redis/index.js",
