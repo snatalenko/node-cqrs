@@ -1,3 +1,11 @@
+# [1.2.0-alpha.0](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.2...v1.2.0-alpha.0) (2026-04-27)
+
+
+### Features
+
+* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
+
+
 # [1.1.0-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.1...v1.1.0-beta.2) (2026-04-25)
 
 
