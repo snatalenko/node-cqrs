@@ -1,3 +1,11 @@
+# [1.2.0-alpha.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-alpha.0...v1.2.0-alpha.1) (2026-04-28)
+
+
+### Features
+
+* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
+
+
 # [1.2.0-alpha.0](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.2...v1.2.0-alpha.0) (2026-04-27)
 
 
