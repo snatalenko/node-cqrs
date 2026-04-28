@@ -1,8 +1,7 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import * as Comlink from 'comlink';
-import Database, { type Statement } from 'better-sqlite3';
+import type { Database, Statement } from 'better-sqlite3';
 import {
 	isSqliteWorkerData,
 	type SqliteRunResult,
@@ -11,8 +10,11 @@ import {
 	type SqliteWorkerQueryParams,
 	type SqliteWorkerStatementHandle
 } from './protocol.ts';
-import { nodeEndpoint } from './utils/index.ts';
-import { assertString, assertStringArray } from '../utils/index.ts';
+import {
+	createWorkerDb,
+	nodeEndpoint,
+	resolveCurrentFileLocationFromStack
+} from './utils/index.ts';
 
 declare const __filename: string | undefined;
 
@@ -26,15 +28,6 @@ function get<TRow>(statement: Statement<unknown[], TRow>, params?: SqliteWorkerQ
 
 function run(statement: Statement, params?: SqliteWorkerQueryParams): SqliteRunResult {
 	return params === undefined ? statement.run() : statement.run(params);
-}
-
-/** @internal */
-export function resolveCurrentFileLocationFromStack(stack = new Error().stack) {
-	const stackFilename = stack?.match(/\((file:\/\/[^)]+SqliteWorkerRunner\.js):\d+:\d+\)/)?.[1];
-	if (!stackFilename)
-		throw new Error('Worker location could not be resolved from Error stack, pass sqliteWorkerRunnerLocation');
-
-	return fileURLToPath(stackFilename);
 }
 
 export class SqliteWorkerRunner implements ISqliteWorkerApi {
@@ -51,20 +44,12 @@ export class SqliteWorkerRunner implements ISqliteWorkerApi {
 	#nextStatementHandle = 1;
 	readonly #statements = new Map<SqliteWorkerStatementHandle, Statement<unknown[], unknown>>();
 
-	constructor(dbParams: SqliteWorkerRunnerDbParams) {
-		assertString(dbParams.location, 'dbParams.location');
+	static async create(dbParams: SqliteWorkerRunnerDbParams): Promise<SqliteWorkerRunner> {
+		return new SqliteWorkerRunner(await createWorkerDb(dbParams));
+	}
 
-		this.#db = new Database(dbParams.location, {
-			readonly: true,
-			fileMustExist: true
-		});
-
-		if (dbParams.pragmas?.length) {
-			assertStringArray(dbParams.pragmas, 'dbParams.pragmas');
-
-			for (const pragma of dbParams.pragmas)
-				this.#db.pragma(pragma);
-		}
+	constructor(db: Database) {
+		this.#db = db;
 	}
 
 	all<TRow>(sql: string, params?: SqliteWorkerQueryParams): TRow[] {
@@ -115,11 +100,14 @@ export class SqliteWorkerRunner implements ISqliteWorkerApi {
 
 /* istanbul ignore next -- this branch runs inside the spawned worker process */
 if (parentPort) {
+	const port = parentPort;
+
 	if (!isSqliteWorkerData(workerData))
 		throw new Error('workerData does not contain SQLite worker db parameters');
 
-	const runner = new SqliteWorkerRunner(workerData.db);
-
-	parentPort.postMessage({ type: 'ready' });
-	Comlink.expose(runner, nodeEndpoint(parentPort));
+	void SqliteWorkerRunner.create(workerData.dbConfig)
+		.then(runner => {
+			port.postMessage({ type: 'ready' });
+			Comlink.expose(runner, nodeEndpoint(port));
+		});
 }

@@ -6,7 +6,13 @@ import type {
 	SqliteWorkerStatementHandle
 } from './protocol.ts';
 
-export class AsyncSqliteStatement {
+type AsyncSqliteStatementParams<BindParameters extends unknown[]> =
+	SqliteWorkerQueryParams & (BindParameters | Record<string, unknown>);
+
+export class AsyncSqliteStatement<
+	BindParameters extends unknown[] = unknown[],
+	Result = unknown
+> {
 
 	readonly #workerApi: Comlink.Remote<ISqliteWorkerApi>;
 	readonly #handle: SqliteWorkerStatementHandle;
@@ -19,15 +25,15 @@ export class AsyncSqliteStatement {
 		this.#handle = handle;
 	}
 
-	async all<TRow>(params?: SqliteWorkerQueryParams): Promise<TRow[]> {
+	async all<TRow = Result>(params?: AsyncSqliteStatementParams<BindParameters>): Promise<TRow[]> {
 		return this.#workerApi.allPrepared(this.#handle, params) as Promise<TRow[]>;
 	}
 
-	async get<TRow>(params?: SqliteWorkerQueryParams): Promise<TRow | undefined> {
+	async get<TRow = Result>(params?: AsyncSqliteStatementParams<BindParameters>): Promise<TRow | undefined> {
 		return this.#workerApi.getPrepared(this.#handle, params) as Promise<TRow | undefined>;
 	}
 
-	async run(params?: SqliteWorkerQueryParams): Promise<SqliteRunResult> {
+	async run(params?: AsyncSqliteStatementParams<BindParameters>): Promise<SqliteRunResult> {
 		return this.#workerApi.runPrepared(this.#handle, params);
 	}
 }

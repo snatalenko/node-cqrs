@@ -27,8 +27,10 @@ class TestSqliteAccessor extends AbstractSqliteAccessor {
 		`);
 
 		this.#workerProxy = new SqliteWorkerProxy({
-			dbLocation: db.name,
-			pragmas: ['query_only = ON']
+			dbConfig: {
+				dbLocation: db.name,
+				pragmas: ['query_only = ON']
+			}
 		});
 
 		this.#insertRecordQuery = db.prepare(`
@@ -178,7 +180,9 @@ describe('SqliteWorkerProxy', () => {
 		`);
 
 		const proxy = new SqliteWorkerProxy({
-			dbLocation: createFixtureDb(),
+			dbConfig: {
+				dbLocation: createFixtureDb()
+			},
 			sqliteWorkerRunnerLocation: workerPath
 		});
 
@@ -201,7 +205,9 @@ describe('SqliteWorkerProxy', () => {
 		`);
 
 		const errorProxy = new RejectingDisposeProxy({
-			dbLocation: createFixtureDb(),
+			dbConfig: {
+				dbLocation: createFixtureDb()
+			},
 			sqliteWorkerRunnerLocation: errorWorkerPath
 		});
 		const errorWorker = await errorProxy.assertWorker();
@@ -217,7 +223,9 @@ describe('SqliteWorkerProxy', () => {
 		`);
 
 		const exitProxy = new RejectingDisposeProxy({
-			dbLocation: createFixtureDb(),
+			dbConfig: {
+				dbLocation: createFixtureDb()
+			},
 			sqliteWorkerRunnerLocation: exitWorkerPath
 		});
 		const exitWorker = await exitProxy.assertWorker();
@@ -228,12 +236,14 @@ describe('SqliteWorkerProxy', () => {
 
 	it('validates worker configuration before creating the worker', async () => {
 		const proxy = new SqliteWorkerProxy({
-			dbLocation: ''
+			dbConfig: {
+				dbLocation: ''
+			}
 		});
 
 		try {
 			await expect(proxy.all('SELECT 1')).rejects
-				.toThrow('location must be a non-empty String');
+				.toThrow('Either dbLocation or dbFactoryLocation is required');
 		}
 		finally {
 			await proxy.dispose();
@@ -254,8 +264,10 @@ describe('SqliteWorkerProxy', () => {
 		`);
 
 		const proxy = new SqliteWorkerProxy({
-			dbLocation: dbPath,
-			pragmas: []
+			dbConfig: {
+				dbLocation: dbPath,
+				pragmas: []
+			}
 		});
 
 		try {
@@ -269,6 +281,59 @@ describe('SqliteWorkerProxy', () => {
 		}
 	});
 
+	it('creates the worker database through a custom factory module', async () => {
+		const dbPath = path.join(tmpDir, 'factory.db');
+		const db = createDb(dbPath);
+		db.exec(`
+			CREATE TABLE records (
+				id INTEGER PRIMARY KEY,
+				name TEXT NOT NULL
+			);
+
+			INSERT INTO records (name)
+			VALUES ('alpha');
+		`);
+		db.close();
+
+		const factoryPath = path.join(tmpDir, 'sqlite-worker-db-factory.cjs');
+		fs.writeFileSync(factoryPath, `
+			const createDb = require(${JSON.stringify(path.join(process.cwd(), 'node_modules', 'better-sqlite3'))});
+
+			exports.createSqliteWorkerDb = params => {
+				if (!params || params.secret !== 'ok')
+					throw new Error('factory params missing');
+
+				const db = createDb(params.dbLocation, {
+					readonly: true,
+					fileMustExist: true
+				});
+				db.pragma(params.pragma);
+
+				return db;
+			};
+		`);
+
+		const proxy = new SqliteWorkerProxy({
+			dbConfig: {
+				dbFactoryLocation: factoryPath,
+				dbFactoryParams: {
+					dbLocation: dbPath,
+					pragma: 'query_only = ON',
+					secret: 'ok'
+				}
+			}
+		});
+
+		try {
+			await expect(proxy.all('SELECT id, name FROM records ORDER BY id')).resolves.toEqual([
+				{ id: 1, name: 'alpha' }
+			]);
+		}
+		finally {
+			await proxy.dispose();
+		}
+	});
+
 	it('can dispose after worker startup fails', async () => {
 		const dbPath = path.join(tmpDir, 'failed-worker.db');
 		const db = createDb(dbPath);
@@ -276,7 +341,9 @@ describe('SqliteWorkerProxy', () => {
 		fs.writeFileSync(workerPath, '');
 
 		const proxy = new SqliteWorkerProxy({
-			dbLocation: dbPath,
+			dbConfig: {
+				dbLocation: dbPath
+			},
 			sqliteWorkerRunnerLocation: workerPath
 		});
 
@@ -296,7 +363,9 @@ describe('SqliteWorkerProxy', () => {
 		fs.writeFileSync(workerPath, '');
 
 		const proxy = new SqliteWorkerProxy({
-			dbLocation: dbPath,
+			dbConfig: {
+				dbLocation: dbPath
+			},
 			sqliteWorkerRunnerLocation: workerPath
 		});
 

@@ -1,26 +1,13 @@
 import { Worker } from 'node:worker_threads';
-import {
-	isSqliteWorkerReadyMessage,
-	type SqliteWorkerData,
-	type SqliteWorkerProxyParams
-} from '../protocol.ts';
-import { assertString, assertStringArray } from '../../utils/assert.ts';
+import { isSqliteWorkerReadyMessage, type SqliteWorkerProxyParams } from '../protocol.ts';
+import { SqliteWorkerRunner } from '../SqliteWorkerRunner.ts';
 
-type CreateSqliteWorkerParams = SqliteWorkerProxyParams & {
-	sqliteWorkerRunnerLocation: string | URL;
-};
+export async function createSqliteWorker(params: SqliteWorkerProxyParams): Promise<Worker> {
+	const {
+		sqliteWorkerRunnerLocation = SqliteWorkerRunner.location,
+		...workerData
+	} = params;
 
-export async function createSqliteWorker({
-	sqliteWorkerRunnerLocation,
-	dbLocation: location,
-	pragmas
-}: CreateSqliteWorkerParams): Promise<Worker> {
-	assertString(location, 'location');
-	if (pragmas?.length)
-		assertStringArray(pragmas, 'pragmas');
-	assertString(sqliteWorkerRunnerLocation, 'sqliteWorkerRunnerLocation');
-
-	const workerData: SqliteWorkerData = { db: { location, pragmas } };
 	const worker = new Worker(sqliteWorkerRunnerLocation, { workerData });
 
 	await new Promise<void>((resolve, reject) => {

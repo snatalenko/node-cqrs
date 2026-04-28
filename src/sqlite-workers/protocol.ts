@@ -1,24 +1,33 @@
-import type { Statement } from 'better-sqlite3';
+import type { Database, Statement } from 'better-sqlite3';
 
 export type SqliteWorkerProxyParams = {
+
+	/** Worker runner script location; defaults to the bundled runner. */
+	sqliteWorkerRunnerLocation?: string | URL;
+
+	dbConfig: SqliteWorkerRunnerDbParams;
+};
+
+export type SqliteWorkerRunnerDbParams = {
 
 	/** SQLite database file opened readonly by the worker. */
 	dbLocation: string;
 
 	/** PRAGMA statements applied to the worker connection. */
 	pragmas?: readonly string[];
+} | {
 
-	/** Worker runner script location; defaults to the bundled runner. */
-	sqliteWorkerRunnerLocation?: string | URL;
+	/** Module exporting createSqliteWorkerDb for custom worker-side DB creation. */
+	dbFactoryLocation: string | URL;
+
+	/** Structured-cloneable params passed to the custom worker DB factory. */
+	dbFactoryParams: unknown;
 };
 
-export type SqliteWorkerRunnerDbParams = {
-	location: string;
-	pragmas?: readonly string[];
-};
+export type SqliteWorkerDbFactory = (params: unknown) => Database | Promise<Database>;
 
 export type SqliteWorkerData = {
-	db: SqliteWorkerRunnerDbParams;
+	dbConfig: SqliteWorkerRunnerDbParams;
 };
 
 export type SqliteWorkerQueryParams = readonly unknown[] | Record<string, unknown>;
@@ -48,14 +57,16 @@ export type SqliteWorkerReadyMessage = {
 	type: 'ready';
 };
 
+const isObject = (obj: unknown): obj is {} =>
+	typeof obj === 'object'
+	&& obj !== null
+	&& !Array.isArray(obj)
+	&& !(obj instanceof Date);
+
 export function isSqliteWorkerData(value: unknown): value is SqliteWorkerData {
-	return typeof value === 'object' &&
-		value !== null &&
-		'db' in value &&
-		typeof value.db === 'object' &&
-		value.db !== null &&
-		'location' in value.db &&
-		typeof value.db.location === 'string';
+	return isObject(value)
+		&& 'dbConfig' in value
+		&& isObject(value.dbConfig);
 }
 
 export function isSqliteWorkerReadyMessage(value: unknown): value is SqliteWorkerReadyMessage {

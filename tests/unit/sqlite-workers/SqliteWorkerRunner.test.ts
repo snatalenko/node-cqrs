@@ -1,9 +1,10 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import createDb from 'better-sqlite3';
 import { isSqliteWorkerData } from '../../../src/sqlite-workers/protocol.ts';
-import { resolveCurrentFileLocationFromStack, SqliteWorkerRunner } from '../../../src/sqlite-workers/SqliteWorkerRunner.ts';
+import { SqliteWorkerRunner } from '../../../src/sqlite-workers/SqliteWorkerRunner.ts';
 import { createSqliteWorker } from '../../../src/sqlite-workers/utils/createSqliteWorker.ts';
 
 describe('SqliteWorkerRunner', () => {
@@ -40,10 +41,10 @@ describe('SqliteWorkerRunner', () => {
 		return dbPath;
 	}
 
-	it('executes direct and prepared read statements', () => {
+	it('executes direct and prepared read statements', async () => {
 		const dbPath = createFixtureDb();
-		const runner = new SqliteWorkerRunner({
-			location: dbPath,
+		const runner = await SqliteWorkerRunner.create({
+			dbLocation: dbPath,
 			pragmas: ['query_only = ON']
 		});
 
@@ -68,21 +69,59 @@ describe('SqliteWorkerRunner', () => {
 		expect(() => runner.getPrepared(999)).toThrow("SQLite worker statement '999' does not exist");
 	});
 
-	it('validates database configuration and protocol data', () => {
-		expect(() => new SqliteWorkerRunner({ location: '' }))
-			.toThrow('dbParams.location must be a non-empty String');
-		expect(() => new SqliteWorkerRunner({ location: createFixtureDb(), pragmas: [] }))
-			.not.toThrow();
+	it('validates database configuration and protocol data', async () => {
+		await expect(() => SqliteWorkerRunner.create({ dbLocation: '' }))
+			.rejects.toThrow('Either dbLocation or dbFactoryLocation is required');
+		await expect(SqliteWorkerRunner.create({ dbLocation: createFixtureDb(), pragmas: [] }))
+			.resolves.toBeInstanceOf(SqliteWorkerRunner);
 
 		expect(isSqliteWorkerData({
-			db: {
+			dbConfig: {
 				location: 'views.db'
 			}
 		})).toBe(true);
 		expect(isSqliteWorkerData(null)).toBe(false);
 		expect(isSqliteWorkerData({})).toBe(false);
 		expect(isSqliteWorkerData({ db: {} })).toBe(false);
-		expect(isSqliteWorkerData({ db: { location: 1 } })).toBe(false);
+		expect(isSqliteWorkerData({ dbConfig: null })).toBe(false);
+	});
+
+	it('creates runners with default and custom database factories', async () => {
+		const dbPath = createFixtureDb();
+
+		const defaultRunner = await SqliteWorkerRunner.create({
+			dbLocation: dbPath
+		});
+		expect(defaultRunner.get<{ name: string }>('SELECT name FROM records WHERE id = ?', [1]))
+			.toEqual({ name: 'alpha' });
+
+		const factoryPath = path.join(tmpDir, 'runner-db-factory.cjs');
+		fs.writeFileSync(factoryPath, `
+			const createDb = require(${JSON.stringify(path.join(process.cwd(), 'node_modules', 'better-sqlite3'))});
+
+			module.exports = {
+				createSqliteWorkerDb(params) {
+					if (!params || params.secret !== 'ok')
+						throw new Error('factory params missing');
+
+					return createDb(params.dbLocation, {
+						readonly: true,
+						fileMustExist: true
+					});
+				}
+			};
+		`);
+
+		const factoryRunner = await SqliteWorkerRunner.create({
+			dbLocation: dbPath,
+			dbFactoryLocation: factoryPath,
+			dbFactoryParams: {
+				dbLocation: dbPath,
+				secret: 'ok'
+			}
+		});
+		expect(factoryRunner.get<{ name: string }>('SELECT name FROM records WHERE id = ?', [2]))
+			.toEqual({ name: 'beta' });
 	});
 
 	it('handles non-ready messages, worker errors, and premature exits while creating workers', async () => {
@@ -94,15 +133,19 @@ describe('SqliteWorkerRunner', () => {
 		`);
 
 		const worker = await createSqliteWorker({
-			dbLocation: createFixtureDb(),
-			sqliteWorkerRunnerLocation: readyWorkerPath
+			dbConfig: {
+				dbLocation: createFixtureDb()
+			},
+			sqliteWorkerRunnerLocation: pathToFileURL(readyWorkerPath)
 		});
 		await worker.terminate();
 
 		const errorWorkerPath = path.join(tmpDir, 'error-worker.cjs');
 		fs.writeFileSync(errorWorkerPath, 'throw new Error("worker exploded");');
 		await expect(() => createSqliteWorker({
-			dbLocation: createFixtureDb(),
+			dbConfig: {
+				dbLocation: createFixtureDb()
+			},
 			sqliteWorkerRunnerLocation: errorWorkerPath
 		}))
 			.rejects.toThrow('worker exploded');
@@ -110,23 +153,11 @@ describe('SqliteWorkerRunner', () => {
 		const exitWorkerPath = path.join(tmpDir, 'exit-worker.cjs');
 		fs.writeFileSync(exitWorkerPath, '');
 		await expect(() => createSqliteWorker({
-			dbLocation: createFixtureDb(),
+			dbConfig: {
+				dbLocation: createFixtureDb()
+			},
 			sqliteWorkerRunnerLocation: exitWorkerPath
 		}))
 			.rejects.toThrow('SQLite worker exited prematurely with exit code 0');
-	});
-
-	describe('resolveCurrentFileLocationFromStack', () => {
-
-		it('resolves file worker runner location from an Error stack', () => {
-			expect(resolveCurrentFileLocationFromStack(
-				'Error\n at resolve (file:///tmp/dist/esm/sqlite-workers/SqliteWorkerRunner.js:10:5)'
-			)).toBe('/tmp/dist/esm/sqlite-workers/SqliteWorkerRunner.js');
-		});
-
-		it('throws when the worker runner location is missing from the Error stack', () => {
-			expect(() => resolveCurrentFileLocationFromStack('Error\n at resolve (/tmp/SqliteWorkerRunner.ts:10:5)'))
-				.toThrow('Worker location could not be resolved from Error stack, pass sqliteWorkerRunnerLocation');
-		});
 	});
 });

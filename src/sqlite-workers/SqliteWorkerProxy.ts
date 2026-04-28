@@ -7,7 +7,6 @@ import type {
 	SqliteRunResult
 } from './protocol.ts';
 import { createSqliteWorker, nodeEndpoint } from './utils/index.ts';
-import { SqliteWorkerRunner } from './SqliteWorkerRunner.ts';
 import { AsyncSqliteStatement } from './AsyncSqliteStatement.ts';
 
 export class SqliteWorkerProxy {
@@ -38,11 +37,18 @@ export class SqliteWorkerProxy {
 		return workerApi.run(sql, params);
 	}
 
-	async prepare(sql: string): Promise<AsyncSqliteStatement> {
+	async prepare<BindParameters extends unknown[] | {} = unknown[], Result = unknown>(
+		sql: string
+	): Promise<BindParameters extends unknown[] ?
+		AsyncSqliteStatement<BindParameters, Result> :
+		AsyncSqliteStatement<[BindParameters], Result>
+	> {
 		const workerApi = await this.#assertWorkerApi();
 		const handle = await workerApi.prepare(sql);
 
-		return new AsyncSqliteStatement(workerApi, handle);
+		return new AsyncSqliteStatement(workerApi, handle) as BindParameters extends unknown[] ?
+			AsyncSqliteStatement<BindParameters, Result> :
+			AsyncSqliteStatement<[BindParameters], Result>;
 	}
 
 	async dispose(): Promise<void> {
@@ -59,15 +65,7 @@ export class SqliteWorkerProxy {
 		if (this.#worker)
 			return this.#worker;
 
-		const {
-			sqliteWorkerRunnerLocation = SqliteWorkerRunner.location,
-			...dbParams
-		} = this.#config;
-
-		this.#workerPromise ??= createSqliteWorker({
-			...dbParams,
-			sqliteWorkerRunnerLocation
-		})
+		this.#workerPromise ??= createSqliteWorker(this.#config)
 			.then(worker => {
 				this.#worker = worker;
 				worker.once('error', this.handleWorkerError);
