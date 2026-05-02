@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>node-cqrs · Documentation</title>
+	<link rel="icon" type="image/svg+xml" href="docs/images/logo.svg" />
+
+	<script>
+		// pre-paint, before tailwind loads — sets the .dark class so there's no flash of light theme
+		(function () {
+			const stored = localStorage.getItem('theme');
+			const useDark = stored
+				? stored === 'dark'
+				: window.matchMedia('(prefers-color-scheme: dark)').matches;
+			if (useDark) document.documentElement.classList.add('dark');
+		})();
+	</script>
+
+	<script src="https://cdn.tailwindcss.com"></script>
+	<script>
+		// tailwind Play CDN reads config from this global *after* the script loads
+		tailwind.config = { darkMode: 'class' };
+	</script>
+
+	<link id="hljs-light" rel="stylesheet"
+		href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" />
+	<link id="hljs-dark" rel="stylesheet"
+		href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css" disabled />
+
+	<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/marked-highlight@2.1.1/lib/index.umd.js"></script>
+
+	<style>
+		.prose pre {
+			background: #f6f8fa;
+			border-radius: 6px;
+			padding: 16px;
+			overflow-x: auto;
+			font-size: 13px;
+		}
+
+		.prose code {
+			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		}
+
+		.prose :not(pre)>code {
+			background: rgba(175, 184, 193, 0.2);
+			padding: 0.2em 0.4em;
+			border-radius: 6px;
+			font-size: 85%;
+		}
+
+		.prose h1,
+		.prose h2,
+		.prose h3,
+		.prose h4 {
+			scroll-margin-top: 80px;
+		}
+
+		.prose> :first-child {
+			margin-top: 0;
+		}
+
+		.prose h1 {
+			font-size: 2em;
+			font-weight: 600;
+			margin: 0.67em 0;
+			padding-bottom: 0.3em;
+			border-bottom: 1px solid #d1d9e0;
+		}
+
+		.prose h2 {
+			font-size: 1.5em;
+			font-weight: 600;
+			margin: 1.5em 0 0.5em;
+			padding-bottom: 0.3em;
+			border-bottom: 1px solid #d1d9e0;
+		}
+
+		.prose h3 {
+			font-size: 1.25em;
+			font-weight: 600;
+			margin: 1.2em 0 0.5em;
+		}
+
+		.prose h4 {
+			font-size: 1em;
+			font-weight: 600;
+			margin: 1em 0 0.5em;
+		}
+
+		.prose p,
+		.prose ul,
+		.prose ol,
+		.prose blockquote,
+		.prose table {
+			margin: 0.8em 0;
+		}
+
+		.prose ul {
+			list-style: disc;
+			padding-left: 2em;
+		}
+
+		.prose ol {
+			list-style: decimal;
+			padding-left: 2em;
+		}
+
+		.prose a {
+			color: #0969da;
+			text-decoration: none;
+		}
+
+		.prose a:hover {
+			text-decoration: underline;
+		}
+
+		.prose blockquote {
+			border-left: 4px solid #d1d9e0;
+			padding: 0 1em;
+			color: #59636e;
+		}
+
+		.prose table {
+			border-collapse: collapse;
+			display: block;
+			overflow: auto;
+		}
+
+		.prose th,
+		.prose td {
+			border: 1px solid #d1d9e0;
+			padding: 6px 13px;
+		}
+
+		.prose th {
+			background: #f6f8fa;
+			font-weight: 600;
+		}
+
+		.prose img {
+			max-width: 100%;
+			display: inline-block;
+			vertical-align: middle;
+		}
+
+		.prose hr {
+			border: 0;
+			border-top: 1px solid #d1d9e0;
+			margin: 2em 0;
+		}
+
+		.toc-link.active {
+			background: #ddf4ff;
+			color: #0969da;
+			font-weight: 500;
+		}
+
+		.toc-sub {
+			padding-left: 0.75rem;
+			margin: 0.1rem 0 0.25rem;
+		}
+
+		.toc-sub .toc-link {
+			font-size: 0.8125rem;
+			padding-top: 0.15rem;
+			padding-bottom: 0.15rem;
+			color: #59636e;
+		}
+
+		.dark .toc-sub .toc-link {
+			color: #8d96a0;
+		}
+
+		.anchor-link {
+			opacity: 0;
+			margin-left: 0.3em;
+			color: #59636e;
+			font-size: 0.8em;
+			text-decoration: none;
+		}
+
+		.prose h1:hover .anchor-link,
+		.prose h2:hover .anchor-link,
+		.prose h3:hover .anchor-link,
+		.prose h4:hover .anchor-link {
+			opacity: 1;
+		}
+
+		/* --- dark theme ----------------------------------------------------------------- */
+		.dark .prose pre {
+			background: #161b22;
+		}
+
+		.dark .prose :not(pre)>code {
+			background: rgba(110, 118, 129, 0.4);
+		}
+
+		.dark .prose h1,
+		.dark .prose h2 {
+			border-bottom-color: #30363d;
+		}
+
+		.dark .prose a {
+			color: #58a6ff;
+		}
+
+		.dark .prose blockquote {
+			border-left-color: #30363d;
+			color: #8d96a0;
+		}
+
+		.dark .prose th,
+		.dark .prose td {
+			border-color: #30363d;
+		}
+
+		.dark .prose th {
+			background: #161b22;
+		}
+
+		.dark .prose hr {
+			border-top-color: #30363d;
+		}
+
+		.dark .anchor-link {
+			color: #8d96a0;
+		}
+
+		.dark .toc-link.active {
+			background: rgba(56, 139, 253, 0.15);
+			color: #58a6ff;
+		}
+
+		.prose svg.inlined {
+			max-width: 100%;
+			height: auto;
+		}
+	</style>
+</head>
+
+<body class="bg-white dark:bg-[#0d1117] text-slate-800 dark:text-slate-200 antialiased">
+
+	<header class="sticky top-0 z-20 bg-white dark:bg-[#0d1117] border-b border-slate-200 dark:border-slate-800">
+		<div class="max-w-screen-2xl mx-auto px-4 py-3 flex items-center gap-3">
+			<img src="docs/images/logo.svg" alt="node-cqrs" class="h-8 w-16 dark:invert" />
+			<div class="flex-1">
+				<h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">node-cqrs</h1>
+				<p class="text-xs text-slate-500 dark:text-slate-400 -mt-0.5">Building blocks for CQRS/ES</p>
+			</div>
+			<button id="theme-toggle" type="button" aria-label="Toggle dark mode"
+				class="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white p-1.5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800">
+				<svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+					stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="4"></circle>
+					<path
+						d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41">
+					</path>
+				</svg>
+				<svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+					stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+				</svg>
+			</button>
+			<a href="https://github.com/snatalenko/node-cqrs"
+				class="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800">
+				GitHub
+			</a>
+			<a href="https://www.npmjs.com/package/node-cqrs"
+				class="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800">
+				npm
+			</a>
+		</div>
+	</header>
+
+	<div class="max-w-screen-2xl mx-auto px-4 flex gap-8">
+
+		<aside class="w-64 shrink-0 hidden md:block">
+			<nav class="sticky top-20 py-6 text-sm">
+				<div class="mb-6">
+					<ul class="space-y-0.5 text-slate-600">
+						<li><a href="#features"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Features</a>
+						</li>
+						<li><a href="#overview"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Overview</a>
+						</li>
+						<li><a href="#installation"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Installation</a>
+						</li>
+						<li><a href="#containerbuilder"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">ContainerBuilder</a>
+						</li>
+						<li><a href="#commands"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Commands</a>
+						</li>
+						<li>
+							<a href="#write-model-aggregates"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Write
+								Model (Aggregates)</a>
+							<ul class="toc-sub space-y-0.5">
+								<li><a href="#abstractaggregate"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">AbstractAggregate</a>
+								</li>
+								<li><a href="#aggregate-state"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Aggregate
+										State</a></li>
+								<li><a href="#external-dependencies"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">External
+										Dependencies</a></li>
+							</ul>
+						</li>
+						<li>
+							<a href="#read-model-projections-and-views"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Read
+								Model (Projections and Views)</a>
+							<ul class="toc-sub space-y-0.5">
+								<li><a href="#abstractprojection"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">AbstractProjection</a>
+								</li>
+								<li><a href="#view-restoring-on-start"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">View
+										restoring on start</a></li>
+								<li><a href="#accessing-views"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Accessing
+										views</a></li>
+							</ul>
+						</li>
+						<li><a href="#sagas"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Sagas</a>
+						</li>
+						<li>
+							<a href="#infrastructure-modules"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Infrastructure
+								Modules</a>
+							<ul class="toc-sub space-y-0.5">
+								<li><a href="#event-storage"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Event
+										Storage</a></li>
+								<li><a href="#read-model"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Read
+										Model</a></li>
+								<li><a href="#message-buses"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Message
+										Buses</a></li>
+								<li><a href="#other"
+										class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Other</a>
+								</li>
+							</ul>
+						</li>
+						<li><a href="#opentelemetry"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">OpenTelemetry</a>
+						</li>
+						<li><a href="#examples"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Examples</a>
+						</li>
+					</ul>
+				</div>
+
+				<div class="mb-6">
+					<h2
+						class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 px-2">
+						Modules</h2>
+					<ul class="space-y-0.5 text-slate-600 dark:text-slate-300">
+						<li><a href="#/src/sqlite/README.md"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">SQLite</a>
+						</li>
+						<li><a href="#/src/mongodb/README.md"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">MongoDB</a>
+						</li>
+						<li><a href="#/src/redis/README.md"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Redis</a>
+						</li>
+						<li><a href="#/src/rabbitmq/README.md"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">RabbitMQ</a>
+						</li>
+						<li><a href="#/src/workers/README.md"
+								class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Workers</a>
+						</li>
+					</ul>
+				</div>
+
+				<div>
+					<h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 px-2">
+						Resources
+					</h2>
+					<ul class="space-y-0.5 text-slate-600 dark:text-slate-300">
+						<li><a href="https://github.com/snatalenko/node-cqrs/tree/master/examples" class="block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Examples ↗</a></li>
+						<li><a href="#/CHANGELOG.md" class="toc-link block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Changelog</a></li>
+						<li><a href="https://github.com/snatalenko/node-cqrs/issues" class="block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Issues ↗</a></li>
+						<li><a href="https://github.com/snatalenko/node-cqrs?tab=Apache-2.0-1-ov-file" class="block px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">Apache-2.0 License ↗</a></li>
+					</ul>
+				</div>
+			</nav>
+		</aside>
+
+		<main class="flex-1 min-w-0 py-8">
+			<article id="content" class="prose">
+				<p class="text-slate-500">Loading…</p>
+			</article>
+
+			<div id="error" class="hidden mt-4 p-4 bg-red-50 border border-red-200 rounded text-red-800 text-sm"></div>
+		</main>
+	</div>
+
+	<script>
+		// --- theme ------------------------------------------------------------------------
+
+		const hljsLight = document.getElementById('hljs-light');
+		const hljsDark = document.getElementById('hljs-dark');
+
+		function applyTheme(isDark) {
+			document.documentElement.classList.toggle('dark', isDark);
+			// drives `light-dark()` and CSS `color-scheme` inside inlined SVGs
+			document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+			hljsLight.disabled = isDark;
+			hljsDark.disabled = !isDark;
+		}
+
+		applyTheme(document.documentElement.classList.contains('dark'));
+
+		document.getElementById('theme-toggle').addEventListener('click', () => {
+			const next = !document.documentElement.classList.contains('dark');
+			localStorage.setItem('theme', next ? 'dark' : 'light');
+			applyTheme(next);
+		});
+
+		// follow system preference until the user makes an explicit choice
+		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+			if (!localStorage.getItem('theme')) applyTheme(e.matches);
+		});
+
+		const REPO = 'snatalenko/node-cqrs';
+		const REPO_BRANCH = 'master';
+		const DEFAULT_DOC = 'README.md';
+
+		// folder paths that should resolve to a README.md inside them
+		// (e.g. a link to "src/sqlite" navigates to "src/sqlite/README.md")
+		const MODULE_DIRS = new Set([
+			'src/sqlite',
+			'src/mongodb',
+			'src/redis',
+			'src/rabbitmq',
+			'src/workers'
+		]);
+
+		// --- marked configuration ---------------------------------------------------------
+
+		marked.use(markedHighlight.markedHighlight({
+			langPrefix: 'hljs language-',
+			highlight(code, lang) {
+				const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+				return hljs.highlight(code, { language }).value;
+			}
+		}));
+
+		marked.use({
+			gfm: true,
+			breaks: false
+		});
+
+		// --- routing & rendering ----------------------------------------------------------
+
+		const contentEl = document.getElementById('content');
+		const errorEl = document.getElementById('error');
+
+		// Hash format:
+		//   ""                              → default doc, no anchor
+		//   "#section"                      → default doc, scroll to #section
+		//   "#/path/to/FILE.md"             → load that doc
+		//   "#/path/to/FILE.md#section"     → load that doc and scroll
+		function parseHash() {
+			const raw = window.location.hash.replace(/^#/, '');
+			if (!raw) return { file: DEFAULT_DOC, anchor: null };
+
+			if (raw.startsWith('/')) {
+				const rest = raw.slice(1);
+				const idx = rest.indexOf('#');
+				if (idx === -1) return { file: rest, anchor: null };
+				return { file: rest.slice(0, idx), anchor: rest.slice(idx + 1) };
+			}
+			return { file: DEFAULT_DOC, anchor: raw };
+		}
+
+		function slugify(text) {
+			return String(text)
+				.toLowerCase()
+				.trim()
+				.replace(/[^\w\s-]/g, '')
+				.replace(/\s+/g, '-')
+				.replace(/-+/g, '-');
+		}
+
+		function isExternalUrl(href) {
+			return /^(https?:|mailto:|tel:)/i.test(href);
+		}
+
+		function rewriteLinks(rootDir) {
+			contentEl.querySelectorAll('a[href]').forEach(a => {
+				const href = a.getAttribute('href');
+				if (!href) return;
+
+				if (href.startsWith('#')) return; // in-page anchor — leave as is
+
+				if (isExternalUrl(href)) {
+					a.target = '_blank';
+					a.rel = 'noopener noreferrer';
+					return;
+				}
+
+				// resolve relative path against the current document directory
+				const url = new URL(href, `https://x/${rootDir}`);
+				let resolved = url.pathname.replace(/^\//, '');
+				const fragment = url.hash; // includes leading "#" or empty
+
+				// folder reference (e.g. "src/sqlite") that has its own README → SPA-load it
+				const folderKey = resolved.replace(/\/$/, '');
+				if (MODULE_DIRS.has(folderKey)) {
+					a.setAttribute('href', `#/${folderKey}/README.md${fragment}`);
+					return;
+				}
+
+				// any .md file → SPA navigate
+				if (/\.md$/i.test(resolved)) {
+					a.setAttribute('href', `#/${resolved}${fragment}`);
+					return;
+				}
+
+				// other relative repo paths (.ts, .js, etc.) → open on GitHub in a new tab
+				a.setAttribute('href', `https://github.com/${REPO}/blob/${REPO_BRANCH}/${resolved}${fragment}`);
+				a.target = '_blank';
+				a.rel = 'noopener noreferrer';
+			});
+
+			// images: leave relative paths so they resolve against the served site
+			contentEl.querySelectorAll('img[src]').forEach(img => {
+				const src = img.getAttribute('src');
+				if (!src || isExternalUrl(src) || src.startsWith('/')) return;
+				const resolved = new URL(src, `https://x/${rootDir}`).pathname.replace(/^\//, '');
+				img.setAttribute('src', resolved);
+			});
+		}
+
+		async function inlineSvgImages() {
+			// SVGs in <img> render in their own document context, so they ignore the host page's
+			// color-scheme. Inlining lets `light-dark()` follow the toggle.
+			// Restrict to same-origin (relative) SVGs — skip badges/shields and other remote ones.
+			const imgs = Array.from(contentEl.querySelectorAll('img[src$=".svg"]'))
+				.filter(img => {
+					const src = img.getAttribute('src') || '';
+					return !/^(https?:|\/\/)/i.test(src);
+				});
+
+			await Promise.all(imgs.map(async img => {
+				try {
+					const res = await fetch(img.getAttribute('src'));
+					if (!res.ok) return;
+					const text = await res.text();
+					const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+					const svg = doc.documentElement;
+					if (svg.nodeName.toLowerCase() !== 'svg') return;
+
+					// preserve any width/height authored on the <img> (e.g. README's width="250").
+					// Drop the SVG's own dimensions first so the viewBox controls aspect ratio —
+					// otherwise an <img width="250"> on a 969x625 SVG renders as 250x625 with whitespace.
+					if (img.hasAttribute('width') || img.hasAttribute('height')) {
+						svg.removeAttribute('width');
+						svg.removeAttribute('height');
+					}
+					if (img.hasAttribute('width')) svg.setAttribute('width', img.getAttribute('width'));
+					if (img.hasAttribute('height')) svg.setAttribute('height', img.getAttribute('height'));
+
+					// drop any baked-in color-scheme so the SVG inherits the host's scheme;
+					// the embedded one ("light dark") otherwise pins it to the system preference
+					if (svg.hasAttribute('style')) {
+						svg.setAttribute('style', svg.getAttribute('style').replace(/color-scheme\s*:[^;]+;?/gi, ''));
+					}
+					svg.style.colorScheme = 'inherit';
+
+					svg.classList.add('inlined');
+					if (img.alt) svg.setAttribute('aria-label', img.alt);
+					img.replaceWith(svg);
+				}
+				catch { /* leave the <img> as-is */ }
+			}));
+		}
+
+		function addHeadingAnchors() {
+			contentEl.querySelectorAll('h1, h2, h3, h4').forEach(h => {
+				const text = h.textContent || '';
+				if (!h.id) h.id = slugify(text);
+				const link = document.createElement('a');
+				link.href = `#${h.id}`;
+				link.textContent = '#';
+				link.className = 'anchor-link';
+				h.appendChild(link);
+			});
+		}
+
+		function stripLeadingH1(html) {
+			// the page header already shows "node-cqrs" — drop the first <h1> at the top of the doc
+			return html.replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>\s*/i, '');
+		}
+
+		function stripBeforeFirstH2(html) {
+			// drop badges/logo/intro that lives between the title and the first ## heading —
+			// they push content down as they load and break anchor scrolling on refresh
+			const idx = html.search(/<h2[\s>]/i);
+			return idx === -1 ? html : html.slice(idx);
+		}
+
+		function stripEmbeddedToc(html) {
+			// drop a "<hN>Table of Contents</hN>" heading and everything up to the next heading
+			// (handles nested <ul>s, which a non-greedy <ul>...</ul> match would truncate)
+			return html.replace(
+				/<h([1-6])[^>]*>\s*(?:Table of Contents|Contents)\s*<\/h\1>[\s\S]*?(?=<h[1-6][^>]*>)/i,
+				''
+			);
+		}
+
+		// --- scroll spy -------------------------------------------------------------------
+
+		let scrollSpyObserver = null;
+		const visibleHeadings = new Set();
+
+		function highlightActiveTocLink(file, anchor) {
+			const sectionTarget = `#${anchor || ''}`;
+			const docTarget = file === DEFAULT_DOC ? null : `#/${file}`;
+			document.querySelectorAll('.toc-link').forEach(a => {
+				const href = a.getAttribute('href') || '';
+				let active = false;
+				if (file === DEFAULT_DOC && anchor) {
+					active = href === sectionTarget;
+				}
+				else if (docTarget) {
+					active = href === docTarget;
+				}
+				a.classList.toggle('active', active);
+			});
+		}
+
+		function setupScrollSpy(file) {
+			if (scrollSpyObserver) scrollSpyObserver.disconnect();
+			visibleHeadings.clear();
+
+			// scrollspy only drives the README sections — module pages have no per-section TOC
+			if (file !== DEFAULT_DOC) return;
+
+			const headings = Array.from(contentEl.querySelectorAll('h1, h2, h3, h4')).filter(h => h.id);
+			if (!headings.length) return;
+
+			const tocIds = new Set(
+				Array.from(document.querySelectorAll('.toc-link'))
+					.map(a => (a.getAttribute('href') || ''))
+					.filter(href => href.startsWith('#') && !href.startsWith('#/'))
+					.map(href => href.slice(1))
+			);
+
+			scrollSpyObserver = new IntersectionObserver(entries => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) visibleHeadings.add(entry.target);
+					else visibleHeadings.delete(entry.target);
+				}
+
+				let active = null;
+				let activeTop = Infinity;
+				for (const h of visibleHeadings) {
+					if (!tocIds.has(h.id)) continue;
+					const top = h.getBoundingClientRect().top;
+					if (top < activeTop) { active = h; activeTop = top; }
+				}
+
+				if (!active) {
+					for (const h of headings) {
+						if (!tocIds.has(h.id)) continue;
+						if (h.getBoundingClientRect().top < 100) active = h;
+					}
+				}
+
+				if (active) highlightActiveTocLink(file, active.id);
+			}, {
+				rootMargin: '-80px 0px -70% 0px',
+				threshold: 0
+			});
+
+			headings.forEach(h => scrollSpyObserver.observe(h));
+		}
+
+		function scrollToAnchor(anchor) {
+			if (!anchor) { window.scrollTo(0, 0); return; }
+			const target = document.getElementById(anchor);
+			if (target) target.scrollIntoView();
+			else window.scrollTo(0, 0);
+		}
+
+		// resolves once every <img> in `root` finishes loading (or errors out)
+		function waitForImages(root) {
+			const imgs = Array.from(root.querySelectorAll('img'));
+			return Promise.all(imgs.map(img => img.complete
+				? null
+				: new Promise(r => {
+					img.addEventListener('load', r, { once: true });
+					img.addEventListener('error', r, { once: true });
+				})
+			));
+		}
+
+		let currentFile = null;
+
+		async function loadDoc({ file, anchor }) {
+			// same document, different anchor → just scroll, don't re-render
+			if (file === currentFile) {
+				highlightActiveTocLink(file, anchor);
+				scrollToAnchor(anchor);
+				return;
+			}
+
+			errorEl.classList.add('hidden');
+
+			if (!/^[\w./-]+\.md$/.test(file)) {
+				showError(`Refusing to load unexpected path: ${file}`);
+				return;
+			}
+
+			try {
+				const res = await fetch(file, { cache: 'no-cache' });
+				if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+				const md = await res.text();
+
+				const htmlRaw = marked.parse(md);
+				const htmlWithoutToc = stripEmbeddedToc(htmlRaw);
+				const htmlWithoutH1 = stripLeadingH1(htmlWithoutToc);
+				const html = stripBeforeFirstH2(htmlWithoutH1);
+				contentEl.innerHTML = html;
+
+				const rootDir = file.includes('/') ? file.slice(0, file.lastIndexOf('/') + 1) : '';
+				rewriteLinks(rootDir);
+				addHeadingAnchors();
+				highlightActiveTocLink(file, anchor);
+				setupScrollSpy(file);
+
+				currentFile = file;
+
+				// wait for SVG inlining (deterministic, fast) before the first scroll —
+				// otherwise the inlined diagrams shift layout afterwards
+				await inlineSvgImages();
+				scrollToAnchor(anchor);
+
+				// re-scroll once remaining images (e.g. shields.io badges) finish loading,
+				// but only if the user hasn't manually scrolled in the meantime
+				const initialY = window.scrollY;
+				waitForImages(contentEl).then(() => {
+					if (anchor && Math.abs(window.scrollY - initialY) < 4) {
+						scrollToAnchor(anchor);
+					}
+				});
+			}
+			catch (err) {
+				showError(`Failed to load "${file}": ${err.message}`);
+			}
+		}
+
+		function showError(message) {
+			contentEl.innerHTML = '';
+			errorEl.textContent = message;
+			errorEl.classList.remove('hidden');
+		}
+
+		window.addEventListener('hashchange', () => loadDoc(parseHash()));
+
+		// re-clicking the active TOC link doesn't fire hashchange — handle it manually.
+		// delegated so dynamically-injected sub-section links also work.
+		document.addEventListener('click', e => {
+			const a = e.target.closest('.toc-link');
+			if (!a) return;
+			if ((a.getAttribute('href') || '') === window.location.hash) {
+				e.preventDefault();
+				loadDoc(parseHash());
+			}
+		});
+
+		loadDoc(parseHash());
+	</script>
+</body>
+
+</html>
