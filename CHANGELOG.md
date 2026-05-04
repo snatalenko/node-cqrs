@@ -1,3 +1,15 @@
+# [1.1.0-beta.3](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.2...v1.1.0-beta.3) (2026-05-04)
+
+
+### Changes
+
+* Deliver events to worker in batches during restoring phase ([212e353](https://github.com/snatalenko/node-cqrs/commit/212e3535b22e6a763a7e0fd1f81036f9ef776ec0))
+
+### Documentation
+
+* Add index.html for publishing with gh pages ([cac88ed](https://github.com/snatalenko/node-cqrs/commit/cac88edaaef1c9457af48fd7477daf8ae624eb43))
+
+
 # [1.1.0-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.1...v1.1.0-beta.2) (2026-04-25)
 
 
