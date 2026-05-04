@@ -527,6 +527,7 @@ See [examples/telemetry/index.ts](examples/telemetry/index.ts) for a full workin
 - [examples/redis](examples/redis/index.ts) - Redis-backed persistent projection
 - [examples/sagas-simple](examples/sagas-simple/index.ts) - simple saga
 - [examples/sagas-overlaps](examples/sagas-overlaps/index.ts) - overlapping sagas, multi-step flow
+- [examples/sqlite](examples/sqlite/index.ts) - SQLite-backed object storage view
 - [examples/browser](examples/browser) - browser smoke test
 - [examples/workers-projection](examples/workers-projection) - worker thread projection
 - [examples/mongodb-eventstore](examples/mongodb-eventstore/index.ts) - MongoDB event storage with DI container and manual wiring
