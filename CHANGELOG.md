@@ -1,3 +1,11 @@
+# [1.1.0-beta.4](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.3...v1.1.0-beta.4) (2026-05-04)
+
+
+### Internal Fixes
+
+* Allow disposing worker projection proxy more than once ([768f73a](https://github.com/snatalenko/node-cqrs/commit/768f73a28a8a1a572449122f5046c102435dd5bd))
+
+
 # [1.1.0-beta.3](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.2...v1.1.0-beta.3) (2026-05-04)
 
 
