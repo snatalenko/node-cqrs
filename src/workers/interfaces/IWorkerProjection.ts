@@ -1,4 +1,4 @@
-import type { IEvent, IProjection } from '../../interfaces/index.js';
+import type { IEvent, IEventSet, IProjection } from '../../interfaces/index.js';
 
 export interface IWorkerProjection<TView> extends IProjection<TView> {
 
@@ -8,11 +8,11 @@ export interface IWorkerProjection<TView> extends IProjection<TView> {
 	getLastProjectedEvent(): Promise<IEvent | undefined>;
 
 	/**
-	 * Projects an event without waiting for view lock readiness.
+	 * Project restore events in batches to avoid one Comlink roundtrip per event
 	 *
-	 * @internal Expose protected projection path for worker RPC wiring
+	 * @internal
 	 */
-	_project(event: IEvent, meta?: Record<string, any>): Promise<void>;
+	_projectBatch(events: IEventSet): Promise<void>;
 }
 
 export interface IWorkerProjectionType<

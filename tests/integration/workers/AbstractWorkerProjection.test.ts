@@ -211,6 +211,30 @@ describe('AbstractWorkerProjection', () => {
 		expect(await projectionProxy.view.getCounter()).toBe(2);
 	});
 
+	it('restores event store events through worker batches', async () => {
+
+		const restoreBatchSize = WorkerProxyProjection.RESTORE_BATCH_SIZE;
+		WorkerProxyProjection.RESTORE_BATCH_SIZE = 2;
+
+		try {
+			await projectionProxy.restore(createEventStore([
+				{ id: '1', type: 'somethingHappened' },
+				{ id: '2', type: 'somethingHappened' },
+				{ id: '3', type: 'somethingElseHappened' },
+				{ id: '4', type: 'somethingHappened' },
+				{ id: '5', type: 'somethingHappened' },
+				{ id: '6', type: 'somethingHappened' }
+			]));
+		}
+		finally {
+			WorkerProxyProjection.RESTORE_BATCH_SIZE = restoreBatchSize;
+		}
+
+		expect(await projectionProxy.view.getBatchSizes()).toEqual([2, 2, 1]);
+		expect((await projectionProxy.view.getLastEvent())?.id).toBe('6');
+		expect(await projectionProxy.view.getCounter()).toBe(5);
+	});
+
 	it('restores only events after getLastEvent', async () => {
 
 		await projectionProxy.restore(createEventStore([
