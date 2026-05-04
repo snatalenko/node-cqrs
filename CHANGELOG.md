@@ -1,3 +1,43 @@
+# [1.2.0-alpha.2](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.4...v1.2.0-alpha.2) (2026-05-04)
+
+
+
+# [1.2.0-alpha.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-alpha.0...v1.2.0-alpha.1) (2026-04-28)
+
+
+### Features
+
+* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
+
+
+# [1.2.0-alpha.0](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.2...v1.2.0-alpha.0) (2026-04-27)
+
+
+### Features
+
+* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
+
+
+# [1.1.0-beta.4](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.3...v1.1.0-beta.4) (2026-05-04)
+
+
+### Internal Fixes
+
+* Allow disposing worker projection proxy more than once ([768f73a](https://github.com/snatalenko/node-cqrs/commit/768f73a28a8a1a572449122f5046c102435dd5bd))
+
+
+# [1.1.0-beta.3](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-alpha.1...v1.1.0-beta.3) (2026-05-04)
+
+
+### Changes
+
+* Deliver events to worker in batches during restoring phase ([212e353](https://github.com/snatalenko/node-cqrs/commit/212e3535b22e6a763a7e0fd1f81036f9ef776ec0))
+
+### Documentation
+
+* Add index.html for publishing with gh pages ([cac88ed](https://github.com/snatalenko/node-cqrs/commit/cac88edaaef1c9457af48fd7477daf8ae624eb43))
+
+
 # [1.2.0-alpha.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-alpha.0...v1.2.0-alpha.1) (2026-04-28)
 
 
