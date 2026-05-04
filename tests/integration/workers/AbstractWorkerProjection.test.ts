@@ -127,6 +127,14 @@ describe('AbstractWorkerProjection', () => {
 		expect(await projectionProxy.view.getCounter()).toBe(1);
 	});
 
+	it('allows disposing the projection proxy more than once', async () => {
+
+		await projectionProxy.ensureWorkerReady();
+
+		expect(() => projectionProxy.dispose()).not.toThrow();
+		expect(() => projectionProxy.dispose()).not.toThrow();
+	});
+
 	it('awaits project calls while restoring', async () => {
 
 		const eventStore = createEventStore([

@@ -32,6 +32,7 @@ export class WorkerProxyProjection<
 	readonly #remoteView: Comlink.Remote<TView>;
 	readonly #logger?: ILogger;
 	readonly #messageTypes: string[];
+	#disposed = false;
 	viewLocker?: IViewLocker = new InMemoryLock();
 
 	get remoteProjection(): Comlink.Remote<TProjection> {
@@ -160,6 +161,10 @@ export class WorkerProxyProjection<
 	}
 
 	dispose() {
+		if (this.#disposed)
+			return;
+
+		this.#disposed = true;
 		this.#remoteProjection[Comlink.releaseProxy]();
 		this.#remoteView[Comlink.releaseProxy]();
 		this.#worker?.terminate();
