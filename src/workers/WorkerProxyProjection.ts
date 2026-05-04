@@ -1,6 +1,12 @@
 import { Worker, MessageChannel } from 'node:worker_threads';
 import type {
-	IEvent, IEventStorageReader, IEventStore, IExtendableLogger, ILogger, IViewLocker
+	IEvent,
+	IEventSet,
+	IEventStorageReader,
+	IEventStore,
+	IExtendableLogger,
+	ILogger,
+	IViewLocker
 } from '../interfaces/index.ts';
 import type { IProxyProjection, IWorkerProjection, ProxyProjectionParams } from './interfaces/index.ts';
 import * as Comlink from 'comlink';
@@ -18,12 +24,15 @@ export class WorkerProxyProjection<
 	TProjection extends IWorkerProjection<TView> = IWorkerProjection<TView>
 > implements IProxyProjection<TView> {
 
+	static RESTORE_BATCH_SIZE = 5_000;
+
 	#worker?: Worker;
 	readonly #workerInit: Promise<Worker>;
 	readonly #remoteProjection: Comlink.Remote<TProjection>;
 	readonly #remoteView: Comlink.Remote<TView>;
 	readonly #logger?: ILogger;
 	readonly #messageTypes: string[];
+	#disposed = false;
 	viewLocker?: IViewLocker = new InMemoryLock();
 
 	get remoteProjection(): Comlink.Remote<TProjection> {
@@ -83,7 +92,12 @@ export class WorkerProxyProjection<
 			this.viewLocker.unlock();
 	}
 
-	/** Restore view state from not-yet-projected events */
+	/**
+	 * Restore view state from not-yet-projected events.
+	 *
+	 * Events are projected in batches to reduce worker RPC overhead.
+	 * The batch size can be configured through {@link WorkerProxyProjection.RESTORE_BATCH_SIZE}.
+	 */
 	protected async _restore(eventStore: IEventStorageReader): Promise<void> {
 		if (!this.#worker)
 			await this.#workerInit;
@@ -92,16 +106,24 @@ export class WorkerProxyProjection<
 		const lastEvent = await this.#remoteProjection.getLastProjectedEvent();
 
 		this.#logger?.debug(`retrieving ${lastEvent ? `events after ${describe(lastEvent)}` : 'all events'}...`);
-
 		const eventsIterable = eventStore.getEventsByTypes(this.#messageTypes, { afterEvent: lastEvent });
 
 		let eventsCount = 0;
 		const startTs = Date.now();
+		const batch: IEvent[] = [];
 
 		for await (const event of eventsIterable) {
-			await this._project(event);
+			batch.push(event);
 			eventsCount += 1;
+
+			if (batch.length >= WorkerProxyProjection.RESTORE_BATCH_SIZE) {
+				await this._projectBatch(batch);
+				batch.length = 0;
+			}
 		}
+
+		if (batch.length)
+			await this._projectBatch(batch);
 
 		this.#logger?.info(`view restored from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}
@@ -134,11 +156,15 @@ export class WorkerProxyProjection<
 		return this.#remoteProjection.project(event);
 	}
 
-	protected async _project(event: IEvent): Promise<void> {
-		await this.#remoteProjection._project(event);
+	protected _projectBatch(batch: IEventSet): Promise<void> {
+		return this.remoteProjection._projectBatch(batch);
 	}
 
 	dispose() {
+		if (this.#disposed)
+			return;
+
+		this.#disposed = true;
 		this.#remoteProjection[Comlink.releaseProxy]();
 		this.#remoteView[Comlink.releaseProxy]();
 		this.#worker?.terminate();

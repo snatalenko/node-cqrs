@@ -9,11 +9,16 @@ node-cqrs
 [![License](https://img.shields.io/github/license/snatalenko/node-cqrs.svg)](https://github.com/snatalenko/node-cqrs)
 [![Tests/Audit](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml/badge.svg)](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml)
 
-Infrastructure-agnostic building blocks for CQRS/ES, inspired by Lokad.CQRS.
+Building blocks for CQRS/ES, inspired by Lokad.CQRS.
+
+<p align="center">
+  <img src="docs/images/logo.svg" width="250" />
+</p>
 
 ## Features
 
 CQRS and Event Sourcing are simple in a single process ([example](examples/user-domain-framework-free/index.ts)), but a minefield in the cloud.
+
 node-cqrs handles the "boring but hard" distributed plumbing - concurrency, message delivery, projections, and rehydration - so you can focus on your domain logic.
 
 - **Reliable Consistency**: Per-aggregate FIFO handling and conflict-safe writes with optimistic concurrency.
@@ -21,9 +26,9 @@ node-cqrs handles the "boring but hard" distributed plumbing - concurrency, mess
 - **Fast Rehydration**: Automatic snapshotting and selective event restores.
 - **Distributed Sagas**: Built-in event correlation and origin propagation for complex workflows.
 - **Smart Pipelines**: Pluggable dispatching with back-pressure and concurrency limits.
-- **Pluggable by Design**: Thin interfaces on every component - swap any piece, from message buses to event storage, without touching your domain code.
+- **Pluggable by Design**: Thin interfaces on every component - swap any piece, without patching the library or your domain code.
 
-The heavy lifting for common stacks is done, so you can mix and match sub-modules to fit your environment:
+The core is infrastructure-agnostic, but the heavy lifting for common stacks is done, so you can mix and match sub-modules to fit your environment:
 
 - `node-cqrs/sqlite` – Embedded per-process event storage and/or views.
 - `node-cqrs/mongodb` – Distributed event storage and persistent projection views for multi-process deployments.
@@ -522,6 +527,7 @@ See [examples/telemetry/index.ts](examples/telemetry/index.ts) for a full workin
 - [examples/redis](examples/redis/index.ts) - Redis-backed persistent projection
 - [examples/sagas-simple](examples/sagas-simple/index.ts) - simple saga
 - [examples/sagas-overlaps](examples/sagas-overlaps/index.ts) - overlapping sagas, multi-step flow
+- [examples/sqlite](examples/sqlite/index.ts) - SQLite-backed object storage view
 - [examples/browser](examples/browser) - browser smoke test
 - [examples/workers-projection](examples/workers-projection) - worker thread projection
 - [examples/mongodb-eventstore](examples/mongodb-eventstore/index.ts) - MongoDB event storage with DI container and manual wiring
