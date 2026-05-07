@@ -348,7 +348,7 @@ describe('SqliteWorkerProxy', () => {
 		});
 
 		try {
-			await expect(proxy.all('SELECT 1')).rejects.toThrow('SQLite worker exited prematurely with exit code 0');
+			await expect(proxy.all('SELECT 1')).rejects.toThrow('Worker exited prematurely with exit code 0');
 			await expect(proxy.dispose()).resolves.toBeUndefined();
 		}
 		finally {
@@ -370,7 +370,7 @@ describe('SqliteWorkerProxy', () => {
 		});
 
 		try {
-			await expect(proxy.prepare('SELECT 1')).rejects.toThrow('SQLite worker exited prematurely with exit code 0');
+			await expect(proxy.prepare('SELECT 1')).rejects.toThrow('Worker exited prematurely with exit code 0');
 			await expect(proxy.dispose()).resolves.toBeUndefined();
 		}
 		finally {

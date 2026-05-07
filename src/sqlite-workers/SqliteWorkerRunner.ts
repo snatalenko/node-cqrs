@@ -10,11 +10,8 @@ import {
 	type SqliteWorkerQueryParams,
 	type SqliteWorkerStatementHandle
 } from './protocol.ts';
-import {
-	createWorkerDb,
-	nodeEndpoint,
-	resolveCurrentFileLocationFromStack
-} from './utils/index.ts';
+import { createWorkerDb, resolveCurrentFileLocationFromStack } from './utils/index.ts';
+import { nodeEndpoint } from '../shared/worker-utils/index.ts';
 
 declare const __filename: string | undefined;
 

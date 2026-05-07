@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import createDb from 'better-sqlite3';
 import { isSqliteWorkerData } from '../../../src/sqlite-workers/protocol.ts';
 import { SqliteWorkerRunner } from '../../../src/sqlite-workers/SqliteWorkerRunner.ts';
-import { createSqliteWorker } from '../../../src/sqlite-workers/utils/createSqliteWorker.ts';
+import { createWorker } from '../../../src/shared/worker-utils/index.ts';
 
 describe('SqliteWorkerRunner', () => {
 	let tmpDir: string;
@@ -132,32 +132,23 @@ describe('SqliteWorkerRunner', () => {
 			parentPort.postMessage({ type: 'ready' });
 		`);
 
-		const worker = await createSqliteWorker({
-			dbConfig: {
-				dbLocation: createFixtureDb()
-			},
-			sqliteWorkerRunnerLocation: pathToFileURL(readyWorkerPath)
-		});
+		const worker = await createWorker(pathToFileURL(readyWorkerPath), {
+			dbConfig: { dbLocation: createFixtureDb() }
+		}, { isReadyMessage: m => (m as any)?.type === 'ready' });
 		await worker.terminate();
 
 		const errorWorkerPath = path.join(tmpDir, 'error-worker.cjs');
 		fs.writeFileSync(errorWorkerPath, 'throw new Error("worker exploded");');
-		await expect(() => createSqliteWorker({
-			dbConfig: {
-				dbLocation: createFixtureDb()
-			},
-			sqliteWorkerRunnerLocation: errorWorkerPath
+		await expect(() => createWorker(errorWorkerPath, {
+			dbConfig: { dbLocation: createFixtureDb() }
 		}))
 			.rejects.toThrow('worker exploded');
 
 		const exitWorkerPath = path.join(tmpDir, 'exit-worker.cjs');
 		fs.writeFileSync(exitWorkerPath, '');
-		await expect(() => createSqliteWorker({
-			dbConfig: {
-				dbLocation: createFixtureDb()
-			},
-			sqliteWorkerRunnerLocation: exitWorkerPath
+		await expect(() => createWorker(exitWorkerPath, {
+			dbConfig: { dbLocation: createFixtureDb() }
 		}))
-			.rejects.toThrow('SQLite worker exited prematurely with exit code 0');
+			.rejects.toThrow('Worker exited prematurely with exit code 0');
 	});
 });

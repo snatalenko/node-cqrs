@@ -68,10 +68,3 @@ export function isSqliteWorkerData(value: unknown): value is SqliteWorkerData {
 		&& 'dbConfig' in value
 		&& isObject(value.dbConfig);
 }
-
-export function isSqliteWorkerReadyMessage(value: unknown): value is SqliteWorkerReadyMessage {
-	return typeof value === 'object' &&
-		value !== null &&
-		'type' in value &&
-		value.type === 'ready';
-}

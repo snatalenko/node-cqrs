@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
-import * as Comlink from 'comlink';
+import type * as Comlink from 'comlink';
 
 declare const __filename: string | undefined;
 

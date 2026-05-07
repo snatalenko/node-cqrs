@@ -6,7 +6,8 @@ import type {
 	ISqliteWorkerApi,
 	SqliteRunResult
 } from './protocol.ts';
-import { createSqliteWorker, nodeEndpoint } from './utils/index.ts';
+import { nodeEndpoint, createWorker } from '../shared/worker-utils/index.ts';
+import { SqliteWorkerRunner } from './SqliteWorkerRunner.ts';
 import { AsyncSqliteStatement } from './AsyncSqliteStatement.ts';
 
 export class SqliteWorkerProxy {
@@ -65,7 +66,16 @@ export class SqliteWorkerProxy {
 		if (this.#worker)
 			return this.#worker;
 
-		this.#workerPromise ??= createSqliteWorker(this.#config)
+		this.#workerPromise ??= (() => {
+			const {
+				sqliteWorkerRunnerLocation = SqliteWorkerRunner.location,
+				...workerData
+			} = this.#config;
+
+			return createWorker(sqliteWorkerRunnerLocation, workerData, {
+				isReadyMessage: m => (m as any)?.type === 'ready'
+			});
+		})()
 			.then(worker => {
 				this.#worker = worker;
 				worker.once('error', this.handleWorkerError);
