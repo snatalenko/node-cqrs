@@ -4,8 +4,97 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>node-cqrs · Documentation</title>
+	<title>node-cqrs - TypeScript CQRS and Event Sourcing Toolkit</title>
+	<meta name="description"
+		content="node-cqrs is a TypeScript CQRS and Event Sourcing toolkit for Node.js with aggregates, sagas, projections, dependency injection, and optional RabbitMQ, SQLite, Redis, MongoDB, and worker adapters." />
+	<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+	<meta name="googlebot" content="index, follow" />
+	<meta name="author" content="@snatalenko" />
+	<meta name="keywords"
+		content="node-cqrs, TypeScript CQRS, CQRS Node.js, Event Sourcing Node.js, domain-driven design, DDD, sagas, projections, aggregates, RabbitMQ, SQLite, Redis, MongoDB" />
+	<link rel="canonical" href="https://natalenko.com/node-cqrs/" />
 	<link rel="icon" type="image/svg+xml" href="docs/images/logo.svg" />
+	<link rel="alternate" type="text/markdown" title="node-cqrs README"
+		href="https://github.com/snatalenko/node-cqrs/blob/master/README.md" />
+	<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+	<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1117" />
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content="natalenko.com" />
+	<meta property="og:title" content="node-cqrs - TypeScript CQRS and Event Sourcing Toolkit" />
+	<meta property="og:description"
+		content="Build CQRS and Event Sourcing systems in Node.js with aggregates, sagas, projections, dispatch pipelines, and pluggable storage and message bus adapters." />
+	<meta property="og:url" content="https://natalenko.com/node-cqrs/" />
+	<meta property="og:image" content="https://natalenko.com/node-cqrs/docs/images/logo.svg" />
+	<meta property="og:image:alt" content="node-cqrs logo" />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content="node-cqrs - TypeScript CQRS and Event Sourcing Toolkit" />
+	<meta name="twitter:description"
+		content="A TypeScript toolkit for CQRS, Event Sourcing, aggregates, sagas, projections, and Node.js infrastructure adapters." />
+	<meta name="twitter:image" content="https://natalenko.com/node-cqrs/docs/images/logo.svg" />
+
+	<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@graph": [
+				{
+					"@type": "SoftwareSourceCode",
+					"@id": "https://natalenko.com/node-cqrs/#software",
+					"name": "node-cqrs",
+					"description": "TypeScript CQRS and Event Sourcing toolkit for Node.js with dependency injection, sagas, projections, dispatch pipelines, and optional RabbitMQ, SQLite, Redis, MongoDB, and worker adapters.",
+					"url": "https://natalenko.com/node-cqrs/",
+					"codeRepository": "https://github.com/snatalenko/node-cqrs",
+					"programmingLanguage": "TypeScript",
+					"runtimePlatform": [
+						"Node.js 16+",
+						"Browser"
+					],
+					"license": "https://www.apache.org/licenses/LICENSE-2.0",
+					"applicationCategory": "DeveloperApplication",
+					"operatingSystem": "Cross-platform",
+					"keywords": [
+						"CQRS",
+						"Event Sourcing",
+						"TypeScript",
+						"Node.js",
+						"Domain-Driven Design",
+						"Sagas",
+						"Projections",
+						"RabbitMQ",
+						"SQLite",
+						"Redis",
+						"MongoDB"
+					],
+					"author": {
+						"@type": "Person",
+						"name": "@snatalenko",
+						"url": "https://github.com/snatalenko"
+					},
+					"sameAs": [
+						"https://github.com/snatalenko/node-cqrs",
+						"https://www.npmjs.com/package/node-cqrs"
+					]
+				},
+				{
+					"@type": "BreadcrumbList",
+					"@id": "https://natalenko.com/node-cqrs/#breadcrumb",
+					"itemListElement": [
+						{
+							"@type": "ListItem",
+							"position": 1,
+							"name": "Home",
+							"item": "https://natalenko.com/"
+						},
+						{
+							"@type": "ListItem",
+							"position": 2,
+							"name": "node-cqrs",
+							"item": "https://natalenko.com/node-cqrs/"
+						}
+					]
+				}
+			]
+		}
+	</script>
 
 	<script>
 		// pre-paint, before tailwind loads — sets the .dark class so there's no flash of light theme
@@ -18,11 +107,10 @@
 		})();
 	</script>
 
-	<script src="https://cdn.tailwindcss.com"></script>
-	<script>
-		// tailwind Play CDN reads config from this global *after* the script loads
-		tailwind.config = { darkMode: 'class' };
-	</script>
+	<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+	<style type="text/tailwindcss">
+		@custom-variant dark (&:where(.dark, .dark *));
+	</style>
 
 	<link id="hljs-light" rel="stylesheet"
 		href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" />

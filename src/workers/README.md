@@ -1,9 +1,9 @@
 node-cqrs/workers
 =================
 
-Worker thread projections for `node-cqrs`. Use this module to run CPU-heavy projection handlers and their views inside a Node.js worker thread, keeping the main thread responsive.
+## Overview
 
-> **Experimental** — not yet validated in production. APIs may change in minor versions.
+Worker thread projections for `node-cqrs`. Use this module to run CPU-heavy projection handlers and their views inside a Node.js worker thread, keeping the main thread responsive.
 
 
 ## How it works

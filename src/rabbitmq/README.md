@@ -1,6 +1,8 @@
 node-cqrs/rabbitmq
 ==================
 
+## Overview
+
 RabbitMQ transport for `node-cqrs`. Use this package when commands or events must cross process boundaries and be delivered through durable broker queues instead of in-memory buses.
 
 All exchanges are declared as `topic` type. The message type (e.g. `userCreated`) is used as the routing key, so event-type filtering happens at the broker level rather than in the handler.
