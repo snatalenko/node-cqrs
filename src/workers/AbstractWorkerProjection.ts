@@ -28,7 +28,7 @@ export abstract class AbstractWorkerProjection<TView>
 
 		const projectionMethodsToWire = [
 			'project',
-			'_project',
+			'_projectBatch',
 			'ping',
 			'getLastProjectedEvent'
 		] as Extract<keyof T, string>[];
@@ -62,9 +62,10 @@ export abstract class AbstractWorkerProjection<TView>
 		return true;
 	}
 
-	/** @internal Expose protected projection path for worker RPC wiring */
-	public override _project(event: IEvent): Promise<void> {
-		return super._project(event);
+	/** @internal Project restore events in batches to avoid one Comlink roundtrip per event */
+	async _projectBatch(events: IEvent[]): Promise<void> {
+		for (const event of events)
+			await this._project(event);
 	}
 
 	/**

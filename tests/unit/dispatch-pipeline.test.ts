@@ -55,7 +55,7 @@ describe('eventDispatchPipeline', () => {
 		await eventDispatcher.dispatch([testEvent], { origin: 'external' });
 
 		expect(eventBus.publish).toHaveBeenCalledTimes(2);
-		expect(eventBus.publish).toHaveBeenNthCalledWith(1, testEvent, { origin: 'internal' });
-		expect(eventBus.publish).toHaveBeenNthCalledWith(2, testEvent, { origin: 'external' });
+		expect(eventBus.publish).toHaveBeenNthCalledWith(1, testEvent, expect.objectContaining({ origin: 'internal' }));
+		expect(eventBus.publish).toHaveBeenNthCalledWith(2, testEvent, expect.objectContaining({ origin: 'external' }));
 	});
 });

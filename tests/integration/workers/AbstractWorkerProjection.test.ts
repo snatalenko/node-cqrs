@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { IEvent } from '../../../src/interfaces/index.ts';
+import type { IEvent, IViewLocker } from '../../../src/interfaces/index.ts';
 import { WorkerProxyProjection, workerProxyFactory } from '../../../src/workers/index.ts';
 import ViewFixture from './fixtures/ViewFixture.cjs';
 
@@ -127,6 +127,14 @@ describe('AbstractWorkerProjection', () => {
 		expect(await projectionProxy.view.getCounter()).toBe(1);
 	});
 
+	it('allows disposing the projection proxy more than once', async () => {
+
+		await projectionProxy.ensureWorkerReady();
+
+		expect(() => projectionProxy.dispose()).not.toThrow();
+		expect(() => projectionProxy.dispose()).not.toThrow();
+	});
+
 	it('awaits project calls while restoring', async () => {
 
 		const eventStore = createEventStore([
@@ -148,6 +156,58 @@ describe('AbstractWorkerProjection', () => {
 		expect(await projectionProxy.view.getCounter()).toBe(2);
 	});
 
+	it('uses externally assigned viewLocker on restore', async () => {
+
+		const lock = jest.fn().mockResolvedValue(true);
+		const unlock = jest.fn();
+		const once = jest.fn().mockResolvedValue(undefined);
+		const viewLocker: IViewLocker = {
+			ready: true,
+			lock,
+			unlock,
+			once
+		};
+
+		projectionProxy.viewLocker = viewLocker;
+
+		await projectionProxy.restore(createEventStore([]));
+
+		expect(lock).toHaveBeenCalledTimes(1);
+		expect(unlock).toHaveBeenCalledTimes(1);
+	});
+
+	it('awaits project calls using externally assigned viewLocker', async () => {
+
+		let releaseLocker: (() => void) | undefined;
+		const waitForReady = new Promise<void>(resolve => {
+			releaseLocker = resolve;
+		});
+		const once = jest.fn(() => waitForReady);
+		const viewLocker: IViewLocker = {
+			ready: false,
+			lock: jest.fn().mockResolvedValue(true),
+			unlock: jest.fn(),
+			once
+		};
+
+		projectionProxy.viewLocker = viewLocker;
+
+		const projectPromise = projectionProxy.project({ id: '1', type: 'somethingHappened' });
+		const resolvedEarly = await Promise.race([
+			projectPromise.then(() => true),
+			new Promise(resolve => setTimeout(() => resolve(false), 20))
+		]);
+
+		expect(resolvedEarly).toBe(false);
+		expect(once).toHaveBeenCalledWith('ready');
+
+		viewLocker.ready = true;
+		releaseLocker?.();
+
+		await projectPromise;
+		expect(await projectionProxy.view.getCounter()).toBe(1);
+	});
+
 	it('restores from event store and updates projection state', async () => {
 
 		await projectionProxy.restore(createEventStore([
@@ -157,6 +217,30 @@ describe('AbstractWorkerProjection', () => {
 
 		expect((await projectionProxy.view.getLastEvent())?.id).toBe('2');
 		expect(await projectionProxy.view.getCounter()).toBe(2);
+	});
+
+	it('restores event store events through worker batches', async () => {
+
+		const restoreBatchSize = WorkerProxyProjection.RESTORE_BATCH_SIZE;
+		WorkerProxyProjection.RESTORE_BATCH_SIZE = 2;
+
+		try {
+			await projectionProxy.restore(createEventStore([
+				{ id: '1', type: 'somethingHappened' },
+				{ id: '2', type: 'somethingHappened' },
+				{ id: '3', type: 'somethingElseHappened' },
+				{ id: '4', type: 'somethingHappened' },
+				{ id: '5', type: 'somethingHappened' },
+				{ id: '6', type: 'somethingHappened' }
+			]));
+		}
+		finally {
+			WorkerProxyProjection.RESTORE_BATCH_SIZE = restoreBatchSize;
+		}
+
+		expect(await projectionProxy.view.getBatchSizes()).toEqual([2, 2, 1]);
+		expect((await projectionProxy.view.getLastEvent())?.id).toBe('6');
+		expect(await projectionProxy.view.getCounter()).toBe(5);
 	});
 
 	it('restores only events after getLastEvent', async () => {

@@ -18,7 +18,7 @@ Clone and install:
 ```bash
 git clone git@github.com:snatalenko/node-cqrs.git
 cd node-cqrs
-npm install
+npm ci
 ```
 
 ## Project structure
@@ -29,7 +29,9 @@ npm install
 | **src/interfaces/** | TypeScript contracts (`IEvent`, `IAggregate`, `ISaga`, etc.) |
 | **src/in-memory/** | Default in-process implementations |
 | **src/rabbitmq/** | RabbitMQ buses (`node-cqrs/rabbitmq`) |
+| **src/redis/** | Redis-backed views (`node-cqrs/redis`) |
 | **src/sqlite/** | SQLite-backed views (`node-cqrs/sqlite`) |
+| **src/mongodb/** | MongoDB event storage and views (`node-cqrs/mongodb`) |
 | **src/workers/** | Worker thread projections (`node-cqrs/workers`) |
 | src/AbstractAggregate.ts | Base class for aggregates; auto-routes commands to methods by name |
 | src/AbstractProjection.ts | Base class for projections; auto-routes events to methods by name |
@@ -41,9 +43,7 @@ npm install
 | src/EventStore.ts | Facade for `IEventDispatcher`, `IEventStorageReader`, `IIdentifierProvider` |
 | src/SagaEventHandler.ts | Restores saga state, dispatches events to sagas |
 | **tests/unit/** | Jest unit tests; one test suite per class |
-| **tests/integration/rabbitmq/** | Requires local RabbitMQ (see docker-compose.yml) |
-| **tests/integration/sqlite/** | Requires better-sqlite3 |
-| **tests/integration/workers/** | |
+| **tests/integration/** | Integration tests; see [Integration tests](#integration-tests) for setup |
 
 ## Common tasks
 
@@ -53,10 +53,11 @@ npm run build:esm      # Build ESM only (generates types/ and dist/esm/)
 npm run build:cjs      # Build CJS only (generates dist/cjs/)
 npm run cleanup        # Remove dist/, types/, coverage/
 npm test               # Run unit tests
-npm run test:examples  # Run unit tests of examples/user-domain/cjs
+npm run test:examples  # Run unit tests of examples/user-domain-cjs
 npm run test:coverage  # Run tests with coverage report
 npm run test:rabbitmq  # Integration tests (requires RabbitMQ running)
 npm run test:sqlite    # Integration tests (requires better-sqlite3)
+npm run test:mongodb   # Integration tests (requires MongoDB running)
 npm run test:workers   # Integration tests (builds CJS)
 npm run examples       # Run examples with console output
 npm run lint           # Run ESLint
@@ -66,6 +67,12 @@ npm run lint           # Run ESLint
 
 ```bash
 npm test tests/unit/memory/InMemoryMessageBus.test.ts
+```
+
+### Linting a single file
+
+```bash
+npm run lint src/path/to/File.ts
 ```
 
 ## Browser bundle
@@ -98,6 +105,15 @@ Runs Jest tests in `tests/integration/sqlite`:
 npm run test:sqlite
 ```
 
+### Redis
+
+Tests connect to `redis://localhost:6379`. You can start a local Redis via Docker:
+
+```bash
+docker run -d -p 6379:6379 redis:7-alpine
+npm run test:redis
+```
+
 ### RabbitMQ
 
 Tests connect to `amqp://localhost`. You can start a local RabbitMQ via Docker:
@@ -113,6 +129,15 @@ To stop it:
 docker compose -f tests/integration/rabbitmq/docker-compose.yml down
 ```
 
+### MongoDB
+
+Tests connect to `mongodb://localhost:27017`. You can start a local MongoDB via Docker:
+
+```bash
+docker run -d -p 27017:27017 mongo:7
+npm run test:mongodb
+```
+
 ## Code style
 
 Code style and formatting are enforced via [EditorConfig](https://editorconfig.org) ([.editorconfig](.editorconfig)) and [ESLint](https://eslint.org) ([eslint.config.mjs](eslint.config.mjs)).
@@ -126,6 +151,7 @@ Code style and formatting are enforced via [EditorConfig](https://editorconfig.o
 - **Line length:** Warn at 120 chars
 - **Type-only imports:** Use the `type` keyword for imports that are only used as types
 - **`.ts` file extensions in imports:** Always use explicit `.ts` extensions in relative import paths
+- **`readonly` fields:** Mark class fields (including private `#fields`) as `readonly` when they are assigned only in the constructor or at declaration and never reassigned
 
 ## Verification
 

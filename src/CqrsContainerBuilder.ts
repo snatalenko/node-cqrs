@@ -1,4 +1,4 @@
-import { ContainerBuilder, type TypeConfig, type ClassOrFactory } from 'di0';
+import { ContainerBuilder, type ClassOrFactory } from 'di0';
 import { AggregateCommandHandler } from './AggregateCommandHandler.ts';
 import { EventStore } from './EventStore.ts';
 import { SagaEventHandler } from './SagaEventHandler.ts';
@@ -22,10 +22,7 @@ import { assertClass, assertFunction } from './utils/assert.ts';
 export class CqrsContainerBuilder<TContainerInterface extends IContainer = IContainer>
 	extends ContainerBuilder<TContainerInterface> {
 
-	constructor(options?: {
-		types: Readonly<TypeConfig<any>[]>,
-		singletones: object
-	}) {
+	constructor(options?: ConstructorParameters<typeof ContainerBuilder>[0]) {
 		super(options);
 
 		super.addResolver(isIdentifierProvider, 'identifierProvider');
@@ -50,6 +47,8 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 			...isDispatchPipelineProcessor(c.eventStorage) ? [c.eventStorage] : [],
 			...isDispatchPipelineProcessor(c.snapshotStorage) ? [c.snapshotStorage] : []
 		]).as('eventDispatchPipeline');
+
+		super.register(() => [] as Promise<void>[]).as('restorePromises');
 	}
 
 	/** Register command handler, which will be subscribed to commandBus upon instance creation */
@@ -87,7 +86,11 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 			projection.subscribe(container.eventStore);
 
 			// start async projection restoring
-			void projection.restore(container.eventStore);
+			const restoreResult = projection.restore(container.eventStore);
+			if (restoreResult) {
+				restoreResult.catch(() => {}); // surfaced via Promise.all(restorePromises)
+				container.restorePromises?.push(restoreResult);
+			}
 
 			if (exposedViewAlias)
 				return projection.view;

@@ -1,8 +1,9 @@
 import type { IMessage } from './IMessage.ts';
+import type { IMessageMeta } from './IMessageMeta.ts';
 import { isObject } from './isObject.ts';
 
 export interface IMessageHandler {
-	(message: IMessage, meta?: Record<string, any>): unknown | Promise<unknown>
+	(message: IMessage, meta?: IMessageMeta): unknown | Promise<unknown>
 }
 
 export interface IObservable {

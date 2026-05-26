@@ -33,6 +33,11 @@ class ProjectionFixture extends AbstractWorkerProjection {
 		this.view.increment();
 	}
 
+	async _projectBatch(events) {
+		this.view.recordBatchSize(events.length);
+		await super._projectBatch(events);
+	}
+
 	async slowHappened() {
 		await new Promise(resolve => setTimeout(resolve, 50));
 		this.view.increment();

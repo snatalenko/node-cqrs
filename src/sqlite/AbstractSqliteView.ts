@@ -1,7 +1,7 @@
 import type { IContainer } from 'node-cqrs';
 import type { IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces/index.ts';
-import { SqliteViewLocker, SqliteViewLockerParams } from './SqliteViewLocker.ts';
-import { SqliteEventLocker, SqliteEventLockerParams } from './SqliteEventLocker.ts';
+import { SqliteViewLocker, type SqliteViewLockerParams } from './SqliteViewLocker.ts';
+import { SqliteEventLocker, type SqliteEventLockerParams } from './SqliteEventLocker.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
 
 /**

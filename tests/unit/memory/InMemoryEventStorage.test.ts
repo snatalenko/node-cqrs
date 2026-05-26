@@ -236,5 +236,30 @@ describe('InMemoryEventStorage', () => {
 				expect(err.message).toBe('Event batch does not contain `event`');
 			}
 		});
+
+		it('creates a span for process when tracerFactory is provided', async () => {
+			const spans: string[] = [];
+			const tracer = {
+				startSpan: jest.fn((name: string) => {
+					spans.push(name);
+					return {
+						end: jest.fn(),
+						recordException: jest.fn(),
+						setStatus: jest.fn()
+					};
+				})
+			};
+			const tracedStorage = new InMemoryEventStorage({
+				tracerFactory: () => tracer as any
+			} as any);
+
+			await tracedStorage.process([
+				{ event: { id: '1', aggregateId: 'agg-1', aggregateVersion: 0, type: 'Created' } }
+			] as any);
+
+			expect(spans).toContain('InMemoryEventStorage.process');
+			expect(spans).not.toContain('commitEvents');
+		});
+
 	});
 });

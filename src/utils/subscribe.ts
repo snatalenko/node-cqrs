@@ -42,7 +42,6 @@ export function subscribe(
 
 	for (const messageType of unique(subscribeTo)) {
 		const handler = masterHandler || getHandler(observer, messageType);
-		assertFunction(handler, `'${messageType}' handler`);
 
 		if (queueName) {
 			if (!isObservableQueueProvider(observable))

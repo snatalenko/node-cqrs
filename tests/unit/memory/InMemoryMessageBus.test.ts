@@ -41,6 +41,20 @@ describe('InMemoryMessageBus', function () {
 
 	describe('send(command)', function () {
 
+		it('forwards meta to command handler', async () => {
+
+			const meta = { span: { end: jest.fn() } as any };
+			let receivedMeta: any;
+
+			bus.on('doSomething', (_cmd, m) => {
+				receivedMeta = m;
+			});
+
+			await bus.send({ type: 'doSomething' }, meta);
+
+			expect(receivedMeta).toBe(meta);
+		});
+
 		it('validates parameters', async () => {
 			await expect(bus.send(undefined as any)).rejects.toThrow('command must be a valid IMessage');
 			await expect(bus.send({} as any)).rejects.toThrow('command must be a valid IMessage');
@@ -75,7 +89,7 @@ describe('InMemoryMessageBus', function () {
 			const command = { type: 'doSomething', aggregateId: 1, payload: { foo: 'bar' } };
 			await bus.send(command);
 
-			expect(handler).toHaveBeenCalledWith(command);
+			expect(handler).toHaveBeenCalledWith(command, undefined);
 		});
 
 		it('fails if no handlers found', async () => {
@@ -121,9 +135,9 @@ describe('InMemoryMessageBus', function () {
 			expect(sentCommand).toHaveProperty('type', 'doSomething');
 			expect(sentCommand).toHaveProperty('aggregateId', '1');
 			expect(sentCommand).toHaveProperty('context', context);
-			expect(sentCommand).not.toHaveProperty('payload');
+			expect(sentCommand.payload).toBeFalsy();
 
-			await bus.send('doSomething', '1', { context, payload, customParameter } as any);
+			await bus.send('doSomething', '1', { context, payload, customParameter });
 
 			sentCommand = handler.mock.calls.at(-1)?.[0];
 			expect(sentCommand).toHaveProperty('type', 'doSomething');
@@ -143,7 +157,7 @@ describe('InMemoryMessageBus', function () {
 			const command = { type: 'doSomething', aggregateId: '0' };
 			await bus.sendRaw(command);
 
-			expect(handler).toHaveBeenCalledWith(command);
+			expect(handler).toHaveBeenCalledWith(command, undefined);
 		});
 
 		it('validates parameters', async () => {

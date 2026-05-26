@@ -6,6 +6,7 @@ class ViewFixture {
 		lock: 0,
 		unlock: 0
 	};
+	#batchSizes = [];
 	#lastEvent = null;
 	#skipIds = new Set();
 	#readyPromise = Promise.resolve();
@@ -31,6 +32,14 @@ class ViewFixture {
 
 	getCalls() {
 		return { ...this.#calls };
+	}
+
+	recordBatchSize(size) {
+		this.#batchSizes.push(size);
+	}
+
+	getBatchSizes() {
+		return [...this.#batchSizes];
 	}
 
 	isReady() {

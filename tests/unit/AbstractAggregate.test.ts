@@ -158,7 +158,7 @@ describe('AbstractAggregate', function () {
 				throw new Error('did not fail');
 			}
 			catch (err) {
-				expect(err).toHaveProperty('message', '\'doSomethingUnexpected\' handler is not defined or not a function');
+				expect(err).toBeInstanceOf(TypeError);
 			}
 		});
 

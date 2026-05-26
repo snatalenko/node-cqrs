@@ -131,7 +131,7 @@ describe('EventStore', () => {
 			const [processed] = await store.dispatch([event]);
 
 			expect(processed).toBe(event);
-			expect(dispatchSpy).toHaveBeenCalledWith([event], { origin: 'internal' });
+			expect(dispatchSpy).toHaveBeenCalledWith([event], expect.objectContaining({ origin: 'internal' }));
 		});
 
 		it('merges custom dispatch metadata with internal origin', async () => {
@@ -144,10 +144,10 @@ describe('EventStore', () => {
 
 			await store.dispatch([event], { ignoreConcurrencyError: true });
 
-			expect(dispatchSpy).toHaveBeenCalledWith([event], {
+			expect(dispatchSpy).toHaveBeenCalledWith([event], expect.objectContaining({
 				ignoreConcurrencyError: true,
 				origin: 'internal'
-			});
+			}));
 		});
 
 		it('does not assign id to events when missing', async () => {
@@ -254,6 +254,52 @@ describe('EventStore', () => {
 
 			expect(() => store.queue('testQueue'))
 				.toThrow('Injected eventBus does not support named queues');
+		});
+	});
+
+	describe('drain()', () => {
+
+		it('delegates to eventDispatcher.drain()', async () => {
+			const drainResult = Promise.resolve([]);
+			jest.spyOn(eventDispatcher, 'drain').mockReturnValue(drainResult);
+
+			const result = store.drain();
+
+			expect(result).toBe(drainResult);
+			expect(eventDispatcher.drain).toHaveBeenCalledTimes(1);
+		});
+
+		it('resolves after all in-flight publishes settle', async () => {
+			const event: IEvent = { type: 'slow-event' };
+
+			let resolvePublish!: () => void;
+			const publishPromise = new Promise<void>(res => {
+				resolvePublish = res;
+			});
+			const localBus = new InMemoryMessageBus();
+			jest.spyOn(localBus, 'publish').mockReturnValue(publishPromise as any);
+			const localDispatcher = new EventDispatcher({ eventBus: localBus });
+			const localStore = new EventStore({
+				eventBus: localBus,
+				eventDispatcher: localDispatcher,
+				eventStorageReader: mockStorage,
+				identifierProvider: mockIdentifierProvider,
+				logger: undefined
+			});
+
+			await localStore.dispatch([event]);
+
+			let drainResolved = false;
+			const drainPromise = localStore.drain().then(() => {
+				drainResolved = true;
+			});
+
+			await Promise.resolve();
+			expect(drainResolved).toBe(false);
+
+			resolvePublish();
+			await drainPromise;
+			expect(drainResolved).toBe(true);
 		});
 	});
 

@@ -1,12 +1,12 @@
 import type { IContainer } from 'node-cqrs';
-import type { IEventBus, IMessage, IMessageHandler, IObservable, IObservableQueueProvider } from '../interfaces/index.ts';
+import type { IEventBus, IMessage, IMessageHandler, IMessageMeta, IObservable, IObservableQueueProvider } from '../interfaces/index.ts';
 import { assertBoolean, assertDefined, assertNonNegativeInteger, assertString } from '../utils/index.ts';
 import { RabbitMqCommandBus } from './RabbitMqCommandBus.ts';
 import { RabbitMqGateway, type Subscription, type SubscribeResult } from './RabbitMqGateway.ts';
 import { type ConfigProvider, resolveProvider } from './utils/index.ts';
 
 export type RabbitMqEventBusConfig = Partial<Pick<Subscription,
-	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires' | 'deadLetterQueue'>>;
+	'exchange' | 'queueName' | 'ignoreOwn' | 'concurrentLimit' | 'handlerProcessTimeout' | 'queueExpires' | 'deadLetterQueue' | 'messageTtl'>>;
 
 type ResolvedRabbitMqEventBusConfig = RabbitMqEventBusConfig
 	& Required<Pick<RabbitMqEventBusConfig, 'exchange' | 'ignoreOwn'>>;
@@ -20,7 +20,8 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqEventBusConfig>) 
 		handlerProcessTimeout,
 		queueName,
 		queueExpires,
-		deadLetterQueue = false
+		deadLetterQueue = false,
+		messageTtl
 	} = await resolveProvider(provider) ?? {};
 
 	assertString(exchange, 'rabbitMqEventConfig.exchange');
@@ -34,8 +35,19 @@ async function resolveConfig(provider?: ConfigProvider<RabbitMqEventBusConfig>) 
 	if (queueExpires !== undefined)
 		assertNonNegativeInteger(queueExpires, 'rabbitMqEventConfig.queueExpires');
 	assertBoolean(deadLetterQueue, 'rabbitMqEventConfig.deadLetterQueue');
+	if (messageTtl !== undefined)
+		assertNonNegativeInteger(messageTtl, 'rabbitMqEventConfig.messageTtl');
 
-	return { exchange, ignoreOwn, concurrentLimit, handlerProcessTimeout, queueName, queueExpires, deadLetterQueue };
+	return {
+		exchange,
+		ignoreOwn,
+		concurrentLimit,
+		handlerProcessTimeout,
+		queueName,
+		queueExpires,
+		deadLetterQueue,
+		messageTtl
+	};
 }
 
 /**
@@ -85,9 +97,9 @@ export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 	 * Publishes a message to the event exchange.
 	 * The message will be delivered to all subscribers.
 	 */
-	async publish(message: IMessage): Promise<void> {
+	async publish(message: IMessage, meta?: IMessageMeta): Promise<void> {
 		const { exchange } = await this.#resolveConfig();
-		await this.#gateway.publish(exchange, message);
+		await this.#gateway.publish(exchange, message, meta);
 	}
 
 	/**
@@ -133,8 +145,14 @@ export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 			queue = new RabbitMqCommandBus({
 				rabbitMqGateway: this.#gateway,
 				rabbitMqCommandBusConfig: async () => {
-					const { exchange, concurrentLimit, handlerProcessTimeout, queueExpires, deadLetterQueue } =
-						await this.#resolveConfig();
+					const {
+						exchange,
+						concurrentLimit,
+						handlerProcessTimeout,
+						queueExpires,
+						deadLetterQueue,
+						messageTtl
+					} = await this.#resolveConfig();
 
 					return {
 						exchange,
@@ -142,7 +160,8 @@ export class RabbitMqEventBus implements IEventBus, IObservableQueueProvider {
 						concurrentLimit,
 						handlerProcessTimeout,
 						queueExpires,
-						deadLetterQueue
+						deadLetterQueue,
+						messageTtl
 					};
 				}
 			});

@@ -5,7 +5,7 @@ import type {
 import { SagaEventHandler } from './SagaEventHandler.ts';
 import {
 	validateHandlers,
-	getHandler,
+	getOptionalHandler,
 	getClassName,
 	getMessageHandlerNames,
 	assertDefined,
@@ -91,7 +91,7 @@ export abstract class AbstractSaga implements ISaga {
 		if (this.state) {
 			const handler = 'mutate' in this.state ?
 				this.state.mutate :
-				getHandler(this.state, event.type);
+				getOptionalHandler(this.state, event.type);
 			if (handler)
 				handler.call(this.state, event);
 		}
@@ -106,7 +106,7 @@ export abstract class AbstractSaga implements ISaga {
 		if (this.#handling)
 			throw new Error('Another event is being processed, concurrent handling is not allowed');
 
-		const handler = getHandler(this, event.type);
+		const handler = getOptionalHandler(this, event.type);
 		assertFunction(handler, `${event.type} handler`);
 
 		this.#handling = true;

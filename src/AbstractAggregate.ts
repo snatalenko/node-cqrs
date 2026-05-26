@@ -19,6 +19,7 @@ import {
 	getClassName,
 	validateHandlers,
 	getHandler,
+	getOptionalHandler,
 	getMessageHandlerNames,
 	clone,
 	assertDefined,
@@ -87,8 +88,13 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 	/** List of emitted events */
 	protected changes: IEvent[] = [];
 
-	/** Internal aggregate state */
-	protected state: TState | undefined;
+	/**
+	 * Internal aggregate state.
+	 *
+	 * Stateful aggregates must initialize it either by passing `state` to the base
+	 * constructor, declaring a class field, or assigning it in the derived constructor.
+	 */
+	protected declare state: TState;
 
 	/** Command being handled by aggregate */
 	protected command?: ICommand;
@@ -153,7 +159,7 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 		else if (this.state) {
 			const handler = 'mutate' in this.state ?
 				this.state.mutate :
-				getHandler(this.state, event.type);
+				getOptionalHandler(this.state, event.type);
 			if (handler)
 				handler.call(this.state, event);
 		}
@@ -166,8 +172,6 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 		assertMessage(command, 'command');
 
 		const handler = getHandler(this, command.type);
-		if (!handler)
-			throw new Error(`'${command.type}' handler is not defined or not a function`);
 
 		if (this.command)
 			throw new Error('Another command is being processed');
@@ -176,7 +180,8 @@ export abstract class AbstractAggregate<TState extends IMutableState | object | 
 		const eventsOffset = this.changes.length;
 
 		try {
-			await handler.call(this, command.payload, command.context);
+			const { payload, context, ...meta } = command;
+			await handler.call(this, payload, context, meta);
 
 			return this.getUncommittedEvents(eventsOffset);
 		}
