@@ -1,9 +1,11 @@
 node-cqrs/redis
 ===============
 
-> **Experimental** — the Redis module is new and has not been validated in production. APIs may change in minor versions.
+## Overview
 
 Redis-backed persistent views for `node-cqrs`. Use this package when projections need to survive process restarts, share state across instances, or coordinate catch-up restores without duplicate processing.
+
+> **Experimental** — the Redis module is new and has not been validated in production. APIs may change in minor versions.
 
 ## viewModelRedisFactory
 

@@ -415,6 +415,17 @@ interface ISaga {
 Swap implementations by registering different classes in the DI container.
 All modules below implement the same interfaces - pick what fits your deployment.
 
+### Capability Matrix
+
+| Module              | Event storage                                      | Object view storage                                                                 | Projection wiring / execution                    | Message buses                                      |
+| ------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| `node-cqrs`         | `InMemoryEventStorage`, `InMemorySnapshotStorage` | `InMemoryView`, `InMemoryLock`                                                      | `AbstractProjection`                             | `InMemoryMessageBus`                              |
+| `node-cqrs/sqlite`  | `SqliteEventStorage`                              | `SqliteObjectView`, `SqliteObjectStorage`, `SqliteViewLocker`, `SqliteEventLocker`  | `AbstractSqliteObjectProjection`, `AbstractSqliteView` | -                                                 |
+| `node-cqrs/mongodb` | `MongoEventStorage`                               | `MongoObjectView`, `MongoObjectStorage`, `MongoViewLocker`, `MongoEventLocker`      | `AbstractMongoObjectProjection`, `AbstractMongoView` | -                                                 |
+| `node-cqrs/redis`   | -                                                  | `RedisView`, `RedisObjectStorage`, `RedisViewLocker`, `RedisEventLocker`            | `AbstractRedisProjection`                        | -                                                 |
+| `node-cqrs/rabbitmq` | -                                                 | -                                                                                   | -                                                | `RabbitMqGateway`, `RabbitMqCommandBus`, `RabbitMqEventBus` |
+| `node-cqrs/workers` | -                                                  | -                                                                                   | `AbstractWorkerProjection`, `WorkerProxyProjection` | -                                                 |
+
 ### Event Storage
 
 Where aggregate events are persisted and replayed from.

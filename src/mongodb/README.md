@@ -1,6 +1,8 @@
 node-cqrs/mongodb
 =================
 
+## Overview
+
 MongoDB event storage and persistent views for `node-cqrs`.
 
 > **Experimental** - not yet validated in production. APIs may change in minor versions.

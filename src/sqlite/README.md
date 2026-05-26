@@ -1,6 +1,8 @@
 node-cqrs/sqlite
 ================
 
+## Overview
+
 SQLite helpers for `node-cqrs`. Use this package when you want durable event storage, SQLite-backed read models, or a custom SQL view that can restore itself from the event stream.
 
 ## viewModelSqliteDbFactory
