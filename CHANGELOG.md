@@ -1,48 +1,4 @@
-# [1.1.0-beta.4](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.3...v1.1.0-beta.4) (2026-05-04)
-
-
-### Internal Fixes
-
-* Allow disposing worker projection proxy more than once ([768f73a](https://github.com/snatalenko/node-cqrs/commit/768f73a28a8a1a572449122f5046c102435dd5bd))
-
-
-# [1.1.0-beta.3](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.2...v1.1.0-beta.3) (2026-05-04)
-
-
-### Changes
-
-* Deliver events to worker in batches during restoring phase ([212e353](https://github.com/snatalenko/node-cqrs/commit/212e3535b22e6a763a7e0fd1f81036f9ef776ec0))
-
-### Documentation
-
-* Add index.html for publishing with gh pages ([cac88ed](https://github.com/snatalenko/node-cqrs/commit/cac88edaaef1c9457af48fd7477daf8ae624eb43))
-
-
-# [1.1.0-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.1...v1.1.0-beta.2) (2026-04-25)
-
-
-### Changes
-
-* Allow extra command parameters to be passed to AbstractAggregate handler as 3rd argument ([ae11b7e](https://github.com/snatalenko/node-cqrs/commit/ae11b7eb709e658fbc910aadb1376bc8a3fade1b))
-
-### Build System
-
-* Add "rebuild" npm script ([2e5e977](https://github.com/snatalenko/node-cqrs/commit/2e5e9771f760d15cc1cbbc2f68bc680cd6b97de3))
-
-### Internal Fixes
-
-* Make `getHandler` to throw error if handler is not defined ([ecbd73e](https://github.com/snatalenko/node-cqrs/commit/ecbd73e0604c74eb85a946b15a4b872b688da01e))
-
-
-# [1.1.0-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.0-beta.0...v1.1.0-beta.1) (2026-04-23)
-
-
-### Internal Fixes
-
-* Expose `viewLocker` on WorkerProxyProjection ([628fbe3](https://github.com/snatalenko/node-cqrs/commit/628fbe3c7af141443092cdf1fb6c0824c19a6324))
-
-
-# [1.1.0-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0-beta.0) (2026-04-21)
+# [1.1.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0) (2026-05-26)
 
 
 ### Features
@@ -62,6 +18,8 @@
 * Use `Identifier` as id type in redis and sqlite views ([dfbe964](https://github.com/snatalenko/node-cqrs/commit/dfbe9648a8ea8e7e5550aa40e0094ca8af1758ef))
 * Add default queueName for RabbitMqCommandBus ([ee4b5a1](https://github.com/snatalenko/node-cqrs/commit/ee4b5a170e44db6227e76d2ffb1695b6dfaef6e4))
 * Add error handling and drain functionality to event publishing process ([d23ea62](https://github.com/snatalenko/node-cqrs/commit/d23ea621c8a71e2cda4baaf091166534c4f5af2e))
+* Allow extra command parameters to be passed to AbstractAggregate handler as 3rd argument ([ae11b7e](https://github.com/snatalenko/node-cqrs/commit/ae11b7eb709e658fbc910aadb1376bc8a3fade1b))
+* Deliver events to worker in batches during restoring phase ([212e353](https://github.com/snatalenko/node-cqrs/commit/212e3535b22e6a763a7e0fd1f81036f9ef776ec0))
 
 ### Fixes
 
@@ -74,12 +32,21 @@
 * Add detailed documentation for redis and mongodb modules ([72e66f5](https://github.com/snatalenko/node-cqrs/commit/72e66f5508a6df6c0a4a341e752cfab76830478a))
 * Detailed sqlite and rabbitmq instructions ([dd242fd](https://github.com/snatalenko/node-cqrs/commit/dd242fd73018bcfa0583ab1ddd12518c4f3a4777))
 * Minor spec update ([6a2883a](https://github.com/snatalenko/node-cqrs/commit/6a2883adc7b6a7a48bb5f62562c2242826860e89))
+* Add index.html for publishing with gh pages ([cac88ed](https://github.com/snatalenko/node-cqrs/commit/cac88edaaef1c9457af48fd7477daf8ae624eb43))
+* Fix homepage styles cdn ([6ab1ff2](https://github.com/snatalenko/node-cqrs/commit/6ab1ff28246b4496a7fc0b2911c01c8960f9959e))
+
+### Build System
+
+* Add "rebuild" npm script ([2e5e977](https://github.com/snatalenko/node-cqrs/commit/2e5e9771f760d15cc1cbbc2f68bc680cd6b97de3))
 
 ### Internal Fixes
 
 * Rename telemetry metadata span field to `otelSpan`, enhance typings ([2ca2494](https://github.com/snatalenko/node-cqrs/commit/2ca2494625ea8dde11f86fdf078d85c1d848d10a))
 * Compiled AbstractWorkerProjection type compatibility ([bf8ca08](https://github.com/snatalenko/node-cqrs/commit/bf8ca08a09faacb4cbf0da141dd4f09d4647e86e))
 * Enhance message payload typing ([7911acc](https://github.com/snatalenko/node-cqrs/commit/7911accce07cba7c30ae4f5825a6e26e0934b8dc))
+* Expose `viewLocker` on WorkerProxyProjection ([628fbe3](https://github.com/snatalenko/node-cqrs/commit/628fbe3c7af141443092cdf1fb6c0824c19a6324))
+* Make `getHandler` to throw error if handler is not defined ([ecbd73e](https://github.com/snatalenko/node-cqrs/commit/ecbd73e0604c74eb85a946b15a4b872b688da01e))
+* Allow disposing worker projection proxy more than once ([768f73a](https://github.com/snatalenko/node-cqrs/commit/768f73a28a8a1a572449122f5046c102435dd5bd))
 
 
 ## [1.0.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.1...v1.0.2) (2026-04-03)
