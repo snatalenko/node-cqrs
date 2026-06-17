@@ -34,6 +34,7 @@ The core is infrastructure-agnostic, but the heavy lifting for common stacks is 
 - `node-cqrs/mongodb` – Distributed event storage and persistent projection views for multi-process deployments.
 - `node-cqrs/rabbitmq` – Robust, distributed command and event bus.
 - `node-cqrs/redis` – Redis-backed persistent projection views for distributed deployments.
+- `node-cqrs/postgresql` – PostgreSQL-backed abstract views for custom relational read models.
 
 ## Table of Contents
 
@@ -417,14 +418,15 @@ All modules below implement the same interfaces - pick what fits your deployment
 
 ### Capability Matrix
 
-| Module              | Event storage                                      | Object view storage                                                                 | Projection wiring / execution                    | Message buses                                      |
-| ------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
-| `node-cqrs`         | `InMemoryEventStorage`, `InMemorySnapshotStorage` | `InMemoryView`, `InMemoryLock`                                                      | `AbstractProjection`                             | `InMemoryMessageBus`                              |
-| `node-cqrs/sqlite`  | `SqliteEventStorage`                              | `SqliteObjectView`, `SqliteObjectStorage`, `SqliteViewLocker`, `SqliteEventLocker`  | `AbstractSqliteObjectProjection`, `AbstractSqliteView` | -                                                 |
-| `node-cqrs/mongodb` | `MongoEventStorage`                               | `MongoObjectView`, `MongoObjectStorage`, `MongoViewLocker`, `MongoEventLocker`      | `AbstractMongoObjectProjection`, `AbstractMongoView` | -                                                 |
-| `node-cqrs/redis`   | -                                                  | `RedisView`, `RedisObjectStorage`, `RedisViewLocker`, `RedisEventLocker`            | `AbstractRedisProjection`                        | -                                                 |
-| `node-cqrs/rabbitmq` | -                                                 | -                                                                                   | -                                                | `RabbitMqGateway`, `RabbitMqCommandBus`, `RabbitMqEventBus` |
-| `node-cqrs/workers` | -                                                  | -                                                                                   | `AbstractWorkerProjection`, `WorkerProxyProjection` | -                                                 |
+| Module              | Event storage                                      | Object view storage                                                                 | Projection wiring / lifecycle                                             | Message buses                                      |
+| ------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------- |
+| `node-cqrs`         | `InMemoryEventStorage`, `InMemorySnapshotStorage` | `InMemoryView`                                                                      | `AbstractProjection`, `InMemoryLock`                                      | `InMemoryMessageBus`                              |
+| `node-cqrs/sqlite`  | `SqliteEventStorage`                              | `SqliteObjectView`, `SqliteObjectStorage`, `AbstractSqliteObjectProjection`         | `AbstractSqliteView`, `SqliteViewLocker`, `SqliteEventLocker`             | -                                                 |
+| `node-cqrs/mongodb` | `MongoEventStorage`                               | `MongoObjectView`, `MongoObjectStorage`, `AbstractMongoObjectProjection`            | `AbstractMongoView`, `MongoViewLocker`, `MongoEventLocker`                | -                                                 |
+| `node-cqrs/redis`   | -                                                  | `RedisView`, `RedisObjectStorage`, `AbstractRedisProjection`                        | `RedisViewLocker`, `RedisEventLocker`                                     | -                                                 |
+| `node-cqrs/postgresql` | -                                               | `PostgresqlObjectView`, `PostgresqlObjectStorage`, `AbstractPostgresqlObjectProjection` | `AbstractPostgresqlView`, `PostgresqlViewLocker`, `PostgresqlEventLocker` | -                                                 |
+| `node-cqrs/rabbitmq` | -                                                 | -                                                                                   | -                                                                         | `RabbitMqGateway`, `RabbitMqCommandBus`, `RabbitMqEventBus` |
+| `node-cqrs/workers` | -                                                  | -                                                                                   | `AbstractWorkerProjection`, `WorkerProxyProjection`                       | -                                                 |
 
 ### Event Storage
 
@@ -439,7 +441,7 @@ Where aggregate events are persisted and replayed from.
 ### Read Model
 
 Where projections store and query their read-side state.
-Each persistent backend provides the same layered set of building blocks:
+Persistent view backends are built from the following layers. Not every backend implements every layer.
 
 | Layer               | Purpose                                                                                          |
 | ------------------- | ------------------------------------------------------------------------------------------------ |
@@ -498,6 +500,21 @@ See [src/mongodb](src/mongodb) for additional documentation, and [examples/mongo
 
 See [src/redis](src/redis) for additional documentation, and [examples/redis](examples/redis/index.ts) for runnable projection examples.
 
+#### PostgreSQL (`node-cqrs/postgresql`, peer dep: `pg`)
+
+> **Experimental** - not yet validated in production. APIs may change in minor versions.
+
+| Class                     | Role                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `PostgresqlObjectStorage` | Key/value object storage backed by PostgreSQL `jsonb` rows                            |
+| `PostgresqlViewLocker`    | Prevents concurrent schema-migration rebuilds; auto-prolongs lock via token + TTL row |
+| `PostgresqlEventLocker`   | Event deduplication and last-event checkpoint                                         |
+| `PostgresqlObjectView`    | Composite view combining object storage, view locking, and event checkpointing        |
+| `AbstractPostgresqlObjectProjection` | Base projection wired to `PostgresqlObjectView`                            |
+| `AbstractPostgresqlView`  | Base class for custom relational PostgreSQL views with view and event locks embedded  |
+
+See [src/postgresql](src/postgresql) for additional documentation, and [examples/postgresql](examples/postgresql/index.ts) for a runnable projection example.
+
 ### Message Buses
 
 How commands and events move between producers and consumers.
@@ -543,6 +560,7 @@ See [examples/telemetry/index.ts](examples/telemetry/index.ts) for a full workin
 - [examples/workers-projection](examples/workers-projection) - worker thread projection
 - [examples/mongodb-eventstore](examples/mongodb-eventstore/index.ts) - MongoDB event storage with DI container and manual wiring
 - [examples/mongodb-views](examples/mongodb-views/index.ts) - MongoDB-backed projection views with object storage and locking
+- [examples/postgresql](examples/postgresql/index.ts) - PostgreSQL-backed custom relational projection view
 - [examples/telemetry](examples/telemetry/index.ts) - OpenTelemetry tracing with multiple exporters
 
 TS examples can be run with NodeJS 24+ without transpiling.

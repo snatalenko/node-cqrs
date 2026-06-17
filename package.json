@@ -1,7 +1,7 @@
 {
   "name": "node-cqrs",
   "version": "1.2.0-beta.0",
-  "description": "TypeScript CQRS/Event Sourcing toolkit for Node.js with DI, sagas, projections, and optional Worker, RabbitMQ, and SQLite adapters",
+  "description": "TypeScript CQRS/Event Sourcing toolkit for Node.js with DI, sagas, projections, and optional Worker, RabbitMQ, SQLite, MongoDB, and PostgreSQL adapters",
   "type": "module",
   "keywords": [
     "cqrs",
@@ -19,7 +19,9 @@
     "worker-threads",
     "rabbitmq",
     "sqlite",
-    "redis"
+    "mongodb",
+    "redis",
+    "postgresql"
   ],
   "repository": {
     "type": "git",
@@ -62,6 +64,11 @@
       "types": "./dist/types/mongodb/index.d.ts",
       "require": "./dist/cjs/mongodb/index.js",
       "import": "./dist/esm/mongodb/index.js"
+    },
+    "./postgresql": {
+      "types": "./dist/types/postgresql/index.d.ts",
+      "require": "./dist/cjs/postgresql/index.js",
+      "import": "./dist/esm/postgresql/index.js"
     }
   },
   "directories": {
@@ -87,6 +94,7 @@
     "example:redis": "node examples/redis/index.ts",
     "example:mongodb-eventstore": "node examples/mongodb-eventstore/index.ts",
     "example:mongodb-views": "node examples/mongodb-views/index.ts",
+    "example:postgresql": "node examples/postgresql/index.ts",
     "example:browser": "npm run build:browser && echo \"\nOpen ./examples/browser/index.html in your browser (check DevTools console)\n\"",
     "pretest:examples": "npm run build:cjs",
     "test:examples": "jest --roots='<rootDir>/examples'",
@@ -95,6 +103,7 @@
     "test:sqlite": "jest --verbose --roots='<rootDir>/tests/integration/sqlite'",
     "test:redis": "jest --verbose --roots='<rootDir>/tests/integration/redis'",
     "test:mongodb": "jest --verbose --roots='<rootDir>/tests/integration/mongodb'",
+    "test:postgresql": "jest --verbose --roots='<rootDir>/tests/integration/postgresql'",
     "pretest:workers": "npm run build:cjs",
     "test:workers": "jest --verbose --roots='<rootDir>/tests/integration/workers'",
     "changelog": "conventional-changelog -n ./scripts/changelog/index.cjs -r 0 > CHANGELOG.md",
@@ -135,10 +144,10 @@
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-terser": "^1.0.0",
     "@types/amqplib": "^0.10.8",
-    "ioredis": "^5.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^29.5.14",
     "@types/node": "^25.5.0",
+    "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.29.0",
     "@typescript-eslint/parser": "^8.29.0",
     "amqplib": "^0.10.9",
@@ -148,8 +157,10 @@
     "eslint": "^9.39.4",
     "eslint-plugin-jest": "^28.14.0",
     "globals": "^17.4.0",
+    "ioredis": "^5.0.0",
     "jest": "^29.7.0",
     "mongodb": "^6.21.0",
+    "pg": "^8.21.0",
     "rollup": "^4.59.0",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
@@ -162,7 +173,8 @@
     "better-sqlite3": "^12.6.2",
     "comlink": "^4.4.2",
     "ioredis": "^5.0.0",
-    "mongodb": "^6.0.0"
+    "mongodb": "^6.0.0",
+    "pg": "^8.0.0"
   },
   "peerDependenciesMeta": {
     "better-sqlite3": {
@@ -178,6 +190,9 @@
       "optional": true
     },
     "mongodb": {
+      "optional": true
+    },
+    "pg": {
       "optional": true
     },
     "@opentelemetry/api": {
