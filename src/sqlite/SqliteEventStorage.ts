@@ -26,11 +26,7 @@ type EventRow = {
 	data: string;
 	meta: string | null;
 	rowid: number;
-};
-
-type SagaRefRow = {
-	saga_descriptor: string;
-	origin_id: Buffer;
+	saga_origins: string | null;
 };
 
 type RowidRow = {
@@ -43,6 +39,19 @@ function extractMeta(envelope: DispatchPipelineEnvelope): Record<string, unknown
 		return null;
 
 	return rest;
+}
+
+function reconstructEvent(row: EventRow): Readonly<IEvent> {
+	const data = JSON.parse(row.data);
+	const event: IEvent = {
+		id: bufferToGuid(row.id),
+		...data
+	};
+
+	if (row.saga_origins)
+		event.sagaOrigins = JSON.parse(row.saga_origins) as Record<string, string>;
+
+	return event;
 }
 
 export class SqliteEventStorage extends AbstractSqliteAccessor implements
@@ -66,7 +75,6 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 		originRowid: number;
 		beforeRowid: number;
 	}], EventRow>;
-	#getSagaRefsQuery!: Statement<[Buffer], SagaRefRow>;
 	#getEventsByTypesQuery!: Statement<[number], EventRow>;
 
 	protected initialize(db: Database) {
@@ -121,8 +129,23 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 				ORDER BY rowid DESC
 				LIMIT 1
 			)
-			SELECT e.id, e.aggregate_id, e.aggregate_version, e.type, e.data, e.meta, e.rowid
-			FROM tbl_events e, tail
+			SELECT
+				e.id,
+				e.aggregate_id,
+				e.aggregate_version,
+				e.type,
+				e.data,
+				e.meta,
+				e.rowid,
+				NULLIF(
+					json_group_object(sr.saga_descriptor, lower(hex(sr.origin_id)))
+						FILTER (WHERE sr.saga_descriptor IS NOT NULL),
+					'{}'
+				) AS saga_origins
+			FROM tbl_events e
+			CROSS JOIN tail
+			LEFT JOIN tbl_event_sagas sr
+				ON sr.event_id = e.id
 			WHERE e.aggregate_id = @aggregateId
 				AND (@afterVersion IS NULL OR e.aggregate_version > @afterVersion)
 				AND (
@@ -130,32 +153,57 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 					OR e.type IN (SELECT value FROM json_each(@eventTypes))
 					OR (@tail = 'last' AND e.id = tail.tail_id)
 				)
+			GROUP BY e.id, e.aggregate_id, e.aggregate_version, e.type, e.data, e.meta, e.rowid
 			ORDER BY e.rowid
 		`);
 
 		this.#getSagaEventsQuery = db.prepare(`
-			SELECT e.id, e.aggregate_id, e.aggregate_version, e.type, e.data, e.meta, e.rowid
+			SELECT
+				e.id,
+				e.aggregate_id,
+				e.aggregate_version,
+				e.type,
+				e.data,
+				e.meta,
+				e.rowid,
+				NULLIF(
+					json_group_object(all_sr.saga_descriptor, lower(hex(all_sr.origin_id)))
+						FILTER (WHERE all_sr.saga_descriptor IS NOT NULL),
+					'{}'
+				) AS saga_origins
 			FROM tbl_events e
 			LEFT JOIN tbl_event_sagas sr
 				ON sr.event_id = e.id
 				AND sr.saga_descriptor = @sagaDescriptor
 				AND sr.origin_id = @originId
+			LEFT JOIN tbl_event_sagas all_sr
+				ON all_sr.event_id = e.id
 			WHERE e.rowid >= @originRowid AND e.rowid < @beforeRowid
 				AND (e.id = @originId OR sr.event_id IS NOT NULL)
+			GROUP BY e.id, e.aggregate_id, e.aggregate_version, e.type, e.data, e.meta, e.rowid
 			ORDER BY e.rowid
 		`);
 
-		this.#getSagaRefsQuery = db.prepare(`
-			SELECT saga_descriptor, origin_id
-			FROM tbl_event_sagas
-			WHERE event_id = ?
-		`);
-
 		this.#getEventsByTypesQuery = db.prepare(`
-			SELECT id, aggregate_id, aggregate_version, type, data, meta, rowid
-			FROM tbl_events
-			WHERE rowid > ?
-			ORDER BY rowid
+			SELECT
+				e.id,
+				e.aggregate_id,
+				e.aggregate_version,
+				e.type,
+				e.data,
+				e.meta,
+				e.rowid,
+				NULLIF(
+					json_group_object(sr.saga_descriptor, lower(hex(sr.origin_id)))
+						FILTER (WHERE sr.saga_descriptor IS NOT NULL),
+					'{}'
+				) AS saga_origins
+			FROM tbl_events e
+			LEFT JOIN tbl_event_sagas sr
+				ON sr.event_id = e.id
+			WHERE e.rowid > ?
+			GROUP BY e.id, e.aggregate_id, e.aggregate_version, e.type, e.data, e.meta, e.rowid
+			ORDER BY e.rowid
 		`);
 
 	}
@@ -222,7 +270,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 		});
 
 		for (const row of rows)
-			yield this.#reconstructEvent(row);
+			yield reconstructEvent(row);
 	}
 
 	async* getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
@@ -250,7 +298,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 		});
 
 		for (const row of rows)
-			yield this.#reconstructEvent(row);
+			yield reconstructEvent(row);
 	}
 
 	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
@@ -273,7 +321,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 
 		for (const row of rows) {
 			if (eventTypes.includes(row.type))
-				yield this.#reconstructEvent(row);
+				yield reconstructEvent(row);
 		}
 	}
 
@@ -294,30 +342,4 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 		return batch;
 	}
 
-	#getSagaOriginsForEvent(eventIdBuf: Buffer): Record<string, string> {
-		const refs = this.#getSagaRefsQuery.all(eventIdBuf);
-		if (refs.length === 0)
-			return {};
-
-		const sagaOrigins: Record<string, string> = {};
-		for (const ref of refs)
-			sagaOrigins[ref.saga_descriptor] = bufferToGuid(ref.origin_id);
-
-		return sagaOrigins;
-	}
-
-	#reconstructEvent(row: EventRow): Readonly<IEvent> {
-		const data = JSON.parse(row.data);
-		const sagaOrigins = this.#getSagaOriginsForEvent(row.id);
-
-		const event: IEvent = {
-			id: bufferToGuid(row.id),
-			...data
-		};
-
-		if (Object.keys(sagaOrigins).length > 0)
-			event.sagaOrigins = sagaOrigins;
-
-		return event;
-	}
 }
