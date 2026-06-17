@@ -1,5 +1,5 @@
 /**
- * PostgreSQL views example: persistent users projection backed by PostgreSQL.
+ * PostgreSQL example: persistent event storage and users projection backed by PostgreSQL.
  *
  * Requires a running PostgreSQL instance. For example:
  *   docker run --name node-cqrs-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16
@@ -11,8 +11,12 @@
  *   npm run example:postgresql
  */
 import { Pool } from 'pg';
-import { ContainerBuilder, EventIdAugmentor, InMemoryEventStorage, type IContainer } from '../../src/index.ts';
-import { AbstractPostgresqlObjectProjection, type PostgresqlObjectView } from '../../src/postgresql/index.ts';
+import { ContainerBuilder, EventIdAugmentor, type IContainer } from '../../src/index.ts';
+import {
+	AbstractPostgresqlObjectProjection,
+	PostgresqlEventStorage,
+	type PostgresqlObjectView
+} from '../../src/postgresql/index.ts';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
 import type {
 	CreateUserCommandPayload,
@@ -23,6 +27,12 @@ import type {
 } from '../user-domain-ts/messages.ts';
 
 // --- Projection (PostgreSQL-backed object view) ---
+
+const EVENTS_TABLE = 'example_pg_events';
+const EVENT_SAGAS_TABLE = 'example_pg_event_sagas';
+const EVENT_LOCKS_TABLE = 'example_pg_event_locks';
+const VIEW_LOCKS_TABLE = 'example_pg_view_locks';
+const USERS_TABLE = 'example_pg_users_1';
 
 class UsersProjection extends AbstractPostgresqlObjectProjection<UserRecord> {
 	static override get tableName() {
@@ -37,8 +47,8 @@ class UsersProjection extends AbstractPostgresqlObjectProjection<UserRecord> {
 		super({
 			viewModelPostgresqlDbFactory,
 			logger,
-			eventLockTableName: 'example_pg_event_locks',
-			viewLockTableName: 'example_pg_view_locks'
+			eventLockTableName: EVENT_LOCKS_TABLE,
+			viewLockTableName: VIEW_LOCKS_TABLE
 		});
 	}
 
@@ -67,37 +77,54 @@ const connectionString = process.env.DATABASE_URL ?? 'postgres://postgres:postgr
 const pool = new Pool({ connectionString });
 await pool.query('SELECT 1');
 
-const builder = new ContainerBuilder<MyContainer>();
+async function dropExampleTables() {
+	await pool.query(`DROP TABLE IF EXISTS ${USERS_TABLE}`);
+	await pool.query(`DROP TABLE IF EXISTS ${EVENT_LOCKS_TABLE}`);
+	await pool.query(`DROP TABLE IF EXISTS ${VIEW_LOCKS_TABLE}`);
+	await pool.query(`DROP TABLE IF EXISTS ${EVENT_SAGAS_TABLE}`);
+	await pool.query(`DROP TABLE IF EXISTS ${EVENTS_TABLE}`);
+}
 
-builder.registerInstance(async () => pool, 'viewModelPostgresqlDbFactory');
-builder.register(InMemoryEventStorage);
-builder.register(EventIdAugmentor).as('eventIdAugmenter'); // stamps event.id, required for IEventLocker checkpoints
-builder.registerAggregate(UserAggregate);
-builder.registerProjection(UsersProjection, 'usersView');
+try {
+	await dropExampleTables();
 
-const { commandBus, usersView, eventStore, restorePromises } = builder.container();
-await Promise.all(restorePromises ?? []);
+	const builder = new ContainerBuilder<MyContainer>();
 
-// --- Run ---
+	builder.registerInstance(async () => pool, 'viewModelPostgresqlDbFactory');
+	builder.registerInstance({
+		eventsTableName: EVENTS_TABLE,
+		eventSagasTableName: EVENT_SAGAS_TABLE
+	}, 'postgresqlEventStorageConfig');
+	builder.register(PostgresqlEventStorage);
+	builder.register(EventIdAugmentor).as('eventIdAugmenter'); // stamps event.id, required for stored events and checkpoints
+	builder.registerAggregate(UserAggregate);
+	builder.registerProjection(UsersProjection, 'usersView');
 
-const [userCreated] = await commandBus.send('createUser', undefined, {
-	payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload
-});
+	const { commandBus, usersView, eventStore, restorePromises } = builder.container();
+	await Promise.all(restorePromises ?? []);
 
-const userId = String(userCreated.aggregateId);
-await eventStore.drain();
-console.log('Created user:', await usersView.get(userId)); // { username: 'alice' }
+	// --- Run ---
 
-await commandBus.send('renameUser', userId, {
-	payload: { username: 'alice-smith' } satisfies RenameUserCommandPayload
-});
+	const [userCreated] = await commandBus.send('createUser', undefined, {
+		payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload
+	});
 
-await eventStore.drain();
-console.log('Renamed user:', await usersView.get(userId)); // { username: 'alice-smith' }
+	const userId = String(userCreated.aggregateId);
+	await eventStore.drain();
+	console.log('Created user:', await usersView.get(userId)); // { username: 'alice' }
 
-// --- Cleanup ---
+	await commandBus.send('renameUser', userId, {
+		payload: { username: 'alice-smith' } satisfies RenameUserCommandPayload
+	});
 
-await pool.query('DROP TABLE IF EXISTS example_pg_users_1');
-await pool.query('DROP TABLE IF EXISTS example_pg_event_locks');
-await pool.query('DROP TABLE IF EXISTS example_pg_view_locks');
-await pool.end();
+	await eventStore.drain();
+	console.log('Renamed user:', await usersView.get(userId)); // { username: 'alice-smith' }
+
+	await commandBus.send('renameUser', userId, {
+		payload: { username: 'alice-smith' } satisfies RenameUserCommandPayload
+	}).catch(err => console.log('Expected error:', err.message)); // Username is already 'alice-smith'
+}
+finally {
+	await dropExampleTables();
+	await pool.end();
+}

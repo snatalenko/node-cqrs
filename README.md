@@ -34,7 +34,7 @@ The core is infrastructure-agnostic, but the heavy lifting for common stacks is 
 - `node-cqrs/mongodb` – Distributed event storage and persistent projection views for multi-process deployments.
 - `node-cqrs/rabbitmq` – Robust, distributed command and event bus.
 - `node-cqrs/redis` – Redis-backed persistent projection views for distributed deployments.
-- `node-cqrs/postgresql` – PostgreSQL-backed abstract views for custom relational read models.
+- `node-cqrs/postgresql` – PostgreSQL-backed event storage and persistent views for custom relational read models.
 
 ## Table of Contents
 
@@ -424,7 +424,7 @@ All modules below implement the same interfaces - pick what fits your deployment
 | `node-cqrs/sqlite`  | `SqliteEventStorage`                              | `SqliteObjectView`, `SqliteObjectStorage`, `AbstractSqliteObjectProjection`         | `AbstractSqliteView`, `SqliteViewLocker`, `SqliteEventLocker`             | -                                                 |
 | `node-cqrs/mongodb` | `MongoEventStorage`                               | `MongoObjectView`, `MongoObjectStorage`, `AbstractMongoObjectProjection`            | `AbstractMongoView`, `MongoViewLocker`, `MongoEventLocker`                | -                                                 |
 | `node-cqrs/redis`   | -                                                  | `RedisView`, `RedisObjectStorage`, `AbstractRedisProjection`                        | `RedisViewLocker`, `RedisEventLocker`                                     | -                                                 |
-| `node-cqrs/postgresql` | -                                               | `PostgresqlObjectView`, `PostgresqlObjectStorage`, `AbstractPostgresqlObjectProjection` | `AbstractPostgresqlView`, `PostgresqlViewLocker`, `PostgresqlEventLocker` | -                                                 |
+| `node-cqrs/postgresql` | `PostgresqlEventStorage`                       | `PostgresqlObjectView`, `PostgresqlObjectStorage`, `AbstractPostgresqlObjectProjection` | `AbstractPostgresqlView`, `PostgresqlViewLocker`, `PostgresqlEventLocker` | -                                                 |
 | `node-cqrs/rabbitmq` | -                                                 | -                                                                                   | -                                                                         | `RabbitMqGateway`, `RabbitMqCommandBus`, `RabbitMqEventBus` |
 | `node-cqrs/workers` | -                                                  | -                                                                                   | `AbstractWorkerProjection`, `WorkerProxyProjection`                       | -                                                 |
 
@@ -437,6 +437,7 @@ Where aggregate events are persisted and replayed from.
 | `InMemoryEventStorage` | `node-cqrs`         | -                | Dev/test only; data lost on restart ([example](examples/user-domain-ts/index.ts)) |
 | `SqliteEventStorage`   | `node-cqrs/sqlite`  | `better-sqlite3` | Embedded, single-process ([example](examples/sqlite/index.ts))                    |
 | `MongoEventStorage`    | `node-cqrs/mongodb` | `mongodb`        | Distributed, multi-process ([example](examples/mongodb-eventstore/index.ts))      |
+| `PostgresqlEventStorage` | `node-cqrs/postgresql` | `pg`          | Distributed, multi-process ([example](examples/postgresql/index.ts))              |
 
 ### Read Model
 
@@ -506,6 +507,7 @@ See [src/redis](src/redis) for additional documentation, and [examples/redis](ex
 
 | Class                     | Role                                                                                  |
 | ------------------------- | ------------------------------------------------------------------------------------- |
+| `PostgresqlEventStorage`  | Transactional PostgreSQL event storage with saga refs and optimistic concurrency      |
 | `PostgresqlObjectStorage` | Key/value object storage backed by PostgreSQL `jsonb` rows                            |
 | `PostgresqlViewLocker`    | Prevents concurrent schema-migration rebuilds; auto-prolongs lock via token + TTL row |
 | `PostgresqlEventLocker`   | Event deduplication and last-event checkpoint                                         |
@@ -560,7 +562,7 @@ See [examples/telemetry/index.ts](examples/telemetry/index.ts) for a full workin
 - [examples/workers-projection](examples/workers-projection) - worker thread projection
 - [examples/mongodb-eventstore](examples/mongodb-eventstore/index.ts) - MongoDB event storage with DI container and manual wiring
 - [examples/mongodb-views](examples/mongodb-views/index.ts) - MongoDB-backed projection views with object storage and locking
-- [examples/postgresql](examples/postgresql/index.ts) - PostgreSQL-backed custom relational projection view
+- [examples/postgresql](examples/postgresql/index.ts) - PostgreSQL-backed event storage and projection view
 - [examples/telemetry](examples/telemetry/index.ts) - OpenTelemetry tracing with multiple exporters
 
 TS examples can be run with NodeJS 24+ without transpiling.

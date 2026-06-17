@@ -4,6 +4,7 @@ export * from './AbstractPostgresqlAccessor.ts';
 export * from './AbstractPostgresqlObjectProjection.ts';
 export * from './AbstractPostgresqlView.ts';
 export * from './PostgresqlConnection.ts';
+export * from './PostgresqlEventStorage.ts';
 export * from './PostgresqlEventLocker.ts';
 export * from './PostgresqlObjectStorage.ts';
 export * from './PostgresqlObjectView.ts';

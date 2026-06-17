@@ -3,7 +3,7 @@ node-cqrs/postgresql
 
 ## Overview
 
-PostgreSQL-backed persistent views for `node-cqrs`. Use this package when projections need durable read models with restart-safe checkpoints, readiness gates, and distributed rebuild locking.
+PostgreSQL-backed event storage and persistent views for `node-cqrs`. Use this package when aggregates and projections need durable storage with transaction-safe writes, restart-safe checkpoints, readiness gates, and distributed rebuild locking.
 
 > **Experimental** - not yet validated in production. APIs may change in minor versions.
 
@@ -12,6 +12,8 @@ This module does not require a specific PostgreSQL client class. Pass any object
 ## Table of Contents
 
 - [viewModelPostgresqlDbFactory](#viewmodelpostgresqldbfactory)
+- [PostgreSQL event storage](#postgresql-event-storage)
+  - [PostgresqlEventStorage](#postgresqleventstorage)
 - [PostgreSQL views](#postgresql-views)
   - [AbstractPostgresqlObjectProjection](#abstractpostgresqlobjectprojection)
   - [PostgresqlObjectView](#postgresqlobjectview)
@@ -24,7 +26,7 @@ This module does not require a specific PostgreSQL client class. Pass any object
 
 ## viewModelPostgresqlDbFactory
 
-Register `viewModelPostgresqlDbFactory` to provide the PostgreSQL connection used by PostgreSQL-backed views and lockers. The factory can be async, which is useful when credentials or connection settings must be loaded before connecting.
+Register `viewModelPostgresqlDbFactory` to provide the PostgreSQL connection used by PostgreSQL-backed event storage, views, and lockers. The factory can be async, which is useful when credentials or connection settings must be loaded before connecting.
 
 ```ts
 import { Pool } from 'pg';
@@ -45,6 +47,33 @@ Alternatively, register a query-capable connection directly as `viewModelPostgre
 ```ts
 builder.registerInstance(pool, 'viewModelPostgresqlDb');
 ```
+
+## PostgreSQL event storage
+
+### PostgresqlEventStorage
+
+`PostgresqlEventStorage` implements event storage, event reads, generated ids, and dispatch pipeline processing. It stores events in insertion order, records saga origin references, and wraps each batch commit in a PostgreSQL transaction.
+
+```ts
+import { CqrsContainerBuilder } from 'node-cqrs';
+import { PostgresqlEventStorage } from 'node-cqrs/postgresql';
+
+const builder = new CqrsContainerBuilder();
+
+builder.registerInstance(pool, 'viewModelPostgresqlDb');
+builder.register(PostgresqlEventStorage).as('eventStorage');
+builder.register(PostgresqlEventStorage).as('eventStorageReader');
+builder.register(PostgresqlEventStorage).as('identifierProvider');
+```
+
+For aggregate concurrency, `PostgresqlEventStorage` enforces duplicate `(aggregateId, aggregateVersion)` detection with a partial unique index. Normal writes store `check_concurrency = true`; writes with `ignoreConcurrencyError: true` store `check_concurrency = false`, leaving them outside that unique index while still committing in the same transaction.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `viewModelPostgresqlDb` | `PostgresqlConnection` | Either this or factory | Query-capable PostgreSQL connection |
+| `viewModelPostgresqlDbFactory` | `() => Promise<PostgresqlConnection> \| PostgresqlConnection` | Either this or connection | Lazy factory for the connection |
+| `postgresqlEventStorageConfig.eventsTableName` | `string` | No | Event table name; defaults to `PostgresqlEventStorage.EVENTS_TABLE` |
+| `postgresqlEventStorageConfig.eventSagasTableName` | `string` | No | Saga reference table name; defaults to `PostgresqlEventStorage.EVENT_SAGAS_TABLE` |
 
 ## PostgreSQL views
 
@@ -294,4 +323,4 @@ PostgresqlEventLocker.DEFAULT_VIEW_LOCK_TABLE = 'my_view_locks';   // default: '
 
 ## Examples
 
-See [examples/postgresql/index.ts](../../examples/postgresql/index.ts) for a runnable example using `pg.Pool` and `AbstractPostgresqlObjectProjection`.
+See [examples/postgresql/index.ts](../../examples/postgresql/index.ts) for a runnable example using `PostgresqlEventStorage`, `pg.Pool`, and `AbstractPostgresqlObjectProjection`.

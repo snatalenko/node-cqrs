@@ -16,10 +16,29 @@ type ObjectRecord = {
 	version: number;
 };
 
+type StoredEvent = {
+	position: number;
+	id: string;
+	aggregateId: string | null;
+	aggregateVersion: number | null;
+	type: string;
+	data: unknown;
+	meta: unknown;
+	checkConcurrency: boolean;
+};
+
+type EventSagaRef = {
+	sagaDescriptor: string;
+	originId: string;
+	eventId: string;
+};
+
 type Snapshot = {
 	viewLocks: Map<string, ViewLockRow>;
 	eventLocks: Map<string, EventLockRow>;
 	objectRecords: Map<string, ObjectRecord>;
+	events: StoredEvent[];
+	eventSagaRefs: EventSagaRef[];
 };
 
 export class MockPostgresqlConnection implements PostgresqlConnection {
@@ -27,10 +46,13 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 	readonly viewLocks = new Map<string, ViewLockRow>();
 	readonly eventLocks = new Map<string, EventLockRow>();
 	readonly objectRecords = new Map<string, ObjectRecord>();
+	readonly events: StoredEvent[] = [];
+	readonly eventSagaRefs: EventSagaRef[] = [];
 	readonly transactionLog: string[] = [];
 	connectCount = 0;
 	releaseCount = 0;
 	forceObjectUpdateConflict = false;
+	#nextEventPosition = 1;
 	#transactionSnapshot: Snapshot | undefined;
 
 	async connect() {
@@ -64,6 +86,27 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 
 		if (sql.startsWith('create '))
 			return this.result();
+
+		if (sql.includes('insert into') && sql.includes('aggregate_version') && sql.includes('meta'))
+			return this.insertEvent(values);
+
+		if (sql.includes('insert into') && sql.includes('saga_descriptor') && sql.includes('origin_id'))
+			return this.insertEventSagaRef(values);
+
+		if (sql.startsWith('with bounds'))
+			return this.getSagaEvents(values);
+
+		if (sql.startsWith('with tail'))
+			return this.getAggregateEvents(values);
+
+		if (sql.startsWith('select position') && sql.includes('where id = $1'))
+			return this.getEventPosition(values);
+
+		if (sql.startsWith('select saga_descriptor') && sql.includes('origin_id') && sql.includes('where event_id = $1'))
+			return this.getEventSagaRefs(values);
+
+		if (sql.startsWith('select e.id') && sql.includes('type = any'))
+			return this.getEventsByTypes(values);
 
 		if (sql.includes('insert into') && sql.includes('locked_till') && values.length === 4)
 			return this.acquireViewLock(values);
@@ -112,7 +155,9 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 		this.#transactionSnapshot = {
 			viewLocks: MockPostgresqlConnection.cloneViewLocks(this.viewLocks),
 			eventLocks: MockPostgresqlConnection.cloneEventLocks(this.eventLocks),
-			objectRecords: MockPostgresqlConnection.cloneObjectRecords(this.objectRecords)
+			objectRecords: MockPostgresqlConnection.cloneObjectRecords(this.objectRecords),
+			events: MockPostgresqlConnection.cloneEvents(this.events),
+			eventSagaRefs: this.eventSagaRefs.map(ref => ({ ...ref }))
 		};
 
 		return this.result();
@@ -132,6 +177,9 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 			this.replaceMap(this.viewLocks, this.#transactionSnapshot.viewLocks);
 			this.replaceMap(this.eventLocks, this.#transactionSnapshot.eventLocks);
 			this.replaceMap(this.objectRecords, this.#transactionSnapshot.objectRecords);
+			this.events.splice(0, this.events.length, ...this.#transactionSnapshot.events);
+			this.eventSagaRefs.splice(0, this.eventSagaRefs.length, ...this.#transactionSnapshot.eventSagaRefs);
+			this.#nextEventPosition = this.events.reduce((max, event) => Math.max(max, event.position), 0) + 1;
 		}
 
 		this.#transactionSnapshot = undefined;
@@ -226,6 +274,148 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 		return this.result(1);
 	}
 
+	private insertEvent(values: readonly unknown[]) {
+		if (this.events.some(event => event.id === values[0])) {
+			throw Object.assign(new Error('duplicate key value violates unique constraint'), {
+				code: '23505',
+				constraint: 'tbl_events_id_key'
+			});
+		}
+
+		const checkConcurrency = values[6] !== false;
+		if (
+			checkConcurrency &&
+			values[1] !== null &&
+			values[2] !== null &&
+			this.events.some(event =>
+				event.checkConcurrency &&
+				event.aggregateId === String(values[1]) &&
+				event.aggregateVersion === values[2])
+		) {
+			throw Object.assign(new Error('duplicate key value violates unique constraint'), {
+				code: '23505',
+				constraint: 'tbl_events_aggregate_version_unique_idx'
+			});
+		}
+
+		this.events.push({
+			position: this.#nextEventPosition++,
+			id: String(values[0]),
+			aggregateId: values[1] === null ? null : String(values[1]),
+			aggregateVersion: values[2] === null ? null : Number(values[2]),
+			type: String(values[3]),
+			data: JSON.parse(String(values[4])),
+			meta: values[5] === null ? null : JSON.parse(String(values[5])),
+			checkConcurrency
+		});
+
+		return this.result(1);
+	}
+
+	private insertEventSagaRef(values: readonly unknown[]) {
+		this.eventSagaRefs.push({
+			sagaDescriptor: String(values[0]),
+			originId: String(values[1]),
+			eventId: String(values[2])
+		});
+
+		return this.result(1);
+	}
+
+	private getAggregateEvents<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
+		const aggregateId = String(values[0]);
+		const afterVersion = values[1] === null ? null : Number(values[1]);
+		const eventTypes = values[2] as Readonly<string[]> | null;
+		const tail = values[3];
+		const allAfterSnapshot = this.events
+			.filter(event =>
+				event.aggregateId === aggregateId &&
+				(afterVersion === null || (event.aggregateVersion !== null && event.aggregateVersion > afterVersion)))
+			.sort((a, b) => a.position - b.position);
+		const tailEvent = allAfterSnapshot.at(-1);
+
+		const rows = allAfterSnapshot
+			.filter(event =>
+				eventTypes === null ||
+				eventTypes.includes(event.type) ||
+				(tail === 'last' && event.id === tailEvent?.id))
+			.map(event => this.eventRow(event) as TRow);
+
+		return this.result(rows.length, rows);
+	}
+
+	private getEventPosition<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
+		const event = this.events.find(item => item.id === values[0]);
+		const rows = event ? [{ position: event.position }] as TRow[] : [];
+
+		return this.result(rows.length, rows);
+	}
+
+	private getSagaEvents<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
+		const sagaDescriptor = String(values[0]);
+		const originId = String(values[1]);
+		const beforeEventId = String(values[2]);
+		const originPosition = this.events.find(event => event.id === originId)?.position ?? null;
+		const beforePosition = this.events.find(event => event.id === beforeEventId)?.position ?? null;
+		const rows = this.events
+			.filter(event =>
+				originPosition !== null &&
+				beforePosition !== null &&
+				event.position >= originPosition &&
+				event.position < beforePosition &&
+				(
+					event.id === originId ||
+					this.eventSagaRefs.some(ref =>
+						ref.eventId === event.id &&
+						ref.sagaDescriptor === sagaDescriptor &&
+						ref.originId === originId)
+				))
+			.sort((a, b) => a.position - b.position)
+			.map(event => ({
+				origin_position: originPosition,
+				before_position: beforePosition,
+				...this.eventRow(event)
+			}) as TRow);
+
+		if (rows.length)
+			return this.result(rows.length, rows);
+
+		return this.result(1, [{
+			origin_position: originPosition,
+			before_position: beforePosition,
+			id: null,
+			aggregate_id: null,
+			aggregate_version: null,
+			type: null,
+			data: null,
+			meta: null,
+			position: null,
+			saga_origins: null
+		} as TRow]);
+	}
+
+	private getEventSagaRefs<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
+		const rows = this.eventSagaRefs
+			.filter(ref => ref.eventId === values[0])
+			.map(ref => ({
+				saga_descriptor: ref.sagaDescriptor,
+				origin_id: ref.originId
+			}) as TRow);
+
+		return this.result(rows.length, rows);
+	}
+
+	private getEventsByTypes<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
+		const afterPosition = Number(values[0]);
+		const eventTypes = values[1] as Readonly<string[]>;
+		const rows = this.events
+			.filter(event => event.position > afterPosition && eventTypes.includes(event.type))
+			.sort((a, b) => a.position - b.position)
+			.map(event => this.eventRow(event) as TRow);
+
+		return this.result(rows.length, rows);
+	}
+
 	private getLastEvent<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
 		const key = this.viewLockKey(String(values[0]), String(values[1]));
 		const lock = this.viewLocks.get(key);
@@ -279,6 +469,29 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 		return `${projectionName}:${schemaVersion}:${eventId}`;
 	}
 
+	private eventRow(event: StoredEvent) {
+		return {
+			id: event.id,
+			aggregate_id: event.aggregateId,
+			aggregate_version: event.aggregateVersion,
+			type: event.type,
+			data: event.data,
+			meta: event.meta,
+			position: event.position,
+			saga_origins: this.sagaOriginsForEvent(event.id)
+		};
+	}
+
+	private sagaOriginsForEvent(eventId: string) {
+		const sagaOrigins: Record<string, string> = {};
+		for (const ref of this.eventSagaRefs) {
+			if (ref.eventId === eventId)
+				sagaOrigins[ref.sagaDescriptor] = ref.originId;
+		}
+
+		return Object.keys(sagaOrigins).length ? sagaOrigins : null;
+	}
+
 	private result<TRow extends Record<string, unknown> = Record<string, unknown>>(
 		rowCount: number | null = null,
 		rows: TRow[] = []
@@ -329,5 +542,17 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 		}
 
 		return clone;
+	}
+
+	private static cloneEvents(source: StoredEvent[]) {
+		return source.map(event => ({
+			...event,
+			data: typeof event.data === 'object' && event.data !== null ?
+				JSON.parse(JSON.stringify(event.data)) :
+				event.data,
+			meta: typeof event.meta === 'object' && event.meta !== null ?
+				JSON.parse(JSON.stringify(event.meta)) :
+				event.meta
+		}));
 	}
 }
