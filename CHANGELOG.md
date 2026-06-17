@@ -1,64 +1,17 @@
-# [1.2.0-alpha.3](https://github.com/snatalenko/node-cqrs/compare/v1.1.0...v1.2.0-alpha.3) (2026-05-26)
+# [1.2.0-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.1.0...v1.2.0-beta.0) (2026-06-17)
 
+
+### Features
+
+* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
+* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
 
 ### Internal Fixes
 
 * Move duplicate worker utils into src/shared/worker-utils/ ([8b3c383](https://github.com/snatalenko/node-cqrs/commit/8b3c383be41edd40fcedfbb663104e4f5d530bcc))
 
 
-# [1.2.0-alpha.2](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-alpha.1...v1.2.0-alpha.2) (2026-05-04)
-
-
-
-# [1.2.0-alpha.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-alpha.0...v1.2.0-alpha.1) (2026-04-28)
-
-
-### Features
-
-* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
-
-
-# [1.2.0-alpha.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.2.0-alpha.0) (2026-04-27)
-
-
-### Features
-
-* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
-
-
-# [1.1.0](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-alpha.2...v1.1.0) (2026-05-26)
-
-
-### Documentation
-
-* Fix homepage styles cdn ([6ab1ff2](https://github.com/snatalenko/node-cqrs/commit/6ab1ff28246b4496a7fc0b2911c01c8960f9959e))
-
-
-# [1.2.0-alpha.2](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-alpha.1...v1.2.0-alpha.2) (2026-05-04)
-
-
-### Changes
-
-* Deliver events to worker in batches during restoring phase ([212e353](https://github.com/snatalenko/node-cqrs/commit/212e3535b22e6a763a7e0fd1f81036f9ef776ec0))
-
-### Documentation
-
-* Add index.html for publishing with gh pages ([cac88ed](https://github.com/snatalenko/node-cqrs/commit/cac88edaaef1c9457af48fd7477daf8ae624eb43))
-
-### Internal Fixes
-
-* Allow disposing worker projection proxy more than once ([768f73a](https://github.com/snatalenko/node-cqrs/commit/768f73a28a8a1a572449122f5046c102435dd5bd))
-
-
-# [1.2.0-alpha.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-alpha.0...v1.2.0-alpha.1) (2026-04-28)
-
-
-### Features
-
-* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
-
-
-# [1.2.0-alpha.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.2.0-alpha.0) (2026-04-27)
+# [1.1.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0) (2026-05-26)
 
 
 ### Features
@@ -70,7 +23,6 @@
 * MongoDB-backed event storage ([53fb5e1](https://github.com/snatalenko/node-cqrs/commit/53fb5e1c0d7a027f9afebf88f8d3d516d06c3c48))
 * MongoDb-backed view model (`MongoObjectView`, `AbstractMongoObjectProjection`) ([4995bfe](https://github.com/snatalenko/node-cqrs/commit/4995bfe2daf53372d3e7e36d59ee103219ad6a35))
 * Option for rabbitmq queue-level message TTL ([d4461e6](https://github.com/snatalenko/node-cqrs/commit/d4461e68b0e69696340bfdb80c7f947146bca08b))
-* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
 
 ### Changes
 
@@ -80,6 +32,7 @@
 * Add default queueName for RabbitMqCommandBus ([ee4b5a1](https://github.com/snatalenko/node-cqrs/commit/ee4b5a170e44db6227e76d2ffb1695b6dfaef6e4))
 * Add error handling and drain functionality to event publishing process ([d23ea62](https://github.com/snatalenko/node-cqrs/commit/d23ea621c8a71e2cda4baaf091166534c4f5af2e))
 * Allow extra command parameters to be passed to AbstractAggregate handler as 3rd argument ([ae11b7e](https://github.com/snatalenko/node-cqrs/commit/ae11b7eb709e658fbc910aadb1376bc8a3fade1b))
+* Deliver events to worker in batches during restoring phase ([212e353](https://github.com/snatalenko/node-cqrs/commit/212e3535b22e6a763a7e0fd1f81036f9ef776ec0))
 
 ### Fixes
 
@@ -92,6 +45,8 @@
 * Add detailed documentation for redis and mongodb modules ([72e66f5](https://github.com/snatalenko/node-cqrs/commit/72e66f5508a6df6c0a4a341e752cfab76830478a))
 * Detailed sqlite and rabbitmq instructions ([dd242fd](https://github.com/snatalenko/node-cqrs/commit/dd242fd73018bcfa0583ab1ddd12518c4f3a4777))
 * Minor spec update ([6a2883a](https://github.com/snatalenko/node-cqrs/commit/6a2883adc7b6a7a48bb5f62562c2242826860e89))
+* Add index.html for publishing with gh pages ([cac88ed](https://github.com/snatalenko/node-cqrs/commit/cac88edaaef1c9457af48fd7477daf8ae624eb43))
+* Fix homepage styles cdn ([6ab1ff2](https://github.com/snatalenko/node-cqrs/commit/6ab1ff28246b4496a7fc0b2911c01c8960f9959e))
 
 ### Build System
 
@@ -104,6 +59,7 @@
 * Enhance message payload typing ([7911acc](https://github.com/snatalenko/node-cqrs/commit/7911accce07cba7c30ae4f5825a6e26e0934b8dc))
 * Expose `viewLocker` on WorkerProxyProjection ([628fbe3](https://github.com/snatalenko/node-cqrs/commit/628fbe3c7af141443092cdf1fb6c0824c19a6324))
 * Make `getHandler` to throw error if handler is not defined ([ecbd73e](https://github.com/snatalenko/node-cqrs/commit/ecbd73e0604c74eb85a946b15a4b872b688da01e))
+* Allow disposing worker projection proxy more than once ([768f73a](https://github.com/snatalenko/node-cqrs/commit/768f73a28a8a1a572449122f5046c102435dd5bd))
 
 
 ## [1.0.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.1...v1.0.2) (2026-04-03)
