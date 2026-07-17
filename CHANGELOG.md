@@ -1,3 +1,11 @@
+## [1.1.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.0...v1.1.1) (2026-07-17)
+
+
+### Fixes
+
+* Chained pipelines not preserving FIFO action start order ([ba27d1d](https://github.com/snatalenko/node-cqrs/commit/ba27d1d3be700c69c87e0df6e7385ea784824e63))
+
+
 # [1.1.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0) (2026-05-26)
 
 
