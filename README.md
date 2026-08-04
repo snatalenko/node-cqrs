@@ -130,7 +130,7 @@ builder.registerSaga(WelcomeEmailSaga);
 const { commandBus, eventStore, usersView } = builder.container();
 ```
 
-<details>
+<details markdown="1">
 <summary>Manual setup (without DI container)</summary>
 
 ```ts
@@ -357,7 +357,7 @@ builder.registerSaga(WelcomeEmailSaga);
 
 Saga context is tracked in `message.sagaOrigins[sagaDescriptor]`, storing the starter event id. A saga starts when `sagaOrigins[sagaDescriptor]` is absent and continues when it is present. A single event type can start multiple saga types.
 
-<details>
+<details markdown="1">
 <summary><strong>Optional: explicit startsWith/handles</strong></summary>
 
 By default, the saga starts on any handled event that does not have `sagaOrigins[sagaDescriptor]` and continues when it does.
@@ -367,7 +367,7 @@ For strict, explicit routing:
 - `static handles`: additional event types to subscribe to
 </details>
 
-<details>
+<details markdown="1">
 <summary><strong>Manual wiring (without DI container)</strong></summary>
 
 ```ts

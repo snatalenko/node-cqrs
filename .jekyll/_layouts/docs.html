@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if page.nav == "overview" %}{% assign document_title = site.title %}{% else %}{% capture document_title %}{{ site.title }} - {{ page.title }}{% endcapture %}{% endif %}
+  <title>{{ document_title | strip | escape }}</title>
+  <meta name="description" content="{{ page.description | escape }}">
+  <meta name="author" content="@snatalenko">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+  <link rel="canonical" href="{{ page.url | absolute_url }}">
+  <link rel="alternate" type="text/markdown" title="Source README" href="{{ page.source_url }}">
+  <link rel="icon" type="image/svg+xml" href="/docs/images/logo.svg">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="node-cqrs">
+  <meta property="og:title" content="{{ document_title | strip | escape }}">
+  <meta property="og:description" content="{{ page.description | escape }}">
+  <meta property="og:url" content="{{ page.url | absolute_url }}">
+  <meta property="og:image" content="{{ '/docs/images/logo.svg' | absolute_url }}">
+  <meta name="twitter:card" content="summary">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":{{ document_title | strip | jsonify }},"description":{{ page.description | jsonify }},"url":{{ page.url | absolute_url | jsonify }},"isPartOf":{"@type":"SoftwareSourceCode","name":"node-cqrs","codeRepository":"https://github.com/snatalenko/node-cqrs","programmingLanguage":"TypeScript"}{% if page.last_modified_at %},"dateModified":{{ page.last_modified_at | jsonify }}{% endif %}}</script>
+  {% include theme_init.html %}
+  <link rel="stylesheet" href="/docs/assets/style.css">
+</head>
+<body>
+  {% include header.html %}
+  <div class="shell">
+    {% include sidebar.html %}
+    <main class="content" id="content">
+      {% unless page.nav == "overview" %}
+      <header class="document-header">
+        {% if page.eyebrow %}<p class="eyebrow">{{ page.eyebrow | escape }}</p>{% endif %}
+        <h1>{{ page.title | escape }}</h1>
+        <p>{{ page.description | escape }}</p>
+      </header>
+      {% endunless %}
+      <article class="prose">
+        {% assign rendered_content = content %}
+        {% if page.content_start_id %}
+          {% capture content_marker %}<h2 id="{{ page.content_start_id }}">{% endcapture %}
+          {% assign content_parts = rendered_content | split: content_marker %}
+          {% if content_parts.size > 1 %}
+            {% capture rendered_content %}{{ content_marker }}{{ content_parts | last }}{% endcapture %}
+          {% endif %}
+        {% endif %}
+        {% if page.nav == "overview" %}
+          {% capture toc_heading %}<h2 id="table-of-contents">Table of Contents</h2>{% endcapture %}
+          {% capture overview_heading %}<h2 id="overview">Overview</h2>{% endcapture %}
+          {% assign before_toc = rendered_content | split: toc_heading %}
+          {% assign after_toc = rendered_content | split: overview_heading %}
+          {% if before_toc.size > 1 and after_toc.size > 1 %}
+            {% capture rendered_content %}{{ before_toc | first }}{{ overview_heading }}{{ after_toc | last }}{% endcapture %}
+          {% endif %}
+          {% assign rendered_content = rendered_content | replace: 'href="src/sqlite"', 'href="/sqlite/"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="src/mongodb"', 'href="/mongodb/"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="src/redis"', 'href="/redis/"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="src/rabbitmq"', 'href="/rabbitmq/"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="src/workers"', 'href="/workers/"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="examples/user-domain-ts"', 'href="https://github.com/snatalenko/node-cqrs/tree/master/examples/user-domain-ts"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="examples/user-domain-cjs"', 'href="https://github.com/snatalenko/node-cqrs/tree/master/examples/user-domain-cjs"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="examples/browser"', 'href="https://github.com/snatalenko/node-cqrs/tree/master/examples/browser"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="examples/workers-projection"', 'href="https://github.com/snatalenko/node-cqrs/tree/master/examples/workers-projection"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="examples/', 'href="https://github.com/snatalenko/node-cqrs/blob/master/examples/' %}
+          {% assign rendered_content = rendered_content | replace: 'href="src/', 'href="https://github.com/snatalenko/node-cqrs/blob/master/src/' %}
+        {% elsif page.nav != "changelog" %}
+          {% assign rendered_content = rendered_content | replace: 'href="../../examples/workers-projection"', 'href="https://github.com/snatalenko/node-cqrs/tree/master/examples/workers-projection"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="../../examples/', 'href="https://github.com/snatalenko/node-cqrs/blob/master/examples/' %}
+        {% endif %}
+        {{ rendered_content }}
+      </article>
+    </main>
+  </div>
+  <script src="/docs/assets/site.js"></script>
+</body>
+</html>
