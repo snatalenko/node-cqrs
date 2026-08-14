@@ -16,13 +16,13 @@ class UsersProjection extends AbstractSqliteObjectProjection<UserRecord> {
 	}
 
 	async userCreated(event: UserCreatedEvent) {
-		await this.view.updateEnforcingNew(String(event.aggregateId), () => ({
+		await this.view.updateEnforcingNew(event.aggregateId!, () => ({
 			username: event.payload!.username
 		}));
 	}
 
 	async userRenamed(event: UserRenamedEvent) {
-		await this.view.updateEnforcingNew(String(event.aggregateId), r => ({
+		await this.view.updateEnforcingNew(event.aggregateId!, r => ({
 			...r!,
 			username: event.payload!.username
 		}));
@@ -33,14 +33,16 @@ class UsersProjection extends AbstractSqliteObjectProjection<UserRecord> {
 
 interface MyContainer extends IContainer {
 	users: SqliteObjectView<UserRecord>;
+	viewModelSqliteDb?: import('better-sqlite3').Database;
 }
 
 const builder = new ContainerBuilder<MyContainer>();
+const db = createDb(':memory:');
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'users');
 builder.register(SqliteEventStorage);
 builder.register(EventIdAugmentor).as('eventIdAugmenter');
-builder.registerInstance(() => createDb(':memory:'), 'viewModelSqliteDbFactory');
+builder.registerInstance(db, 'viewModelSqliteDb');
 
 const { commandBus, users } = builder.container();
 
@@ -52,3 +54,4 @@ const userId = String(userCreated.aggregateId);
 const user = await users.get(userId);
 
 console.log('User:', user); // { username: 'Alice' }
+db.close();

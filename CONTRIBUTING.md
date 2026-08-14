@@ -163,6 +163,7 @@ Code style and formatting are enforced via [EditorConfig](https://editorconfig.o
 - **No `console.log`** in production code
 - **No trailing commas**
 - **Line length:** Warn at 120 chars
+- **Simple statements:** Keep non-nested statements on one line when the complete statement fits within 120 characters
 - **Type-only imports:** Use the `type` keyword for imports that are only used as types
 - **`.ts` file extensions in imports:** Always use explicit `.ts` extensions in relative import paths
 - **`readonly` fields:** Mark class fields (including private `#fields`) as `readonly` when they are assigned only in the constructor or at declaration and never reassigned

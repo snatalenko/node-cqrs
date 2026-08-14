@@ -24,14 +24,14 @@ class UsersProjection extends AbstractRedisProjection<UserRecord> {
 		return '1';
 	}
 
-	userCreated(event: UserCreatedEvent) {
-		this.view.updateEnforcingNew(event.aggregateId as string, () => ({
+	async userCreated(event: UserCreatedEvent) {
+		await this.view.updateEnforcingNew(event.aggregateId!, () => ({
 			username: event.payload!.username
 		}));
 	}
 
-	userRenamed(event: UserRenamedEvent) {
-		this.view.updateEnforcingNew(event.aggregateId as string, r => ({
+	async userRenamed(event: UserRenamedEvent) {
+		await this.view.updateEnforcingNew(event.aggregateId!, r => ({
 			username: event.payload!.username ?? r!.username
 		}));
 	}
@@ -45,14 +45,17 @@ interface MyContainer extends IContainer {
 }
 
 const builder = new ContainerBuilder<MyContainer>();
-builder.register(() => new Redis({ host: 'localhost', port: 6379 })).as('viewModelRedis');
+const redis = new Redis({ host: 'localhost', port: 6379 });
+builder.registerInstance(redis, 'viewModelRedis');
 builder.register(InMemoryEventStorage);
-builder.register(EventIdAugmentor).as('eventIdAugmenter'); // stamps event.id — required for IEventLocker checkpoints
+
+// Event ids are required for projection checkpoints.
+builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'usersView');
 
 const container = builder.container();
-const { commandBus, usersView } = container;
+const { commandBus, usersView, eventStore } = container;
 
 // --- Run ---
 
@@ -60,7 +63,8 @@ const [userCreated] = await commandBus.send('createUser', undefined, {
 	payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload
 });
 
-const user = await usersView.get(userCreated.aggregateId as string);
+await eventStore.drain();
+const user = await usersView.get(userCreated.aggregateId!);
 console.log('User stored in Redis:', user); // { username: 'alice' }
 
-await container.viewModelRedis.quit();
+await redis.quit();

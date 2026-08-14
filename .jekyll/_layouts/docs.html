@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  {% if page.nav == "overview" %}{% assign document_title = site.title %}{% else %}{% capture document_title %}{{ site.title }} - {{ page.title }}{% endcapture %}{% endif %}
+  {% if page.nav == "overview" %}{% assign document_title = page.title %}{% else %}{% capture document_title %}{{ page.title }} | {{ site.title }}{% endcapture %}{% endif %}
   <title>{{ document_title | strip | escape }}</title>
   <meta name="description" content="{{ page.description | escape }}">
   <meta name="author" content="@snatalenko">
@@ -11,14 +11,19 @@
   <link rel="canonical" href="{{ page.url | absolute_url }}">
   <link rel="alternate" type="text/markdown" title="Source README" href="{{ page.source_url }}">
   <link rel="icon" type="image/svg+xml" href="/docs/images/logo.svg">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="{% if page.nav == 'overview' %}website{% else %}article{% endif %}">
   <meta property="og:site_name" content="node-cqrs">
   <meta property="og:title" content="{{ document_title | strip | escape }}">
   <meta property="og:description" content="{{ page.description | escape }}">
   <meta property="og:url" content="{{ page.url | absolute_url }}">
   <meta property="og:image" content="{{ '/docs/images/logo.svg' | absolute_url }}">
+  {% if page.nav != "overview" %}<meta property="article:modified_time" content="{{ page.last_modified_at | date_to_xmlschema }}">{% endif %}
   <meta name="twitter:card" content="summary">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":{{ document_title | strip | jsonify }},"description":{{ page.description | jsonify }},"url":{{ page.url | absolute_url | jsonify }},"isPartOf":{"@type":"SoftwareSourceCode","name":"node-cqrs","codeRepository":"https://github.com/snatalenko/node-cqrs","programmingLanguage":"TypeScript"}{% if page.last_modified_at %},"dateModified":{{ page.last_modified_at | jsonify }}{% endif %}}</script>
+  {% if page.nav == "overview" %}
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","@id":{{ '/' | absolute_url | append: '#website' | jsonify }},"url":{{ '/' | absolute_url | jsonify }},"name":"node-cqrs","description":{{ page.description | jsonify }},"inLanguage":"en"}</script>
+  {% else %}
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","@id":{{ page.url | absolute_url | append: '#article' | jsonify }},"headline":{{ page.title | jsonify }},"description":{{ page.description | jsonify }},"url":{{ page.url | absolute_url | jsonify }},"mainEntityOfPage":{"@type":"WebPage","@id":{{ page.url | absolute_url | jsonify }}},"author":{"@type":"Person","name":"@snatalenko","url":"https://github.com/snatalenko"},"dateModified":{{ page.last_modified_at | date_to_xmlschema | jsonify }},"inLanguage":"en","isPartOf":{"@type":"SoftwareSourceCode","name":"node-cqrs","codeRepository":"https://github.com/snatalenko/node-cqrs","programmingLanguage":"TypeScript"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"node-cqrs","item":{{ '/' | absolute_url | jsonify }}},{"@type":"ListItem","position":2,"name":{{ page.nav_title | default: page.title | jsonify }}}]}]}</script>
+  {% endif %}
   {% include theme_init.html %}
   <link rel="stylesheet" href="/docs/assets/style.css">
 </head>
@@ -27,21 +32,29 @@
   <div class="shell">
     {% include sidebar.html %}
     <main class="content" id="content">
-      {% unless page.nav == "overview" %}
       <header class="document-header">
         {% if page.eyebrow %}<p class="eyebrow">{{ page.eyebrow | escape }}</p>{% endif %}
         <h1>{{ page.title | escape }}</h1>
         <p>{{ page.description | escape }}</p>
       </header>
-      {% endunless %}
       <article class="prose">
         {% assign rendered_content = content %}
+        {% if page.eyebrow %}
+          {% assign content_title_parts = rendered_content | split: '</h1>' %}
+          {% if content_title_parts.size > 1 %}
+            {% assign content_after_title = content_title_parts | shift %}
+            {% assign rendered_content = content_after_title | join: '</h1>' %}
+          {% endif %}
+        {% endif %}
         {% if page.content_start_id %}
           {% capture content_marker %}<h2 id="{{ page.content_start_id }}">{% endcapture %}
           {% assign content_parts = rendered_content | split: content_marker %}
           {% if content_parts.size > 1 %}
             {% capture rendered_content %}{{ content_marker }}{{ content_parts | last }}{% endcapture %}
           {% endif %}
+        {% endif %}
+        {% if page.nav == "changelog" %}
+          {% assign rendered_content = rendered_content | replace: '<h1 id="', '<h2 id="' | replace: '</h1>', '</h2>' %}
         {% endif %}
         {% if page.nav == "overview" %}
           {% capture toc_heading %}<h2 id="table-of-contents">Table of Contents</h2>{% endcapture %}

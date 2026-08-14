@@ -19,6 +19,8 @@ navigation:
       github_view: blob
       branch: true
       path: LICENSE
+    - title: Maintainer
+      url: https://natalenko.com/about/
 
 layouts_dir: .jekyll/_layouts
 includes_dir: .jekyll/_includes
@@ -37,118 +39,133 @@ defaults:
       path: README.md
     values:
       layout: docs
-      title: node-cqrs
+      title: "node-cqrs: CQRS and Event Sourcing for TypeScript"
       nav: overview
       nav_title: Overview
       nav_group: primary
       nav_order: 1
-      description: TypeScript building blocks for reliable CQRS and Event Sourcing systems.
+      description: Build CQRS and Event Sourcing applications in TypeScript with aggregates, sagas, projections, dependency injection, and pluggable infrastructure.
       source_path: README.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/README.md
       permalink: /
       content_start_id: features
+      last_modified_at: 2026-08-14
       sitemap: true
   - scope:
       path: src/sqlite/README.md
     values:
       layout: docs
-      title: SQLite
+      title: SQLite Event Storage and Projection Views
       nav: sqlite
+      nav_title: SQLite
       nav_group: modules
       nav_order: 1
       eyebrow: node-cqrs module
-      description: SQLite event storage, projections, and read models for node-cqrs.
+      description: Use SQLite event storage, relational projections, JSON object views, encrypted databases, and asynchronous worker reads with node-cqrs.
       source_path: src/sqlite/README.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/sqlite/README.md
       permalink: /sqlite/
       content_start_id: overview
+      last_modified_at: 2026-08-14
       sitemap: true
   - scope:
       path: src/mongodb/README.md
     values:
       layout: docs
-      title: MongoDB
+      title: MongoDB Event Storage and Projection Views
       nav: mongodb
+      nav_title: MongoDB
       nav_group: modules
       nav_order: 2
       eyebrow: node-cqrs module
-      description: MongoDB event storage and persistent views for node-cqrs.
+      description: Store CQRS events and build MongoDB projection views with multi-instance restore and event-processing coordination.
       source_path: src/mongodb/README.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/mongodb/README.md
       permalink: /mongodb/
       content_start_id: overview
+      last_modified_at: 2026-08-14
       sitemap: true
   - scope:
       path: src/redis/README.md
     values:
       layout: docs
-      title: Redis
+      title: Redis Projection Views
       nav: redis
+      nav_title: Redis
       nav_group: modules
       nav_order: 3
       eyebrow: node-cqrs module
-      description: Redis-backed persistent projection views for node-cqrs.
+      description: Build Redis-backed document projection views with optimistic updates, restore coordination, and event deduplication across application instances.
       source_path: src/redis/README.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/redis/README.md
       permalink: /redis/
       content_start_id: overview
+      last_modified_at: 2026-08-14
       sitemap: true
   - scope:
       path: src/postgresql/README.md
     values:
       layout: docs
-      title: PostgreSQL
+      title: PostgreSQL Event Storage and Relational Views
       nav: postgresql
+      nav_title: PostgreSQL
       nav_group: modules
       nav_order: 4
       eyebrow: node-cqrs module
-      description: PostgreSQL event storage and persistent views for node-cqrs.
+      description: Store events and build transactional relational projection views with PostgreSQL, including multi-instance restore and processing coordination.
       source_path: src/postgresql/README.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/postgresql/README.md
       permalink: /postgresql/
       content_start_id: overview
+      last_modified_at: 2026-08-14
       sitemap: true
   - scope:
       path: src/rabbitmq/README.md
     values:
       layout: docs
-      title: RabbitMQ
+      title: RabbitMQ Command and Event Buses
       nav: rabbitmq
+      nav_title: RabbitMQ
       nav_group: modules
       nav_order: 5
       eyebrow: node-cqrs module
-      description: RabbitMQ command and event transport for node-cqrs.
+      description: Distribute node-cqrs commands and events through RabbitMQ with broadcast, durable worker queues, acknowledgements, and dead-letter handling.
       source_path: src/rabbitmq/README.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/rabbitmq/README.md
       permalink: /rabbitmq/
       content_start_id: overview
+      last_modified_at: 2026-08-14
       sitemap: true
   - scope:
       path: src/workers/README.md
     values:
       layout: docs
-      title: Workers
+      title: Worker Thread Projections
       nav: workers
+      nav_title: Workers
       nav_group: modules
       nav_order: 6
       eyebrow: node-cqrs module
-      description: Worker-thread projections for node-cqrs.
+      description: Run CPU-intensive node-cqrs projection handlers and views in Node.js worker threads with asynchronous access and batched restoration.
       source_path: src/workers/README.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/workers/README.md
       permalink: /workers/
       content_start_id: overview
+      last_modified_at: 2026-08-14
       sitemap: true
   - scope:
       path: CHANGELOG.md
     values:
       layout: docs
-      title: Changelog
+      title: Release Changelog
       nav: changelog
+      nav_title: Changelog
       nav_group: resources
       description: Release history and notable changes for node-cqrs.
       source_path: CHANGELOG.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/CHANGELOG.md
       permalink: /changelog/
+      last_modified_at: 2026-08-14
       sitemap: true
 
 markdown: kramdown

@@ -75,8 +75,6 @@ a { color: var(--link); }
   text-decoration: none;
 }
 .brand img { display: block; object-fit: contain; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme]) .brand img { filter: invert(1); } }
-:root[data-theme="dark"] .brand img { filter: invert(1); }
 .brand strong, .brand small { display: block; }
 .brand strong { font-size: 17px; line-height: 1.2; }
 .brand small { color: var(--muted); font-size: 11px; }

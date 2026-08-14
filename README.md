@@ -2,109 +2,40 @@ node-cqrs
 =========
 
 [![Version](https://img.shields.io/npm/v/node-cqrs.svg)](https://www.npmjs.com/package/node-cqrs)
+[![Tests/Audit](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml/badge.svg)](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml)
 [![Coverage](https://coveralls.io/repos/github/snatalenko/node-cqrs/badge.svg)](https://coveralls.io/github/snatalenko/node-cqrs)
 [![Downloads](https://img.shields.io/npm/dm/node-cqrs.svg)](https://www.npmjs.com/package/node-cqrs)
-[![Stars](https://img.shields.io/github/stars/snatalenko/node-cqrs?style=flat&color=yellow)](https://github.com/snatalenko/node-cqrs)
-[![Forks](https://img.shields.io/github/forks/snatalenko/node-cqrs?style=flat&color=yellow)](https://github.com/snatalenko/node-cqrs)
 [![License](https://img.shields.io/github/license/snatalenko/node-cqrs.svg)](https://github.com/snatalenko/node-cqrs)
-[![Tests/Audit](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml/badge.svg)](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml)
 
-Building blocks for CQRS/ES, inspired by Lokad.CQRS.
+TypeScript building blocks for CQRS and Event Sourcing with aggregates, sagas, projections, dependency injection,
+and pluggable persistence and messaging.
 
 <p align="center">
-  <img src="docs/images/logo.svg" width="250" />
+  <img src="docs/images/logo.svg" width="250" alt="node-cqrs">
 </p>
 
 ## Features
 
-CQRS and Event Sourcing are simple in a single process ([example](examples/user-domain-framework-free/index.ts)), but a minefield in the cloud.
+- **Plain messages**: Commands and events are ordinary typed objects without decorators or generated classes.
+- **Focused domain blocks**: Aggregates handle commands, projections build read models, and sagas coordinate work.
+- **Replaceable infrastructure**: Thin interfaces let applications provide their own storage, buses, locks, views,
+  and dispatch processors.
+- **Concurrency handling**: Commands are serialized per aggregate within a process; persistent event stores add
+  optimistic concurrency for distributed writers.
+- **Projection lifecycle**: Restore hooks, readiness locks, event deduplication, and checkpoints are available to
+  persistent views.
+- **Selective rehydration**: Aggregates can restore selected events and use optional snapshots.
+- **Dispatch pipelines**: Event batches pass through configurable persistence and processing pipelines with
+  concurrency limits.
 
-node-cqrs handles the "boring but hard" distributed plumbing - concurrency, message delivery, projections, and rehydration - so you can focus on your domain logic.
+Infrastructure modules can be combined according to the deployment:
 
-- **Reliable Consistency**: Per-aggregate FIFO handling and conflict-safe writes with optimistic concurrency.
-- **Resilient Projections**: Restart-safe views with checkpoints, readiness gates, and locking.
-- **Fast Rehydration**: Automatic snapshotting and selective event restores.
-- **Distributed Sagas**: Built-in event correlation and origin propagation for complex workflows.
-- **Smart Pipelines**: Pluggable dispatching with back-pressure and concurrency limits.
-- **Pluggable by Design**: Thin interfaces on every component - swap any piece, without patching the library or your domain code.
-
-The core is infrastructure-agnostic, but the heavy lifting for common stacks is done, so you can mix and match sub-modules to fit your environment:
-
-- `node-cqrs/sqlite` – Embedded per-process event storage and/or views.
-- `node-cqrs/mongodb` – Distributed event storage and persistent projection views for multi-process deployments.
-- `node-cqrs/rabbitmq` – Robust, distributed command and event bus.
-- `node-cqrs/redis` – Redis-backed persistent projection views for distributed deployments.
-- `node-cqrs/postgresql` – PostgreSQL-backed event storage and persistent views for custom relational read models.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Installation](#installation)
-- [ContainerBuilder](#containerbuilder)
-- [Commands](#commands)
-- [Write Model (Aggregates)](#write-model-aggregates)
-  - [AbstractAggregate](#abstractaggregate)
-  - [Aggregate State](#aggregate-state)
-  - [External Dependencies](#external-dependencies)
-- [Read Model (Projections and Views)](#read-model-projections-and-views)
-  - [AbstractProjection](#abstractprojection)
-  - [View restoring on start](#view-restoring-on-start)
-  - [Accessing views](#accessing-views)
-- [Sagas](#sagas)
-- [Infrastructure Modules](#infrastructure-modules)
-  - [Event Storage](#event-storage)
-  - [Read Model](#read-model)
-  - [Message Buses](#message-buses)
-  - [Other](#other)
-- [OpenTelemetry](#opentelemetry)
-- [Examples](#examples)
-
-
-## Overview
-
-![Overview](docs/images/node-cqrs-flow.svg)
-
-Domain logic lives in three building blocks:
-
-- **[Aggregates](#write-model-aggregates)** - handle commands and emit events
-- **[Sagas](#sagas)** - manage processes by reacting to events and enqueueing follow-up commands
-- **[Projections](#read-model-projections-and-views)** - consume events and update views
-
-Commands and events are loosely typed objects implementing the [`IMessage`](src/interfaces/IMessage.ts) interface:
-
-```ts
-interface IMessage<TPayload = unknown> {
-
-	/** Event or command type */
-	type: string;
-
-	/** Target aggregate identifier for commands, originating aggregate identifier for events */
-	aggregateId?: Identifier;
-
-	/** Aggregate version at the time of the message */
-	aggregateVersion?: number;
-
-	/** Starter event ids of sagas associated with this message, keyed by saga descriptor */
-	sagaOrigins?: Record<string, string>;
-
-	/** Business data */
-	payload: TPayload;
-
-	/** Optional metadata/context (e.g. auth info, request id); set on commands, copied to events */
-	context?: any;
-}
-```
-
-
-Message delivery is handled by the following components, in order:
-
-- **[Command Bus](src/in-memory/InMemoryMessageBus.ts)** - routes commands to handlers
-- **[Aggregate Command Handler](src/AggregateCommandHandler.ts)** - restores aggregate state and executes commands
-- **[Event Store](src/EventStore.ts)** - runs the event dispatch pipeline (e.g. encoding, persistence), then publishes events to the event bus for delivery to all subscribers
-- **[Saga Event Handler](src/SagaEventHandler.ts)** - restores saga state and applies events
-
-> `src/`, `tests/`, and `examples/` are good entry points - the codebase is intentionally small and readable.
-
+- `node-cqrs/sqlite` - embedded event storage and relational or JSON views;
+- `node-cqrs/mongodb` - distributed event storage and document views;
+- `node-cqrs/redis` - distributed document projection views;
+- `node-cqrs/postgresql` - transactional event storage and relational or JSON views;
+- `node-cqrs/rabbitmq` - distributed command and event buses;
+- `node-cqrs/workers` - worker-thread projections for CPU-intensive handlers.
 
 ## Installation
 
@@ -112,27 +43,325 @@ Message delivery is handled by the following components, in order:
 npm install node-cqrs
 ```
 
-Node.js 16+ and browsers are supported.
+The built package supports Node.js 16 and later. The TypeScript examples can be executed directly with Node.js
+24 or later; earlier Node.js versions require normal TypeScript compilation or a loader.
 
+The browser bundle exposes the browser-compatible core API. Database adapters, RabbitMQ, and Node.js worker
+threads are server-side modules. Infrastructure modules require their documented peer dependencies.
 
+## Quick Start
 
-## ContainerBuilder
-
-Wire buses, the event store, and your domain components with dependency injection:
+This example defines one command, one event, and one read model entirely in memory:
 
 ```ts
-const builder = new ContainerBuilder();
+import { AbstractAggregate, AbstractProjection, ContainerBuilder, InMemoryEventStorage } from 'node-cqrs';
+import type { IContainer, IEvent, Identifier } from 'node-cqrs';
 
-builder.register(InMemoryEventStorage); // implements IEventStorageReader, IDispatchPipelineProcessor, and IIdentifierProvider
+type UserRecord = {
+	username: string;
+};
+
+type UserCreatedEvent = IEvent<UserRecord>;
+type UsersView = Map<Identifier, UserRecord>;
+
+class UserAggregate extends AbstractAggregate {
+	createUser(payload: UserRecord) {
+		this.emit('userCreated', payload);
+	}
+}
+
+class UsersProjection extends AbstractProjection<UsersView> {
+	constructor() {
+		super({ view: new Map() });
+	}
+
+	userCreated(event: UserCreatedEvent) {
+		this.view.set(event.aggregateId!, event.payload);
+	}
+}
+
+interface AppContainer extends IContainer {
+	usersView: UsersView;
+}
+
+const builder = new ContainerBuilder<AppContainer>();
+builder.register(InMemoryEventStorage);
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'usersView');
-builder.registerSaga(WelcomeEmailSaga);
 
-const { commandBus, eventStore, usersView } = builder.container();
+const container = builder.container();
+const { usersView, commandBus } = container;
+
+const [userCreated] = await commandBus.send('createUser', undefined, {
+	payload: { username: 'alice' }
+});
+
+console.log(usersView.get(userCreated.aggregateId!)); // { username: 'alice' }
 ```
 
-<details markdown="1">
-<summary>Manual setup (without DI container)</summary>
+`InMemoryEventStorage` is useful for learning and tests; its events disappear when the process exits. Choose a
+persistent event store from [Infrastructure](#infrastructure) for an application that must survive restarts.
+
+## How It Fits Together
+
+![Commands flow through aggregates and events update projections and sagas](docs/images/node-cqrs-flow.svg)
+
+Domain behavior is split into three small blocks:
+
+- **[Aggregates](#aggregates)** restore write-side state, validate commands, and emit events.
+- **[Projections](#projections-and-views)** consume events and update read-side views.
+- **[Sagas](#sagas)** react to events and enqueue commands for multi-step processes.
+
+The default runtime flow is:
+
+1. The command bus delivers a command to an aggregate command handler.
+2. The handler restores the target aggregate and invokes its command method.
+3. Emitted events pass through the event dispatch pipeline, including configured persistence.
+4. The event bus delivers committed events to projections, sagas, and other subscribers.
+
+## Messages And Replacement Points
+
+Commands and events are plain objects. A message needs only a type and payload; identifiers, context, aggregate
+versions, and saga origins are added when the workflow needs them:
+
+```ts
+type Message<TPayload> = {
+	type: string;
+	aggregateId?: Identifier;
+	payload: TPayload;
+	context?: unknown;
+};
+
+const command: Message<{ username: string }> = {
+	type: 'createUser',
+	payload: { username: 'alice' }
+};
+```
+
+Library blocks are similarly narrow. For example, a projection only needs a view and three lifecycle methods:
+
+```ts
+interface Projection<TView> {
+	readonly view: TView;
+	subscribe(eventStore: IObservable): void | Promise<void>;
+	restore(eventStore: IEventStorageReader): void | Promise<void>;
+	project(event: IEvent): void | Promise<void>;
+}
+```
+
+Applications can implement these contracts directly or extend the supplied base classes:
+
+| Contract | Replace it to customize |
+|---|---|
+| [`ICommandBus`](src/interfaces/ICommandBus.ts) | Command transport and routing |
+| [`IEventBus`](src/interfaces/IEventBus.ts) | Event broadcast and worker queues |
+| [`IEventStorageReader`](src/interfaces/IEventStorageReader.ts) | Aggregate, saga, and projection event reads |
+| [`IDispatchPipelineProcessor`](src/interfaces/IDispatchPipelineProcessor.ts) | Persistence, encoding, validation, or event augmentation |
+| [`IProjection`](src/interfaces/IProjection.ts) | Projection routing and view ownership |
+| [`IViewLocker`](src/interfaces/IViewLocker.ts) | Projection restore coordination |
+| [`IEventLocker`](src/interfaces/IEventLocker.ts) | Event deduplication and projection checkpoints |
+
+The [framework-free example](examples/user-domain-framework-free/index.ts) implements the core interfaces without
+using the supplied aggregate or projection base classes.
+
+## Aggregates
+
+`AbstractAggregate` maps public method names to command types. This aggregate handles a `createUser` command and
+emits a `userCreated` event:
+
+```ts
+class UserAggregate extends AbstractAggregate {
+	createUser(payload: { username: string }) {
+		this.emit('userCreated', { username: payload.username });
+	}
+}
+```
+
+Override `static handles` when command types should be declared explicitly.
+
+### Aggregate State
+
+State is rebuilt by applying the aggregate's historical events. Keep mutation deterministic and validate in the
+command method before emitting a new event:
+
+```ts
+class UserState {
+	username!: string;
+
+	userCreated(event: IEvent<{ username: string }>) {
+		this.username = event.payload.username;
+	}
+
+	userRenamed(event: IEvent<{ username: string }>) {
+		this.username = event.payload.username;
+	}
+}
+
+class UserAggregate extends AbstractAggregate<UserState> {
+	protected readonly state = new UserState();
+
+	renameUser(payload: { username: string }) {
+		if (payload.username === this.state.username)
+			throw new Error('Username is unchanged');
+
+		this.emit('userRenamed', payload);
+	}
+}
+```
+
+Constructor dependencies are resolved from the container, so domain behavior can use application services
+without service locators:
+
+```ts
+type UserAggregateOptions = IAggregateConstructorParams<void> & {
+	authService?: AuthService;
+};
+
+class UserAggregate extends AbstractAggregate {
+	readonly #authService: AuthService;
+
+	constructor({ authService, ...options }: UserAggregateOptions) {
+		super(options);
+		if (!authService)
+			throw new TypeError('authService is required');
+
+		this.#authService = authService;
+	}
+}
+
+interface AggregateContainer extends IContainer {
+	authService: AuthService;
+}
+
+const builder = new ContainerBuilder<AggregateContainer>();
+builder.register(AuthService).as('authService');
+builder.registerAggregate(UserAggregate);
+```
+
+## Projections And Views
+
+`AbstractProjection` maps event types to methods in the same way:
+
+```ts
+class UsersProjection extends AbstractProjection<Map<Identifier, UserRecord>> {
+	constructor() {
+		super({ view: new Map() });
+	}
+
+	userCreated(event: IEvent<UserRecord>) {
+		this.view.set(event.aggregateId!, event.payload);
+	}
+}
+```
+
+Override `static handles` to declare event types explicitly.
+
+Expose a projection view through the typed container and wait for startup restoration before serving reads:
+
+```ts
+interface AppContainer extends IContainer {
+	usersView: Map<Identifier, UserRecord>;
+}
+
+const builder = new ContainerBuilder<AppContainer>();
+builder.registerProjection(UsersProjection, 'usersView');
+
+const container = builder.container();
+await Promise.all(container.restorePromises ?? []);
+
+const usersView = container.usersView;
+```
+
+Persistent projection implementations provide restore locking, event deduplication, and checkpoints. Their exact
+transaction and retry guarantees are documented by each infrastructure module.
+
+## Sagas
+
+Sagas coordinate multi-step work by handling events and producing follow-up commands:
+
+```ts
+class WelcomeEmailSaga extends AbstractSaga {
+	userSignedUp(event: IEvent<{ email: string }>) {
+		this.enqueue('sendWelcomeEmail', undefined, {
+			email: event.payload.email
+		});
+	}
+}
+
+builder.register(EventIdAugmentor).as('eventIdAugmenter');
+builder.registerSaga(WelcomeEmailSaga);
+```
+
+Saga starter events require ids. Register `EventIdAugmentor` when the selected event storage does not assign an
+id before saga delivery.
+
+By default, a saga starts when a handled event has no origin for that saga type. Use `static startsWith` for
+explicit starter event types, `static handles` for additional events, and `static sagaDescriptor` for a stable
+origin key independent of the class name.
+
+The [simple saga](examples/sagas-simple/index.ts) and
+[overlapping sagas](examples/sagas-overlaps/index.ts) demonstrate state restoration and origin propagation.
+
+## Runtime Lifecycle And Guarantees
+
+Container dependencies are resolved lazily. Access each exposed projection view during startup to create its
+projection, subscribe it to the event store, and start restoration. Then await `restorePromises` before accepting
+requests that depend on those views. Destructuring exposed views from the container, as in the quick start, performs
+that initial resolution.
+
+Event dispatch has two stages:
+
+1. `commandBus.send()` waits for command handling and the configured dispatch pipeline, including event storage.
+2. Event-bus publication runs asynchronously after pipeline processing so command throughput is not tied to every
+   subscriber.
+
+Use `await eventStore.drain()` when a caller, test, or shutdown path must wait for all currently queued event
+publications. A completed command does not otherwise guarantee that every projection has finished processing its
+events. Configure `eventPublishErrorHandler` when publication failures must be logged or reported; draining waits
+for publication attempts but does not make subscriber handling part of the storage transaction.
+
+Infrastructure determines distributed guarantees:
+
+- In-memory locks and buses coordinate only one process.
+- Persistent event stores define transaction boundaries and optimistic concurrency behavior.
+- Persistent views define restore locking, event deduplication, retries, and checkpoint semantics.
+- RabbitMQ can redeliver acknowledged-late messages, so distributed handlers should be idempotent.
+
+Review the selected module documentation before relying on a specific failure or multi-instance behavior.
+
+## Infrastructure
+
+Choose infrastructure by deployment need. Modules can be used independently or combined.
+
+| Need | Module | Deployment | Peer dependency |
+|---|---|---|---|
+| Learning, tests, and ephemeral state | `node-cqrs` | One process | - |
+| Embedded event storage and views | [`node-cqrs/sqlite`](src/sqlite) | One process | `better-sqlite3` |
+| Distributed event storage and document views | [`node-cqrs/mongodb`](src/mongodb) | Multiple instances | `mongodb` |
+| Distributed document projection views | [`node-cqrs/redis`](src/redis) | Multiple instances | `ioredis` |
+| Transactional event storage and relational views | [`node-cqrs/postgresql`](src/postgresql) | Multiple instances | `pg` |
+| Distributed command and event delivery | [`node-cqrs/rabbitmq`](src/rabbitmq) | Multiple instances | `amqplib` |
+| CPU-intensive projections | [`node-cqrs/workers`](src/workers) | One application process | `comlink` |
+
+MongoDB, Redis, and PostgreSQL support is currently experimental and has not yet been validated in production.
+Their APIs may change in minor versions.
+
+### Event Storage
+
+| Implementation | Notes |
+|---|---|
+| `InMemoryEventStorage` | Data is lost on restart; intended for learning and tests |
+| `SqliteEventStorage` | Embedded storage for a single application process |
+| `MongoEventStorage` | Distributed document event storage |
+| `PostgresqlEventStorage` | Distributed transactional event storage |
+
+See the [SQLite example](examples/sqlite/index.ts),
+[MongoDB event-storage example](examples/mongodb-eventstore/index.ts), and
+[PostgreSQL example](examples/postgresql/index.ts).
+
+## Advanced: Manual Composition
+
+The container is optional. The same components can be assembled directly:
 
 ```ts
 const commandBus = new InMemoryMessageBus();
@@ -145,390 +374,28 @@ const eventStore = new EventStore({
 	eventBus
 });
 
-const aggregateCommandHandler = new AggregateCommandHandler({ eventStore, aggregateType: UserAggregate });
-aggregateCommandHandler.subscribe(commandBus);
+const aggregateHandler = new AggregateCommandHandler({
+	aggregateType: UserAggregate,
+	eventStore
+});
+aggregateHandler.subscribe(commandBus);
 
 const projection = new UsersProjection();
 projection.subscribe(eventStore);
-projection.restore(eventStore);
-const users = projection.view;
-```
+await projection.restore(eventStore);
 
-</details>
-
-
-## Commands
-
-Commands represent intent. Send them via `commandBus`:
-
-```ts
-commandBus.send('signupUser', undefined, { payload: { profile, password } });
-// or
-commandBus.send({ type: 'signupUser', payload: { profile, password } });
-```
-
-Commands are handled by [Aggregates](#write-model-aggregates) and may also be enqueued by [Sagas](#sagas).
-
-
-## Write Model (Aggregates)
-
-Aggregates handle commands, validate business rules, and emit events.
-Minimal contract ([IAggregate](src/interfaces/IAggregate.ts)):
-
-```ts
-interface IAggregate {
-
-	/**
-	 * Applies a single event to update the aggregate's internal state.
-	 *
-	 * This method is used primarily when rehydrating the aggregate
-	 * from the persisted sequence of events
-	 *
-	 * @param event - The event to be applied
-	 */
-	mutate(event: IEvent): void;
-
-	/**
-	 * Processes a command by executing the aggregate's business logic,
-	 * resulting in new events that capture the state changes.
-	 * It serves as the primary entry point for invoking aggregate behavior
-	 *
-	 * @param command - The command to be processed
-	 * @returns A set of events produced by the command
-	 */
-	handle(command: ICommand): IEventSet | Promise<IEventSet>;
-}
-```
-
-### AbstractAggregate
-
-The recommended base class. Public method names are matched to command types - `createUser()` handles `createUser`:
-
-```ts
-class UserAggregate extends AbstractAggregate<void> {
-	createUser(payload: CreateUserCommandPayload) {
-		this.emit('userCreated', { username: payload.username });
-	}
-}
-```
-
-Override `static get handles()` to declare command types explicitly.
-
-### Aggregate State
-
-Keep state separate from command handlers - derive it by projecting the aggregate's own events:
-
-```ts
-class UserAggregateState {
-	passwordHash: string;
-
-	passwordChanged(event: IEvent<PasswordChangedEventPayload>) {
-		this.passwordHash = event.payload.passwordHash;
-	}
-}
-
-class UserAggregate extends AbstractAggregate<UserAggregateState> {
-	protected readonly state = new UserAggregateState();
-
-	changePassword(payload: ChangePasswordCommandPayload) {
-		if (md5(payload.oldPassword) !== this.state.passwordHash)
-			throw new Error('Invalid password');
-
-		this.emit('passwordChanged', { passwordHash: md5(payload.newPassword) });
-	}
-}
-```
-
-State **must not throw** - all validation belongs in the aggregate command handler.
-
-### External Dependencies
-
-Constructor arguments are injected automatically by the DI container:
-
-```ts
-class UserAggregate extends AbstractAggregate {
-	constructor({ id, authService }) {
-		super({ id });
-		this._authService = authService;
-	}
-
-	async signupUser(payload) {
-		await this._authService.registerUser(payload);
-	}
-}
-
-builder.register(AuthService).as('authService');
-builder.registerAggregate(UserAggregate);
-```
-
-
-## Read Model (Projections and Views)
-
-Projections listen to events and update views.
-Minimal contract ([IProjection](src/interfaces/IProjection.ts)):
-
-```ts
-interface IProjection<TView> extends IObserver {
-	readonly view: TView;
-
-	/** Subscribe to new events */
-	subscribe(eventStore: IObservable): Promise<void> | void;
-
-	/** Restore view state from not-yet-projected events */
-	restore(eventStore: IEventStorageReader): Promise<void> | void;
-
-	/** Project new event */
-	project(event: IEvent): Promise<void> | void;
-}
-```
-
-### AbstractProjection
-
-Same name-matching rule as AbstractAggregate - `userCreated()` handles the `userCreated` event:
-
-```ts
-class UsersProjection extends AbstractProjection<Map<string, { 
-	username: string
-}>> {
-	constructor() {
-		super();
-		this.view = new Map();
-	}
-
-	userCreated(event: IEvent<UserCreatedEventPayload>) {
-		this.view.set(event.aggregateId, {
-			username: event.payload.username
-		});
-	}
-}
-```
-
-Override `static get handles()` to declare event types explicitly.
-
-### View restoring on start
-
-For persistent views and safe restarts, implement [IViewLocker](src/interfaces/IViewLocker.ts) and [IEventLocker](src/interfaces/IEventLocker.ts) on the projection `view` to enable catch-up and last-processed checkpoints.
-
-### Accessing views
-
-```ts
-// optional interface for container typing
-interface IMyContainer extends IContainer {
-	usersView: UsersView;
-}
-
-const builder = new ContainerBuilder<IMyContainer>();
-builder.registerProjection(UsersProjection, 'usersView');
-
-const { usersView } = builder.container();
-```
-
-For projections that manage and need to expose multiple views:
-
-```ts
-builder.registerProjection(UsersProjection).as('usersProjection');
-builder.register(c => c.usersProjection.users).as('usersView');
-builder.register(c => c.usersProjection.connections).as('connectionsView');
-```
-
-
-## Sagas
-
-Sagas coordinate multi-step processes by reacting to events and enqueueing follow-up commands.
-
-```ts
-class WelcomeEmailSaga extends AbstractSaga {
-	userSignedUp(event) {
-		this.enqueue('sendWelcomeEmail', undefined, {
-			email: event.payload.email
-		});
-	}
-}
-
-builder.register(EventIdAugmentor).as('eventIdAugmenter'); // required: adds event.id
-builder.registerSaga(WelcomeEmailSaga);
-```
-
-- Handler methods are named after event types (`userSignedUp` handles `userSignedUp`)
-- `this.enqueue(commandType, aggregateId, payload)` produces commands
-- `EventIdAugmentor` must be in the dispatch pipeline - starter events use `event.id` as the saga origin
-- `static sagaDescriptor` (optional) - stable key for `message.sagaOrigins`, defaults to class name
-
-`handle(event)` runs the handler before `mutate(event)`, so handlers always see the previous state.
-
-Saga context is tracked in `message.sagaOrigins[sagaDescriptor]`, storing the starter event id. A saga starts when `sagaOrigins[sagaDescriptor]` is absent and continues when it is present. A single event type can start multiple saga types.
-
-<details markdown="1">
-<summary><strong>Optional: explicit startsWith/handles</strong></summary>
-
-By default, the saga starts on any handled event that does not have `sagaOrigins[sagaDescriptor]` and continues when it does.
-
-For strict, explicit routing:
-- `static startsWith`: event types allowed to start a saga
-- `static handles`: additional event types to subscribe to
-</details>
-
-<details markdown="1">
-<summary><strong>Manual wiring (without DI container)</strong></summary>
-
-```ts
-const commandBus = new InMemoryMessageBus();
-const eventBus = new InMemoryMessageBus();
-const eventStorage = new InMemoryEventStorage();
-const eventStore = new EventStore({
-	eventStorageReader: eventStorage,
-	identifierProvider: eventStorage,
-	eventDispatchPipeline: [
-		new EventIdAugmentor({ identifierProvider: eventStorage }),
-		eventStorage
-	],
-	eventBus
+const [userCreated] = await commandBus.send('createUser', undefined, {
+	payload: { username: 'alice' }
 });
+await eventStore.drain();
 
-SignupAggregate.register(eventStore, commandBus);
-WelcomeEmailSaga.register(eventStore, commandBus);
+console.log(projection.view.get(userCreated.aggregateId!));
 ```
-
-</details>
-
-Minimal contract ([ISaga](src/interfaces/ISaga.ts)):
-
-```ts
-interface ISaga {
-
-	/**
-	 * Apply a historical event to restore saga state.
-	 */
-	mutate(event: IEvent): unknown | Promise<unknown>;
-
-	/**
-	 * Process an incoming event.
-	 *
-	 * @returns Commands produced by the saga in response to the event
-	 */
-	handle(event: IEvent): ReadonlyArray<ICommand> | Promise<ReadonlyArray<ICommand>>;
-}
-```
-
-
-## Infrastructure Modules
-
-Swap implementations by registering different classes in the DI container.
-All modules below implement the same interfaces - pick what fits your deployment.
-
-### Capability Matrix
-
-| Module              | Event storage                                      | Object view storage                                                                 | Projection wiring / lifecycle                                             | Message buses                                      |
-| ------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------- |
-| `node-cqrs`         | `InMemoryEventStorage`, `InMemorySnapshotStorage` | `InMemoryView`                                                                      | `AbstractProjection`, `InMemoryLock`                                      | `InMemoryMessageBus`                              |
-| `node-cqrs/sqlite`  | `SqliteEventStorage`                              | `SqliteObjectView`, `SqliteObjectStorage`, `AbstractSqliteObjectProjection`         | `AbstractSqliteView`, `SqliteViewLocker`, `SqliteEventLocker`             | -                                                 |
-| `node-cqrs/mongodb` | `MongoEventStorage`                               | `MongoObjectView`, `MongoObjectStorage`, `AbstractMongoObjectProjection`            | `AbstractMongoView`, `MongoViewLocker`, `MongoEventLocker`                | -                                                 |
-| `node-cqrs/redis`   | -                                                  | `RedisView`, `RedisObjectStorage`, `AbstractRedisProjection`                        | `RedisViewLocker`, `RedisEventLocker`                                     | -                                                 |
-| `node-cqrs/postgresql` | `PostgresqlEventStorage`                       | `AbstractPostgresqlObjectProjection`                                              | `AbstractPostgresqlProjection`, `AbstractPostgresqlView`                  | -                                                 |
-| `node-cqrs/rabbitmq` | -                                                 | -                                                                                   | -                                                                         | `RabbitMqGateway`, `RabbitMqCommandBus`, `RabbitMqEventBus` |
-| `node-cqrs/workers` | -                                                  | -                                                                                   | `AbstractWorkerProjection`, `WorkerProxyProjection`                       | -                                                 |
-
-### Event Storage
-
-Where aggregate events are persisted and replayed from.
-
-| Implementation         | Import              | Peer deps        | Notes                                                                             |
-| ---------------------- | ------------------- | ---------------- | --------------------------------------------------------------------------------- |
-| `InMemoryEventStorage` | `node-cqrs`         | -                | Dev/test only; data lost on restart ([example](examples/user-domain-ts/index.ts)) |
-| `SqliteEventStorage`   | `node-cqrs/sqlite`  | `better-sqlite3` | Embedded, single-process ([example](examples/sqlite/index.ts))                    |
-| `MongoEventStorage`    | `node-cqrs/mongodb` | `mongodb`        | Distributed, multi-process ([example](examples/mongodb-eventstore/index.ts))      |
-| `PostgresqlEventStorage` | `node-cqrs/postgresql` | `pg`          | Distributed, multi-process ([example](examples/postgresql/index.ts))              |
-
-### Read Model
-
-Where projections store and query their read-side state.
-Persistent view backends are built from the following layers. Not every backend implements every layer.
-
-| Layer               | Purpose                                                                                          |
-| ------------------- | ------------------------------------------------------------------------------------------------ |
-| **Object storage**  | Key/value CRUD with optimistic concurrency                                                       |
-| **View locker**     | Prevents concurrent schema-migration rebuilds - only one process rebuilds at a time; others wait |
-| **Event locker**    | Per-event deduplication and last-projected checkpoint                                            |
-| **Composite view**  | Combines the above into a single view object                                                     |
-| **Base projection** | Wires locking, checkpointing, and error handling automatically                                   |
-
-#### In-memory
-
-| Class          | Notes                                                          |
-| -------------- | -------------------------------------------------------------- |
-| `InMemoryLock` | Simple in-process lock                                         |
-| `InMemoryView` | Simple `Map`-backed view; restores from events on each restart |
-
-#### SQLite (`node-cqrs/sqlite`, peer dep: `better-sqlite3`)
-
-| Class                            | Role                                                                                   |
-| -------------------------------- | -------------------------------------------------------------------------------------- |
-| `SqliteObjectStorage`            | Key/value object storage with version-based concurrency                                |
-| `SqliteViewLocker`               | Prevents concurrent schema-migration rebuilds via SQLite row lock                      |
-| `SqliteEventLocker`              | Event deduplication and last-event checkpoint                                          |
-| `AbstractSqliteView`             | Base class for relational (non-object) SQLite views with view and event locks embedded |
-| `SqliteObjectView`               | Composite view combining the above                                                     |
-| `AbstractSqliteObjectProjection` | Base projection wired to `SqliteObjectView`                                            |
-
-See [src/sqlite](src/sqlite) for additional documentation, and [examples/sqlite](examples/sqlite/index.ts) for runnable project examples
-
-#### MongoDB (`node-cqrs/mongodb`, peer dep: `mongodb`)
-
-> **Experimental** - not yet validated in production. APIs may change in minor versions.
-
-Provides distributed event storage, document-oriented views, and custom MongoDB views with projection restore
-and event-processing coordination across application instances.
-
-See the [MongoDB documentation](src/mongodb) for setup, concurrency behavior, operational considerations, and
-advanced APIs. See the [event-storage example](examples/mongodb-eventstore/index.ts) and
-[views example](examples/mongodb-views/index.ts).
-
-#### Redis (`node-cqrs/redis`, peer dep: `ioredis`)
-
-> **Experimental** - not yet validated in production. APIs may change in minor versions.
-
-| Class                     | Role                                                                          |
-| ------------------------- | ----------------------------------------------------------------------------- |
-| `RedisObjectStorage`      | Key/value object storage backed by Redis hashes                               |
-| `RedisViewLocker`         | Prevents concurrent schema-migration rebuilds; auto-prolongs lock via PEXPIRE |
-| `RedisEventLocker`        | Event deduplication and last-event checkpoint                                 |
-| `RedisView`               | Composite view combining the above                                            |
-| `AbstractRedisProjection` | Base projection wired to `RedisView`                                          |
-
-See [src/redis](src/redis) for additional documentation, and [examples/redis](examples/redis/index.ts) for runnable projection examples.
-
-#### PostgreSQL (`node-cqrs/postgresql`, peer dep: `pg`)
-
-> **Experimental** - not yet validated in production. APIs may change in minor versions.
-
-Provides transactional event storage, relational views with custom SQL, and optional JSON object views. Runtime
-projection updates can atomically commit view changes, event-processing markers, and checkpoints.
-
-See the [PostgreSQL documentation](src/postgresql) for setup, configuration, transaction behavior, and advanced
-APIs. See the [runnable example](examples/postgresql/index.ts).
-
-### Message Buses
-
-How commands and events move between producers and consumers.
-
-| Implementation       | Import               | Peer deps | Notes                                                                                            |
-| -------------------- | -------------------- | --------- | ------------------------------------------------------------------------------------------------ |
-| `InMemoryMessageBus` | `node-cqrs`          | -         | Single-process; used as both command and event bus ([example](examples/user-domain-ts/index.ts)) |
-| `RabbitMqEventBus`   | `node-cqrs/rabbitmq` | `amqplib` | Fanout delivery to all subscribers ([instructions](src/rabbitmq))                                |
-| `RabbitMqCommandBus` | `node-cqrs/rabbitmq` | `amqplib` | Point-to-point via durable queue ([instructions](src/rabbitmq))                                  |
-
-### Other
-
-| Implementation             | Import              | Notes                                                         |
-| -------------------------- | ------------------- | ------------------------------------------------------------- |
-| `InMemorySnapshotStorage`  | `node-cqrs`         | Aggregate snapshot cache in memory, resets on process restart |
-| `AbstractWorkerProjection` | `node-cqrs/workers` | Run projections in worker threads ([instructions](src/workers), [example](examples/workers-projection/index.cjs)) |
-
-> **Experimental** - the Workers module is new and has not been validated in production. APIs may change in minor versions.
 
 ## OpenTelemetry
 
-Optional distributed tracing via [OpenTelemetry](https://opentelemetry.io/). Requires `@opentelemetry/api` peer dependency. Register a `tracerFactory` in the container to enable automatic span creation across CQRS components:
+Register a tracer factory to enable spans across commands, event dispatch, projections, sagas, storage adapters,
+and RabbitMQ transport. Install `@opentelemetry/api` alongside the library:
 
 ```ts
 import { trace } from '@opentelemetry/api';
@@ -536,23 +403,30 @@ import { trace } from '@opentelemetry/api';
 builder.register(() => (name: string) => trace.getTracer(`cqrs.${name}`)).as('tracerFactory');
 ```
 
-See [examples/telemetry/index.ts](examples/telemetry/index.ts) for a full working example.
-
+See the [telemetry example](examples/telemetry/index.ts) for a complete setup with exporters.
 
 ## Examples
 
-- [examples/user-domain-framework-free](examples/user-domain-framework-free/index.ts) - minimal, no-framework CQRS/ES in one file
-- [examples/user-domain-ts](examples/user-domain-ts) - TypeScript with DI container
-- [examples/user-domain-cjs](examples/user-domain-cjs) - CommonJS
-- [examples/redis](examples/redis/index.ts) - Redis-backed persistent projection
-- [examples/sagas-simple](examples/sagas-simple/index.ts) - simple saga
-- [examples/sagas-overlaps](examples/sagas-overlaps/index.ts) - overlapping sagas, multi-step flow
-- [examples/sqlite](examples/sqlite/index.ts) - SQLite-backed object storage view
-- [examples/browser](examples/browser) - browser smoke test
-- [examples/workers-projection](examples/workers-projection) - worker thread projection
-- [examples/mongodb-eventstore](examples/mongodb-eventstore/index.ts) - MongoDB-backed event storage
-- [examples/mongodb-views](examples/mongodb-views/index.ts) - MongoDB-backed document projection views
-- [examples/postgresql](examples/postgresql/index.ts) - PostgreSQL-backed event storage and projection view
-- [examples/telemetry](examples/telemetry/index.ts) - OpenTelemetry tracing with multiple exporters
+### Start Here
 
-TS examples can be run with NodeJS 24+ without transpiling.
+- [Framework-free TypeScript](examples/user-domain-framework-free/index.ts) - implement the core contracts directly
+- [TypeScript with the container](examples/user-domain-ts) - aggregates and projections with dependency injection
+- [CommonJS](examples/user-domain-cjs) - the same domain using the CommonJS build
+
+### Workflows
+
+- [Simple saga](examples/sagas-simple/index.ts) - one multi-step process
+- [Overlapping sagas](examples/sagas-overlaps/index.ts) - correlated processes sharing events
+- [Worker projection](examples/workers-projection) - run projection work in a worker thread
+- [Browser](examples/browser) - use the browser-compatible core bundle
+- [OpenTelemetry](examples/telemetry/index.ts) - trace the CQRS pipeline
+
+### Infrastructure
+
+- [SQLite](examples/sqlite/index.ts) - embedded event storage and views
+- [Redis](examples/redis/index.ts) - distributed document projection view
+- [MongoDB event storage](examples/mongodb-eventstore/index.ts) - distributed event persistence
+- [MongoDB views](examples/mongodb-views/index.ts) - document and custom projection views
+- [PostgreSQL](examples/postgresql/index.ts) - transactional event storage and projection views
+
+The project was inspired by [Lokad.CQRS](https://github.com/Lokad/lokad-cqrs).

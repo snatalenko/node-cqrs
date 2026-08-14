@@ -69,32 +69,29 @@ Event storage accepts `eventStoragePostgresqlDb` or `eventStoragePostgresqlDbFac
 different databases while still supporting one shared pool.
 
 Use factories when credentials or connection settings come from another container dependency. The named
-`container` argument makes that dependency resolution explicit. Cache the pool in a shared provider, then map
+`container` argument makes that dependency resolution explicit. Cache the pool in a shared factory, then map
 both adapter roles to it:
 
 ```ts
+type CredentialsStore = {
+	getPostgresqlConnectionString(): Promise<string> | string;
+};
+
 interface DatabaseContainer extends IContainer {
-	postgresqlConnectionStringProvider: () => Promise<string> | string;
+	credentialsStore: CredentialsStore;
 	postgresqlDbFactory: () => Promise<Pool>;
 }
 
 const builder = new ContainerBuilder<DatabaseContainer>();
 let pool: Pool | undefined;
 
-builder.registerInstance(
-	() => secretProvider.get('POSTGRESQL_CONNECTION_STRING'),
-	'postgresqlConnectionStringProvider'
-);
-
-builder.register(container => {
-	return async () => {
-		if (pool)
-			return pool;
-
-		const connectionString = await container.postgresqlConnectionStringProvider();
-		pool ??= new Pool({ connectionString });
+builder.register(container => async () => {
+	if (pool)
 		return pool;
-	};
+
+	const connectionString = await container.credentialsStore.getPostgresqlConnectionString();
+	pool ??= new Pool({ connectionString });
+	return pool;
 }, 'postgresqlDbFactory');
 
 builder.register(container => () => container.postgresqlDbFactory(), 'eventStoragePostgresqlDbFactory');
