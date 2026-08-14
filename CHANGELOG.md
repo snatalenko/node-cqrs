@@ -1,3 +1,61 @@
+# [1.3.0-alpha.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-beta.2...v1.3.0-alpha.1) (2026-08-14)
+
+
+### Features
+
+* Transactional PostgreSQL projection base ([36c3387](https://github.com/snatalenko/node-cqrs/commit/36c3387ee560e7a019a004707188fba8c2e7b33a))
+
+
+# [1.3.0-alpha.0](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-beta.0...v1.3.0-alpha.0) (2026-06-17)
+
+
+### Features
+
+* PostgreSQL event storage ([a567da2](https://github.com/snatalenko/node-cqrs/commit/a567da2597f30013c201d9c2e7c22e94b5abf429))
+* PostgreSQL projection views ([6ac7301](https://github.com/snatalenko/node-cqrs/commit/6ac73012a187de5755b5f9a646d2e816397e143d))
+
+### Performance Improvements
+
+* Aggregate SQLite saga origins in event queries ([491310e](https://github.com/snatalenko/node-cqrs/commit/491310ecc7263a1f6833ad08fc9b8340f8d434a1))
+
+
+# [1.2.0-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-beta.1...v1.2.0-beta.2) (2026-08-14)
+
+
+### Build System
+
+* Use Jekyll to build documentation from README's ([cd4dcc2](https://github.com/snatalenko/node-cqrs/commit/cd4dcc291a93f0da69560b6a75aff7bbe2cf306e))
+
+### Internal Fixes
+
+* Improve log output on rabbitmq message handler timeout ([f8dc3ca](https://github.com/snatalenko/node-cqrs/commit/f8dc3ca5ec9589b6ec7131056ee51118204f9cf4))
+
+
+# [1.2.0-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.1...v1.2.0-beta.1) (2026-07-17)
+
+
+
+# [1.2.0-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.1.0...v1.2.0-beta.0) (2026-06-17)
+
+
+### Features
+
+* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
+* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
+
+### Internal Fixes
+
+* Move duplicate worker utils into src/shared/worker-utils/ ([8b3c383](https://github.com/snatalenko/node-cqrs/commit/8b3c383be41edd40fcedfbb663104e4f5d530bcc))
+
+
+## [1.1.1](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.0...v1.1.1) (2026-07-17)
+
+
+### Fixes
+
+* Chained pipelines not preserving FIFO action start order ([ba27d1d](https://github.com/snatalenko/node-cqrs/commit/ba27d1d3be700c69c87e0df6e7385ea784824e63))
+
+
 # [1.3.0-alpha.0](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-beta.0...v1.3.0-alpha.0) (2026-06-17)
 
 
