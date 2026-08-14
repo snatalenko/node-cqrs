@@ -38,17 +38,33 @@ describe('MongoEventStorage', () => {
 			client: { close: jest.fn().mockResolvedValue(undefined) }
 		};
 
-		storage = new MongoEventStorage({ mongoDbFactory: () => mockDb as any });
+		storage = new MongoEventStorage({ eventStorageMongoDb: mockDb as any });
 	});
 
 	describe('constructor', () => {
-		it('throws when mongoDbFactory is not a function', () => {
+		it('throws when an event storage database is not provided', () => {
 			expect(() => new MongoEventStorage({} as any)).toThrow(TypeError);
-			expect(() => new MongoEventStorage({} as any)).toThrow('mongoDbFactory must be a Function');
+			expect(() => new MongoEventStorage({} as any)).toThrow(
+				'either eventStorageMongoDb or eventStorageMongoDbFactory argument required'
+			);
 		});
 
-		it('throws when mongoDbFactory is a string', () => {
-			expect(() => new MongoEventStorage({ mongoDbFactory: 'not-a-function' } as any)).toThrow(TypeError);
+		it('throws when eventStorageMongoDbFactory is a string', () => {
+			expect(() => new MongoEventStorage({
+				eventStorageMongoDbFactory: 'not-a-function'
+			} as any)).toThrow(TypeError);
+		});
+
+		it('creates the database through eventStorageMongoDbFactory', async () => {
+			const factory = jest.fn().mockReturnValue({
+				collection: jest.fn().mockReturnValue(mockCollection),
+				client: { close: jest.fn() }
+			});
+			const s = new MongoEventStorage({ eventStorageMongoDbFactory: factory });
+
+			await s.commitEvents([{ type: 'Test' }]);
+
+			expect(factory).toHaveBeenCalledTimes(1);
 		});
 
 		it('uses custom collection name from mongoEventStorageConfig', async () => {
@@ -58,7 +74,7 @@ describe('MongoEventStorage', () => {
 			};
 
 			const s = new MongoEventStorage({
-				mongoDbFactory: () => mockDb as any,
+				eventStorageMongoDb: mockDb as any,
 				mongoEventStorageConfig: { collection: 'custom_events' }
 			});
 
@@ -74,7 +90,7 @@ describe('MongoEventStorage', () => {
 				client: { close: jest.fn() }
 			};
 
-			const s = new MongoEventStorage({ mongoDbFactory: () => mockDb as any });
+			const s = new MongoEventStorage({ eventStorageMongoDb: mockDb as any });
 
 			await s.commitEvents([{ type: 'Test', aggregateId: 'a1', aggregateVersion: 1 } as any]);
 
@@ -90,7 +106,7 @@ describe('MongoEventStorage', () => {
 			};
 
 			const storageWithProcess = new MongoEventStorage({
-				mongoDbFactory: () => mockDb as any,
+				eventStorageMongoDb: mockDb as any,
 				process: process as any
 			});
 

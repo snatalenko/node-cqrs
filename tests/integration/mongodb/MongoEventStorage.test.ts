@@ -36,7 +36,7 @@ describe('MongoEventStorage (integration)', () => {
 		}
 
 		storage = new MongoEventStorage({
-			mongoDbFactory: () => db,
+			eventStorageMongoDb: db,
 			mongoEventStorageConfig: { collection: COLLECTION }
 		});
 	});
@@ -208,7 +208,7 @@ describe('MongoEventStorage (integration)', () => {
 			// Drop and recreate with a fresh storage
 			await db.collection(COLLECTION).drop().catch(() => { });
 			const newStorage = new MongoEventStorage({
-				mongoDbFactory: () => db,
+				eventStorageMongoDb: db,
 				mongoEventStorageConfig: { collection: COLLECTION }
 			});
 

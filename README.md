@@ -476,16 +476,12 @@ See [src/sqlite](src/sqlite) for additional documentation, and [examples/sqlite]
 
 > **Experimental** - not yet validated in production. APIs may change in minor versions.
 
-| Class                           | Role                                                                              |
-| ------------------------------- | --------------------------------------------------------------------------------- |
-| `MongoObjectStorage`            | Document storage with version-based optimistic concurrency                        |
-| `MongoViewLocker`               | Prevents concurrent schema-migration rebuilds; auto-prolongs lock via token + TTL |
-| `MongoEventLocker`              | Event deduplication and last-event checkpoint                                     |
-| `AbstractMongoView`             | Base class combining `MongoViewLocker` + `MongoEventLocker`                       |
-| `MongoObjectView`               | Composite view combining the above                                                |
-| `AbstractMongoObjectProjection` | Base projection wired to `MongoObjectView`                                        |
+Provides distributed event storage, document-oriented views, and custom MongoDB views with projection restore
+and event-processing coordination across application instances.
 
-See [src/mongodb](src/mongodb) for additional documentation, and [examples/mongodb-views](examples/mongodb-views/index.ts) for runnable projection examples.
+See the [MongoDB documentation](src/mongodb) for setup, concurrency behavior, operational considerations, and
+advanced APIs. See the [event-storage example](examples/mongodb-eventstore/index.ts) and
+[views example](examples/mongodb-views/index.ts).
 
 #### Redis (`node-cqrs/redis`, peer dep: `ioredis`)
 
@@ -554,8 +550,8 @@ See [examples/telemetry/index.ts](examples/telemetry/index.ts) for a full workin
 - [examples/sqlite](examples/sqlite/index.ts) - SQLite-backed object storage view
 - [examples/browser](examples/browser) - browser smoke test
 - [examples/workers-projection](examples/workers-projection) - worker thread projection
-- [examples/mongodb-eventstore](examples/mongodb-eventstore/index.ts) - MongoDB event storage with DI container and manual wiring
-- [examples/mongodb-views](examples/mongodb-views/index.ts) - MongoDB-backed projection views with object storage and locking
+- [examples/mongodb-eventstore](examples/mongodb-eventstore/index.ts) - MongoDB-backed event storage
+- [examples/mongodb-views](examples/mongodb-views/index.ts) - MongoDB-backed document projection views
 - [examples/postgresql](examples/postgresql/index.ts) - PostgreSQL-backed event storage and projection view
 - [examples/telemetry](examples/telemetry/index.ts) - OpenTelemetry tracing with multiple exporters
 

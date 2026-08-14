@@ -23,7 +23,7 @@ interface MyContainer extends IContainer {
 
 const builder = new ContainerBuilder<MyContainer>();
 
-// Register the Db factory — DI resolves it by name for MongoEventStorage
+// Register the Db factory - DI resolves it by name for MongoEventStorage
 builder.register(() => {
 	let client: MongoClient;
 	return async () => {
@@ -33,7 +33,7 @@ builder.register(() => {
 		}
 		return client.db('node_cqrs_eventstore_example');
 	};
-}).as('mongoDbFactory');
+}).as('eventStorageMongoDbFactory');
 
 // MongoEventStorage is auto-resolved as eventStorageReader, eventStorage, and identifierProvider
 builder.register(MongoEventStorage);
@@ -41,7 +41,7 @@ builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'users');
 
-const { commandBus, users, eventStore, mongoDbFactory } = builder.container();
+const { commandBus, users, eventStore, eventStorageMongoDbFactory } = builder.container();
 
 // --- Run ---
 
@@ -68,6 +68,6 @@ await commandBus.send('renameUser', aggregateId, {
 // --- Cleanup ---
 
 await eventStore.drain();
-const db = await mongoDbFactory!();
+const db = await eventStorageMongoDbFactory!();
 await db.dropDatabase();
 await db.client.close();

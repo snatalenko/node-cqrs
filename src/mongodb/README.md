@@ -1,258 +1,321 @@
 node-cqrs/mongodb
 =================
 
-## Overview
+MongoDB support for `node-cqrs` provides:
 
-MongoDB event storage and persistent views for `node-cqrs`.
+- durable event storage for aggregates and sagas;
+- document-oriented projection views;
+- custom MongoDB views built with your own collections, indexes, and queries;
+- coordination for projection restore and event processing across multiple application instances.
 
 > **Experimental** - not yet validated in production. APIs may change in minor versions.
 
-## Table of Contents
+## Installation
 
-- [MongoEventStorage](#mongoeventstorage)
-- [MongoDB views](#mongodb-views)
-  - [AbstractMongoObjectProjection](#abstractmongoobjectprojection)
-  - [MongoObjectView](#mongoobjectview)
-  - [AbstractMongoView](#abstractmongoview)
-- [Lower-level building blocks](#lower-level-building-blocks)
-  - [MongoObjectStorage](#mongoobjectstorage)
-  - [MongoViewLocker](#mongoviewlocker)
-  - [MongoEventLocker](#mongoeventlocker)
+Install the MongoDB driver alongside `node-cqrs`:
 
+```bash
+npm install node-cqrs mongodb
+```
 
-## MongoEventStorage
+The adapter accepts MongoDB `Db` instances. The application owns the underlying `MongoClient` and should close
+it during shutdown.
 
-Implements `IEventStorageReader`, `IIdentifierProvider`, and `IDispatchPipelineProcessor`. Covers all three roles the event store pipeline requires.
+## Choose what you need
 
-Register `mongoDbFactory` to provide the `Db` instance, then register `MongoEventStorage`:
+| Requirement | Use |
+|---|---|
+| Store and restore aggregate events | `MongoEventStorage` |
+| Store a document-like or key/value read model | `AbstractMongoObjectProjection` |
+| Build a read model with custom MongoDB collections and queries | `AbstractMongoView` with `AbstractProjection` |
+| Use only optimistic document storage | `MongoObjectStorage` |
+| Compose storage and locking manually | The lower-level APIs described under [Advanced APIs](#advanced-apis) |
+
+Event storage and views can be used independently and may use the same database or separate databases.
+
+## Database setup
+
+For a connection established during application startup, register the event database factory and view database
+directly:
 
 ```ts
 import { MongoClient } from 'mongodb';
-import { MongoEventStorage } from 'node-cqrs/mongodb';
+import { ContainerBuilder } from 'node-cqrs';
 
-builder.registerInstance(async () => {
-	const client = new MongoClient('mongodb://localhost:27017');
-	await client.connect();
-	return client.db('my_event_store');
-}, 'mongoDbFactory');
+const client = new MongoClient(process.env.MONGODB_URL ?? 'mongodb://localhost:27017');
+await client.connect();
 
-builder.register(MongoEventStorage);
+const builder = new ContainerBuilder();
+builder.registerInstance(client.db('application_events'), 'eventStorageMongoDb');
+builder.registerInstance(client.db('application_views'), 'viewModelMongoDb');
 ```
 
-### Configuration
+Event storage accepts `eventStorageMongoDb` or `eventStorageMongoDbFactory`. Views accept `viewModelMongoDb` or
+`viewModelMongoDbFactory`. Register factories when credentials must be resolved asynchronously or connections
+should be opened lazily:
 
-Register `mongoEventStorageConfig` to override defaults:
+```ts
+import type { IContainer } from 'node-cqrs';
 
-| Parameter | Default | Description |
-|---|---|---|
-| `collection` | `'events'` | Collection name for storing events |
+type CredentialsStore = {
+	getMongoConnectionString(): Promise<string> | string;
+};
+
+interface DatabaseContainer extends IContainer {
+	credentialsStore: CredentialsStore;
+}
+
+const builder = new ContainerBuilder<DatabaseContainer>();
+let client: MongoClient | undefined;
+
+builder.register(container => async () => {
+	if (!client) {
+		const connectionString = await container.credentialsStore.getMongoConnectionString();
+		client ??= new MongoClient(connectionString);
+	}
+
+	await client.connect();
+	return client.db('application_events');
+}, 'eventStorageMongoDbFactory');
+```
+
+The application can close the retained client with `await client?.close()` during shutdown. Use the same pattern
+with `viewModelMongoDbFactory` for a lazily connected view database. Both factories may return databases from
+the same `MongoClient`, but separate dependency names allow event and view data to use different databases or
+clusters. Concurrent `connect()` calls for the shared client wait on the MongoDB driver's connection lock.
+
+## Event storage
+
+`MongoEventStorage` stores events, preserves saga origin references, and generates MongoDB `ObjectId`-based event
+identifiers.
+
+```ts
+import { EventIdAugmentor } from 'node-cqrs';
+import { MongoEventStorage } from 'node-cqrs/mongodb';
+
+builder.register(MongoEventStorage);
+builder.register(EventIdAugmentor).as('eventIdAugmenter');
+```
+
+`ContainerBuilder` detects the roles implemented by `MongoEventStorage` and uses it as the event writer, event
+reader, and identifier provider.
+
+Aggregate versions are checked optimistically through a unique index on `aggregateId` and `aggregateVersion`.
+If two commands append the same aggregate version, one succeeds and the other throws `ConcurrencyError`.
+`ignoreConcurrencyError` is not supported.
+
+Event batches do not use MongoDB transactions. If an insert fails, the adapter removes events from that batch
+that it already inserted. Process termination during the batch can still leave a partial write.
+
+The default event collection is `events`. To use a different name:
 
 ```ts
 builder.registerInstance({ collection: 'domain_events' }, 'mongoEventStorageConfig');
-builder.register(MongoEventStorage);
 ```
 
-### Concurrency
+## Document views
 
-`MongoEventStorage` uses a unique index on `{ aggregateId, aggregateVersion }` to detect concurrent writes. A conflicting write throws a `ConcurrencyError`, which the aggregate command handler catches and retries with a fresh rehydrate.
-
-`ignoreConcurrencyError` is not supported - passing it throws immediately.
-
-### IDs
-
-`getNewId()` returns a new MongoDB `ObjectId` hex string used as event IDs throughout the pipeline.
-
-See [examples/mongodb-eventstore/index.ts](../../examples/mongodb-eventstore/index.ts) for a runnable example.
-
-
-## MongoDB views
-
-The recommended way to build persistent read models with MongoDB is to extend `AbstractMongoObjectProjection`. It wires up object storage, schema-migration locking, and event checkpointing automatically.
-
-Register `viewModelMongoDbFactory` (async factory) or `viewModelMongoDb` (a pre-connected `Db` instance) to provide the database connection used by all view classes:
+Use `AbstractMongoObjectProjection` when each read-model record is naturally addressed by id and stored as one
+MongoDB document.
 
 ```ts
-import { MongoClient } from 'mongodb';
-
-builder.register(() => {
-	let client: MongoClient;
-	return async () => {
-		if (!client) {
-			client = new MongoClient('mongodb://localhost:27017');
-			await client.connect();
-		}
-		return client.db('my_view_store');
-	};
-}).as('viewModelMongoDbFactory');
-```
-
-Event storage and view model storage use separate connection registrations so they can point to different databases, though both can point to the same one.
-
-### AbstractMongoObjectProjection
-
-Base class for MongoDB-backed object projections. Requires two static getters to be defined on the subclass:
-
-```ts
-import { AbstractMongoObjectProjection } from 'node-cqrs/mongodb';
 import type { IEvent } from 'node-cqrs';
+import { AbstractMongoObjectProjection } from 'node-cqrs/mongodb';
 
-class UsersProjection extends AbstractMongoObjectProjection<{ username: string }> {
+type UserRecord = {
+	username: string;
+};
 
-	static get tableName() { return 'users'; }
-	static get schemaVersion() { return '1'; }
+class UsersProjection extends AbstractMongoObjectProjection<UserRecord> {
+	static override get tableName() {
+		return 'users';
+	}
+
+	static override get schemaVersion() {
+		return '1';
+	}
 
 	async userCreated(event: IEvent<{ username: string }>) {
-		await this.view.create(event.aggregateId as string, {
-			username: event.payload.username
+		await this.view.create(event.aggregateId!, {
+			username: event.payload!.username
 		});
+	}
+
+	async userRenamed(event: IEvent<{ username: string }>) {
+		await this.view.update(event.aggregateId!, user => ({
+			...user,
+			username: event.payload!.username
+		}));
 	}
 }
 ```
 
-| Static getter | Required | Description |
-|---|---|---|
-| `tableName` | Yes | Base name for the MongoDB collection |
-| `schemaVersion` | Yes | Schema version; appended to collection name as `${tableName}_${schemaVersion}` |
-
-Register like any other projection:
+Expose the view through the container and wait for restoration before serving reads:
 
 ```ts
-builder.register(UsersProjection, 'usersView');
+import { ContainerBuilder, type IContainer } from 'node-cqrs';
+import type { MongoObjectView } from 'node-cqrs/mongodb';
+
+interface AppContainer extends IContainer {
+	usersView: MongoObjectView<UserRecord>;
+}
+
+const builder = new ContainerBuilder<AppContainer>();
+builder.registerInstance(client.db('application_views'), 'viewModelMongoDb');
+builder.registerProjection(UsersProjection, 'usersView');
+
+const { usersView, restorePromises } = builder.container();
+await Promise.all(restorePromises ?? []);
+
+const user = await usersView.get(userId);
 ```
 
-### MongoObjectView
+Persistent view checkpoints require every event to have an `id`. Register `EventIdAugmentor` when the selected
+event-storage pipeline does not assign ids before projection delivery.
 
-The composite view created by `AbstractMongoObjectProjection`. Can also be instantiated directly for custom projection wiring.
+The physical collection is `${tableName}_${schemaVersion}`; the example uses `users_1`. Documents contain `_id`,
+`data`, and a version used for optimistic updates. Concurrent events that update the same record are retried when
+the version changes. Update callbacks may therefore run more than once and must not perform external side
+effects.
 
-```ts
-import { MongoObjectView } from 'node-cqrs/mongodb';
+## Custom views
 
-const view = new MongoObjectView({
-	viewModelMongoDbFactory,   // or viewModelMongoDb
-	projectionName: 'users',
-	schemaVersion: '1',
-	tableNamePrefix: 'users'   // collection name: users_1
-});
-```
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `tableNamePrefix` | `string` | Yes | Prefix for the MongoDB collection name |
-| `projectionName` | `string` | Yes | Identifies the projection in lock documents |
-| `schemaVersion` | `string` | Yes | Appended to `tableNamePrefix` to form the collection name |
-| `eventLockTtl` | `number` | No | Event lock TTL in ms; defaults to `MongoEventLocker.DEFAULT_EVENT_LOCK_TTL` |
-| `eventLocksCollection` | `string` | No | Event locks collection name; defaults to `MongoEventLocker.DEFAULT_EVENT_LOCKS_COLLECTION` |
-| `viewLockTtl` | `number` | No | Schema-migration lock TTL in ms; defaults to `MongoViewLocker.DEFAULT_VIEW_LOCK_TTL` |
-| `viewLocksCollection` | `string` | No | View locks collection name; defaults to `MongoViewLocker.DEFAULT_COLLECTION` |
-
-`MongoObjectView` implements both `IObjectStorage` and `IEventLocker`. Reads via `view.get()` wait for any in-progress schema migration to complete before returning, so consumers always see a fully rebuilt view.
-
-### AbstractMongoView
-
-Lower-level base class used internally by `MongoObjectView`. Composes `MongoViewLocker` and `MongoEventLocker` without adding object storage. Extend this when you need custom storage logic but still want schema-migration locking and event checkpointing:
+Use `AbstractMongoView` when a read model needs its own document shape, indexes, aggregation pipelines, or query
+methods. It provides restore locking, event deduplication, and checkpoints, while the subclass owns its MongoDB
+collections.
 
 ```ts
+import type { Collection, Db } from 'mongodb';
+import { AbstractProjection, type IContainer, type IEvent, type Identifier } from 'node-cqrs';
 import { AbstractMongoView } from 'node-cqrs/mongodb';
 
-class MyCustomView extends AbstractMongoView {
-	// this.viewLocker - MongoViewLocker instance
-	// this.eventLocker - MongoEventLocker instance
+type MongoDependencies = Pick<
+	IContainer,
+	'viewModelMongoDb' | 'viewModelMongoDbFactory' | 'logger'
+>;
+
+type UserStatusDocument = {
+	userId: Identifier;
+	username: string;
+	status: string;
+};
+
+class UsersByStatusView extends AbstractMongoView {
+	#users: Collection<UserStatusDocument> | undefined;
+
+	constructor(options: MongoDependencies) {
+		super({
+			...options,
+			projectionName: 'UsersByStatusProjection',
+			schemaVersion: '1'
+		});
+	}
+
+	protected override async initialize(db: Db) {
+		this.#users = db.collection<UserStatusDocument>('users_by_status_1');
+		await this.#users.createIndex({ status: 1, username: 1 });
+	}
+
+	async upsertUser(userId: Identifier, username: string, status: string) {
+		await this.assertConnection();
+		await this.#users!.updateOne(
+			{ userId },
+			{ $set: { username, status } },
+			{ upsert: true }
+		);
+	}
+
+	async findByStatus(status: string) {
+		if (!this.ready)
+			await this.once('ready');
+
+		await this.assertConnection();
+		return this.#users!.find({ status }).sort({ username: 1 }).toArray();
+	}
+}
+
+class UsersByStatusProjection extends AbstractProjection<UsersByStatusView> {
+	constructor(options: MongoDependencies) {
+		super({ logger: options.logger });
+		this.view = new UsersByStatusView(options);
+	}
+
+	async userCreated(event: IEvent<{ username: string }>) {
+		await this.view.upsertUser(event.aggregateId!, event.payload!.username, 'active');
+	}
 }
 ```
 
-Accepts the same parameters as `MongoObjectView` minus `tableNamePrefix`.
+## Runtime processing
 
+MongoDB views coordinate event handling across application instances. A projection first claims an event, then
+runs its handler, marks the event as processed, and saves its checkpoint. If another instance receives the same
+event concurrently, it cannot claim it and skips that delivery.
 
-## Lower-level building blocks
+These steps are separate MongoDB operations and are not wrapped in a transaction. If processing stops after the
+view mutation but before the processed marker, a later retry can apply the handler again. If it stops before the
+mutation completes, the event can be claimed after the event lock TTL, but only when it is delivered or restored
+again; there is no background retry scheduler. Projection handlers should be retryable, and the application must
+decide how failed runtime deliveries are retried.
 
-Use these directly only when the composite view classes don't fit your use case.
+## Restore and schema versions
 
-### MongoObjectStorage
+On startup, a projection resumes after its last saved checkpoint. A distributed view lock ensures that only one
+application instance restores a given projection and schema version at a time. The lock is prolonged while held;
+other instances wait and then continue from the resulting checkpoint.
 
-Key/value document store with optimistic concurrency. Stores records as `{ _id, data, version }` documents.
+Change `schemaVersion` when the shape or meaning of a read model changes and its events must be replayed. Object
+views write to a new versioned collection automatically. Custom views own their collection naming and migration
+strategy.
 
-```ts
-import { MongoObjectStorage } from 'node-cqrs/mongodb';
+Wait for `restorePromises` before serving requests that depend on projections. `MongoObjectView.get()` and custom
+read methods that follow the readiness pattern above also wait for an in-progress local restore.
 
-const storage = new MongoObjectStorage({
-	viewModelMongoDbFactory,
-	tableName: 'users_v1',
-	maxRetries: 50          // optional; default 100
-});
+## Operations
+
+- Collections and indexes are initialized lazily on first use. The MongoDB user must be able to create indexes
+  and read and write the configured collections.
+- The adapter does not close a supplied view database. Retain the owning `MongoClient` and close it during
+  application shutdown.
+- Event processing locks are persistent deduplication records, not MongoDB TTL documents. Plan storage capacity
+  for one lock document per event and projection schema version.
+- Use distinct collection names when multiple applications share a database.
+
+## Advanced APIs
+
+Most consumers do not need to construct these classes directly:
+
+| Class | Use directly when |
+|---|---|
+| `MongoObjectView` | A custom projection needs the standard object storage and locking behavior |
+| `MongoObjectStorage` | Only MongoDB-backed key/value storage is needed |
+| `MongoViewLocker` | A custom component needs distributed restore or migration locking |
+| `MongoEventLocker` | A custom projection needs event deduplication and checkpoints |
+
+The default restore lock TTL is 120 seconds and is prolonged automatically. The default event-processing lock
+TTL is 15 seconds. Collection names and TTLs can be supplied when constructing views or lockers directly.
+`AbstractMongoObjectProjection` uses the mutable static defaults on `MongoViewLocker` and `MongoEventLocker`.
+
+## Run locally
+
+Start MongoDB:
+
+```bash
+docker run --name node-cqrs-mongodb -p 27017:27017 -d mongo:7
 ```
 
-| Parameter | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `tableName` | `string` | Yes | - | MongoDB collection name |
-| `maxRetries` | `number` | No | `100` | Max retries for optimistic concurrency conflicts on `updateEnforcingNew` |
+Run the event-storage and document-view examples:
 
-`create(id, data)` throws if a document with that `id` already exists.
-`updateEnforcingNew(id, updater)` reads, applies `updater`, then writes with a version check; retries up to `maxRetries` on conflict; inserts if missing.
-
-### MongoViewLocker
-
-Prevents multiple processes from rebuilding the same view concurrently when a projection switches to a new `schemaVersion`. The first process to acquire the lock performs the rebuild; others wait until the lock is released before reading the view. The lock is automatically prolonged at half the TTL interval while the rebuild is in progress.
-
-```ts
-import { MongoViewLocker } from 'node-cqrs/mongodb';
-
-const locker = new MongoViewLocker({
-	viewModelMongoDbFactory,
-	projectionName: 'users',
-	schemaVersion: '1',
-	viewLockTtl: 60_000,                         // optional
-	viewLocksCollection: 'my_view_locks'          // optional
-});
+```bash
+npm run example:mongodb-eventstore
+npm run example:mongodb-views
 ```
 
-| Parameter | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `projectionName` | `string` | Yes | - | Identifies the projection in lock documents |
-| `schemaVersion` | `string` | Yes | - | Combined with `projectionName` to form the lock document `_id` |
-| `viewLockTtl` | `number` | No | `MongoViewLocker.DEFAULT_VIEW_LOCK_TTL` | Schema-migration lock TTL in ms |
-| `viewLocksCollection` | `string` | No | `MongoViewLocker.DEFAULT_COLLECTION` | Collection name for lock documents |
+The complete sources are [examples/mongodb-eventstore/index.ts](../../examples/mongodb-eventstore/index.ts) and
+[examples/mongodb-views/index.ts](../../examples/mongodb-views/index.ts).
 
-**Mutable static defaults** - reassign to change the default for all instances:
+Run the MongoDB integration tests against the same instance with:
 
-```ts
-MongoViewLocker.DEFAULT_VIEW_LOCK_TTL = 60_000;     // default: 120_000
-MongoViewLocker.DEFAULT_COLLECTION = 'my_locks';    // default: 'ncqrs_view_locks'
+```bash
+npm run test:mongodb
 ```
-
-### MongoEventLocker
-
-Per-event deduplication and last-processed-event checkpoint. Prevents a projection from handling the same event twice across restarts.
-
-```ts
-import { MongoEventLocker } from 'node-cqrs/mongodb';
-
-const locker = new MongoEventLocker({
-	viewModelMongoDbFactory,
-	projectionName: 'users',
-	schemaVersion: '1',
-	eventLockTtl: 30_000,                          // optional
-	eventLocksCollection: 'my_event_locks',        // optional
-	viewLocksCollection: 'my_view_locks'           // optional
-});
-```
-
-| Parameter | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `projectionName` | `string` | Yes | - | Identifies the projection in lock documents |
-| `schemaVersion` | `string` | Yes | - | Combined with `projectionName` to form the lock document `_id` |
-| `eventLockTtl` | `number` | No | `MongoEventLocker.DEFAULT_EVENT_LOCK_TTL` | TTL for in-progress event locks in ms; expired locks can be claimed by another process |
-| `eventLocksCollection` | `string` | No | `MongoEventLocker.DEFAULT_EVENT_LOCKS_COLLECTION` | Collection name for event lock documents |
-| `viewLocksCollection` | `string` | No | `MongoEventLocker.DEFAULT_VIEW_LOCKS_COLLECTION` | Collection name used to track the last-processed event per projection |
-
-**Mutable static defaults** - reassign to change the default for all instances:
-
-```ts
-MongoEventLocker.DEFAULT_EVENT_LOCK_TTL = 30_000;                    // default: 15_000
-MongoEventLocker.DEFAULT_EVENT_LOCKS_COLLECTION = 'my_event_locks';  // default: 'ncqrs_event_locks'
-MongoEventLocker.DEFAULT_VIEW_LOCKS_COLLECTION = 'my_view_locks';    // default: 'ncqrs_view_locks'
-```
-
-## Examples
-
-- [examples/mongodb-eventstore/index.ts](../../examples/mongodb-eventstore/index.ts) - `MongoEventStorage` with DI container setup and manual wiring
-- [examples/mongodb-views/index.ts](../../examples/mongodb-views/index.ts) - `AbstractMongoObjectProjection` with object storage and distributed locking

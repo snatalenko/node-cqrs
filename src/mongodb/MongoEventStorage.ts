@@ -81,16 +81,28 @@ export class MongoEventStorage implements
 	}>;
 
 	constructor({
-		mongoDbFactory,
+		eventStorageMongoDb,
+		eventStorageMongoDbFactory,
 		mongoEventStorageConfig,
 		process
-	}: Pick<IContainer, 'mongoDbFactory' | 'mongoEventStorageConfig' | 'process'>) {
-		assertFunction(mongoDbFactory, 'mongoDbFactory');
+	}: Pick<IContainer,
+		'eventStorageMongoDb' |
+		'eventStorageMongoDbFactory' |
+		'mongoEventStorageConfig' |
+		'process'
+	>) {
+		if (!eventStorageMongoDb && !eventStorageMongoDbFactory)
+			throw new TypeError('either eventStorageMongoDb or eventStorageMongoDbFactory argument required');
+		if (!eventStorageMongoDb && eventStorageMongoDbFactory !== undefined)
+			assertFunction(eventStorageMongoDbFactory, 'eventStorageMongoDbFactory');
 
 		const collectionName = mongoEventStorageConfig?.collection ?? MongoEventStorage.EVENTS_COLLECTION;
 		assertString(collectionName, 'mongoEventStorageConfig.collection');
 
-		this.#initPromise = MongoEventStorage.#init(mongoDbFactory, collectionName);
+		this.#initPromise = MongoEventStorage.#init(
+			() => eventStorageMongoDb ?? eventStorageMongoDbFactory!(),
+			collectionName
+		);
 
 		if (process) {
 			registerExitCleanup(process, async () => {
