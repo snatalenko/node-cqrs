@@ -1,3 +1,15 @@
+# [1.2.0-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-beta.1...v1.2.0-beta.2) (2026-08-14)
+
+
+### Build System
+
+* Use Jekyll to build documentation from README's ([cd4dcc2](https://github.com/snatalenko/node-cqrs/commit/cd4dcc291a93f0da69560b6a75aff7bbe2cf306e))
+
+### Internal Fixes
+
+* Improve log output on rabbitmq message handler timeout ([f8dc3ca](https://github.com/snatalenko/node-cqrs/commit/f8dc3ca5ec9589b6ec7131056ee51118204f9cf4))
+
+
 # [1.2.0-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.1...v1.2.0-beta.1) (2026-07-17)
 
 
