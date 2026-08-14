@@ -13,6 +13,11 @@ type PostgresqlConnectionPool = PostgresqlConnection & {
 
 const transactionConnectionStorage = new AsyncLocalStorage<PostgresqlConnection>();
 
+type PostgresqlAccessorParams = {
+	db?: PostgresqlConnection;
+	dbFactory?: () => Promise<PostgresqlConnection> | PostgresqlConnection;
+} & Partial<Pick<IContainer, 'viewModelPostgresqlDb' | 'viewModelPostgresqlDbFactory'>>;
+
 /**
  * Abstract base class for accessing a PostgreSQL connection.
  *
@@ -28,12 +33,15 @@ export abstract class AbstractPostgresqlAccessor {
 	readonly #initLocker = new Lock();
 	#initialized = false;
 
-	constructor(c: Partial<Pick<IContainer, 'viewModelPostgresqlDb' | 'viewModelPostgresqlDbFactory'>>) {
-		if (!c.viewModelPostgresqlDb && !c.viewModelPostgresqlDbFactory)
+	constructor(c: PostgresqlAccessorParams) {
+		const db = c.db ?? c.viewModelPostgresqlDb;
+		const dbFactory = c.dbFactory ?? c.viewModelPostgresqlDbFactory;
+
+		if (!db && !dbFactory)
 			throw new TypeError('either viewModelPostgresqlDb or viewModelPostgresqlDbFactory argument required');
 
-		this.db = c.viewModelPostgresqlDb;
-		this.#dbFactory = c.viewModelPostgresqlDbFactory;
+		this.db = db;
+		this.#dbFactory = dbFactory;
 	}
 
 	protected abstract initialize(db: PostgresqlConnection): Promise<void> | void;

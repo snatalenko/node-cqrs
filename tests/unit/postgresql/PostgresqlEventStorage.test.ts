@@ -8,7 +8,7 @@ describe('PostgresqlEventStorage', () => {
 
 	beforeEach(async () => {
 		db = new MockPostgresqlConnection();
-		storage = new PostgresqlEventStorage({ viewModelPostgresqlDb: db });
+		storage = new PostgresqlEventStorage({ eventStoragePostgresqlDb: db });
 		await storage.assertConnection();
 	});
 
@@ -16,7 +16,7 @@ describe('PostgresqlEventStorage', () => {
 		it('uses custom table names from postgresqlEventStorageConfig', async () => {
 			const customDb = new MockPostgresqlConnection();
 			const customStorage = new PostgresqlEventStorage({
-				viewModelPostgresqlDb: customDb,
+				eventStoragePostgresqlDb: customDb,
 				postgresqlEventStorageConfig: {
 					eventsTableName: 'custom_events',
 					eventSagasTableName: 'custom_event_sagas'
@@ -30,18 +30,35 @@ describe('PostgresqlEventStorage', () => {
 
 		it('validates custom table names', () => {
 			expect(() => new PostgresqlEventStorage({
-				viewModelPostgresqlDb: db,
+				eventStoragePostgresqlDb: db,
 				postgresqlEventStorageConfig: {
 					eventsTableName: ''
 				}
 			})).toThrow('postgresqlEventStorageConfig.eventsTableName must be a non-empty String');
 
 			expect(() => new PostgresqlEventStorage({
-				viewModelPostgresqlDb: db,
+				eventStoragePostgresqlDb: db,
 				postgresqlEventStorageConfig: {
 					eventSagasTableName: ''
 				}
 			})).toThrow('postgresqlEventStorageConfig.eventSagasTableName must be a non-empty String');
+		});
+
+		it('requires an event storage database', () => {
+			expect(() => new PostgresqlEventStorage({})).toThrow(
+				'either eventStoragePostgresqlDb or eventStoragePostgresqlDbFactory argument required'
+			);
+		});
+
+		it('creates the database through eventStoragePostgresqlDbFactory', async () => {
+			const factory = jest.fn().mockReturnValue(db);
+			const factoryStorage = new PostgresqlEventStorage({
+				eventStoragePostgresqlDbFactory: factory
+			});
+
+			await factoryStorage.commitEvents([{ id: 'event1', type: 'Created' }]);
+
+			expect(factory).toHaveBeenCalledTimes(1);
 		});
 	});
 

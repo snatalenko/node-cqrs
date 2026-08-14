@@ -54,6 +54,7 @@ import { PostgresqlEventStorage } from 'node-cqrs/postgresql';
 
 const builder = new ContainerBuilder();
 
+builder.registerInstance(pool, 'eventStoragePostgresqlDb');
 builder.registerInstance(pool, 'viewModelPostgresqlDb');
 builder.register(PostgresqlEventStorage);
 builder.register(EventIdAugmentor).as('eventIdAugmenter');
@@ -63,16 +64,22 @@ builder.register(EventIdAugmentor).as('eventIdAugmenter');
 event reader, and identifier provider. `EventIdAugmentor` assigns the event ids required by persistent storage
 and projection checkpoints.
 
-Use `viewModelPostgresqlDbFactory` when credentials or connection settings come from another container
-dependency. The named `container` argument makes that dependency resolution explicit. Cache the pool so every
-resolution receives the same application-owned instance:
+Event storage accepts `eventStoragePostgresqlDb` or `eventStoragePostgresqlDbFactory`. Views accept
+`viewModelPostgresqlDb` or `viewModelPostgresqlDbFactory`. The separate names allow event and view data to use
+different databases while still supporting one shared pool.
+
+Use factories when credentials or connection settings come from another container dependency. The named
+`container` argument makes that dependency resolution explicit. Cache the pool in a shared provider, then map
+both adapter roles to it:
 
 ```ts
 interface DatabaseContainer extends IContainer {
 	postgresqlConnectionStringProvider: () => Promise<string> | string;
+	postgresqlDbFactory: () => Promise<Pool>;
 }
 
 const builder = new ContainerBuilder<DatabaseContainer>();
+let pool: Pool | undefined;
 
 builder.registerInstance(
 	() => secretProvider.get('POSTGRESQL_CONNECTION_STRING'),
@@ -80,8 +87,6 @@ builder.registerInstance(
 );
 
 builder.register(container => {
-	let pool: Pool | undefined;
-
 	return async () => {
 		if (pool)
 			return pool;
@@ -90,10 +95,13 @@ builder.register(container => {
 		pool ??= new Pool({ connectionString });
 		return pool;
 	};
-}, 'viewModelPostgresqlDbFactory');
+}, 'postgresqlDbFactory');
+
+builder.register(container => () => container.postgresqlDbFactory(), 'eventStoragePostgresqlDbFactory');
+builder.register(container => () => container.postgresqlDbFactory(), 'viewModelPostgresqlDbFactory');
 ```
 
-The application must also close a pool created by the factory during shutdown.
+The application can close the retained pool with `await pool?.end()` during shutdown.
 
 ## Event storage
 
@@ -169,6 +177,7 @@ interface AppContainer extends IContainer {
 
 const builder = new ContainerBuilder<AppContainer>();
 builder.registerInstance(pool, 'viewModelPostgresqlDb');
+builder.registerInstance(pool, 'eventStoragePostgresqlDb');
 builder.register(PostgresqlEventStorage);
 builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerProjection(UsersProjection, 'usersView');
@@ -301,6 +310,8 @@ async findByStatus(status: string) {
 
 | Option | Default | Purpose |
 |---|---|---|
+| `eventStoragePostgresqlDb` | - | Existing connection or `pg.Pool` used by event storage |
+| `eventStoragePostgresqlDbFactory` | - | Lazy event-storage connection or pool factory |
 | `viewModelPostgresqlDb` | - | An existing PostgreSQL connection or `pg.Pool` |
 | `viewModelPostgresqlDbFactory` | - | Lazy connection or pool factory; use instead of `viewModelPostgresqlDb` |
 | `postgresqlEventStorageConfig.eventsTableName` | `tbl_events` | Event table name |

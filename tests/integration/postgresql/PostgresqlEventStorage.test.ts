@@ -39,7 +39,7 @@ describe('PostgresqlEventStorage (integration)', () => {
 	beforeEach(async () => {
 		await dropIntegrationTables();
 		storage = new PostgresqlEventStorage({
-			viewModelPostgresqlDb: pool,
+			eventStoragePostgresqlDb: pool,
 			postgresqlEventStorageConfig: {
 				eventsTableName: EVENTS_TABLE,
 				eventSagasTableName: EVENT_SAGAS_TABLE
@@ -123,14 +123,14 @@ describe('PostgresqlEventStorage (integration)', () => {
 
 	it('prevents concurrent duplicate aggregate versions across instances', async () => {
 		const first = new PostgresqlEventStorage({
-			viewModelPostgresqlDb: pool,
+			eventStoragePostgresqlDb: pool,
 			postgresqlEventStorageConfig: {
 				eventsTableName: EVENTS_TABLE,
 				eventSagasTableName: EVENT_SAGAS_TABLE
 			}
 		});
 		const second = new PostgresqlEventStorage({
-			viewModelPostgresqlDb: pool,
+			eventStoragePostgresqlDb: pool,
 			postgresqlEventStorageConfig: {
 				eventsTableName: EVENTS_TABLE,
 				eventSagasTableName: EVENT_SAGAS_TABLE

@@ -71,6 +71,7 @@ class UsersProjection extends AbstractPostgresqlObjectProjection<UserRecord> {
 interface MyContainer extends IContainer {
 	usersView: PostgresqlObjectView<UserRecord>;
 	postgresqlPool: Pool;
+	eventStoragePostgresqlDbFactory?: () => Promise<Pool>;
 	viewModelPostgresqlDbFactory?: () => Promise<Pool>;
 }
 
@@ -92,16 +93,16 @@ try {
 	const builder = new ContainerBuilder<MyContainer>();
 
 	builder.registerInstance(pool, 'postgresqlPool');
-	builder.register(
-		container => async () => container.postgresqlPool,
-		'viewModelPostgresqlDbFactory'
-	);
+	builder.register(container => async () => container.postgresqlPool, 'eventStoragePostgresqlDbFactory');
+	builder.register(container => async () => container.postgresqlPool, 'viewModelPostgresqlDbFactory');
 	builder.registerInstance({
 		eventsTableName: EVENTS_TABLE,
 		eventSagasTableName: EVENT_SAGAS_TABLE
 	}, 'postgresqlEventStorageConfig');
 	builder.register(PostgresqlEventStorage);
-	builder.register(EventIdAugmentor).as('eventIdAugmenter'); // stamps event.id, required for stored events and checkpoints
+
+	// Event ids are required for stored events and projection checkpoints.
+	builder.register(EventIdAugmentor).as('eventIdAugmenter');
 	builder.registerAggregate(UserAggregate);
 	builder.registerProjection(UsersProjection, 'usersView');
 
