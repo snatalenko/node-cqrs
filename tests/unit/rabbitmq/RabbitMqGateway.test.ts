@@ -146,6 +146,93 @@ describe('RabbitMqGateway', () => {
 
 		describe('consume (via subscribe)', () => {
 
+			it('logs rejected disposition when a timed out message is nacked', async () => {
+				jest.useFakeTimers();
+
+				const logger = {
+					log: jest.fn(),
+					debug: jest.fn(),
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn()
+				};
+				let resolveHandler!: () => void;
+				const handlerResult = new Promise<void>(resolve => resolveHandler = resolve);
+
+				gateway = new RabbitMqGateway({
+					rabbitMqConnectionFactory: async () => connection as any,
+					logger
+				});
+				await gateway.subscribeToQueue('test-exchange', 'test-queue', () => handlerResult, {
+					handlerProcessTimeout: 10
+				});
+
+				const consumeCallback = channel.consume.mock.calls[0][1];
+				const fakeMsg = {
+					content: Buffer.from(JSON.stringify({ type: 'slowEvent' })),
+					fields: { consumerTag: 'ctag-1', routingKey: 'slowEvent' },
+					properties: { headers: {}, appId: 'other', messageId: 'msg-timeout' }
+				};
+				const consumeResult = consumeCallback(fakeMsg);
+
+				await jest.advanceTimersByTimeAsync(10);
+
+				expect(channel.nack).toHaveBeenCalledWith(fakeMsg, false, false);
+				expect(logger.error).toHaveBeenCalledWith('Message processing timed out', expect.objectContaining({
+					messageDisposition: 'rejected'
+				}));
+
+				resolveHandler();
+				await consumeResult;
+				jest.useRealTimers();
+			});
+
+			it('logs requeued disposition when the timed out message channel is closed', async () => {
+				jest.useFakeTimers();
+
+				const logger = {
+					log: jest.fn(),
+					debug: jest.fn(),
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn()
+				};
+				let resolveHandler!: () => void;
+				const handlerResult = new Promise<void>(resolve => resolveHandler = resolve);
+				channel.nack.mockImplementation(() => {
+					throw new Error('Channel closed');
+				});
+
+				gateway = new RabbitMqGateway({
+					rabbitMqConnectionFactory: async () => connection as any,
+					logger
+				});
+				await gateway.subscribeToQueue('test-exchange', 'test-queue', () => handlerResult, {
+					handlerProcessTimeout: 10
+				});
+
+				const consumeCallback = channel.consume.mock.calls[0][1];
+				const fakeMsg = {
+					content: Buffer.from(JSON.stringify({ type: 'slowEvent' })),
+					fields: { consumerTag: 'ctag-1', routingKey: 'slowEvent' },
+					properties: { headers: {}, appId: 'other', messageId: 'msg-timeout' }
+				};
+				const consumeResult = consumeCallback(fakeMsg);
+
+				await jest.advanceTimersByTimeAsync(10);
+
+				expect(logger.warn).toHaveBeenCalledWith('Failed to reject message', expect.objectContaining({
+					messageDisposition: 'requeued'
+				}));
+				expect(logger.error).toHaveBeenCalledWith('Message processing timed out', expect.objectContaining({
+					messageDisposition: 'requeued'
+				}));
+
+				resolveHandler();
+				await consumeResult;
+				jest.useRealTimers();
+			});
+
 			it('passes no span in meta when tracerFactory is not provided', async () => {
 				gateway = new RabbitMqGateway({
 					rabbitMqConnectionFactory: async () => connection as any

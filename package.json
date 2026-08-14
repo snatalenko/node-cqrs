@@ -132,7 +132,7 @@
   ],
   "dependencies": {
     "async-iterable-buffer": "^1.1.0",
-    "async-parallel-pipe": "^1.0.2",
+    "async-parallel-pipe": "^1.0.4",
     "di0": "^1.3.0"
   },
   "devDependencies": {

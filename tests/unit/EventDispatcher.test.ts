@@ -209,6 +209,48 @@ describe('EventDispatcher', () => {
 			]);
 		});
 
+		it('preserves FIFO order between processors when an earlier processor resolves out of order', async () => {
+			type Release = () => void;
+
+			const eventTypes = ['event-1', 'event-2', 'event-3'];
+			const releases = new Map<string, Release>();
+			const journalOrder: string[] = [];
+			let allDecryptionsStarted!: () => void;
+			const allDecryptionsStartedPromise = new Promise<void>(resolve => {
+				allDecryptionsStarted = resolve;
+			});
+
+			const decryptionProcessor: IDispatchPipelineProcessor = {
+				process: jest.fn(batch => new Promise(resolve => {
+					const eventType = batch[0].event.type;
+					releases.set(eventType, () => resolve(batch));
+
+					if (releases.size === eventTypes.length)
+						allDecryptionsStarted();
+				}))
+			};
+			const journalingProcessor: IDispatchPipelineProcessor = {
+				process: jest.fn(async batch => {
+					journalOrder.push(batch[0].event.type);
+					return batch;
+				})
+			};
+
+			dispatcher.addPipelineProcessor(decryptionProcessor);
+			dispatcher.addPipelineProcessor(journalingProcessor);
+
+			const dispatches = eventTypes.map(type => dispatcher.dispatch([{ type }]));
+			await allDecryptionsStartedPromise;
+
+			for (const eventType of [...eventTypes].reverse())
+				releases.get(eventType)!();
+
+			await Promise.all(dispatches);
+
+			expect(journalOrder).toEqual(eventTypes);
+			expect(eventBus.publish.mock.calls.map(([event]) => event.type)).toEqual(eventTypes);
+		});
+
 		it('processes batches serially when eventDispatcherConfig.concurrentLimit is defined', async () => {
 			let releaseFirst!: () => void;
 			let firstStarted!: () => void;

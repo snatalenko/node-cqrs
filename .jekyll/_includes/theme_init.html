@@ -1,0 +1,7 @@
+<script>
+(() => {
+  let stored;
+  try { stored = localStorage.getItem('theme'); } catch (_) {}
+  if (stored === 'light' || stored === 'dark') document.documentElement.dataset.theme = stored;
+})();
+</script>
