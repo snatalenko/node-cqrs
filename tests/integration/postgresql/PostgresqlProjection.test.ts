@@ -87,7 +87,7 @@ class UsersProjection extends AbstractPostgresqlObjectProjection<UserRecord> {
 		if (this.gate)
 			await this.gate;
 
-		await this.view.updateEnforcingNew(String(e.aggregateId), () => ({
+		await this.view.updateEnforcingNew(e.aggregateId!, () => ({
 			username: e.payload!.username,
 			processedBy: this.instanceId
 		}));

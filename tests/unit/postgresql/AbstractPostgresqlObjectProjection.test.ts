@@ -69,7 +69,7 @@ describe('AbstractPostgresqlObjectProjection', () => {
 			}
 
 			async userCreated(e: IEvent<{ name: string }>) {
-				await this.view.create(String(e.aggregateId), {
+				await this.view.create(e.aggregateId!, {
 					name: e.payload!.name
 				});
 			}
@@ -109,7 +109,7 @@ describe('AbstractPostgresqlObjectProjection', () => {
 			}
 
 			async userCreated(e: IEvent<{ name: string }>) {
-				await this.view.create(String(e.aggregateId), {
+				await this.view.create(e.aggregateId!, {
 					name: e.payload!.name
 				});
 			}
@@ -165,7 +165,7 @@ describe('AbstractPostgresqlObjectProjection', () => {
 			}
 
 			async userCreated(e: IEvent<{ name: string }>) {
-				await this.view.create(String(e.aggregateId), {
+				await this.view.create(e.aggregateId!, {
 					name: e.payload!.name
 				});
 			}
@@ -213,7 +213,7 @@ describe('AbstractPostgresqlObjectProjection', () => {
 			}
 
 			async userCreated(e: IEvent<{ name: string }>) {
-				await this.view.create(String(e.aggregateId), {
+				await this.view.create(e.aggregateId!, {
 					name: e.payload!.name
 				});
 				throw new Error('projection failed');
@@ -255,7 +255,7 @@ describe('AbstractPostgresqlObjectProjection', () => {
 			}
 
 			async userCreated(e: IEvent<{ name: string }>) {
-				await this.view.create(String(e.aggregateId), {
+				await this.view.create(e.aggregateId!, {
 					name: e.payload!.name
 				});
 			}

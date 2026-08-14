@@ -5,18 +5,7 @@
     <div class="nav-group">
       <a class="nav-link" href="{{ nav_page.url | relative_url }}"{% if page.nav == nav_page.nav %} aria-current="page"{% endif %}>{{ nav_page.nav_title | default: nav_page.title | escape }}</a>
       {% if page.nav == nav_page.nav %}
-      <div class="section-links">
-        {% assign section_headings = content | split: '<h2 id="' %}
-        {% for section_heading in section_headings offset:1 %}
-          {% assign section_heading_parts = section_heading | split: '">' %}
-          {% assign section_id = section_heading_parts | first %}
-          {% assign section_heading_body = section_heading_parts[1] %}
-          {% assign section_title = section_heading_body | split: '</h2>' | first | strip_html | strip %}
-          {% unless section_id == 'table-of-contents' %}
-        <a href="#{{ section_id | escape }}">{{ section_title | escape }}</a>
-          {% endunless %}
-        {% endfor %}
-      </div>
+      {% include section_links.html content=content %}
       {% endif %}
     </div>
     {% endfor %}
@@ -25,6 +14,9 @@
       {% assign module_pages = site.pages | where: "nav_group", "modules" | sort: "nav_order" %}
       {% for nav_page in module_pages %}
       <a class="nav-link" href="{{ nav_page.url | relative_url }}"{% if page.nav == nav_page.nav %} aria-current="page"{% endif %}>{{ nav_page.nav_title | default: nav_page.title | escape }}</a>
+      {% if page.nav == nav_page.nav %}
+      {% include section_links.html content=content %}
+      {% endif %}
       {% endfor %}
     </div>
     <div class="nav-group">

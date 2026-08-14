@@ -138,6 +138,20 @@ docker run -d -p 27017:27017 mongo:7
 npm run test:mongodb
 ```
 
+## Documentation
+
+- Write for library consumers and their goals, not for maintainers or around the internal class hierarchy.
+- Lead with what the module provides, prerequisites, and the shortest working setup. Help readers choose between
+  supported use cases without presenting one as preferred unless the library requires it.
+- Present the common workflow before configuration details and lower-level APIs. Keep implementation details in
+  an advanced section unless users need them to operate the module correctly.
+- Describe observable guarantees and limitations, especially transaction boundaries, concurrency, restoration,
+  failure handling, and resource ownership.
+- Use domain-accurate names and distinguish related concepts, such as a projection that maintains a view.
+- Keep examples focused, type-correct, and based on public exports. Prefer examples that can be run locally, and
+  link to their complete source when README snippets omit surrounding application code.
+- Update both the root README and module documentation when public capabilities or recommended usage change.
+
 ## Code style
 
 Code style and formatting are enforced via [EditorConfig](https://editorconfig.org) ([.editorconfig](.editorconfig)) and [ESLint](https://eslint.org) ([eslint.config.mjs](eslint.config.mjs)).

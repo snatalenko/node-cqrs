@@ -1,0 +1,12 @@
+<div class="section-links">
+  {% assign section_headings = include.content | split: '<h2 id="' %}
+  {% for section_heading in section_headings offset:1 %}
+    {% assign section_heading_parts = section_heading | split: '">' %}
+    {% assign section_id = section_heading_parts | first %}
+    {% assign section_heading_body = section_heading_parts[1] %}
+    {% assign section_title = section_heading_body | split: '</h2>' | first | strip_html | strip %}
+    {% unless section_id == 'table-of-contents' %}
+  <a href="#{{ section_id | escape }}">{{ section_title }}</a>
+    {% endunless %}
+  {% endfor %}
+</div>

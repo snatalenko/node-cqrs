@@ -159,7 +159,7 @@ a { color: var(--link); }
 .prose hr { margin: 2em 0; border: 0; border-top: 1px solid var(--border); }
 .prose code { font: 85% ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 .prose :not(pre) > code { padding: .2em .4em; border-radius: 5px; background: var(--code); }
-.prose pre { padding: 16px; overflow: auto; border-radius: 6px; background: var(--panel); font-size: 13px; line-height: 1.5; }
+.prose pre { padding: 16px; overflow: auto; border-radius: 6px; background: var(--panel); font-size: 13px; line-height: 1.5; tab-size: 2; }
 .prose pre code { font-size: inherit; }
 .prose table { display: block; max-width: 100%; overflow: auto; border-collapse: collapse; }
 .prose th, .prose td { padding: 6px 13px; border: 1px solid var(--border); }

@@ -424,7 +424,7 @@ All modules below implement the same interfaces - pick what fits your deployment
 | `node-cqrs/sqlite`  | `SqliteEventStorage`                              | `SqliteObjectView`, `SqliteObjectStorage`, `AbstractSqliteObjectProjection`         | `AbstractSqliteView`, `SqliteViewLocker`, `SqliteEventLocker`             | -                                                 |
 | `node-cqrs/mongodb` | `MongoEventStorage`                               | `MongoObjectView`, `MongoObjectStorage`, `AbstractMongoObjectProjection`            | `AbstractMongoView`, `MongoViewLocker`, `MongoEventLocker`                | -                                                 |
 | `node-cqrs/redis`   | -                                                  | `RedisView`, `RedisObjectStorage`, `AbstractRedisProjection`                        | `RedisViewLocker`, `RedisEventLocker`                                     | -                                                 |
-| `node-cqrs/postgresql` | `PostgresqlEventStorage`                       | `PostgresqlObjectView`, `PostgresqlObjectStorage`, `AbstractPostgresqlObjectProjection` | `AbstractPostgresqlView`, `PostgresqlViewLocker`, `PostgresqlEventLocker` | -                                                 |
+| `node-cqrs/postgresql` | `PostgresqlEventStorage`                       | `AbstractPostgresqlObjectProjection`                                              | `AbstractPostgresqlProjection`, `AbstractPostgresqlView`                  | -                                                 |
 | `node-cqrs/rabbitmq` | -                                                 | -                                                                                   | -                                                                         | `RabbitMqGateway`, `RabbitMqCommandBus`, `RabbitMqEventBus` |
 | `node-cqrs/workers` | -                                                  | -                                                                                   | `AbstractWorkerProjection`, `WorkerProxyProjection`                       | -                                                 |
 
@@ -505,17 +505,11 @@ See [src/redis](src/redis) for additional documentation, and [examples/redis](ex
 
 > **Experimental** - not yet validated in production. APIs may change in minor versions.
 
-| Class                     | Role                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------- |
-| `PostgresqlEventStorage`  | Transactional PostgreSQL event storage with saga refs and optimistic concurrency      |
-| `PostgresqlObjectStorage` | Key/value object storage backed by PostgreSQL `jsonb` rows                            |
-| `PostgresqlViewLocker`    | Prevents concurrent schema-migration rebuilds; auto-prolongs lock via token + TTL row |
-| `PostgresqlEventLocker`   | Event deduplication and last-event checkpoint                                         |
-| `PostgresqlObjectView`    | Composite view combining object storage, view locking, and event checkpointing        |
-| `AbstractPostgresqlObjectProjection` | Base projection wired to `PostgresqlObjectView`                            |
-| `AbstractPostgresqlView`  | Base class for custom relational PostgreSQL views with view and event locks embedded  |
+Provides transactional event storage, relational views with custom SQL, and optional JSON object views. Runtime
+projection updates can atomically commit view changes, event-processing markers, and checkpoints.
 
-See [src/postgresql](src/postgresql) for additional documentation, and [examples/postgresql](examples/postgresql/index.ts) for a runnable projection example.
+See the [PostgreSQL documentation](src/postgresql) for setup, configuration, transaction behavior, and advanced
+APIs. See the [runnable example](examples/postgresql/index.ts).
 
 ### Message Buses
 

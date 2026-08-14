@@ -52,6 +52,7 @@
             {% capture rendered_content %}{{ before_toc | first }}{{ overview_heading }}{{ after_toc | last }}{% endcapture %}
           {% endif %}
           {% assign rendered_content = rendered_content | replace: 'href="src/sqlite"', 'href="/sqlite/"' %}
+          {% assign rendered_content = rendered_content | replace: 'href="src/postgresql"', 'href="/postgresql/"' %}
           {% assign rendered_content = rendered_content | replace: 'href="src/mongodb"', 'href="/mongodb/"' %}
           {% assign rendered_content = rendered_content | replace: 'href="src/redis"', 'href="/redis/"' %}
           {% assign rendered_content = rendered_content | replace: 'href="src/rabbitmq"', 'href="/rabbitmq/"' %}

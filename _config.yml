@@ -28,6 +28,7 @@ include:
   - src/sqlite/README.md
   - src/mongodb/README.md
   - src/redis/README.md
+  - src/postgresql/README.md
   - src/rabbitmq/README.md
   - src/workers/README.md
 
@@ -93,13 +94,28 @@ defaults:
       content_start_id: overview
       sitemap: true
   - scope:
+      path: src/postgresql/README.md
+    values:
+      layout: docs
+      title: PostgreSQL
+      nav: postgresql
+      nav_group: modules
+      nav_order: 4
+      eyebrow: node-cqrs module
+      description: PostgreSQL event storage and persistent views for node-cqrs.
+      source_path: src/postgresql/README.md
+      source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/postgresql/README.md
+      permalink: /postgresql/
+      content_start_id: overview
+      sitemap: true
+  - scope:
       path: src/rabbitmq/README.md
     values:
       layout: docs
       title: RabbitMQ
       nav: rabbitmq
       nav_group: modules
-      nav_order: 4
+      nav_order: 5
       eyebrow: node-cqrs module
       description: RabbitMQ command and event transport for node-cqrs.
       source_path: src/rabbitmq/README.md
@@ -114,7 +130,7 @@ defaults:
       title: Workers
       nav: workers
       nav_group: modules
-      nav_order: 5
+      nav_order: 6
       eyebrow: node-cqrs module
       description: Worker-thread projections for node-cqrs.
       source_path: src/workers/README.md

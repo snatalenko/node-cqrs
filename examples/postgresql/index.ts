@@ -53,13 +53,13 @@ class UsersProjection extends AbstractPostgresqlObjectProjection<UserRecord> {
 	}
 
 	async userCreated(event: UserCreatedEvent) {
-		await this.view.create(String(event.aggregateId), {
+		await this.view.create(event.aggregateId!, {
 			username: event.payload!.username
 		});
 	}
 
 	async userRenamed(event: UserRenamedEvent) {
-		await this.view.updateEnforcingNew(String(event.aggregateId), r => ({
+		await this.view.updateEnforcingNew(event.aggregateId!, r => ({
 			...r!,
 			username: event.payload!.username
 		}));
@@ -70,6 +70,7 @@ class UsersProjection extends AbstractPostgresqlObjectProjection<UserRecord> {
 
 interface MyContainer extends IContainer {
 	usersView: PostgresqlObjectView<UserRecord>;
+	postgresqlPool: Pool;
 	viewModelPostgresqlDbFactory?: () => Promise<Pool>;
 }
 
@@ -90,7 +91,11 @@ try {
 
 	const builder = new ContainerBuilder<MyContainer>();
 
-	builder.registerInstance(async () => pool, 'viewModelPostgresqlDbFactory');
+	builder.registerInstance(pool, 'postgresqlPool');
+	builder.register(
+		container => async () => container.postgresqlPool,
+		'viewModelPostgresqlDbFactory'
+	);
 	builder.registerInstance({
 		eventsTableName: EVENTS_TABLE,
 		eventSagasTableName: EVENT_SAGAS_TABLE

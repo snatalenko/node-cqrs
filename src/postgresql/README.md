@@ -1,167 +1,241 @@
 node-cqrs/postgresql
 ====================
 
-## Overview
+PostgreSQL support for `node-cqrs` provides:
 
-PostgreSQL-backed event storage and persistent views for `node-cqrs`. Use this package when aggregates and projections need durable storage with transaction-safe writes, restart-safe checkpoints, readiness gates, and distributed rebuild locking.
+- durable event storage for aggregates and sagas;
+- relational views built with your own tables, indexes, and queries;
+- optional document-like object views stored as `jsonb`;
+- coordination for projection restore and event processing across multiple application instances.
 
 > **Experimental** - not yet validated in production. APIs may change in minor versions.
 
-This module does not require a specific PostgreSQL client class. Pass any object with a `query(text, values)` method, such as a `pg.Pool` or `pg.Client`.
+## Installation
 
-## Table of Contents
+Install the PostgreSQL driver alongside `node-cqrs`:
 
-- [viewModelPostgresqlDbFactory](#viewmodelpostgresqldbfactory)
-- [PostgreSQL event storage](#postgresql-event-storage)
-  - [PostgresqlEventStorage](#postgresqleventstorage)
-- [PostgreSQL views](#postgresql-views)
-  - [AbstractPostgresqlObjectProjection](#abstractpostgresqlobjectprojection)
-  - [PostgresqlObjectView](#postgresqlobjectview)
-  - [AbstractPostgresqlView](#abstractpostgresqlview)
-- [Lower-level building blocks](#lower-level-building-blocks)
-  - [PostgresqlObjectStorage](#postgresqlobjectstorage)
-  - [PostgresqlViewLocker](#postgresqlviewlocker)
-  - [PostgresqlEventLocker](#postgresqleventlocker)
-- [Examples](#examples)
+```bash
+npm install node-cqrs pg
+```
 
-## viewModelPostgresqlDbFactory
-
-Register `viewModelPostgresqlDbFactory` to provide the PostgreSQL connection used by PostgreSQL-backed event storage, views, and lockers. The factory can be async, which is useful when credentials or connection settings must be loaded before connecting.
+A shared `pg.Pool` is recommended. The PostgreSQL adapter acquires a dedicated client from the pool when it
+starts a transaction and releases that client afterwards.
 
 ```ts
 import { Pool } from 'pg';
 
-builder.register(() => {
-	let pool: Pool;
-	return async () => {
-		if (!pool)
-			pool = new Pool({ connectionString: process.env.DATABASE_URL });
-
-		return pool;
-	};
-}).as('viewModelPostgresqlDbFactory');
+const pool = new Pool({
+	connectionString: process.env.DATABASE_URL
+});
 ```
 
-Alternatively, register a query-capable connection directly as `viewModelPostgresqlDb` when you already have one open:
+The application owns the pool and must close it during shutdown with `pool.end()`.
+
+## Choose what you need
+
+| Requirement | Use |
+|---|---|
+| Store and restore aggregate events | `PostgresqlEventStorage` |
+| Build a relational read model with custom SQL | `AbstractPostgresqlView` and `AbstractPostgresqlProjection` |
+| Store a document-like or key/value read model as `jsonb` | `AbstractPostgresqlObjectProjection` |
+| Compose storage and locking manually | The lower-level APIs described under [Advanced APIs](#advanced-apis) |
+
+Event storage and views can be used independently. Choose the view representation that fits the read model:
+relational tables for SQL-oriented data, or an object view for records naturally addressed
+by id and stored as a single JSON document.
+
+## Container setup
+
+Register an existing pool directly:
 
 ```ts
-builder.registerInstance(pool, 'viewModelPostgresqlDb');
-```
-
-## PostgreSQL event storage
-
-### PostgresqlEventStorage
-
-`PostgresqlEventStorage` implements event storage, event reads, generated ids, and dispatch pipeline processing. It stores events in insertion order, records saga origin references, and wraps each batch commit in a PostgreSQL transaction.
-
-```ts
-import { CqrsContainerBuilder } from 'node-cqrs';
+import { ContainerBuilder, EventIdAugmentor, type IContainer } from 'node-cqrs';
 import { PostgresqlEventStorage } from 'node-cqrs/postgresql';
 
-const builder = new CqrsContainerBuilder();
+const builder = new ContainerBuilder();
 
 builder.registerInstance(pool, 'viewModelPostgresqlDb');
-builder.register(PostgresqlEventStorage).as('eventStorage');
-builder.register(PostgresqlEventStorage).as('eventStorageReader');
-builder.register(PostgresqlEventStorage).as('identifierProvider');
+builder.register(PostgresqlEventStorage);
+builder.register(EventIdAugmentor).as('eventIdAugmenter');
 ```
 
-For aggregate concurrency, `PostgresqlEventStorage` enforces duplicate `(aggregateId, aggregateVersion)` detection with a partial unique index. Normal writes store `check_concurrency = true`; writes with `ignoreConcurrencyError: true` store `check_concurrency = false`, leaving them outside that unique index while still committing in the same transaction.
+`ContainerBuilder` detects the roles implemented by `PostgresqlEventStorage` and uses it as the event writer,
+event reader, and identifier provider. `EventIdAugmentor` assigns the event ids required by persistent storage
+and projection checkpoints.
 
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `viewModelPostgresqlDb` | `PostgresqlConnection` | Either this or factory | Query-capable PostgreSQL connection |
-| `viewModelPostgresqlDbFactory` | `() => Promise<PostgresqlConnection> \| PostgresqlConnection` | Either this or connection | Lazy factory for the connection |
-| `postgresqlEventStorageConfig.eventsTableName` | `string` | No | Event table name; defaults to `PostgresqlEventStorage.EVENTS_TABLE` |
-| `postgresqlEventStorageConfig.eventSagasTableName` | `string` | No | Saga reference table name; defaults to `PostgresqlEventStorage.EVENT_SAGAS_TABLE` |
-
-## PostgreSQL views
-
-The recommended way to build persistent object read models with PostgreSQL is to extend `AbstractPostgresqlObjectProjection`. It wires up object storage, schema-migration locking, and event checkpointing automatically.
-
-### AbstractPostgresqlObjectProjection
-
-Base class for PostgreSQL-backed object projections. Requires two static getters to be defined on the subclass:
+Use `viewModelPostgresqlDbFactory` when credentials or connection settings come from another container
+dependency. The named `container` argument makes that dependency resolution explicit. Cache the pool so every
+resolution receives the same application-owned instance:
 
 ```ts
-import { AbstractPostgresqlObjectProjection } from 'node-cqrs/postgresql';
-import type { IEvent } from 'node-cqrs';
+interface DatabaseContainer extends IContainer {
+	postgresqlConnectionStringProvider: () => Promise<string> | string;
+}
 
-type UserRecord = { username: string };
+const builder = new ContainerBuilder<DatabaseContainer>();
+
+builder.registerInstance(
+	() => secretProvider.get('POSTGRESQL_CONNECTION_STRING'),
+	'postgresqlConnectionStringProvider'
+);
+
+builder.register(container => {
+	let pool: Pool | undefined;
+
+	return async () => {
+		if (pool)
+			return pool;
+
+		const connectionString = await container.postgresqlConnectionStringProvider();
+		pool ??= new Pool({ connectionString });
+		return pool;
+	};
+}, 'viewModelPostgresqlDbFactory');
+```
+
+The application must also close a pool created by the factory during shutdown.
+
+## Event storage
+
+`PostgresqlEventStorage` stores events in insertion order and preserves saga origin references. Each batch is
+committed in one transaction: either all events and saga references are written, or none are.
+
+Register it with the container builder:
+
+```ts
+builder.register(PostgresqlEventStorage);
+```
+
+Aggregate versions are checked optimistically. If two commands try to append the same aggregate version, one
+commit succeeds and the other throws `ConcurrencyError`. Passing `ignoreConcurrencyError: true` opts that write
+out of the aggregate-version uniqueness check.
+
+The default event tables are `tbl_events` and `tbl_event_sagas`. To use different names:
+
+```ts
+builder.registerInstance({
+	eventsTableName: 'application_events',
+	eventSagasTableName: 'application_event_sagas'
+}, 'postgresqlEventStorageConfig');
+```
+
+## JSON object views
+
+Use `AbstractPostgresqlObjectProjection` to maintain a view where each record is naturally addressed by id and
+can be stored as one `jsonb` document. Define a table name and schema version, then handle events using the
+normal projection method naming convention.
+
+```ts
+import type { IEvent } from 'node-cqrs';
+import { AbstractPostgresqlObjectProjection } from 'node-cqrs/postgresql';
+
+type UserRecord = {
+	username: string;
+};
 
 class UsersProjection extends AbstractPostgresqlObjectProjection<UserRecord> {
+	static override get tableName() {
+		return 'users';
+	}
 
-	static get tableName() { return 'users'; }
-	static get schemaVersion() { return '1'; }
+	static override get schemaVersion() {
+		return '1';
+	}
 
 	async userCreated(event: IEvent<{ username: string }>) {
-		await this.view.create(String(event.aggregateId), {
+		await this.view.create(event.aggregateId!, {
 			username: event.payload!.username
 		});
+	}
+
+	async userRenamed(event: IEvent<{ username: string }>) {
+		await this.view.update(event.aggregateId!, user => ({
+			...user,
+			username: event.payload!.username
+		}));
 	}
 }
 ```
 
-| Static getter | Required | Description |
-|---|---|---|
-| `tableName` | Yes | Base name for the PostgreSQL object table |
-| `schemaVersion` | Yes | Schema version; appended to table name as `${tableName}_${schemaVersion}` |
-
-Register like any other projection:
+Expose the view through the container:
 
 ```ts
+import type { IContainer } from 'node-cqrs';
+import type { PostgresqlObjectView } from 'node-cqrs/postgresql';
+
+interface AppContainer extends IContainer {
+	usersView: PostgresqlObjectView<UserRecord>;
+}
+
+const builder = new ContainerBuilder<AppContainer>();
+builder.registerInstance(pool, 'viewModelPostgresqlDb');
+builder.register(PostgresqlEventStorage);
+builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerProjection(UsersProjection, 'usersView');
+
+const { usersView, restorePromises } = builder.container();
+await Promise.all(restorePromises ?? []);
+
+const user = await usersView.get(userId);
 ```
 
-### PostgresqlObjectView
+The physical object table is `${tableName}_${schemaVersion}`; the example uses `users_1`. Its rows contain an
+id, JSON data, and a version used for optimistic updates.
 
-The composite view created by `AbstractPostgresqlObjectProjection`. Can also be instantiated directly for custom projection wiring.
+### Runtime processing
+
+`AbstractPostgresqlObjectProjection` inherits transactional runtime processing from
+`AbstractPostgresqlProjection`. For each event received at runtime, it commits these operations in one PostgreSQL
+transaction:
+
+1. Claim the event for this projection.
+2. Modify the object view.
+3. Mark the event as processed.
+4. Save the last-event checkpoint.
+
+When two application instances receive the same event, one transaction processes it and the other skips it. If
+the first transaction fails, its claim and view changes are rolled back, allowing the waiting instance to process
+the event. Different events that update the same object use optimistic retries to avoid lost updates.
+
+### Restore and schema versions
+
+On startup, the projection resumes after its last saved checkpoint. Restore uses a distributed view lock, so only
+one application instance rebuilds a given projection and schema version at a time. Other instances wait for that
+view to become ready.
+
+Change `schemaVersion` when the shape or meaning of a read model changes and its events must be replayed into a
+new object table. Restore is protected by the view lock; it does not open one transaction per replayed event.
+
+Wait for `restorePromises` before serving requests that depend on projections. `PostgresqlObjectView.get()` also
+waits when a restore is currently in progress.
+
+## Relational views
+
+Use `AbstractPostgresqlView` to model a read model with PostgreSQL tables, joins, indexes, constraints, and
+query-specific columns. Pair it with `AbstractPostgresqlProjection` for transactional runtime event processing.
+The view provides restore locking, event deduplication, and checkpoints, while your subclass owns its schema and
+queries.
 
 ```ts
-import { PostgresqlObjectView } from 'node-cqrs/postgresql';
-
-const view = new PostgresqlObjectView({
-	viewModelPostgresqlDbFactory, // or viewModelPostgresqlDb
-	projectionName: 'users',
-	schemaVersion: '1',
-	tableNamePrefix: 'users'      // table name: users_1
-});
-```
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `tableNamePrefix` | `string` | Yes | Prefix for the PostgreSQL object table |
-| `projectionName` | `string` | Yes | Identifies the projection in lock rows |
-| `schemaVersion` | `string` | Yes | Appended to `tableNamePrefix` to form the table name |
-| `postgresqlObjectStorageMaxRetries` | `number` | No | Max retries for optimistic concurrency conflicts; defaults to `100` |
-| `eventLockTtl` | `number` | No | Event lock TTL in ms; defaults to `PostgresqlEventLocker.DEFAULT_EVENT_LOCK_TTL` |
-| `eventLockTableName` | `string` | No | Event lock table name; defaults to `PostgresqlEventLocker.DEFAULT_EVENT_LOCK_TABLE` |
-| `viewLockTtl` | `number` | No | Schema-migration lock TTL in ms; defaults to `PostgresqlViewLocker.DEFAULT_VIEW_LOCK_TTL` |
-| `viewLockTableName` | `string` | No | View lock table name; defaults to `PostgresqlViewLocker.DEFAULT_TABLE` |
-
-`PostgresqlObjectView` implements both `IObjectStorage` and `IEventLocker`. Reads via `view.get()` wait for any in-progress schema migration to complete before returning, so consumers always see a fully rebuilt view.
-
-`AbstractPostgresqlObjectProjection` runs runtime event projection in a PostgreSQL transaction. The event-processing claim, object view mutation, processed marker, and last-event checkpoint are committed together. With a `pg.Pool`, the adapter obtains one client via `pool.connect()` for the transaction and releases it afterwards.
-
-### AbstractPostgresqlView
-
-Use `AbstractPostgresqlView` when your read model needs explicit PostgreSQL tables, joins, indexes, or custom SQL queries. It composes `PostgresqlViewLocker` and `PostgresqlEventLocker`, giving your custom view the same restore/checkpoint lifecycle as other persistent views while leaving schema design and queries under your control.
-
-```ts
-import { AbstractProjection } from 'node-cqrs';
+import type { IContainer } from 'node-cqrs';
+import type { PostgresqlConnection } from 'node-cqrs/postgresql';
 import { AbstractPostgresqlView } from 'node-cqrs/postgresql';
 
+type PostgresqlDependencies = Pick<
+	IContainer,
+	'viewModelPostgresqlDb' | 'viewModelPostgresqlDbFactory' | 'logger'
+>;
+
 class UsersByStatusView extends AbstractPostgresqlView {
-	constructor({ viewModelPostgresqlDbFactory, logger }) {
+	constructor(options: PostgresqlDependencies) {
 		super({
-			schemaVersion: '1',
+			...options,
 			projectionName: 'UsersByStatusProjection',
-			viewModelPostgresqlDbFactory,
-			logger
+			schemaVersion: '1'
 		});
 	}
 
-	async initialize(db) {
+	protected override async initialize(db: PostgresqlConnection) {
 		await db.query(`
 			CREATE TABLE IF NOT EXISTS users_by_status (
 				user_id text PRIMARY KEY,
@@ -173,7 +247,7 @@ class UsersByStatusView extends AbstractPostgresqlView {
 
 	async upsertUser(userId: string, username: string, status: string) {
 		await this.assertConnection();
-		await this.db!.query(`
+		await this.connection.query(`
 			INSERT INTO users_by_status (user_id, username, status)
 			VALUES ($1, $2, $3)
 			ON CONFLICT (user_id) DO UPDATE SET
@@ -181,146 +255,111 @@ class UsersByStatusView extends AbstractPostgresqlView {
 				status = excluded.status
 		`, [userId, username, status]);
 	}
-
-	async findByStatus(status: string) {
-		await this.assertConnection();
-		const result = await this.db!.query(`
-			SELECT user_id, username, status
-			FROM users_by_status
-			WHERE status = $1
-			ORDER BY username
-		`, [status]);
-
-		return result.rows;
-	}
 }
-
-class UsersByStatusProjection extends AbstractProjection<UsersByStatusView> {
-	constructor({ viewModelPostgresqlDbFactory, logger }) {
-		super({ logger });
-		this.view = new UsersByStatusView({ viewModelPostgresqlDbFactory, logger });
-	}
-
-	async userCreated(event: UserCreatedEvent) {
-		await this.view.upsertUser(event.aggregateId, event.payload.username, 'active');
-	}
-}
-
-builder.registerProjection(UsersByStatusProjection, 'usersByStatus');
 ```
 
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `viewModelPostgresqlDb` | `PostgresqlConnection` | Either this or factory | Query-capable PostgreSQL connection |
-| `viewModelPostgresqlDbFactory` | `() => Promise<PostgresqlConnection> \| PostgresqlConnection` | Either this or connection | Lazy factory for the connection |
-| `projectionName` | `string` | Yes | Identifies the projection in lock rows |
-| `schemaVersion` | `string` | Yes | Distinguishes projection schema ownership and checkpoints |
-| `eventLockTtl` | `number` | No | Event lock TTL in ms; defaults to `PostgresqlEventLocker.DEFAULT_EVENT_LOCK_TTL` |
-| `eventLockTableName` | `string` | No | Event lock table name; defaults to `PostgresqlEventLocker.DEFAULT_EVENT_LOCK_TABLE` |
-| `viewLockTtl` | `number` | No | Schema-migration lock TTL in ms; defaults to `PostgresqlViewLocker.DEFAULT_VIEW_LOCK_TTL` |
-| `viewLockTableName` | `string` | No | View lock table name; defaults to `PostgresqlViewLocker.DEFAULT_TABLE` |
-
-`AbstractPostgresqlView` implements both `IViewLocker` and `IEventLocker`. Custom read methods should wait for readiness before returning user-facing data if they can be called during projection rebuilds:
+Extend `AbstractPostgresqlProjection` and assign the relational view in the projection constructor. The base class
+commits the event claim, custom SQL, processed marker, and checkpoint atomically at runtime:
 
 ```ts
-async getUser(id: string) {
+import type { IEvent } from 'node-cqrs';
+import { AbstractPostgresqlProjection } from 'node-cqrs/postgresql';
+
+class UsersByStatusProjection extends AbstractPostgresqlProjection<UsersByStatusView> {
+	constructor(options: PostgresqlDependencies) {
+		super({ logger: options.logger });
+		this.view = new UsersByStatusView(options);
+	}
+
+	async userCreated(event: IEvent<{ username: string }>) {
+		await this.view.upsertUser(
+			String(event.aggregateId),
+			event.payload!.username,
+			'active'
+		);
+	}
+}
+```
+
+Queries participating in that transaction must use `this.connection`, as in `upsertUser()`, rather than the base
+`db` field. Custom read methods should wait for readiness before returning data:
+
+```ts
+async findByStatus(status: string) {
 	if (!this.ready)
 		await this.once('ready');
 
 	await this.assertConnection();
-	// query read model here
+	return (await this.connection.query(
+		'SELECT * FROM users_by_status WHERE status = $1',
+		[status]
+	)).rows;
 }
 ```
 
-## Lower-level building blocks
+## Configuration
 
-Use these directly only when the composite view classes do not fit your projection wiring.
+| Option | Default | Purpose |
+|---|---|---|
+| `viewModelPostgresqlDb` | - | An existing PostgreSQL connection or `pg.Pool` |
+| `viewModelPostgresqlDbFactory` | - | Lazy connection or pool factory; use instead of `viewModelPostgresqlDb` |
+| `postgresqlEventStorageConfig.eventsTableName` | `tbl_events` | Event table name |
+| `postgresqlEventStorageConfig.eventSagasTableName` | `tbl_event_sagas` | Saga reference table name |
+| `postgresqlObjectStorageMaxRetries` | `100` | Retries when concurrent events update the same object |
+| `eventLockTtl` | `15_000` ms | Time after which an abandoned event claim can be reclaimed |
+| `eventLockTableName` | `ncqrs_event_locks` | Event processing table name |
+| `viewLockTtl` | `120_000` ms | Restore lock duration; prolonged automatically while held |
+| `viewLockTableName` | `ncqrs_view_locks` | Restore lock and checkpoint table name |
 
-### PostgresqlObjectStorage
+Connection options and event-storage configuration are normally registered in the container. Lock options can be
+passed from a projection constructor to `AbstractPostgresqlObjectProjection` or `AbstractPostgresqlView`.
 
-Key/value row store with optimistic concurrency. Stores records as `{ id, data, version }` rows, with `data` stored as `jsonb`.
+## Operations
 
-```ts
-import { PostgresqlObjectStorage } from 'node-cqrs/postgresql';
+- Tables and indexes are created lazily on first use with `CREATE TABLE IF NOT EXISTS` and
+  `CREATE INDEX IF NOT EXISTS`.
+- The database role must be able to create those objects and read and write their tables.
+- Prefer `pg.Pool` for concurrent applications. A shared `pg.Client` is only appropriate when database work is
+  serialized by the application.
+- Table names are quoted as identifiers. Use separate configuration when multiple applications share a database.
+- The adapter does not close the supplied connection or pool.
 
-const storage = new PostgresqlObjectStorage({
-	viewModelPostgresqlDbFactory,
-	tableName: 'users_v1',
-	maxRetries: 50          // optional; default 100
-});
+## Advanced APIs
+
+Most consumers do not need to construct these classes directly:
+
+| Class | Use directly when |
+|---|---|
+| `PostgresqlObjectView` | A custom projection needs the standard object storage and locking behavior |
+| `PostgresqlObjectStorage` | Only PostgreSQL-backed key/value storage is needed |
+| `PostgresqlViewLocker` | A custom component needs distributed restore or migration locking |
+| `PostgresqlEventLocker` | A custom projection needs event deduplication and checkpoints |
+
+`PostgresqlViewLocker` and `PostgresqlEventLocker` expose mutable static defaults for global table names and TTLs.
+Prefer per-instance options when applications share a process or database.
+
+## Run locally
+
+Start PostgreSQL:
+
+```bash
+docker run --name node-cqrs-postgres \
+	-e POSTGRES_PASSWORD=postgres \
+	-p 5432:5432 \
+	-d postgres:16
 ```
 
-| Parameter | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `tableName` | `string` | Yes | - | PostgreSQL table name |
-| `maxRetries` | `number` | No | `100` | Max retries for optimistic concurrency conflicts on `update` and `updateEnforcingNew` |
+A runnable example combining the event store with a JSON object view is included:
 
-`create(id, data)` throws if a row with that `id` already exists.
-`updateEnforcingNew(id, updater)` reads, applies `updater`, then writes with a version check; retries up to `maxRetries` on conflict; inserts if missing.
-
-### PostgresqlViewLocker
-
-Prevents multiple processes from rebuilding the same view concurrently when a projection switches to a new `schemaVersion`. The first process to acquire the lock performs the rebuild; others wait until the lock is released before reading the view. The lock is automatically prolonged at half the TTL interval while the rebuild is in progress.
-
-```ts
-import { PostgresqlViewLocker } from 'node-cqrs/postgresql';
-
-const locker = new PostgresqlViewLocker({
-	viewModelPostgresqlDbFactory,
-	projectionName: 'users',
-	schemaVersion: '1',
-	viewLockTtl: 60_000,                 // optional
-	viewLockTableName: 'my_view_locks'   // optional
-});
+```bash
+npm run example:postgresql
 ```
 
-| Parameter | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `projectionName` | `string` | Yes | - | Identifies the projection in lock rows |
-| `schemaVersion` | `string` | Yes | - | Combined with `projectionName` to form the lock row primary key |
-| `viewLockTtl` | `number` | No | `PostgresqlViewLocker.DEFAULT_VIEW_LOCK_TTL` | Schema-migration lock TTL in ms |
-| `viewLockTableName` | `string` | No | `PostgresqlViewLocker.DEFAULT_TABLE` | Table name for lock rows and last-event checkpoints |
+Set `DATABASE_URL` to use a different local connection. The complete source is
+[examples/postgresql/index.ts](../../examples/postgresql/index.ts).
 
-**Mutable static defaults** - reassign to change the default for all instances:
+Run the PostgreSQL integration tests against the same instance with:
 
-```ts
-PostgresqlViewLocker.DEFAULT_VIEW_LOCK_TTL = 60_000;   // default: 120_000
-PostgresqlViewLocker.DEFAULT_TABLE = 'my_view_locks';  // default: 'ncqrs_view_locks'
+```bash
+npm run test:postgresql
 ```
-
-### PostgresqlEventLocker
-
-Per-event deduplication and last-processed-event checkpoint. Prevents a projection from handling the same event twice across restarts.
-
-```ts
-import { PostgresqlEventLocker } from 'node-cqrs/postgresql';
-
-const locker = new PostgresqlEventLocker({
-	viewModelPostgresqlDbFactory,
-	projectionName: 'users',
-	schemaVersion: '1',
-	eventLockTtl: 30_000,                  // optional
-	eventLockTableName: 'my_event_locks',  // optional
-	viewLockTableName: 'my_view_locks'     // optional
-});
-```
-
-| Parameter | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `projectionName` | `string` | Yes | - | Identifies the projection in lock rows |
-| `schemaVersion` | `string` | Yes | - | Combined with `projectionName` to form lock/checkpoint ownership |
-| `eventLockTtl` | `number` | No | `PostgresqlEventLocker.DEFAULT_EVENT_LOCK_TTL` | TTL for in-progress event locks in ms; expired locks can be claimed by another process |
-| `eventLockTableName` | `string` | No | `PostgresqlEventLocker.DEFAULT_EVENT_LOCK_TABLE` | Table name for event locks |
-| `viewLockTableName` | `string` | No | `PostgresqlEventLocker.DEFAULT_VIEW_LOCK_TABLE` | Table name used to track the last-processed event per projection |
-
-**Mutable static defaults** - reassign to change the default for all instances:
-
-```ts
-PostgresqlEventLocker.DEFAULT_EVENT_LOCK_TTL = 30_000;             // default: 15_000
-PostgresqlEventLocker.DEFAULT_EVENT_LOCK_TABLE = 'my_event_locks'; // default: 'ncqrs_event_locks'
-PostgresqlEventLocker.DEFAULT_VIEW_LOCK_TABLE = 'my_view_locks';   // default: 'ncqrs_view_locks'
-```
-
-## Examples
-
-See [examples/postgresql/index.ts](../../examples/postgresql/index.ts) for a runnable example using `PostgresqlEventStorage`, `pg.Pool`, and `AbstractPostgresqlObjectProjection`.

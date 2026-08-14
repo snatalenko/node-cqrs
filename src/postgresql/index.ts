@@ -2,6 +2,7 @@ import './IContainer.ts';
 
 export * from './AbstractPostgresqlAccessor.ts';
 export * from './AbstractPostgresqlObjectProjection.ts';
+export * from './AbstractPostgresqlProjection.ts';
 export * from './AbstractPostgresqlView.ts';
 export * from './PostgresqlConnection.ts';
 export * from './PostgresqlEventStorage.ts';
