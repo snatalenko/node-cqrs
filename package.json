@@ -106,7 +106,7 @@
     "test:postgresql": "jest --verbose --roots='<rootDir>/tests/integration/postgresql'",
     "pretest:workers": "npm run build:cjs",
     "test:workers": "jest --verbose --roots='<rootDir>/tests/integration/workers'",
-    "changelog": "conventional-changelog -n ./scripts/changelog/index.cjs -r 0 > CHANGELOG.md",
+    "changelog": "conventional-changelog -n ./changelog.config.mjs --infile /dev/null --stdout -r 0 > CHANGELOG.md",
     "build:cjs": "tsc -p ./tsconfig.cjs.json && cp ./scripts/etc/cjs-package.json ./dist/cjs/package.json",
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build:browser:bundle-min": "rollup -c ./rollup.browser.config.mjs --environment MINIFY:true",
@@ -121,6 +121,7 @@
   },
   "author": {
     "name": "Stanislav Natalenko",
+    "email": "turners_punchy_41@icloud.com",
     "url": "https://natalenko.com/about/"
   },
   "license": "Apache-2.0",
@@ -156,7 +157,8 @@
     "amqplib": "^0.10.9",
     "better-sqlite3": "^12.6.2",
     "comlink": "^4.4.2",
-    "conventional-changelog": "^3.1.25",
+    "conventional-changelog": "^8.1.3",
+    "conventional-changelog-conventionalcommits": "^10.3.0",
     "eslint": "^9.39.4",
     "eslint-plugin-jest": "^28.14.0",
     "globals": "^17.4.0",
