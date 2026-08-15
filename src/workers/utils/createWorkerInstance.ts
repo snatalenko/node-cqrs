@@ -3,7 +3,7 @@ import * as Comlink from 'comlink';
 import type { IProjection } from '../../interfaces/index.ts';
 import { assertFunction, getMessageHandlerNames, isClass } from '../../utils/index.ts';
 import { type WorkerInitMessage, isWorkerData } from '../protocol.ts';
-import { nodeEndpoint } from './index.ts';
+import { nodeEndpoint } from '../../shared/worker-utils/index.ts';
 
 /**
  * Create and expose a worker-thread projection from a projection class type.

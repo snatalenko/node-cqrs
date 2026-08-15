@@ -1,0 +1,25 @@
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="/" aria-label="node-cqrs documentation">
+      <img src="/docs/images/logo.svg" alt="" width="52" height="32">
+      <span><strong>node-cqrs</strong><small>{{ site.tagline }}</small></span>
+    </a>
+    <div class="header-actions">
+      <button class="theme-toggle" type="button" aria-label="Toggle color theme" title="Toggle color theme">
+        <svg class="theme-icon theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+        <svg class="theme-icon theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+      <a class="header-link" href="https://github.com/snatalenko/node-cqrs">GitHub</a>
+      <a class="header-link" href="https://www.npmjs.com/package/node-cqrs">npm</a>
+    </div>
+  </div>
+  <nav class="mobile-nav" aria-label="Documentation">
+    <a href="/"{% if page.nav == "overview" %} aria-current="page"{% endif %}>Overview</a>
+    <a href="/sqlite/"{% if page.nav == "sqlite" %} aria-current="page"{% endif %}>SQLite</a>
+    <a href="/mongodb/"{% if page.nav == "mongodb" %} aria-current="page"{% endif %}>MongoDB</a>
+    <a href="/redis/"{% if page.nav == "redis" %} aria-current="page"{% endif %}>Redis</a>
+    <a href="/rabbitmq/"{% if page.nav == "rabbitmq" %} aria-current="page"{% endif %}>RabbitMQ</a>
+    <a href="/workers/"{% if page.nav == "workers" %} aria-current="page"{% endif %}>Workers</a>
+    <a href="/changelog/"{% if page.nav == "changelog" %} aria-current="page"{% endif %}>Changelog</a>
+  </nav>
+</header>

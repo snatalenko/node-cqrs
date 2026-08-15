@@ -10,7 +10,7 @@ import type {
 } from '../interfaces/index.ts';
 import type { IProxyProjection, IWorkerProjection, ProxyProjectionParams } from './interfaces/index.ts';
 import * as Comlink from 'comlink';
-import { nodeEndpoint, createWorker } from './utils/index.ts';
+import { nodeEndpoint, createWorker } from '../shared/worker-utils/index.ts';
 import { assertStringArray, assertString, extractErrorDetails, subscribe } from '../utils/index.ts';
 import { describe } from '../Event.ts';
 import { InMemoryLock } from '../in-memory/InMemoryLock.ts';
@@ -59,9 +59,9 @@ export class WorkerProxyProjection<
 		const { port1: projectionPortMain, port2: projectionPort } = new MessageChannel();
 		const { port1: viewPortMain, port2: viewPort } = new MessageChannel();
 
-		this.#workerInit = createWorker(workerModulePath, {
-			projectionPort,
-			viewPort
+		this.#workerInit = createWorker(workerModulePath, { projectionPort, viewPort }, {
+			transferList: [projectionPort, viewPort],
+			isReadyMessage: m => (m as any)?.type === 'ready'
 		}).then(worker => {
 			this.#worker = worker;
 			worker.once('error', this._onWorkerError);

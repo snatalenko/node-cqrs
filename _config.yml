@@ -1,0 +1,179 @@
+title: node-cqrs
+tagline: Building blocks for CQRS and Event Sourcing
+description: TypeScript CQRS and Event Sourcing toolkit for Node.js with aggregates, sagas, projections, and pluggable infrastructure adapters.
+url: https://node-cqrs.org
+baseurl: ""
+repository: snatalenko/node-cqrs
+github_branch: master
+
+navigation:
+  resources:
+    - title: Examples
+      github_view: tree
+      branch: true
+      path: examples
+    - nav: changelog
+    - title: Issues
+      path: issues
+    - title: License
+      github_view: blob
+      branch: true
+      path: LICENSE
+
+layouts_dir: .jekyll/_layouts
+includes_dir: .jekyll/_includes
+
+include:
+  - README.md
+  - src/sqlite/README.md
+  - src/mongodb/README.md
+  - src/redis/README.md
+  - src/rabbitmq/README.md
+  - src/workers/README.md
+
+defaults:
+  - scope:
+      path: README.md
+    values:
+      layout: docs
+      title: node-cqrs
+      nav: overview
+      nav_title: Overview
+      nav_group: primary
+      nav_order: 1
+      description: TypeScript building blocks for reliable CQRS and Event Sourcing systems.
+      source_path: README.md
+      source_url: https://github.com/snatalenko/node-cqrs/blob/master/README.md
+      permalink: /
+      content_start_id: features
+      sitemap: true
+  - scope:
+      path: src/sqlite/README.md
+    values:
+      layout: docs
+      title: SQLite
+      nav: sqlite
+      nav_group: modules
+      nav_order: 1
+      eyebrow: node-cqrs module
+      description: SQLite event storage, projections, and read models for node-cqrs.
+      source_path: src/sqlite/README.md
+      source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/sqlite/README.md
+      permalink: /sqlite/
+      content_start_id: overview
+      sitemap: true
+  - scope:
+      path: src/mongodb/README.md
+    values:
+      layout: docs
+      title: MongoDB
+      nav: mongodb
+      nav_group: modules
+      nav_order: 2
+      eyebrow: node-cqrs module
+      description: MongoDB event storage and persistent views for node-cqrs.
+      source_path: src/mongodb/README.md
+      source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/mongodb/README.md
+      permalink: /mongodb/
+      content_start_id: overview
+      sitemap: true
+  - scope:
+      path: src/redis/README.md
+    values:
+      layout: docs
+      title: Redis
+      nav: redis
+      nav_group: modules
+      nav_order: 3
+      eyebrow: node-cqrs module
+      description: Redis-backed persistent projection views for node-cqrs.
+      source_path: src/redis/README.md
+      source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/redis/README.md
+      permalink: /redis/
+      content_start_id: overview
+      sitemap: true
+  - scope:
+      path: src/rabbitmq/README.md
+    values:
+      layout: docs
+      title: RabbitMQ
+      nav: rabbitmq
+      nav_group: modules
+      nav_order: 4
+      eyebrow: node-cqrs module
+      description: RabbitMQ command and event transport for node-cqrs.
+      source_path: src/rabbitmq/README.md
+      source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/rabbitmq/README.md
+      permalink: /rabbitmq/
+      content_start_id: overview
+      sitemap: true
+  - scope:
+      path: src/workers/README.md
+    values:
+      layout: docs
+      title: Workers
+      nav: workers
+      nav_group: modules
+      nav_order: 5
+      eyebrow: node-cqrs module
+      description: Worker-thread projections for node-cqrs.
+      source_path: src/workers/README.md
+      source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/workers/README.md
+      permalink: /workers/
+      content_start_id: overview
+      sitemap: true
+  - scope:
+      path: CHANGELOG.md
+    values:
+      layout: docs
+      title: Changelog
+      nav: changelog
+      nav_group: resources
+      description: Release history and notable changes for node-cqrs.
+      source_path: CHANGELOG.md
+      source_url: https://github.com/snatalenko/node-cqrs/blob/master/CHANGELOG.md
+      permalink: /changelog/
+      sitemap: true
+
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+plugins:
+  - jekyll-optional-front-matter
+  - jekyll-sitemap
+
+optional_front_matter:
+  remove_originals: true
+
+readme_index:
+  enabled: false
+
+exclude:
+  - .github
+  - .jekyll/Gemfile
+  - .jekyll/Gemfile.lock
+  - AGENTS.md
+  - CLAUDE.md
+  - CONTRIBUTING.md
+  - LICENSE
+  - NOTICE
+  - coverage
+  - dist
+  - examples
+  - node_modules
+  - scripts
+  - "src/*.ts"
+  - "src/**/*.ts"
+  - tests
+  - eslint.config.mjs
+  - jest.config.ts
+  - jsconfig.json
+  - package-lock.json
+  - package.json
+  - rollup.browser.config.mjs
+  - tsconfig.cjs.json
+  - tsconfig.esm.json
+  - tsconfig.json

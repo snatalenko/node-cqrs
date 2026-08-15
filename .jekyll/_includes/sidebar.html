@@ -1,0 +1,46 @@
+<aside class="sidebar">
+  <nav aria-label="Documentation">
+    {% assign primary_pages = site.pages | where: "nav_group", "primary" | sort: "nav_order" %}
+    {% for nav_page in primary_pages %}
+    <div class="nav-group">
+      <a class="nav-link" href="{{ nav_page.url | relative_url }}"{% if page.nav == nav_page.nav %} aria-current="page"{% endif %}>{{ nav_page.nav_title | default: nav_page.title | escape }}</a>
+      {% if page.nav == nav_page.nav %}
+      <div class="section-links">
+        {% assign section_headings = content | split: '<h2 id="' %}
+        {% for section_heading in section_headings offset:1 %}
+          {% assign section_heading_parts = section_heading | split: '">' %}
+          {% assign section_id = section_heading_parts | first %}
+          {% assign section_heading_body = section_heading_parts[1] %}
+          {% assign section_title = section_heading_body | split: '</h2>' | first | strip_html | strip %}
+          {% unless section_id == 'table-of-contents' %}
+        <a href="#{{ section_id | escape }}">{{ section_title | escape }}</a>
+          {% endunless %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    <div class="nav-group">
+      <h2>Modules</h2>
+      {% assign module_pages = site.pages | where: "nav_group", "modules" | sort: "nav_order" %}
+      {% for nav_page in module_pages %}
+      <a class="nav-link" href="{{ nav_page.url | relative_url }}"{% if page.nav == nav_page.nav %} aria-current="page"{% endif %}>{{ nav_page.nav_title | default: nav_page.title | escape }}</a>
+      {% endfor %}
+    </div>
+    <div class="nav-group">
+      <h2>Resources</h2>
+      {% for resource in site.navigation.resources %}
+        {% if resource.nav %}
+          {% assign resource_pages = site.pages | where: "nav", resource.nav %}
+          {% assign resource_page = resource_pages | first %}
+          {% if resource_page %}
+      <a class="nav-link" href="{{ resource_page.url | relative_url }}"{% if page.nav == resource_page.nav %} aria-current="page"{% endif %}>{{ resource_page.nav_title | default: resource_page.title | escape }}</a>
+          {% endif %}
+        {% else %}
+          {% capture resource_url %}https://github.com/{{ site.repository }}{% if resource.github_view %}/{{ resource.github_view }}{% endif %}{% if resource.branch %}/{{ site.github_branch }}{% endif %}{% if resource.path %}/{{ resource.path }}{% endif %}{% endcapture %}
+      <a class="nav-link external" href="{{ resource_url | strip | escape }}">{{ resource.title | escape }}</a>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </nav>
+</aside>

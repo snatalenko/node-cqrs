@@ -671,11 +671,12 @@ export class RabbitMqGateway {
 			const handlerProcessTimeout = options?.handlerProcessTimeout ?? RabbitMqGateway.HANDLER_PROCESS_TIMEOUT;
 			const keepAliveTimeout = handlerProcessTimeout
 				? setTimeout(() => {
+					const messageDisposition = this.#rejectMessage(channel, msg);
 					this.#logger?.error('Message processing timed out', {
+						messageDisposition,
 						queueName: queueGivenName,
 						msg: extractMessageMeta(msg)
 					});
-					this.#rejectMessage(channel, msg);
 					messageFinalized = true;
 				}, handlerProcessTimeout)
 				: null;
@@ -754,15 +755,24 @@ export class RabbitMqGateway {
 	}
 
 	/** Reject a message, causing it to be dead-lettered or discarded */
-	#rejectMessage(channel: Channel, msg: ConsumeMessage) {
+	#rejectMessage(channel: Channel, msg: ConsumeMessage): 'rejected' | 'requeued' | 'unknown' {
 		try {
 			channel.nack(msg, false, false);
+			return 'rejected';
 		}
 		catch (err: unknown) {
+			const messageDisposition = err instanceof Error && (
+				err.message === 'Channel closed'
+				|| err.message.startsWith('Channel ended')
+			) ? 'requeued' : 'unknown';
+
 			this.#logger?.warn('Failed to reject message', {
 				error: extractErrorDetails(err),
+				messageDisposition,
 				msg: extractMessageMeta(msg)
 			});
+
+			return messageDisposition;
 		}
 	}
 
