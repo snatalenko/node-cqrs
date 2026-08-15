@@ -1,3 +1,15 @@
+# [1.3.0-alpha.2](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.1...v1.3.0-alpha.2) (2026-08-15)
+
+
+### Changes
+
+* Rename `mongoDbFactory` to `eventStorageMongoDbFactory` for clarity ([14c9088](https://github.com/snatalenko/node-cqrs/commit/14c9088224e2f30adeddf5dc7d7c4bed77f9b855))
+
+### Documentation
+
+* Improve setup and usage guides for library consumers ([2d05141](https://github.com/snatalenko/node-cqrs/commit/2d0514195eef408f60b3dd1f707b2dfa991519e6))
+
+
 # [1.3.0-alpha.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-beta.2...v1.3.0-alpha.1) (2026-08-14)
 
 
