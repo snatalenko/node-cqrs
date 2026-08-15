@@ -1,5 +1,10 @@
-# [1.2.0-beta.2](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-beta.1...v1.2.0-beta.2) (2026-08-14)
+# [1.2.0](https://github.com/snatalenko/node-cqrs/compare/v1.1.1...v1.2.0) (2026-08-15)
 
+
+### Features
+
+* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
+* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
 
 ### Build System
 
@@ -7,45 +12,16 @@
 
 ### Internal Fixes
 
+* Move duplicate worker utils into src/shared/worker-utils/ ([8b3c383](https://github.com/snatalenko/node-cqrs/commit/8b3c383be41edd40fcedfbb663104e4f5d530bcc))
 * Improve log output on rabbitmq message handler timeout ([f8dc3ca](https://github.com/snatalenko/node-cqrs/commit/f8dc3ca5ec9589b6ec7131056ee51118204f9cf4))
 
 
-# [1.2.0-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.1...v1.2.0-beta.1) (2026-07-17)
-
-
-
-# [1.2.0-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.1.0...v1.2.0-beta.0) (2026-06-17)
-
-
-### Features
-
-* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
-* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
-
-### Internal Fixes
-
-* Move duplicate worker utils into src/shared/worker-utils/ ([8b3c383](https://github.com/snatalenko/node-cqrs/commit/8b3c383be41edd40fcedfbb663104e4f5d530bcc))
-
-
-## [1.1.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0-beta.0...v1.1.1) (2026-07-17)
+## [1.1.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.0...v1.1.1) (2026-07-17)
 
 
 ### Fixes
 
 * Chained pipelines not preserving FIFO action start order ([ba27d1d](https://github.com/snatalenko/node-cqrs/commit/ba27d1d3be700c69c87e0df6e7385ea784824e63))
-
-
-# [1.2.0-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.1.0...v1.2.0-beta.0) (2026-06-17)
-
-
-### Features
-
-* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
-* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
-
-### Internal Fixes
-
-* Move duplicate worker utils into src/shared/worker-utils/ ([8b3c383](https://github.com/snatalenko/node-cqrs/commit/8b3c383be41edd40fcedfbb663104e4f5d530bcc))
 
 
 # [1.1.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0) (2026-05-26)
