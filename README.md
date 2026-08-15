@@ -405,28 +405,4 @@ builder.register(() => (name: string) => trace.getTracer(`cqrs.${name}`)).as('tr
 
 See the [telemetry example](examples/telemetry/index.ts) for a complete setup with exporters.
 
-## Examples
-
-### Start Here
-
-- [Framework-free TypeScript](examples/user-domain-framework-free/index.ts) - implement the core contracts directly
-- [TypeScript with the container](examples/user-domain-ts) - aggregates and projections with dependency injection
-- [CommonJS](examples/user-domain-cjs) - the same domain using the CommonJS build
-
-### Workflows
-
-- [Simple saga](examples/sagas-simple/index.ts) - one multi-step process
-- [Overlapping sagas](examples/sagas-overlaps/index.ts) - correlated processes sharing events
-- [Worker projection](examples/workers-projection) - run projection work in a worker thread
-- [Browser](examples/browser) - use the browser-compatible core bundle
-- [OpenTelemetry](examples/telemetry/index.ts) - trace the CQRS pipeline
-
-### Infrastructure
-
-- [SQLite](examples/sqlite/index.ts) - embedded event storage and views
-- [Redis](examples/redis/index.ts) - distributed document projection view
-- [MongoDB event storage](examples/mongodb-eventstore/index.ts) - distributed event persistence
-- [MongoDB views](examples/mongodb-views/index.ts) - document and custom projection views
-- [PostgreSQL](examples/postgresql/index.ts) - transactional event storage and projection views
-
 The project was inspired by [Lokad.CQRS](https://github.com/Lokad/lokad-cqrs).

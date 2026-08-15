@@ -8,10 +8,7 @@ github_branch: master
 
 navigation:
   resources:
-    - title: Examples
-      github_view: tree
-      branch: true
-      path: examples
+    - nav: examples
     - nav: changelog
     - title: Issues
       path: issues
@@ -27,6 +24,7 @@ includes_dir: .jekyll/_includes
 
 include:
   - README.md
+  - examples/README.md
   - src/sqlite/README.md
   - src/mongodb/README.md
   - src/redis/README.md
@@ -50,6 +48,21 @@ defaults:
       permalink: /
       content_start_id: features
       last_modified_at: 2026-08-14
+      sitemap: true
+  - scope:
+      path: examples/README.md
+    values:
+      layout: docs
+      title: Examples
+      nav: examples
+      nav_title: Examples
+      nav_group: resources
+      eyebrow: node-cqrs resources
+      description: Runnable node-cqrs examples for core CQRS workflows, sagas, projections, telemetry, and infrastructure modules.
+      source_path: examples/README.md
+      source_url: https://github.com/snatalenko/node-cqrs/blob/master/examples/README.md
+      permalink: /examples/
+      last_modified_at: 2026-08-15
       sitemap: true
   - scope:
       path: src/sqlite/README.md
@@ -195,7 +208,7 @@ exclude:
   - NOTICE
   - coverage
   - dist
-  - examples
+  - "examples/*"
   - node_modules
   - scripts
   - "src/*.ts"

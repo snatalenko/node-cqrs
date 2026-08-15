@@ -76,6 +76,8 @@
           {% assign rendered_content = rendered_content | replace: 'href="examples/workers-projection"', 'href="https://github.com/snatalenko/node-cqrs/tree/master/examples/workers-projection"' %}
           {% assign rendered_content = rendered_content | replace: 'href="examples/', 'href="https://github.com/snatalenko/node-cqrs/blob/master/examples/' %}
           {% assign rendered_content = rendered_content | replace: 'href="src/', 'href="https://github.com/snatalenko/node-cqrs/blob/master/src/' %}
+        {% elsif page.nav == "examples" %}
+          {% assign rendered_content = rendered_content | replace: 'href="./', 'href="https://github.com/snatalenko/node-cqrs/tree/master/examples/' %}
         {% elsif page.nav != "changelog" %}
           {% assign rendered_content = rendered_content | replace: 'href="../../examples/workers-projection"', 'href="https://github.com/snatalenko/node-cqrs/tree/master/examples/workers-projection"' %}
           {% assign rendered_content = rendered_content | replace: 'href="../../examples/', 'href="https://github.com/snatalenko/node-cqrs/blob/master/examples/' %}
