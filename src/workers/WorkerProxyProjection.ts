@@ -135,7 +135,7 @@ export class WorkerProxyProjection<
 	};
 
 	protected _onWorkerExit = (exitCode: number) => {
-		if (exitCode !== 0)
+		if (!this.#disposed && exitCode !== 0)
 			this.#logger?.error(`worker exited with code ${exitCode}`);
 	};
 
