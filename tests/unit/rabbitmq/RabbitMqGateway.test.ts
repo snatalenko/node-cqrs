@@ -56,6 +56,19 @@ describe('RabbitMqGateway', () => {
 		await gateway.disconnect();
 	});
 
+	it.each([0, 42, { toString: () => 'object-id' }])('publishes non-string ID %p as AMQP metadata', async id => {
+		const event = { id, type: 'created' };
+		await gateway.publish('test-exchange', event);
+		expect(channel.publish.mock.calls[0][3].messageId).toBe(String(id));
+	});
+
+	it.each([0, 42, { toString: () => 'object-id' }])('keeps ID %p resolvable in the published body', async id => {
+		await gateway.publish('test-exchange', { id, type: 'created' } as any);
+
+		const body = JSON.parse(channel.publish.mock.calls[0][2].toString('utf8'));
+		expect(String(body.id)).toBe(String(id));
+	});
+
 	describe('tracing', () => {
 
 		describe('publish()', () => {

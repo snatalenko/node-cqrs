@@ -129,6 +129,26 @@ describe('MongoEventStorage', () => {
 			expect((result[0] as any).id).toMatch(/^[0-9a-f]{24}$/);
 		});
 
+		it('accepts ObjectId instances and objects with an ObjectId representation as event ids', async () => {
+			const objectId = makeObjectId(padHex(7));
+			const events = [
+				{ id: objectId, type: 'UserCreated' },
+				{ id: { toString: () => padHex(8) }, type: 'UserCreated' }
+			];
+
+			await storage.commitEvents(events as any);
+
+			expect(mockCollection.insertOne).toHaveBeenNthCalledWith(1, expect.objectContaining({ _id: objectId }));
+			expect(mockCollection.insertOne).toHaveBeenNthCalledWith(2,
+				expect.objectContaining({ _id: makeObjectId(padHex(8)) }));
+		});
+
+		it('generates an id when the event id is an empty string', async () => {
+			const [event] = await storage.commitEvents([{ id: '', type: 'UserCreated' } as any]);
+
+			expect(event.id).toMatch(/^[0-9a-f]{24}$/);
+		});
+
 		it('converts aggregateId to ObjectId when it is a 24-char hex string', async () => {
 			const aggregateId = padHex(1);
 			const event = { type: 'UserCreated', aggregateId, aggregateVersion: 1 };
@@ -305,7 +325,7 @@ describe('MongoEventStorage', () => {
 			mockCollection.find.mockReturnValue({ async* [Symbol.asyncIterator]() {} });
 
 			const beforeEvent = {
-				id: beforeId,
+				id: { toString: () => beforeId },
 				type: 'x',
 				sagaOrigins: { SagaA: originId }
 			};
@@ -381,7 +401,7 @@ describe('MongoEventStorage', () => {
 	describe('getEventsByTypes', () => {
 		it('throws when afterEvent is provided without id', async () => {
 			const stream = storage.getEventsByTypes(['UserCreated'], { afterEvent: { type: 'x' } });
-			await expect(stream.next()).rejects.toThrow('options.afterEvent.id must be a non-empty String');
+			await expect(stream.next()).rejects.toThrow('options.afterEvent.id must be a non-empty Identifier');
 		});
 
 		it('queries with type $in filter', async () => {
@@ -400,7 +420,7 @@ describe('MongoEventStorage', () => {
 			mockCollection.find.mockReturnValue({ async* [Symbol.asyncIterator]() {} });
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			for await (const _ of storage.getEventsByTypes(['UserCreated'], { afterEvent: { id: afterId, type: 'x' } }))
+			for await (const _ of storage.getEventsByTypes(['UserCreated'], { afterEvent: { id: { toString: () => afterId }, type: 'x' } }))
 				;
 
 			const [filter] = mockCollection.find.mock.calls[0];

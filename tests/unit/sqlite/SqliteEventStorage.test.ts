@@ -121,6 +121,53 @@ describe('SqliteEventStorage', () => {
 		});
 	});
 
+	it('persists GUID object IDs and accepts them as replay cursors', async () => {
+		const origin = 'a0000000000000000000000000000001';
+		const next = 'a0000000000000000000000000000002';
+		const first = { id: { toString: () => origin }, type: 'Created', sagaOrigins: { Saga: origin } };
+		const second = { id: { toString: () => next }, type: 'Created', sagaOrigins: { Saga: origin } };
+		await storage.commitEvents([first, second]);
+
+		const after = [];
+		for await (const event of storage.getEventsByTypes(['Created'], { afterEvent: first }))
+			after.push(event.id);
+		expect(after).toEqual([next]);
+
+		const restored = [];
+		for await (const event of storage.getSagaEvents(`Saga:${origin}`, { beforeEvent: second }))
+			restored.push(event.id);
+		expect(restored).toEqual([origin]);
+	});
+
+	it('reads back an object aggregateId as its string representation', async () => {
+		const aggregateId = 'a0000000000000000000000000000005';
+		await storage.commitEvents([{
+			id: 'a0000000000000000000000000000006',
+			aggregateId: { toString: () => aggregateId },
+			aggregateVersion: 1,
+			type: 'Created'
+		} as any]);
+
+		const events = [];
+		for await (const event of storage.getAggregateEvents({ toString: () => aggregateId }))
+			events.push(event);
+
+		expect(events).toHaveLength(1);
+		expect(events[0].aggregateId).toBe(aggregateId);
+	});
+
+	it('rejects identifiers without a GUID representation', async () => {
+		await expect(storage.commitEvents([{ id: 42, type: 'Created' } as any]))
+			.rejects.toThrow('event.id must be a GUID Identifier, "42" given');
+
+		await expect(storage.commitEvents([{
+			id: 'a0000000000000000000000000000001',
+			aggregateId: 'user-1',
+			aggregateVersion: 0,
+			type: 'Created'
+		} as any])).rejects.toThrow('event.aggregateId must be a GUID Identifier, "user-1" given');
+	});
+
 	describe('getSagaEvents', () => {
 
 		it('yields saga events from origin up to beforeEvent', async () => {
@@ -298,7 +345,7 @@ describe('SqliteEventStorage', () => {
 			}
 			catch (err: any) {
 				expect(err).toBeInstanceOf(TypeError);
-				expect(err.message).toBe('options.afterEvent.id must be a non-empty String');
+				expect(err.message).toBe('options.afterEvent.id must be a GUID Identifier, "undefined" given');
 			}
 		});
 	});

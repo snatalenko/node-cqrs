@@ -1,6 +1,7 @@
 import {
 	assertDefined,
 	assertString,
+	assertIdentifier,
 	assertFunction,
 	assertObject,
 	assertArray,
@@ -54,6 +55,26 @@ describe('assertString', () => {
 	});
 	it('does not throw for a non-empty string', () => {
 		expect(() => assertString('hello', 'x')).not.toThrow();
+	});
+});
+
+describe('assertIdentifier', () => {
+	it('throws TypeError for undefined', () => {
+		expect(() => assertIdentifier(undefined, 'x')).toThrow(new TypeError('x must be a non-empty Identifier'));
+	});
+	it('throws TypeError for null', () => {
+		expect(() => assertIdentifier(null, 'x')).toThrow(TypeError);
+	});
+	it('throws TypeError for empty string', () => {
+		expect(() => assertIdentifier('', 'x')).toThrow(TypeError);
+	});
+	it('throws TypeError for boolean', () => {
+		expect(() => assertIdentifier(false, 'x')).toThrow(TypeError);
+	});
+	it('does not throw for a non-empty string, number or object', () => {
+		expect(() => assertIdentifier('hello', 'x')).not.toThrow();
+		expect(() => assertIdentifier(0, 'x')).not.toThrow();
+		expect(() => assertIdentifier({ toString: () => 'obj' }, 'x')).not.toThrow();
 	});
 });
 

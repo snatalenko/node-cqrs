@@ -12,6 +12,10 @@ describe('sagaId utils', function () {
 		expect(parsed).toEqual({ sagaDescriptor, originEventId });
 	});
 
+	it.each([0, 42, { toString: () => 'object-id' }])('makes saga id from a non-string origin event id %p', id => {
+		expect(makeSagaId('Saga', id)).toBe(`Saga:${String(id)}`);
+	});
+
 	it('throws for invalid inputs', () => {
 		expect(() => makeSagaId('', 'a')).toThrow(TypeError);
 		expect(() => makeSagaId('a', '')).toThrow(TypeError);

@@ -1,10 +1,10 @@
 import type { Channel, ChannelModel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import { propagation, context, type Tracer } from '@opentelemetry/api';
 import type { IContainer } from 'node-cqrs';
-import type { ILogger, IMessage, IMessageMeta } from '../interfaces/index.ts';
+import { type ILogger, type IMessage, type IMessageMeta, isIdentifier } from '../interfaces/index.ts';
 import * as Event from '../Event.ts';
 import { recordSpanError, spanAttributes, spanContext } from '../telemetry/index.ts';
-import { assertDefined, assertFunction, assertMessage, assertNonNegativeInteger, assertNotDefined, assertString, extractErrorDetails, Lock } from '../utils/index.ts';
+import { assertDefined, assertFunction, assertMessage, assertNonNegativeInteger, assertNotDefined, assertString, extractErrorDetails, Lock, serializeEvent } from '../utils/index.ts';
 import { ConfigProvider, registerExitCleanup, resolveProvider } from './utils/index.ts';
 import { EventEmitter } from 'events';
 
@@ -820,7 +820,7 @@ export class RabbitMqGateway {
 				await this.#pubChannel.assertExchange(exchange, 'topic', { durable: true });
 			}
 
-			const content = Buffer.from(JSON.stringify(message), 'utf8');
+			const content = Buffer.from(serializeEvent(message), 'utf8');
 			const sagaCorrelationId = (() => {
 				const sagaOrigins = message.sagaOrigins;
 				if (!sagaOrigins || typeof sagaOrigins !== 'object')
@@ -847,8 +847,10 @@ export class RabbitMqGateway {
 				timestamp: message.context?.ts ?? Date.now(),
 				appId: await this.getAppId(),
 				type: message.type,
-				messageId: 'id' in message && typeof message.id === 'string' ?
-					message.id :
+
+				// AMQP messageId is a string property, so a message id of any other type is stringified
+				messageId: 'id' in message && isIdentifier(message.id) ?
+					String(message.id) :
 					undefined,
 				correlationId: sagaCorrelationId,
 				headers

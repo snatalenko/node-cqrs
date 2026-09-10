@@ -434,6 +434,8 @@ builder.register(c => [
 
 Pipeline registrations replace earlier registrations, so the last one wins. A replacement must include every required processor, including `eventIdAugmenter` when consumers need event IDs. Extend `defaultEventDispatchPipeline`, not `eventDispatchPipeline`, from its own factory to avoid a circular dependency. Named pipelines supplied through `eventDispatchPipelines` are also explicit and do not inherit the defaults.
 
+`eventIdAugmenter` only fills in missing IDs, keeping IDs already assigned to events and IDs returned by the `IIdentifierProvider` as they are, whether they are strings, numbers or objects. Components that need a string key, such as saga correlation, projection locks and transport metadata, stringify the ID at their own boundary and never modify the event, so object IDs must have a stable and unique string representation. Storage modules add their own requirements: MongoDB event storage needs ObjectId-compatible IDs, SQLite event storage needs GUID-compatible ones.
+
 
 ## Infrastructure Modules
 

@@ -23,6 +23,7 @@ import {
 	makeSagaId,
 	MapAssertable,
 	assertDefined,
+	assertIdentifier,
 	assertString,
 	assertOptionalArray
 } from './utils/index.ts';
@@ -104,7 +105,7 @@ export class SagaEventHandler implements IEventReceptor {
 	async handle(event: IEvent, meta?: IMessageMeta): Promise<void> {
 		assertDefined(event, 'event');
 		assertDefined(event.type, 'event.type');
-		assertString(event.id, 'event.id');
+		assertIdentifier(event.id, 'event.id');
 
 		const otelSpan = this.#tracer?.startSpan(`${this.#sagaDescriptor}.handle ${event.type}`,
 			spanAttributes('saga', event, ['type', 'aggregateId']),
@@ -117,7 +118,8 @@ export class SagaEventHandler implements IEventReceptor {
 			if (isStarterEvent && sagaOriginFromEvent)
 				throw new Error(`Starter event "${event.type}" already contains saga origin for "${this.#sagaDescriptor}"`);
 
-			const sagaOrigin = isStarterEvent ? event.id : sagaOriginFromEvent;
+			// saga origins travel with messages as strings, so a non-string event id is stringified here
+			const sagaOrigin = isStarterEvent ? String(event.id) : sagaOriginFromEvent;
 			if (!sagaOrigin)
 				throw new Error(`Event "${event.type}" does not contain saga origin for "${this.#sagaDescriptor}"`);
 

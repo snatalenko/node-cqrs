@@ -1,7 +1,8 @@
 import type { Collection, Db } from 'mongodb';
 import type { IContainer } from 'node-cqrs';
-import type { IEvent, IEventLocker } from '../interfaces/index.ts';
+import type { Identifier, IEvent, IEventLocker } from '../interfaces/index.ts';
 import { assertNonNegativeInteger, assertString } from '../utils/assert.ts';
+import { serializeEvent } from '../utils/serializeEvent.ts';
 import { AbstractMongoAccessor } from './AbstractMongoAccessor.ts';
 import type { MongoProjectionDataParams } from './MongoProjectionDataParams.ts';
 import { getEventId } from './utils/index.ts';
@@ -92,7 +93,7 @@ export class MongoEventLocker extends AbstractMongoAccessor implements IEventLoc
 		await this.#eventLocksCollection.createIndex({ processingAt: 1 }, { sparse: true });
 	}
 
-	#eventLockId(eventId: string): string {
+	#eventLockId(eventId: Identifier): string {
 		return `${this.#lockIdPrefix}:${eventId}`;
 	}
 
@@ -155,7 +156,7 @@ export class MongoEventLocker extends AbstractMongoAccessor implements IEventLoc
 		await this.#viewLocksCollection!.updateOne(
 			{ _id: this.#viewLockId },
 			{
-				$set: { lastEvent: JSON.stringify(event) },
+				$set: { lastEvent: serializeEvent(event) },
 				$setOnInsert: { _id: this.#viewLockId }
 			},
 			{ upsert: true }

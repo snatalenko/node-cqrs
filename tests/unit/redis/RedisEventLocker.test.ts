@@ -77,6 +77,19 @@ describe('RedisEventLocker', () => {
 			expect(mockRedis.getAlive(key)).toBe('processing');
 		});
 
+		it.each([0, 42, { toString: () => 'object-id' }])('locks an event with a non-string id %p', async id => {
+			const event = { id, type: 'TEST_EVENT', payload: {} } as IEvent;
+
+			expect(await locker.tryMarkAsProjecting(event)).toBe(true);
+			expect(await locker.tryMarkAsProjecting(event)).toBe(false);
+			expect(mockRedis.getAlive(`ncqrs:evtlock:test:1.0:${String(id)}`)).toBe('processing');
+		});
+
+		it('does not share a lock between events with different non-string ids', async () => {
+			expect(await locker.tryMarkAsProjecting({ id: 1, type: 'TEST_EVENT', payload: {} })).toBe(true);
+			expect(await locker.tryMarkAsProjecting({ id: 2, type: 'TEST_EVENT', payload: {} })).toBe(true);
+		});
+
 		it('uses md5 for events without an id', async () => {
 			const eventWithoutId: IEvent = { type: 'NO_ID', payload: {} };
 			const result = await locker.tryMarkAsProjecting(eventWithoutId);
@@ -123,6 +136,14 @@ describe('RedisEventLocker', () => {
 		it('stores and retrieves the last event', async () => {
 			await locker.markAsLastEvent(testEvent);
 			expect(await locker.getLastEvent()).toEqual(testEvent);
+		});
+
+		it.each([0, 42, { toString: () => 'object-id' }])('restores a non-string id %p as a usable cursor', async id => {
+			await locker.markAsLastEvent({ id, type: 'TEST_EVENT', payload: {} } as IEvent);
+
+			const restored = await locker.getLastEvent();
+
+			expect(String(restored!.id)).toBe(String(id));
 		});
 
 		it('overwrites the previous last event', async () => {

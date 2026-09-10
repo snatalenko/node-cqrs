@@ -58,6 +58,31 @@ describe('SagaEventHandler', function () {
 		sagaEventHandler = new SagaEventHandler({ sagaType: Saga, eventStore, commandBus, logger });
 	});
 
+	it.each([0, 42, { toString: () => 'object-id' }])('starts and restores sagas with ID %p', async id => {
+		const origin = String(id);
+		const starter = { id, type: 'somethingHappened' };
+		const following = {
+			id: { toString: () => 'following-id' },
+			type: 'followingHappened',
+			sagaOrigins: { Saga: origin }
+		};
+		const send = jest.spyOn(commandBus, 'send').mockResolvedValue([]);
+		const restore = jest.spyOn(eventStore, 'getSagaEvents');
+		const intermediate = { id: 100, type: 'followingHappened', sagaOrigins: { Saga: origin } };
+		const mutate = jest.spyOn(Saga.prototype, 'mutate');
+		await eventStorage.commitEvents([starter, intermediate, following]);
+
+		await sagaEventHandler.handle(starter);
+		await sagaEventHandler.handle(following);
+
+		expect(starter.id).toBe(id);
+		expect(mutate).toHaveBeenCalledWith(intermediate);
+		mutate.mockRestore();
+		expect(send.mock.calls[0][0]).toHaveProperty('sagaOrigins.Saga', origin);
+		expect(send.mock.calls[1][0]).toHaveProperty('sagaOrigins.Saga', origin);
+		expect(restore).toHaveBeenCalledWith(`Saga:${origin}`, { beforeEvent: following });
+	});
+
 	it('exists', () => {
 		expect(SagaEventHandler).toBeInstanceOf(Function);
 	});
@@ -125,7 +150,7 @@ describe('SagaEventHandler', function () {
 		}
 
 		expect(thrown).toBeInstanceOf(TypeError);
-		expect(thrown).toHaveProperty('message', 'event.id must be a non-empty String');
+		expect(thrown).toHaveProperty('message', 'event.id must be a non-empty Identifier');
 	});
 
 	it('does not mutate starter event when saga origin is absent', async () => {

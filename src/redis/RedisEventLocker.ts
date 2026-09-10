@@ -1,7 +1,8 @@
 import type { Redis } from 'ioredis';
 import type { IContainer } from 'node-cqrs';
-import type { IEvent, IEventLocker } from '../interfaces/index.ts';
+import type { Identifier, IEvent, IEventLocker } from '../interfaces/index.ts';
 import { assertString } from '../utils/assert.ts';
+import { serializeEvent } from '../utils/serializeEvent.ts';
 import { AbstractRedisAccessor } from './AbstractRedisAccessor.ts';
 import type { RedisProjectionDataParams } from './RedisProjectionDataParams.ts';
 import { getEventId } from './utils/index.ts';
@@ -87,7 +88,7 @@ export class RedisEventLocker extends AbstractRedisAccessor implements IEventLoc
 		// No Redis-level setup required for event locking
 	}
 
-	#eventLockKey(eventId: string): string {
+	#eventLockKey(eventId: Identifier): string {
 		return `${this.#eventLockKeyPrefix}:${eventId}`;
 	}
 
@@ -122,7 +123,7 @@ export class RedisEventLocker extends AbstractRedisAccessor implements IEventLoc
 	async markAsLastEvent(event: IEvent): Promise<void> {
 		await this.assertConnection();
 
-		await this.redis!.set(this.#lastEventKey, JSON.stringify(event));
+		await this.redis!.set(this.#lastEventKey, serializeEvent(event));
 	}
 
 	async getLastEvent(): Promise<IEvent | undefined> {

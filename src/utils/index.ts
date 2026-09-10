@@ -10,5 +10,6 @@ export * from './Lock.ts';
 export * from './MapAssertable.ts';
 export * from './setupOneTimeEmitterSubscription.ts';
 export * from './sagaId.ts';
+export * from './serializeEvent.ts';
 export * from './subscribe.ts';
 export * from './validateHandlers.ts';
