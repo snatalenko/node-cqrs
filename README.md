@@ -50,6 +50,7 @@ The core is infrastructure-agnostic, but the heavy lifting for common stacks is 
   - [View restoring on start](#view-restoring-on-start)
   - [Accessing views](#accessing-views)
 - [Sagas](#sagas)
+- [Event Dispatch Pipeline](#event-dispatch-pipeline)
 - [Infrastructure Modules](#infrastructure-modules)
   - [Event Storage](#event-storage)
   - [Read Model](#read-model)
@@ -344,13 +345,12 @@ class WelcomeEmailSaga extends AbstractSaga {
 	}
 }
 
-builder.register(EventIdAugmentor).as('eventIdAugmenter'); // required: adds event.id
 builder.registerSaga(WelcomeEmailSaga);
 ```
 
 - Handler methods are named after event types (`userSignedUp` handles `userSignedUp`)
 - `this.enqueue(commandType, aggregateId, payload)` produces commands
-- `EventIdAugmentor` must be in the dispatch pipeline - starter events use `event.id` as the saga origin
+- Starter events use `event.id` as the saga origin; the default dispatch pipeline assigns missing IDs automatically.
 - `static sagaDescriptor` (optional) - stable key for `message.sagaOrigins`, defaults to class name
 
 `handle(event)` runs the handler before `mutate(event)`, so handlers always see the previous state.
@@ -408,6 +408,31 @@ interface ISaga {
 	handle(event: IEvent): ReadonlyArray<ICommand> | Promise<ReadonlyArray<ICommand>>;
 }
 ```
+
+
+## Event Dispatch Pipeline
+
+Before publishing events, `EventStore` runs a pipeline for cross-cutting work. `ContainerBuilder` provides defaults that assign missing event IDs, persist events, and save snapshots when the corresponding storage processors are registered.
+
+Extend the defaults with another processor:
+
+```ts
+builder.register(c => [
+	...c.defaultEventDispatchPipeline,
+	c.createInstance(AuditProcessor)
+]).as('eventDispatchPipeline');
+```
+
+Omit the defaults to replace the pipeline entirely:
+
+```ts
+builder.register(c => [
+	c.eventIdAugmenter,
+	c.createInstance(CustomStorageWriter)
+]).as('eventDispatchPipeline');
+```
+
+Pipeline registrations replace earlier registrations, so the last one wins. A replacement must include every required processor, including `eventIdAugmenter` when consumers need event IDs. Extend `defaultEventDispatchPipeline`, not `eventDispatchPipeline`, from its own factory to avoid a circular dependency. Named pipelines supplied through `eventDispatchPipelines` are also explicit and do not inherit the defaults.
 
 
 ## Infrastructure Modules

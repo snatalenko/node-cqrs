@@ -8,7 +8,7 @@
  *   node examples/mongodb-views/index.ts
  */
 import { MongoClient } from 'mongodb';
-import { type IContainer, ContainerBuilder, EventIdAugmentor, InMemoryEventStorage } from '../../src/index.ts'; // 'node-cqrs';
+import { type IContainer, ContainerBuilder, InMemoryEventStorage } from '../../src/index.ts'; // 'node-cqrs';
 import { AbstractMongoObjectProjection, type MongoObjectView } from '../../src/mongodb/index.ts'; // 'node-cqrs/mongodb';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
 import type { CreateUserCommandPayload, RenameUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
@@ -58,7 +58,6 @@ builder.register(() => {
 	};
 }).as('viewModelMongoDbFactory');
 builder.register(InMemoryEventStorage);
-builder.register(EventIdAugmentor).as('eventIdAugmenter'); // stamps event.id — required for IEventLocker checkpoints
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'usersView');
 

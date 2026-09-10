@@ -11,7 +11,8 @@ import { assertDefined } from './utils/assert.ts';
  * Dispatch-pipeline processor that ensures each event has an `id`.
  *
  * Some components (e.g. `SagaEventHandler`) require `event.id` to correlate saga instances.
- * Put this processor early in the `eventDispatchPipeline` to auto-assign ids to events that don't have them.
+ * CqrsContainerBuilder includes this processor in its default pipeline.
+ * For manual setup or replacement pipelines, put it before storage to assign missing ids.
  */
 export class EventIdAugmentor implements IDispatchPipelineProcessor {
 

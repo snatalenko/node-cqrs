@@ -29,12 +29,15 @@ export interface IContainer extends Container {
 
 	identifierProvider?: IIdentifierProvider;
 	snapshotStorage?: IAggregateSnapshotStorage;
-	eventIdAugmenter?: IDispatchPipelineProcessor;
+	eventIdAugmenter: IDispatchPipelineProcessor;
 
 	commandBus: ICommandBus;
 	eventDispatcher?: IEventDispatcher;
 
-	/** Default event dispatch pipeline */
+	/** Builder defaults: event IDs, event storage, then snapshot storage. */
+	defaultEventDispatchPipeline: readonly IDispatchPipelineProcessor[];
+
+	/** Active event dispatch pipeline; can extend or replace the builder defaults. */
 	eventDispatchPipeline?: IDispatchPipelineProcessor[];
 
 	/** Multiple event dispatch pipelines per origin */

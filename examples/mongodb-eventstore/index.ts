@@ -8,7 +8,7 @@
  *   node examples/mongodb-eventstore/index.ts
  */
 import { MongoClient } from 'mongodb';
-import { type IContainer, ContainerBuilder, EventIdAugmentor } from 'node-cqrs';
+import { type IContainer, ContainerBuilder } from 'node-cqrs';
 import { MongoEventStorage } from 'node-cqrs/mongodb';
 import type { CreateUserCommandPayload, RenameUserCommandPayload } from '../user-domain-ts/messages.ts';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
@@ -37,7 +37,6 @@ builder.register(() => {
 
 // MongoEventStorage is auto-resolved as eventStorageReader, eventStorage, and identifierProvider
 builder.register(MongoEventStorage);
-builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'users');
 

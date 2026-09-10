@@ -18,7 +18,6 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
 	ContainerBuilder,
-	EventIdAugmentor,
 	InMemoryEventStorage,
 	type IContainer
 } from '../../src/index.ts';
@@ -52,7 +51,6 @@ interface AppContainer extends IContainer {
 const builder = new ContainerBuilder<AppContainer>();
 builder.register(() => (name: string) => trace.getTracer(`cqrs.${name}`)).as('tracerFactory');
 builder.register(InMemoryEventStorage);
-builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerAggregate(UserAggregate);
 builder.registerAggregate(TrialAggregate);
 builder.registerProjection(UsersProjection, 'users');

@@ -39,7 +39,7 @@ npm ci
 | src/AggregateCommandHandler.ts | Restores aggregate from events, executes command |
 | src/CqrsContainerBuilder.ts | DI container, implements `registerAggregate/Projection/Saga()` |
 | src/EventDispatcher.ts | `dispatch(events)`, chains `IEventDispatchPipeline[]` processors |
-| src/EventIdAugmentor.ts | Adds `event.id`; required in pipeline for sagas |
+| src/EventIdAugmentor.ts | Adds missing `event.id`; included in the container builder’s default pipeline |
 | src/EventStore.ts | Facade for `IEventDispatcher`, `IEventStorageReader`, `IIdentifierProvider` |
 | src/SagaEventHandler.ts | Restores saga state, dispatches events to sagas |
 | **tests/unit/** | Jest unit tests; one test suite per class |

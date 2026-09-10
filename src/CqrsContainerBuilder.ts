@@ -3,6 +3,7 @@ import { AggregateCommandHandler } from './AggregateCommandHandler.ts';
 import { EventStore } from './EventStore.ts';
 import { SagaEventHandler } from './SagaEventHandler.ts';
 import { EventDispatcher } from './EventDispatcher.ts';
+import { EventIdAugmentor } from './EventIdAugmentor.ts';
 import { InMemoryMessageBus } from './in-memory/index.ts';
 import {
 	type IAggregateConstructor,
@@ -40,13 +41,15 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 		super.register(EventStore).as('eventStore');
 		super.register(EventDispatcher).as('eventDispatcher');
 
+		// Default event dispatch pipeline
+		super.register(EventIdAugmentor).as('eventIdAugmenter');
 		super.register(c => [
-			// automatically add eventStorage and snapshotStorage to the default dispatch pipeline
-			// if they're registered in the DI container and implement IDispatchPipelineProcessor
-			...isDispatchPipelineProcessor(c.eventIdAugmenter) ? [c.eventIdAugmenter] : [],
+			c.eventIdAugmenter,
 			...isDispatchPipelineProcessor(c.eventStorage) ? [c.eventStorage] : [],
 			...isDispatchPipelineProcessor(c.snapshotStorage) ? [c.snapshotStorage] : []
-		]).as('eventDispatchPipeline');
+		]).as('defaultEventDispatchPipeline');
+
+		super.register(c => [...c.defaultEventDispatchPipeline]).as('eventDispatchPipeline');
 
 		super.register(() => [] as Promise<void>[]).as('restorePromises');
 	}

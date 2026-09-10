@@ -1,5 +1,5 @@
 import createDb from 'better-sqlite3';
-import { type IContainer, ContainerBuilder, EventIdAugmentor } from '../../src/index.ts';
+import { type IContainer, ContainerBuilder } from '../../src/index.ts';
 import { AbstractSqliteObjectProjection, SqliteEventStorage, type SqliteObjectView } from '../../src/sqlite/index.ts';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
 import type { CreateUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
@@ -39,7 +39,6 @@ const builder = new ContainerBuilder<MyContainer>();
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'users');
 builder.register(SqliteEventStorage);
-builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerInstance(() => createDb(':memory:'), 'viewModelSqliteDbFactory');
 
 const { commandBus, users } = builder.container();
