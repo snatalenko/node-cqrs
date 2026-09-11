@@ -1,3 +1,19 @@
+## [1.2.2-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.2.1...v1.2.2-beta.0) (2026-09-11)
+
+
+### Changes
+
+* Register eventIdAugmenter by default in defaultEventDispatchPipeline ([1136781](https://github.com/snatalenko/node-cqrs/commit/113678103362f952a8616e522f4b9a54c8a35dee))
+
+### Fixes
+
+* EventIdAugmentor converting and overwriting non-string event IDs ([09d9e3b](https://github.com/snatalenko/node-cqrs/commit/09d9e3b08a9b27372ad9d89cdb6619e08d93909b))
+
+### Documentation
+
+* Fix changelog ([7326958](https://github.com/snatalenko/node-cqrs/commit/73269580b8adf24eb1844144b47c51d0a2d909d3))
+
+
 ## [1.2.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0...v1.2.1) (2026-08-21)
 
 
