@@ -1,3 +1,53 @@
+## [1.3.0-alpha.4](https://github.com/snatalenko/node-cqrs/compare/v1.2.2-beta.0...v1.3.0-alpha.4) (2026-09-11)
+
+### Documentation
+
+* Move examples to a separate page ([46ba857](https://github.com/snatalenko/node-cqrs/commit/46ba8572293fde78498a5a3cd37b8eaca7135f18))
+
+## [1.3.0-alpha.3](https://github.com/snatalenko/node-cqrs/compare/v1.2.0...v1.3.0-alpha.3) (2026-08-15)
+
+### Features
+
+* Transactional PostgreSQL projection base ([36c3387](https://github.com/snatalenko/node-cqrs/commit/36c3387ee560e7a019a004707188fba8c2e7b33a))
+* PostgreSQL event storage ([a567da2](https://github.com/snatalenko/node-cqrs/commit/a567da2597f30013c201d9c2e7c22e94b5abf429))
+* PostgreSQL projection views ([6ac7301](https://github.com/snatalenko/node-cqrs/commit/6ac73012a187de5755b5f9a646d2e816397e143d))
+
+### Changes
+
+* Rename `mongoDbFactory` to `eventStorageMongoDbFactory` for clarity ([14c9088](https://github.com/snatalenko/node-cqrs/commit/14c9088224e2f30adeddf5dc7d7c4bed77f9b855))
+
+### Performance Improvements
+
+* aggregate SQLite saga origins in event queries ([491310e](https://github.com/snatalenko/node-cqrs/commit/491310ecc7263a1f6833ad08fc9b8340f8d434a1))
+
+### Build System
+
+* Upgrade conventional-changelog to latest version ([f148536](https://github.com/snatalenko/node-cqrs/commit/f148536cd2e4fa9953354577a5f01bb0e10f6b77))
+
+### Documentation
+
+* Improve setup and usage guides for library consumers ([2d05141](https://github.com/snatalenko/node-cqrs/commit/2d0514195eef408f60b3dd1f707b2dfa991519e6))
+
+## [1.2.2-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.2.1...v1.2.2-beta.0) (2026-09-11)
+
+### Changes
+
+* Register eventIdAugmenter by default in defaultEventDispatchPipeline ([1136781](https://github.com/snatalenko/node-cqrs/commit/113678103362f952a8616e522f4b9a54c8a35dee))
+
+### Fixes
+
+* eventIdAugmentor converting and overwriting non-string event IDs ([09d9e3b](https://github.com/snatalenko/node-cqrs/commit/09d9e3b08a9b27372ad9d89cdb6619e08d93909b))
+
+### Documentation
+
+* Fix changelog ([7326958](https://github.com/snatalenko/node-cqrs/commit/73269580b8adf24eb1844144b47c51d0a2d909d3))
+
+## [1.2.1](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.3...v1.2.1) (2026-08-21)
+
+### Fixes
+
+* Avoid logging error on intentional worker termination ([9ba155a](https://github.com/snatalenko/node-cqrs/commit/9ba155abc90d8a94a9d672948404edadd2ca6d05))
+
 ## [1.3.0-alpha.3](https://github.com/snatalenko/node-cqrs/compare/v1.2.0...v1.3.0-alpha.3) (2026-08-15)
 
 ### Features
