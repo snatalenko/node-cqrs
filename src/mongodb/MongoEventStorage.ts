@@ -1,20 +1,21 @@
 import { ObjectId, type Collection, type Db, type Document, type Filter } from 'mongodb';
 import type { IContainer } from 'node-cqrs';
-import type {
-	EventQueryAfter,
-	AggregateEventsQueryParams,
-	DispatchPipelineBatch,
-	IDispatchPipelineProcessor,
-	IEvent,
-	IEventSet,
-	IEventStorageReader,
-	IEventStream,
-	IIdentifierProvider,
-	Identifier
+import {
+	type EventQueryAfter,
+	type AggregateEventsQueryParams,
+	type DispatchPipelineBatch,
+	type IDispatchPipelineProcessor,
+	type IEvent,
+	type IEventSet,
+	type IEventStorageReader,
+	type IEventStream,
+	type IIdentifierProvider,
+	type Identifier,
+	isIdentifier
 } from '../interfaces/index.ts';
 import { parseSagaId } from '../utils/index.ts';
 import { ConcurrencyError } from '../errors/index.ts';
-import { assertFunction, assertString } from '../utils/assert.ts';
+import { assertFunction, assertIdentifier, assertString } from '../utils/assert.ts';
 import { registerExitCleanup } from './registerExitCleanup.ts';
 
 type EventDocument = Document & {
@@ -27,7 +28,14 @@ type EventDocument = Document & {
 	context?: unknown;
 };
 
+/**
+ * Convert an identifier of any type to ObjectId.
+ * Identifiers must have an ObjectId-compatible string representation.
+ */
 function toObjectId(id: Identifier): ObjectId {
+	if (id instanceof ObjectId)
+		return id;
+
 	return new ObjectId(String(id));
 }
 
@@ -57,7 +65,7 @@ function toEventDocument(event: IEvent): EventDocument {
 	const { id, aggregateId, ...rest } = event;
 	return {
 		...rest,
-		_id: id !== undefined ? toObjectId(id) : new ObjectId(),
+		_id: isIdentifier(id) ? toObjectId(id) : new ObjectId(),
 		...aggregateId && {
 			aggregateId: toObjectIdOrString(aggregateId)
 		}
@@ -208,8 +216,7 @@ export class MongoEventStorage implements
 	}
 
 	async* getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
-		if (typeof beforeEvent?.id !== 'string' || !beforeEvent.id.length)
-			throw new TypeError('beforeEvent.id must be a non-empty String');
+		assertIdentifier(beforeEvent?.id, 'beforeEvent.id');
 
 		const { sagaDescriptor, originEventId } = parseSagaId(sagaId);
 
@@ -253,8 +260,9 @@ export class MongoEventStorage implements
 	}
 
 	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
-		if (options?.afterEvent !== undefined && (typeof options.afterEvent.id !== 'string' || !options.afterEvent.id.length))
-			throw new TypeError('options.afterEvent.id must be a non-empty String');
+		const afterEventId = options?.afterEvent?.id;
+		if (options?.afterEvent)
+			assertIdentifier(afterEventId, 'options.afterEvent.id');
 
 		const { collection } = await this.#initPromise;
 
@@ -262,8 +270,8 @@ export class MongoEventStorage implements
 			type: { $in: eventTypes }
 		};
 
-		if (options?.afterEvent?.id)
-			filter._id = { $gt: toObjectId(options.afterEvent.id) };
+		if (afterEventId !== undefined)
+			filter._id = { $gt: toObjectId(afterEventId) };
 
 		const cursor = collection.find(filter, {
 			sort: { _id: 1 }

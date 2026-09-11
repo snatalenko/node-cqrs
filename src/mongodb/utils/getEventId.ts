@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
-import type { IEvent } from '../../interfaces/index.ts';
+import { type IEvent, type Identifier, isIdentifier } from '../../interfaces/index.ts';
 
 /**
- * Get assigned or generate a deterministic event ID as a hex string
+ * Get assigned event ID or generate a deterministic one from the event content
  */
-export const getEventId = (event: IEvent): string => {
-	if (typeof event.id === 'string')
+export const getEventId = (event: IEvent): Identifier => {
+	if (isIdentifier(event.id))
 		return event.id;
 
 	return createHash('md5').update(JSON.stringify(event)).digest('hex');

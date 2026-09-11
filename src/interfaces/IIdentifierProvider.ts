@@ -6,6 +6,9 @@ export interface IIdentifierProvider {
 	/**
 	 * Generates and returns a new unique identifier suitable for aggregates, sagas, and events.
 	 *
+	 * Identifiers used for events must have a stable, unique string representation for consumers
+	 * such as saga correlation and projection locks. Storage adapters may impose additional format requirements.
+	 *
 	 * @returns A promise resolving to an identifier or an identifier itself.
 	 */
 	getNewId(): Identifier | Promise<Identifier>;

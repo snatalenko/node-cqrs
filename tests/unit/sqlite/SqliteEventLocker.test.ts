@@ -1,7 +1,7 @@
 import createDb from 'better-sqlite3';
 import { SqliteEventLocker } from '../../../src/sqlite/SqliteEventLocker';
 import { IEvent } from '../../../src/interfaces';
-import { guid } from '../../../src/sqlite';
+import { getEventId } from '../../../src/sqlite';
 import { promisify } from 'util';
 const delay = promisify(setTimeout);
 
@@ -44,7 +44,7 @@ describe('SqliteEventLocker', () => {
 
 		// DB query remains synchronous with better-sqlite3
 		const row = db.prepare('SELECT processed_at FROM test_event_lock WHERE event_id = ?')
-			.get(guid(testEvent.id)) as any;
+			.get(getEventId(testEvent)) as any;
 
 		expect(row).toBeDefined();
 		expect(row.processed_at).not.toBeNull();
@@ -58,6 +58,14 @@ describe('SqliteEventLocker', () => {
 		const lastEvent = await locker.getLastEvent();
 
 		expect(lastEvent).toEqual(testEvent);
+	});
+
+	it.each([0, 42, { toString: () => 'object-id' }])('restores a non-string id %p as a usable cursor', async id => {
+		await locker.markAsLastEvent({ id, type: 'TEST_EVENT', payload: {} } as IEvent);
+
+		const lastEvent = await locker.getLastEvent();
+
+		expect(String(lastEvent!.id)).toBe(String(id));
 	});
 
 	it('does not record last event on markAsProjected alone', async () => {
@@ -91,7 +99,7 @@ describe('SqliteEventLocker', () => {
 		await locker.tryMarkAsProjecting(testEvent);
 
 		db.prepare('UPDATE test_event_lock SET processed_at = ? WHERE event_id = ?')
-			.run(Date.now(), guid(testEvent.id));
+			.run(Date.now(), getEventId(testEvent));
 
 		await expect(() => locker.markAsProjected(testEvent))
 			.rejects.toThrow(`Event ${testEvent.id} could not be marked as processed`);

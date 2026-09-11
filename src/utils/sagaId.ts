@@ -1,9 +1,9 @@
 import type { Identifier } from '../interfaces/Identifier.ts';
-import { assertString } from './assert.ts';
+import { assertIdentifier, assertString } from './assert.ts';
 
-export const makeSagaId = (sagaDescriptor: string, originEventId: string): string => {
+export const makeSagaId = (sagaDescriptor: string, originEventId: Identifier): string => {
 	assertString(sagaDescriptor, 'sagaDescriptor');
-	assertString(originEventId, 'originEventId');
+	assertIdentifier(originEventId, 'originEventId');
 
 	return `${sagaDescriptor}:${originEventId}`;
 };

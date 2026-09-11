@@ -94,6 +94,20 @@ describe('InMemoryEventStorage', () => {
 			expect(results).toEqual([event1, event2]);
 		});
 
+		it.each([0, 42, { toString: () => 'object-id' }])('matches stored non-string ids against the sagaId %p', async id => {
+			const origin = String(id);
+			const event1 = { id, sagaOrigins: { SagaA: origin }, type: 'SagaStarted' };
+			const event2 = { id: 100, sagaOrigins: { SagaA: origin }, type: 'SagaProgressed' };
+			const beforeEvent = { id: { toString: () => 'before-id' }, sagaOrigins: { SagaA: origin } };
+			await storage.commitEvents([event1, event2, beforeEvent] as any);
+
+			const results = [];
+			for await (const event of storage.getSagaEvents(`SagaA:${origin}`, { beforeEvent } as any))
+				results.push(event);
+
+			expect(results).toEqual([event1, event2]);
+		});
+
 		it('supports events participating in multiple sagas', async () => {
 
 			const event1 = {
@@ -166,6 +180,14 @@ describe('InMemoryEventStorage', () => {
 	});
 
 	describe('getEventsByTypes', () => {
+		it.each([0, 42, { toString: () => 'cursor' }])('resumes after a non-string cursor %p', async id => {
+			await storage.commitEvents([{ id, type: 'A' }, { id: 'next', type: 'A' }]);
+			const events = [];
+			for await (const event of storage.getEventsByTypes(['A'], { afterEvent: { id, type: 'A' } }))
+				events.push(event);
+			expect(events).toEqual([{ id: 'next', type: 'A' }]);
+		});
+
 
 		it('yields events matching the provided types', async () => {
 
@@ -209,7 +231,7 @@ describe('InMemoryEventStorage', () => {
 			}
 			catch (err) {
 				expect(err).toBeInstanceOf(TypeError);
-				expect(err.message).toBe('options.afterEvent.id must be a non-empty String');
+				expect(err.message).toBe('options.afterEvent.id must be a non-empty Identifier');
 			}
 		});
 	});

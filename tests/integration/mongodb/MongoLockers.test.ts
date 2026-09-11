@@ -150,6 +150,28 @@ describe('Mongo Lockers (integration)', () => {
 				.rejects.toThrow(`Event ${testEvent.id} could not be marked as processed`);
 		});
 
+		it.each([0, 42, { toString: () => 'object-id' }])('locks and finalises an event with a non-string id %p', async id => {
+			const event = { id, type: 'TEST', payload: {} } as IEvent;
+
+			expect(await locker.tryMarkAsProjecting(event)).toBe(true);
+			expect(await locker.tryMarkAsProjecting(event)).toBe(false);
+
+			await locker.markAsProjected(event);
+
+			const doc = await db.collection('ncqrs_event_locks')
+				.findOne({ _id: `inttest:1:${String(id)}` as any });
+			expect((doc as any)?.processedAt).toBeInstanceOf(Date);
+		});
+
+		it('keeps separate locks for events with different non-string ids', async () => {
+			expect(await locker.tryMarkAsProjecting({ id: 1, type: 'TEST', payload: {} })).toBe(true);
+			expect(await locker.tryMarkAsProjecting({ id: 2, type: 'TEST', payload: {} })).toBe(true);
+
+			const count = await db.collection('ncqrs_event_locks')
+				.countDocuments({ _id: { $in: ['inttest:1:1', 'inttest:1:2'] as any } });
+			expect(count).toBe(2);
+		});
+
 		it('stores and retrieves the last event', async () => {
 			await locker.markAsLastEvent(testEvent);
 			expect(await locker.getLastEvent()).toEqual(testEvent);

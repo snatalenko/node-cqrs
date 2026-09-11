@@ -2,6 +2,7 @@ import { type IMessage, isMessage } from '../interfaces/IMessage.ts';
 import { type IEvent, isEvent } from '../interfaces/IEvent.ts';
 import { type ISnapshotEvent, isSnapshotEvent } from '../interfaces/ISnapshotEvent.ts';
 import { type IObservable, isObservable } from '../interfaces/IObservable.ts';
+import { type Identifier, isIdentifier } from '../interfaces/Identifier.ts';
 import { isClass } from './isClass.ts';
 
 export function assertDefined<T>(value: T, argName: string): asserts value is NonNullable<T> {
@@ -12,6 +13,11 @@ export function assertDefined<T>(value: T, argName: string): asserts value is No
 export function assertString(value: unknown, argName: string): asserts value is string {
 	if (typeof value !== 'string' || !value.length)
 		throw new TypeError(`${argName} must be a non-empty String`);
+}
+
+export function assertIdentifier(value: unknown, argName: string): asserts value is Identifier {
+	if (!isIdentifier(value))
+		throw new TypeError(`${argName} must be a non-empty Identifier`);
 }
 
 export function assertFunction(value: unknown, argName: string): asserts value is Function {

@@ -3,7 +3,7 @@
  * Requires a running MongoDB instance at mongodb://localhost:27017.
  * Start with: docker run -d -p 27017:27017 mongo:7
  */
-import { type Db, MongoClient } from 'mongodb';
+import { type Db, MongoClient, ObjectId } from 'mongodb';
 import { MongoEventStorage } from '../../../src/mongodb/MongoEventStorage.ts';
 import { ConcurrencyError } from '../../../src';
 
@@ -61,6 +61,27 @@ describe('MongoEventStorage (integration)', () => {
 			expect(result).toHaveLength(1);
 			expect(typeof (result[0] as any).id).toBe('string');
 			expect((result[0] as any).id).toMatch(/^[0-9a-f]{24}$/);
+		});
+
+		it('persists ObjectId instances and objects with an ObjectId representation as event ids', async () => {
+			const objectId = new ObjectId();
+			const hexId = storage.getNewId();
+			const events = [
+				{ id: objectId, type: 'UserCreated' },
+				{ id: { toString: () => hexId }, type: 'UserCreated' }
+			];
+
+			await storage.commitEvents(events as any);
+
+			const docs = await db.collection(COLLECTION).find({}).sort({ _id: 1 }).toArray();
+			const storedIds = docs.map(d => (d._id as ObjectId).toHexString());
+			expect(storedIds).toEqual(expect.arrayContaining([objectId.toHexString(), hexId]));
+		});
+
+		it('rejects event ids without an ObjectId representation', async () => {
+			await expect(storage.commitEvents([{ id: 42, type: 'UserCreated' }] as any))
+				.rejects.toThrow();
+			await expect(db.collection(COLLECTION).countDocuments()).resolves.toBe(0);
 		});
 
 		it('throws ConcurrencyError on duplicate aggregateVersion', async () => {
@@ -233,6 +254,26 @@ describe('MongoEventStorage (integration)', () => {
 			expect(results[1].type).toBe('SagaProgressed');
 		});
 
+		it('restores a saga from non-string origin and beforeEvent ids', async () => {
+			const originEventId = storage.getNewId();
+			const events: any[] = [
+				// origin id is an object, ids of the following events are assigned on commit
+				{ id: { toString: () => originEventId }, type: 'SagaStarted' },
+				{ type: 'SagaProgressed', sagaOrigins: { SagaA: originEventId } },
+				{ type: 'SagaFinished', sagaOrigins: { SagaA: originEventId } }
+			];
+
+			await storage.commitEvents(events as any);
+
+			const beforeEvent = { ...events[2], id: new ObjectId(events[2].id) };
+			const results: any[] = [];
+			for await (const e of storage.getSagaEvents(`SagaA:${originEventId}`, { beforeEvent }))
+				results.push(e);
+
+			expect(results.map(e => e.type)).toEqual(['SagaStarted', 'SagaProgressed']);
+			expect(results[0].id).toBe(originEventId);
+		});
+
 		it('throws when origin event cannot be found', async () => {
 			await storage.commitEvents([
 				{ type: 'SagaProgressed', sagaOrigins: { SagaA: storage.getNewId() } }
@@ -299,6 +340,27 @@ describe('MongoEventStorage (integration)', () => {
 
 			expect(results).toHaveLength(2);
 			expect(results[0].id).toBe(events[1].id);
+		});
+
+		it('resumes after a non-string cursor id', async () => {
+			const firstId = storage.getNewId();
+			const events: any[] = [
+				{ id: new ObjectId(firstId), type: 'UserCreated' },
+				{ type: 'UserCreated' },
+				{ type: 'UserCreated' }
+			];
+			await storage.commitEvents(events as any);
+
+			const objectIdCursor: any[] = [];
+			for await (const e of storage.getEventsByTypes(['UserCreated'], { afterEvent: { id: new ObjectId(firstId), type: 'UserCreated' } }))
+				objectIdCursor.push(e);
+
+			const objectCursor: any[] = [];
+			for await (const e of storage.getEventsByTypes(['UserCreated'], { afterEvent: { id: { toString: () => firstId }, type: 'UserCreated' } as any }))
+				objectCursor.push(e);
+
+			expect(objectIdCursor).toHaveLength(2);
+			expect(objectCursor).toEqual(objectIdCursor);
 		});
 	});
 });

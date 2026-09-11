@@ -7,6 +7,7 @@ import type { SqliteViewLockerParams } from './SqliteViewLocker.ts';
 import type { SqliteProjectionDataParams } from './SqliteProjectionDataParams.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
 import { assertString } from '../utils/assert.ts';
+import { serializeEvent } from '../utils/serializeEvent.ts';
 
 export type SqliteEventLockerParams =
 	SqliteProjectionDataParams
@@ -122,7 +123,7 @@ export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventL
 	async markAsLastEvent(event: IEvent<any>) {
 		await this.assertConnection();
 
-		this.#upsertLastEventQuery.run(this.#projectionName, this.#schemaVersion, JSON.stringify(event));
+		this.#upsertLastEventQuery.run(this.#projectionName, this.#schemaVersion, serializeEvent(event));
 	}
 
 	async getLastEvent(): Promise<IEvent<any> | undefined> {

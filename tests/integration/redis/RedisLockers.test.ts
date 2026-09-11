@@ -165,6 +165,24 @@ describe('Redis Lockers (integration)', () => {
 			expect(await locker.tryMarkAsProjecting(testEvent)).toBe(true);
 		});
 
+		it.each([0, 42, { toString: () => 'object-id' }])('locks and finalises an event with a non-string id %p', async id => {
+			const event = { id, type: 'TEST', payload: {} } as IEvent;
+
+			expect(await locker.tryMarkAsProjecting(event)).toBe(true);
+			expect(await locker.tryMarkAsProjecting(event)).toBe(false);
+			expect(await redis.get(`ncqrs:evtlock:inttest:1:${String(id)}`)).toBe('processing');
+
+			await locker.markAsProjected(event);
+
+			expect(await redis.get(`ncqrs:evtlock:inttest:1:${String(id)}`)).toBe('processed');
+		});
+
+		it('keeps separate locks for events with different non-string ids', async () => {
+			expect(await locker.tryMarkAsProjecting({ id: 1, type: 'TEST', payload: {} })).toBe(true);
+			expect(await locker.tryMarkAsProjecting({ id: 2, type: 'TEST', payload: {} })).toBe(true);
+			expect(await redis.keys('ncqrs:evtlock:inttest:1:*')).toHaveLength(2);
+		});
+
 		it('markAsProjected throws when event was never locked', async () => {
 			await expect(() => locker.markAsProjected(testEvent))
 				.rejects.toThrow(`Event ${testEvent.id} could not be marked as processed`);

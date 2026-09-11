@@ -9,7 +9,7 @@
  */
 
 import { Redis } from 'ioredis';
-import { type IContainer, ContainerBuilder, EventIdAugmentor, InMemoryEventStorage } from '../../src/index.ts'; // 'node-cqrs'
+import { type IContainer, ContainerBuilder, InMemoryEventStorage } from '../../src/index.ts'; // 'node-cqrs'
 import { AbstractRedisProjection, type RedisView } from '../../src/redis/index.ts'; // 'node-cqrs/redis'
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
 import type { CreateUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
@@ -48,9 +48,6 @@ const builder = new ContainerBuilder<MyContainer>();
 const redis = new Redis({ host: 'localhost', port: 6379 });
 builder.registerInstance(redis, 'viewModelRedis');
 builder.register(InMemoryEventStorage);
-
-// Event ids are required for projection checkpoints.
-builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'usersView');
 

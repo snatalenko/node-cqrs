@@ -1,9 +1,10 @@
-import type {
-	DispatchPipelineBatch,
-	DispatchPipelineEnvelope,
-	IContainer,
-	IDispatchPipelineProcessor,
-	IIdentifierProvider
+import {
+	type DispatchPipelineBatch,
+	type DispatchPipelineEnvelope,
+	type IContainer,
+	type IDispatchPipelineProcessor,
+	type IIdentifierProvider,
+	isIdentifier
 } from './interfaces/index.ts';
 import { assertDefined } from './utils/assert.ts';
 
@@ -11,11 +12,15 @@ import { assertDefined } from './utils/assert.ts';
  * Dispatch-pipeline processor that ensures each event has an `id`.
  *
  * Some components (e.g. `SagaEventHandler`) require `event.id` to correlate saga instances.
- * Put this processor early in the `eventDispatchPipeline` to auto-assign ids to events that don't have them.
+ * CqrsContainerBuilder includes this processor in its default pipeline.
+ * For manual setup or replacement pipelines, put it before storage to assign missing ids.
+ *
+ * Identifiers assigned by the `identifierProvider` are kept as-is,
+ * as well as identifiers already present on the events.
  */
 export class EventIdAugmentor implements IDispatchPipelineProcessor {
 
-	#identifierProvider: IIdentifierProvider;
+	readonly #identifierProvider: IIdentifierProvider;
 
 	constructor({ identifierProvider }: Pick<IContainer, 'identifierProvider'>) {
 		assertDefined(identifierProvider, 'identifierProvider');
@@ -28,10 +33,10 @@ export class EventIdAugmentor implements IDispatchPipelineProcessor {
 			const event = envelope.event;
 			if (!event)
 				continue;
-			if (typeof event.id === 'string' && event.id.length)
+			if (isIdentifier(event.id))
 				continue;
 
-			event.id = String(await this.#identifierProvider.getNewId());
+			event.id = await this.#identifierProvider.getNewId();
 		}
 
 		return batch;

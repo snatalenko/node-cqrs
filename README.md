@@ -302,6 +302,32 @@ origin key independent of the class name.
 The [simple saga](examples/sagas-simple/index.ts) and
 [overlapping sagas](examples/sagas-overlaps/index.ts) demonstrate state restoration and origin propagation.
 
+## Event Dispatch Pipeline
+
+Before publishing events, `EventStore` runs a pipeline for cross-cutting work. `ContainerBuilder` provides defaults that assign missing event IDs, persist events, and save snapshots when the corresponding storage processors are registered.
+
+Extend the defaults with another processor:
+
+```ts
+builder.register(c => [
+	...c.defaultEventDispatchPipeline,
+	c.createInstance(AuditProcessor)
+]).as('eventDispatchPipeline');
+```
+
+Omit the defaults to replace the pipeline entirely:
+
+```ts
+builder.register(c => [
+	c.eventIdAugmenter,
+	c.createInstance(CustomStorageWriter)
+]).as('eventDispatchPipeline');
+```
+
+Pipeline registrations replace earlier registrations, so the last one wins. A replacement must include every required processor, including `eventIdAugmenter` when consumers need event IDs. Extend `defaultEventDispatchPipeline`, not `eventDispatchPipeline`, from its own factory to avoid a circular dependency. Named pipelines supplied through `eventDispatchPipelines` are also explicit and do not inherit the defaults.
+
+`eventIdAugmenter` only fills in missing IDs, keeping IDs already assigned to events and IDs returned by the `IIdentifierProvider` as they are, whether they are strings, numbers or objects. Components that need a string key, such as saga correlation, projection locks and transport metadata, stringify the ID at their own boundary and never modify the event, so object IDs must have a stable and unique string representation. Storage modules add their own requirements: MongoDB event storage needs ObjectId-compatible IDs, SQLite event storage needs GUID-compatible ones.
+
 ## Runtime Lifecycle And Guarantees
 
 Container dependencies are resolved lazily. Access each exposed projection view during startup to create its

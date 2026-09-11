@@ -1,19 +1,20 @@
 import type { Tracer } from '@opentelemetry/api';
-import type {
-	IContainer,
-	IIdentifierProvider,
-	IEvent,
-	IEventSet,
-	EventQueryAfter,
-	IEventStorageReader,
-	IEventStream,
-	Identifier,
-	IDispatchPipelineProcessor,
-	DispatchPipelineBatch,
-	AggregateEventsQueryParams
+import {
+	type IContainer,
+	type IIdentifierProvider,
+	type IEvent,
+	type IEventSet,
+	type EventQueryAfter,
+	type IEventStorageReader,
+	type IEventStream,
+	type Identifier,
+	type IDispatchPipelineProcessor,
+	type DispatchPipelineBatch,
+	type AggregateEventsQueryParams,
+	isIdentifier
 } from '../interfaces/index.ts';
 import { recordSpanError, spanContext } from '../telemetry/index.ts';
-import { assertString, parseSagaId } from '../utils/index.ts';
+import { assertIdentifier, parseSagaId } from '../utils/index.ts';
 import { nextCycle } from './utils/index.ts';
 import { ConcurrencyError } from '../errors/index.ts';
 
@@ -91,17 +92,19 @@ export class InMemoryEventStorage implements
 	async* getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
 		await nextCycle();
 
-		assertString(beforeEvent?.id, 'beforeEvent.id');
+		assertIdentifier(beforeEvent?.id, 'beforeEvent.id');
 
 		const { sagaDescriptor, originEventId } = parseSagaId(sagaId);
 		if (beforeEvent.sagaOrigins?.[sagaDescriptor] !== originEventId)
 			throw new TypeError('beforeEvent.sagaOrigins does not match sagaId');
 
-		const originOffset = this.#events.findIndex(e => e.id === originEventId);
+		// stored ids can be of any type, while ids extracted from the sagaId are strings
+		const beforeEventId = String(beforeEvent.id);
+		const originOffset = this.#events.findIndex(e => isIdentifier(e.id) && String(e.id) === originEventId);
 		if (originOffset === -1)
 			throw new Error(`origin event ${originEventId} not found`);
 
-		const beforeEventOffset = this.#events.findIndex(e => e.id === beforeEvent.id);
+		const beforeEventOffset = this.#events.findIndex(e => isIdentifier(e.id) && String(e.id) === beforeEventId);
 		if (beforeEventOffset === -1)
 			throw new Error(`beforeEvent ${beforeEvent.id} not found`);
 
@@ -117,14 +120,16 @@ export class InMemoryEventStorage implements
 	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
 		await nextCycle();
 
-		const lastEventId = options?.afterEvent?.id;
-		if (options?.afterEvent)
-			assertString(options.afterEvent.id, 'options.afterEvent.id');
+		let lastEventId: string | undefined;
+		if (options?.afterEvent) {
+			assertIdentifier(options.afterEvent.id, 'options.afterEvent.id');
+			lastEventId = String(options.afterEvent.id);
+		}
 
 		let offsetFound = !lastEventId;
 		for (const event of this.#events) {
 			if (!offsetFound)
-				offsetFound = event.id === lastEventId;
+				offsetFound = isIdentifier(event.id) && String(event.id) === lastEventId;
 			else if (!eventTypes || eventTypes.includes(event.type))
 				yield event;
 		}

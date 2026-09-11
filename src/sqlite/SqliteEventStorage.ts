@@ -13,10 +13,10 @@ import type {
 	DispatchPipelineEnvelope,
 	AggregateEventsQueryParams
 } from '../interfaces/index.ts';
-import { assertString, parseSagaId } from '../utils/index.ts';
+import { parseSagaId, serializeEvent } from '../utils/index.ts';
 import { ConcurrencyError } from '../errors/index.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
-import { guid, bufferToGuid } from './utils/index.ts';
+import { assertGuidIdentifier, guid, bufferToGuid } from './utils/index.ts';
 
 type EventRow = {
 	id: Buffer;
@@ -223,6 +223,9 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 
 		this.db!.transaction(() => {
 			for (const event of events) {
+				if (event.aggregateId !== undefined)
+					assertGuidIdentifier(event.aggregateId, 'event.aggregateId');
+
 				if (!options?.ignoreConcurrencyError && event.aggregateId && event.aggregateVersion !== undefined) {
 					const conflict = this.#checkConcurrencyQuery.get(guid(event.aggregateId), event.aggregateVersion);
 					if (conflict)
@@ -230,7 +233,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 				}
 
 				const { sagaOrigins, id, ...eventData } = event;
-				assertString(id, 'event.id');
+				assertGuidIdentifier(id, 'event.id');
 				const eventId = guid(id);
 
 				this.#insertEventQuery.run(
@@ -238,12 +241,13 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 					event.aggregateId !== undefined ? guid(event.aggregateId) : null,
 					event.aggregateVersion ?? null,
 					event.type,
-					JSON.stringify(eventData),
+					serializeEvent(eventData),
 					metaJson
 				);
 
 				if (sagaOrigins) {
 					for (const [descriptor, originId] of Object.entries(sagaOrigins)) {
+						assertGuidIdentifier(originId, `event.sagaOrigins.${descriptor}`);
 						this.#insertSagaRefQuery.run(
 							descriptor,
 							guid(originId),
@@ -259,6 +263,8 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 
 	async* getAggregateEvents(aggregateId: Identifier, options?: AggregateEventsQueryParams): IEventStream {
 		await this.assertConnection();
+
+		assertGuidIdentifier(aggregateId, 'aggregateId');
 
 		const rows = this.#getAggregateEventsQuery.all({
 			aggregateId: guid(aggregateId),
@@ -276,7 +282,7 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 	async* getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
 		await this.assertConnection();
 
-		assertString(beforeEvent?.id, 'beforeEvent.id');
+		assertGuidIdentifier(beforeEvent?.id, 'beforeEvent.id');
 
 		const { sagaDescriptor, originEventId } = parseSagaId(sagaId);
 		if (beforeEvent.sagaOrigins?.[sagaDescriptor] !== originEventId)
@@ -304,12 +310,11 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
 		await this.assertConnection();
 
-		const lastEventId = options?.afterEvent?.id;
-		if (options?.afterEvent)
-			assertString(options.afterEvent.id, 'options.afterEvent.id');
-
 		let afterRowid = 0;
-		if (lastEventId) {
+		if (options?.afterEvent) {
+			const lastEventId = options.afterEvent.id;
+			assertGuidIdentifier(lastEventId, 'options.afterEvent.id');
+
 			const row = this.#getRowidQuery.get(guid(lastEventId));
 			if (!row)
 				return;

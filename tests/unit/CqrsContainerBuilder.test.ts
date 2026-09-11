@@ -6,6 +6,8 @@ import {
 	AbstractSaga,
 	AbstractProjection,
 	ConcurrencyError,
+	EventIdAugmentor,
+	type IDispatchPipelineProcessor,
 	type IAggregateSnapshotStorage,
 	type ILocker,
 	type ILockerLease
@@ -18,6 +20,62 @@ describe('CqrsContainerBuilder', function () {
 	beforeEach(() => {
 		builder = new ContainerBuilder();
 		builder.register(InMemoryEventStorage);
+	});
+
+	describe('event dispatch pipeline', () => {
+
+		it('assigns IDs before persisting events with the default pipeline', async () => {
+			const container = builder.container();
+			const [event] = await container.eventStore.dispatch([{ type: 'created' }]);
+
+			expect(event.id).toEqual(expect.any(String));
+			const stored = [];
+			for await (const item of container.eventStore.getEventsByTypes(['created']))
+				stored.push(item);
+			expect(stored).toEqual([event]);
+			expect(container.defaultEventDispatchPipeline).toEqual([
+				expect.any(EventIdAugmentor), container.eventStorage
+			]);
+			expect(container.eventDispatchPipeline).not.toBe(container.defaultEventDispatchPipeline);
+		});
+
+		it('extends defaults without changing their processor list', async () => {
+			const processor: IDispatchPipelineProcessor = { process: jest.fn(async batch => batch) };
+			builder.register(c => [...c.defaultEventDispatchPipeline, processor]).as('eventDispatchPipeline');
+			const container = builder.container();
+
+			await container.eventStore.dispatch([{ type: 'created' }]);
+
+			expect(processor.process).toHaveBeenCalledWith([
+				expect.objectContaining({ event: expect.objectContaining({ id: expect.any(String) }) })
+			]);
+			expect(container.defaultEventDispatchPipeline).not.toContain(processor);
+		});
+
+		it('replaces the entire pipeline without resolving the default augmentor', async () => {
+			const augmentorFactory = jest.fn(() => {
+				throw new Error('defaults must not be resolved');
+			});
+			builder.register(augmentorFactory).as('eventIdAugmenter');
+			builder.register(() => []).as('eventDispatchPipeline');
+			const container = builder.container();
+
+			const [event] = await container.eventStore.dispatch([{ type: 'created' }]);
+
+			expect(event.id).toBeUndefined();
+			expect(augmentorFactory).not.toHaveBeenCalled();
+			const stored = [];
+			for await (const item of container.eventStore.getEventsByTypes(['created']))
+				stored.push(item);
+			expect(stored).toEqual([]);
+		});
+
+		it('uses an explicitly registered augmentor in the default pipeline', async () => {
+			const augmentor: IDispatchPipelineProcessor = { process: jest.fn(async batch => batch) };
+			builder.registerInstance(augmentor).as('eventIdAugmenter');
+			await builder.container().eventStore.dispatch([{ id: 'existing', type: 'created' }]);
+			expect(augmentor.process).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('registerAggregate(aggregateType) extension', () => {
@@ -110,7 +168,7 @@ describe('CqrsContainerBuilder', function () {
 			container.commandBus.on('doSomething', () => done());
 
 			const events = [
-				{ id: 'event-1', type: 'somethingHappened', aggregateId: 1 }
+				{ type: 'somethingHappened', aggregateId: 1 }
 			];
 
 			container.eventStore.dispatch(events).catch(done);
