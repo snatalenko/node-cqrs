@@ -144,6 +144,7 @@
     "better-sqlite3": "^12.6.2",
     "comlink": "^4.4.2",
     "conventional-changelog": "^3.1.25",
+    "conventional-changelog-cli": "^3.0.0",
     "eslint": "^9.39.4",
     "eslint-plugin-jest": "^28.14.0",
     "globals": "^17.4.0",

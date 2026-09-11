@@ -1,923 +1,505 @@
-## <small>1.2.1 (2026-08-21)</small>
-
-* Fix: Avoid logging error on intentional worker termination ([9ba155a](https://github.com/snatalenko/node-cqrs/commit/9ba155a))
-
-## 1.2.0 (2026-08-15)
-
-* 1.2.0 ([6e1c945](https://github.com/snatalenko/node-cqrs/commit/6e1c945))
-* 1.2.0-alpha.0 ([77b9fa6](https://github.com/snatalenko/node-cqrs/commit/77b9fa6))
-* 1.2.0-alpha.1 ([b5923a7](https://github.com/snatalenko/node-cqrs/commit/b5923a7))
-* 1.2.0-alpha.2 ([f660e93](https://github.com/snatalenko/node-cqrs/commit/f660e93))
-* 1.2.0-alpha.3 ([f76e803](https://github.com/snatalenko/node-cqrs/commit/f76e803))
-* 1.2.0-beta.0 ([e4a808d](https://github.com/snatalenko/node-cqrs/commit/e4a808d))
-* 1.2.0-beta.1 ([c0af0ae](https://github.com/snatalenko/node-cqrs/commit/c0af0ae))
-* 1.2.0-beta.2 ([2daab1d](https://github.com/snatalenko/node-cqrs/commit/2daab1d))
-* Create CNAME ([667908a](https://github.com/snatalenko/node-cqrs/commit/667908a))
-* Build: Use Jekyll to build documentation from README's ([cd4dcc2](https://github.com/snatalenko/node-cqrs/commit/cd4dcc2))
-* Chore: Improve log output on rabbitmq message handler timeout ([f8dc3ca](https://github.com/snatalenko/node-cqrs/commit/f8dc3ca))
-* Refactor: Move duplicate worker utils into src/shared/worker-utils/ ([8b3c383](https://github.com/snatalenko/node-cqrs/commit/8b3c383))
-* New: add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a40))
-* New: Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1))
-
-## <small>1.1.1 (2026-07-17)</small>
-
-* 1.1.1 ([2fba6e0](https://github.com/snatalenko/node-cqrs/commit/2fba6e0))
-* Fix: Chained pipelines not preserving FIFO action start order ([ba27d1d](https://github.com/snatalenko/node-cqrs/commit/ba27d1d))
-
-## 1.1.0 (2026-05-26)
-
-* 1.1.0 ([83b0a6a](https://github.com/snatalenko/node-cqrs/commit/83b0a6a))
-* 1.1.0-alpha.0 ([b6fd457](https://github.com/snatalenko/node-cqrs/commit/b6fd457))
-* 1.1.0-alpha.1 ([5327169](https://github.com/snatalenko/node-cqrs/commit/5327169))
-* 1.1.0-alpha.2 ([b179f7d](https://github.com/snatalenko/node-cqrs/commit/b179f7d))
-* 1.1.0-alpha.3 ([701d385](https://github.com/snatalenko/node-cqrs/commit/701d385))
-* 1.1.0-alpha.4 ([6c1a6d0](https://github.com/snatalenko/node-cqrs/commit/6c1a6d0))
-* 1.1.0-alpha.5 ([d6f19e9](https://github.com/snatalenko/node-cqrs/commit/d6f19e9))
-* 1.1.0-alpha.6 ([c9f6901](https://github.com/snatalenko/node-cqrs/commit/c9f6901))
-* 1.1.0-alpha.7 ([54d8dcf](https://github.com/snatalenko/node-cqrs/commit/54d8dcf))
-* 1.1.0-alpha.8 ([7b9a8ea](https://github.com/snatalenko/node-cqrs/commit/7b9a8ea))
-* 1.1.0-beta.0 ([ad829e9](https://github.com/snatalenko/node-cqrs/commit/ad829e9))
-* 1.1.0-beta.1 ([f537aa4](https://github.com/snatalenko/node-cqrs/commit/f537aa4))
-* 1.1.0-beta.2 ([dec0556](https://github.com/snatalenko/node-cqrs/commit/dec0556))
-* 1.1.0-beta.3 ([60bb9cd](https://github.com/snatalenko/node-cqrs/commit/60bb9cd))
-* 1.1.0-beta.4 ([85db82a](https://github.com/snatalenko/node-cqrs/commit/85db82a))
-* Add logo ([5b8c30e](https://github.com/snatalenko/node-cqrs/commit/5b8c30e))
-* Add missing documentation pieces ([ad40ccf](https://github.com/snatalenko/node-cqrs/commit/ad40ccf))
-* Add missing tests ([b9d9069](https://github.com/snatalenko/node-cqrs/commit/b9d9069))
-* Avoid `otelSpan` in dispatch metadata when otel is turned off ([c8fb6b3](https://github.com/snatalenko/node-cqrs/commit/c8fb6b3))
-* Cleanup docs and examples ([c120991](https://github.com/snatalenko/node-cqrs/commit/c120991))
-* Fix concurrency handling in MongoDb event storage ([61e84f2](https://github.com/snatalenko/node-cqrs/commit/61e84f2))
-* Fix concurrent redis locks ([7549192](https://github.com/snatalenko/node-cqrs/commit/7549192))
-* Fix env type resolution in tests ([8fabde7](https://github.com/snatalenko/node-cqrs/commit/8fabde7))
-* Fix eslint ([f2bed7f](https://github.com/snatalenko/node-cqrs/commit/f2bed7f))
-* Fix eslint ([80947dc](https://github.com/snatalenko/node-cqrs/commit/80947dc))
-* Fix eslint and examples ([d903bcf](https://github.com/snatalenko/node-cqrs/commit/d903bcf))
-* Fix merge ([0b904a3](https://github.com/snatalenko/node-cqrs/commit/0b904a3))
-* Fix merge ([eed60b9](https://github.com/snatalenko/node-cqrs/commit/eed60b9))
-* Fix tracing metadata in RabbitMqCommandBus ([421380a](https://github.com/snatalenko/node-cqrs/commit/421380a))
-* Improve AbstractAggregate `state` typing ([e80fc2b](https://github.com/snatalenko/node-cqrs/commit/e80fc2b))
-* Internal Fix: compiled AbstractWorkerProjection type compatibility ([bf8ca08](https://github.com/snatalenko/node-cqrs/commit/bf8ca08))
-* Internal Fix: Rename telemetry metadata span field to `otelSpan`, enhance typings ([2ca2494](https://github.com/snatalenko/node-cqrs/commit/2ca2494))
-* Make @opentelemetry/api an optional dependency, cleanup examples ([cd10225](https://github.com/snatalenko/node-cqrs/commit/cd10225))
-* Minor fix in CqrsContainerBuilder constructor typings ([fa43b5d](https://github.com/snatalenko/node-cqrs/commit/fa43b5d))
-* Minor refactoring and tests ([7e214a4](https://github.com/snatalenko/node-cqrs/commit/7e214a4))
-* Refactor mongodb example ([67dbb9e](https://github.com/snatalenko/node-cqrs/commit/67dbb9e))
-* Refactor types in mongodb event storage ([3e3a627](https://github.com/snatalenko/node-cqrs/commit/3e3a627))
-* Update homepage headers and tweak docs ([f1e86a8](https://github.com/snatalenko/node-cqrs/commit/f1e86a8))
-* Docs: Add detailed documentation for redis and mongodb modules ([72e66f5](https://github.com/snatalenko/node-cqrs/commit/72e66f5))
-* Docs: Add index.html for publishing with gh pages ([cac88ed](https://github.com/snatalenko/node-cqrs/commit/cac88ed))
-* Docs: Detailed sqlite and rabbitmq instructions ([dd242fd](https://github.com/snatalenko/node-cqrs/commit/dd242fd))
-* Docs: Fix homepage styles cdn ([6ab1ff2](https://github.com/snatalenko/node-cqrs/commit/6ab1ff2))
-* Docs: Minor spec update ([6a2883a](https://github.com/snatalenko/node-cqrs/commit/6a2883a))
-* Docs: Rearrange examples to use same aggregate and projection implementation ([5325901](https://github.com/snatalenko/node-cqrs/commit/5325901))
-* Docs: Remove readme code samples in favor of runnable ./examples/ ([73417c3](https://github.com/snatalenko/node-cqrs/commit/73417c3))
-* Chore: Allow disposing worker projection proxy more than once ([768f73a](https://github.com/snatalenko/node-cqrs/commit/768f73a))
-* Chore: Expose `viewLocker` on WorkerProxyProjection ([628fbe3](https://github.com/snatalenko/node-cqrs/commit/628fbe3))
-* Change: Add default queueName for RabbitMqCommandBus ([ee4b5a1](https://github.com/snatalenko/node-cqrs/commit/ee4b5a1))
-* Change: Add error handling and drain functionality to event publishing process ([d23ea62](https://github.com/snatalenko/node-cqrs/commit/d23ea62))
-* Change: Allow extra command parameters to be passed to AbstractAggregate handler as 3rd argument ([ae11b7e](https://github.com/snatalenko/node-cqrs/commit/ae11b7e))
-* Change: Deliver events to worker in batches during restoring phase ([212e353](https://github.com/snatalenko/node-cqrs/commit/212e353))
-* Change: Expose `restorePromises` on DI container for tracking async projection restoring processes ([ebdaa2c](https://github.com/snatalenko/node-cqrs/commit/ebdaa2c))
-* Change: Remove "md5" from peer dependencies ([87600bc](https://github.com/snatalenko/node-cqrs/commit/87600bc))
-* Change: Use `Identifier` as id type in redis and sqlite views ([dfbe964](https://github.com/snatalenko/node-cqrs/commit/dfbe964))
-* Refactor: Enhance message payload typing ([7911acc](https://github.com/snatalenko/node-cqrs/commit/7911acc))
-* Refactor: Make `getHandler` to throw error if handler is not defined ([ecbd73e](https://github.com/snatalenko/node-cqrs/commit/ecbd73e))
-* Build: Add "rebuild" npm script ([2e5e977](https://github.com/snatalenko/node-cqrs/commit/2e5e977))
-* New: integrate OpenTelemetry for command and event tracing ([b03997f](https://github.com/snatalenko/node-cqrs/commit/b03997f))
-* New: MongoDB-backed event storage ([53fb5e1](https://github.com/snatalenko/node-cqrs/commit/53fb5e1))
-* New: MongoDb-backed view model (`MongoObjectView`, `AbstractMongoObjectProjection`) ([4995bfe](https://github.com/snatalenko/node-cqrs/commit/4995bfe))
-* New: Option for rabbitmq queue-level message TTL ([d4461e6](https://github.com/snatalenko/node-cqrs/commit/d4461e6))
-* New: RabbitMQ trace context propagation via W3C TraceContext AMQP headers ([1db354a](https://github.com/snatalenko/node-cqrs/commit/1db354a))
-* New: Redis-backed projection views with distributed locking (experimental) ([8ff0f1e](https://github.com/snatalenko/node-cqrs/commit/8ff0f1e))
-* New: SqliteEventStorage ([ffaf766](https://github.com/snatalenko/node-cqrs/commit/ffaf766))
-* Fix: defer aggregate cache pre-warm to avoid orphaned async operations on command error ([677ed29](https://github.com/snatalenko/node-cqrs/commit/677ed29))
-
-## <small>1.0.2 (2026-04-03)</small>
-
-* 1.0.1-beta.0 ([cd5773a](https://github.com/snatalenko/node-cqrs/commit/cd5773a))
-* 1.0.2 ([dd86ceb](https://github.com/snatalenko/node-cqrs/commit/dd86ceb))
-* 1.0.2-beta.1 ([7c5272a](https://github.com/snatalenko/node-cqrs/commit/7c5272a))
-* 1.0.2-beta.2 ([fb69cdc](https://github.com/snatalenko/node-cqrs/commit/fb69cdc))
-* 1.0.2-beta.3 ([44bef56](https://github.com/snatalenko/node-cqrs/commit/44bef56))
-* Fix eslint, ts warnings, and improve test coverage ([419d424](https://github.com/snatalenko/node-cqrs/commit/419d424))
-* Chore: Fix vulnerabilities in dev dependencies ([203ef19](https://github.com/snatalenko/node-cqrs/commit/203ef19))
-* Refactor: event description formatting in logging ([419cc7d](https://github.com/snatalenko/node-cqrs/commit/419cc7d))
-* Change: Disable DLQ setup for RabbitMqEventBus by default ([b953829](https://github.com/snatalenko/node-cqrs/commit/b953829))
-* Change: Set `x-consumer-timeout` on MQ according to configured `handlerProcessTimeout` ([3e272ea](https://github.com/snatalenko/node-cqrs/commit/3e272ea))
-
-## <small>1.0.1 (2026-03-31)</small>
-
-* 1.0.1 ([03dbef2](https://github.com/snatalenko/node-cqrs/commit/03dbef2))
-* 1.0.1-beta.1 ([ce73eeb](https://github.com/snatalenko/node-cqrs/commit/ce73eeb))
-* Fix: Use setImmediate in Node.js for nextCycle to avoid setTimeout performance overhead ([4b63706](https://github.com/snatalenko/node-cqrs/commit/4b63706))
-* Chore: Fix vulnerability in dev dependency ([610757b](https://github.com/snatalenko/node-cqrs/commit/610757b))
-
-## 1.0.0 (2026-03-21)
-
-* 1.0.0 ([57c0053](https://github.com/snatalenko/node-cqrs/commit/57c0053))
-* 1.0.0-beta.0 ([0d958cf](https://github.com/snatalenko/node-cqrs/commit/0d958cf))
-* 1.0.0-beta.1 ([cce8703](https://github.com/snatalenko/node-cqrs/commit/cce8703))
-* 1.0.0-beta.2 ([78560cc](https://github.com/snatalenko/node-cqrs/commit/78560cc))
-* 1.0.0-rc.10 ([54348ac](https://github.com/snatalenko/node-cqrs/commit/54348ac))
-* 1.0.0-rc.11 ([efc980c](https://github.com/snatalenko/node-cqrs/commit/efc980c))
-* 1.0.0-rc.12 ([bd0e0f5](https://github.com/snatalenko/node-cqrs/commit/bd0e0f5))
-* 1.0.0-rc.13 ([8ef62c8](https://github.com/snatalenko/node-cqrs/commit/8ef62c8))
-* 1.0.0-rc.14 ([ea828ff](https://github.com/snatalenko/node-cqrs/commit/ea828ff))
-* 1.0.0-rc.15 ([069ca42](https://github.com/snatalenko/node-cqrs/commit/069ca42))
-* 1.0.0-rc.16 ([4a9262a](https://github.com/snatalenko/node-cqrs/commit/4a9262a))
-* 1.0.0-rc.17 ([92b2789](https://github.com/snatalenko/node-cqrs/commit/92b2789))
-* 1.0.0-rc.18 ([09718d8](https://github.com/snatalenko/node-cqrs/commit/09718d8))
-* 1.0.0-rc.19 ([9f638c6](https://github.com/snatalenko/node-cqrs/commit/9f638c6))
-* 1.0.0-rc.20 ([3dd57a1](https://github.com/snatalenko/node-cqrs/commit/3dd57a1))
-* 1.0.0-rc.21 ([984cbd5](https://github.com/snatalenko/node-cqrs/commit/984cbd5))
-* 1.0.0-rc.22 ([149414c](https://github.com/snatalenko/node-cqrs/commit/149414c))
-* 1.0.0-rc.23 ([5799d18](https://github.com/snatalenko/node-cqrs/commit/5799d18))
-* 1.0.0-rc.24 ([d779c7e](https://github.com/snatalenko/node-cqrs/commit/d779c7e))
-* 1.0.0-rc.25 ([4697db1](https://github.com/snatalenko/node-cqrs/commit/4697db1))
-* 1.0.0-rc.26 ([96a0bff](https://github.com/snatalenko/node-cqrs/commit/96a0bff))
-* 1.0.0-rc.27 ([78b5637](https://github.com/snatalenko/node-cqrs/commit/78b5637))
-* 1.0.0-rc.28 ([8c5dc0c](https://github.com/snatalenko/node-cqrs/commit/8c5dc0c))
-* 1.0.0-rc.29 ([1fd5992](https://github.com/snatalenko/node-cqrs/commit/1fd5992))
-* 1.0.0-rc.30 ([1e3a548](https://github.com/snatalenko/node-cqrs/commit/1e3a548))
-* 1.0.0-rc.31 ([d591e56](https://github.com/snatalenko/node-cqrs/commit/d591e56))
-* 1.0.0-rc.32 ([1e2e992](https://github.com/snatalenko/node-cqrs/commit/1e2e992))
-* 1.0.0-rc.33 ([165654b](https://github.com/snatalenko/node-cqrs/commit/165654b))
-* 1.0.0-rc.34 ([2cdcc90](https://github.com/snatalenko/node-cqrs/commit/2cdcc90))
-* 1.0.0-rc.35 ([e439512](https://github.com/snatalenko/node-cqrs/commit/e439512))
-* 1.0.0-rc.36 ([67be93c](https://github.com/snatalenko/node-cqrs/commit/67be93c))
-* 1.0.0-rc.37 ([744a887](https://github.com/snatalenko/node-cqrs/commit/744a887))
-* 1.0.0-rc.38 ([39929a4](https://github.com/snatalenko/node-cqrs/commit/39929a4))
-* 1.0.0-rc.39 ([7ecffff](https://github.com/snatalenko/node-cqrs/commit/7ecffff))
-* 1.0.0-rc.40 ([f382eac](https://github.com/snatalenko/node-cqrs/commit/f382eac))
-* 1.0.0-rc.41 ([512b715](https://github.com/snatalenko/node-cqrs/commit/512b715))
-* 1.0.0-rc.42 ([f1cef23](https://github.com/snatalenko/node-cqrs/commit/f1cef23))
-* 1.0.0-rc.43 ([9cadedf](https://github.com/snatalenko/node-cqrs/commit/9cadedf))
-* 1.0.0-rc.44 ([0f0d3c6](https://github.com/snatalenko/node-cqrs/commit/0f0d3c6))
-* 1.0.0-rc.45 ([861e5d4](https://github.com/snatalenko/node-cqrs/commit/861e5d4))
-* 1.0.0-rc.46 ([a33b401](https://github.com/snatalenko/node-cqrs/commit/a33b401))
-* 1.0.0-rc.6 ([9c8b4c7](https://github.com/snatalenko/node-cqrs/commit/9c8b4c7))
-* 1.0.0-rc.7 ([9e187b8](https://github.com/snatalenko/node-cqrs/commit/9e187b8))
-* 1.0.0-rc.8 ([0a5cfb1](https://github.com/snatalenko/node-cqrs/commit/0a5cfb1))
-* 1.0.0-rc.9 ([b90ccd8](https://github.com/snatalenko/node-cqrs/commit/b90ccd8))
-* Add `assertStringArray` utility ([fb4efcd](https://github.com/snatalenko/node-cqrs/commit/fb4efcd))
-* Add `concurrentLimit` to rabbitmq subscriptions ([8109ae9](https://github.com/snatalenko/node-cqrs/commit/8109ae9))
-* Add `createInstanceIfWorkerThread` static helper to simplify api ([07d5310](https://github.com/snatalenko/node-cqrs/commit/07d5310))
-* Add `useWorkerThreads` configuration parameter ([c7e076a](https://github.com/snatalenko/node-cqrs/commit/c7e076a))
-* Add contributing guidelines and development setup instructions ([528c3aa](https://github.com/snatalenko/node-cqrs/commit/528c3aa))
-* Add docs and example for AbstractWorkerProjection ([0282053](https://github.com/snatalenko/node-cqrs/commit/0282053))
-* Add eslint ([46c4a97](https://github.com/snatalenko/node-cqrs/commit/46c4a97))
-* Add eventStorageWriter and snapshotStorage to event dispatch pipeline if they implement IDispatchPip ([233046c](https://github.com/snatalenko/node-cqrs/commit/233046c))
-* Add missing export instructions for CJS loader ([4f3b8b7](https://github.com/snatalenko/node-cqrs/commit/4f3b8b7))
-* Add missing initialize method in SqliteObjectView ([0fd858a](https://github.com/snatalenko/node-cqrs/commit/0fd858a))
-* Add missing tests ([22d81c4](https://github.com/snatalenko/node-cqrs/commit/22d81c4))
-* Add missing tests ([2650d0e](https://github.com/snatalenko/node-cqrs/commit/2650d0e))
-* Add optional metadata to event publishing methods ([5ae3d2b](https://github.com/snatalenko/node-cqrs/commit/5ae3d2b))
-* Add queue expiration test ([bd4f524](https://github.com/snatalenko/node-cqrs/commit/bd4f524))
-* Add RabbitMqEventInjector ([2d4265d](https://github.com/snatalenko/node-cqrs/commit/2d4265d))
-* Add script of obsolete tags cleanup ([f7d0c00](https://github.com/snatalenko/node-cqrs/commit/f7d0c00))
-* Add support for event metadata in event dispatcher ([f37ad5e](https://github.com/snatalenko/node-cqrs/commit/f37ad5e))
-* Add tests ([788523d](https://github.com/snatalenko/node-cqrs/commit/788523d))
-* Adjust changelog script for ESM package type ([c912696](https://github.com/snatalenko/node-cqrs/commit/c912696))
-* Allow 'ignore' as a concurreny error handling option; fix aggregate static property not being passed ([08b5b26](https://github.com/snatalenko/node-cqrs/commit/08b5b26))
-* Allow to register default conflict resolution strategy in DI container ([4ed23cb](https://github.com/snatalenko/node-cqrs/commit/4ed23cb))
-* Avoid publishing "snapshot" events to eventBus ([d54c543](https://github.com/snatalenko/node-cqrs/commit/d54c543))
-* Change "clean" script to cleanup abandoned files ([2501281](https://github.com/snatalenko/node-cqrs/commit/2501281))
-* Change RabbitMqEventInjector to subscribe to fanout messages instead of a named queue ([109c022](https://github.com/snatalenko/node-cqrs/commit/109c022))
-* Cleanup documentation ([20e4fa4](https://github.com/snatalenko/node-cqrs/commit/20e4fa4))
-* Cleanup documentation and interfaces ([e2c4143](https://github.com/snatalenko/node-cqrs/commit/e2c4143))
-* Cleanup jest config and update docs ([2c467a1](https://github.com/snatalenko/node-cqrs/commit/2c467a1))
-* Cleanup TS example ([51999cc](https://github.com/snatalenko/node-cqrs/commit/51999cc))
-* Combine tests, audit, lint, coveralls under same gh action ([ff798f5](https://github.com/snatalenko/node-cqrs/commit/ff798f5))
-* Do not override sagaOrigins defined by Saga instance ([77b4c4e](https://github.com/snatalenko/node-cqrs/commit/77b4c4e))
-* Enforce strict types ([8945398](https://github.com/snatalenko/node-cqrs/commit/8945398))
-* Enhance error message for invalid preprocessor in EventDispatcher ([85fdf79](https://github.com/snatalenko/node-cqrs/commit/85fdf79))
-* Enhance RabbitMqGateway subscription options with `noAck` and `handlerProcessTimeout`; expose all op ([0425c9d](https://github.com/snatalenko/node-cqrs/commit/0425c9d))
-* Enhance RabbitMqGateway to handle SIGINT for graceful shutdown and update IContainer interface ([4d1c63d](https://github.com/snatalenko/node-cqrs/commit/4d1c63d))
-* Enhance RabbitMqGateway with detailed subscription management and error handling ([948bb97](https://github.com/snatalenko/node-cqrs/commit/948bb97))
-* Expand Node.js version matrix in CI workflow ([45c2132](https://github.com/snatalenko/node-cqrs/commit/45c2132))
-* Explicitly declare IAggregateConstructor getters on AbstractAggregate ([5114f8b](https://github.com/snatalenko/node-cqrs/commit/5114f8b))
-* Export `IContainer` interface ([1e98a9e](https://github.com/snatalenko/node-cqrs/commit/1e98a9e))
-* Expose MQ defaults as static properties instead of inner constants ([9e0edd3](https://github.com/snatalenko/node-cqrs/commit/9e0edd3))
-* Fallback to JSON serialization in environments where structuredClone is not available ([03c2925](https://github.com/snatalenko/node-cqrs/commit/03c2925))
-* Fix `ignoreOwn` resolving per rabbitmq message handler ([d680d95](https://github.com/snatalenko/node-cqrs/commit/d680d95))
-* Fix eslint ([d18568a](https://github.com/snatalenko/node-cqrs/commit/d18568a))
-* Fix eslint ([ddaf7a8](https://github.com/snatalenko/node-cqrs/commit/ddaf7a8))
-* Fix eslint ([ea5682a](https://github.com/snatalenko/node-cqrs/commit/ea5682a))
-* Fix extensionless imports in di0 esm module ([e0767ea](https://github.com/snatalenko/node-cqrs/commit/e0767ea))
-* Fix failed test error reporting ([87ed446](https://github.com/snatalenko/node-cqrs/commit/87ed446))
-* Fix handler context binding without masterHandler defined ([cb7f22b](https://github.com/snatalenko/node-cqrs/commit/cb7f22b))
-* Fix IContainer augmentations resolving ([7f11d81](https://github.com/snatalenko/node-cqrs/commit/7f11d81))
-* Fix import path for Deferred utility in RabbitMqGateway tests ([04993ef](https://github.com/snatalenko/node-cqrs/commit/04993ef))
-* Fix InMemoryView handling of falsy values ([a9efdcc](https://github.com/snatalenko/node-cqrs/commit/a9efdcc))
-* Fix integration tests ([252bba6](https://github.com/snatalenko/node-cqrs/commit/252bba6))
-* Fix internal typings ([e955eff](https://github.com/snatalenko/node-cqrs/commit/e955eff))
-* Fix key types on InMemoryView ([b7cca4e](https://github.com/snatalenko/node-cqrs/commit/b7cca4e))
-* Fix merge ([4cde8f2](https://github.com/snatalenko/node-cqrs/commit/4cde8f2))
-* Fix merge ([cb6e9a6](https://github.com/snatalenko/node-cqrs/commit/cb6e9a6))
-* Fix merge ([80e9bd5](https://github.com/snatalenko/node-cqrs/commit/80e9bd5))
-* Fix merge ([bb489d9](https://github.com/snatalenko/node-cqrs/commit/bb489d9))
-* Fix missing awaits ([8e38606](https://github.com/snatalenko/node-cqrs/commit/8e38606))
-* Fix package exports ([f6616f5](https://github.com/snatalenko/node-cqrs/commit/f6616f5))
-* Fix package-lock ([ac45221](https://github.com/snatalenko/node-cqrs/commit/ac45221))
-* Fix rabbitmq consumer cancellation test ([cbfd0bf](https://github.com/snatalenko/node-cqrs/commit/cbfd0bf))
-* Fix tests ([922be7b](https://github.com/snatalenko/node-cqrs/commit/922be7b))
-* Fix tests ([0a3bd6f](https://github.com/snatalenko/node-cqrs/commit/0a3bd6f))
-* Fix type definition for createWorkerInstance methods in AbstractWorkerProjection ([4acbd25](https://github.com/snatalenko/node-cqrs/commit/4acbd25))
-* Fix type import annotation ([8e9d785](https://github.com/snatalenko/node-cqrs/commit/8e9d785))
-* Fix type on AbstractAggregate static helper ([dfb6d2c](https://github.com/snatalenko/node-cqrs/commit/dfb6d2c))
-* Fix typing error ([892366d](https://github.com/snatalenko/node-cqrs/commit/892366d))
-* Fix typings when installed in project with "Node" moduleResolution ([4f2281b](https://github.com/snatalenko/node-cqrs/commit/4f2281b))
-* Fix user-domain file extensions ([f5a492e](https://github.com/snatalenko/node-cqrs/commit/f5a492e))
-* Fix vulnerabilities in dev dependencies ([72b6304](https://github.com/snatalenko/node-cqrs/commit/72b6304))
-* Fix vulnerability in flatted dev dependency ([8ee7513](https://github.com/snatalenko/node-cqrs/commit/8ee7513))
-* Handle worker projections restoring ([73ff451](https://github.com/snatalenko/node-cqrs/commit/73ff451))
-* Implement event dispatch pipelines with routing based on meta.origin ([237ab3b](https://github.com/snatalenko/node-cqrs/commit/237ab3b))
-* Implement graceful shutdown handling in RabbitMqGateway ([e523cf2](https://github.com/snatalenko/node-cqrs/commit/e523cf2))
-* Improve CONTRIBUTING change verification instruction ([2d2b36b](https://github.com/snatalenko/node-cqrs/commit/2d2b36b))
-* Improve getMessageHandlerNames typings ([86d7fc2](https://github.com/snatalenko/node-cqrs/commit/86d7fc2))
-* Improve rabbitmq error logging ([f385031](https://github.com/snatalenko/node-cqrs/commit/f385031))
-* Improve SagaEventHandler test coverage ([5ec5679](https://github.com/snatalenko/node-cqrs/commit/5ec5679))
-* Include tests/integration in "test:integration" npm script ([412fd47](https://github.com/snatalenko/node-cqrs/commit/412fd47))
-* Internal Fix: close rabbitmq connection on SIGINT/SIGTERM ([21686be](https://github.com/snatalenko/node-cqrs/commit/21686be))
-* Internal Fix: Ensure proper subscription management in TerminationHandler ([506acc2](https://github.com/snatalenko/node-cqrs/commit/506acc2))
-* Internal Fix: MQ consumption starts before handler is properly recorded ([35a974b](https://github.com/snatalenko/node-cqrs/commit/35a974b))
-* Internal Fix: RabbitMQ connection not auto-closing on SIGTERM ([63b4f48](https://github.com/snatalenko/node-cqrs/commit/63b4f48))
-* Internal Fix: Update di0 with fixed resolvers ([c4dcb4f](https://github.com/snatalenko/node-cqrs/commit/c4dcb4f))
-* Internal Fix: Use "quorum" type for durable queues ([f617149](https://github.com/snatalenko/node-cqrs/commit/f617149))
-* Internal Fix: Vulnerability in js-yaml dev dependency ([0e9b25e](https://github.com/snatalenko/node-cqrs/commit/0e9b25e))
-* List comlink, better-sqlite3, amqplib as optional peer and dev dependencies ([18a4c14](https://github.com/snatalenko/node-cqrs/commit/18a4c14))
-* Make aggregate state type an optional parameter ([8333a89](https://github.com/snatalenko/node-cqrs/commit/8333a89))
-* Make changelog script to regenerate full changelog ([2c57465](https://github.com/snatalenko/node-cqrs/commit/2c57465))
-* Make code ES2022-compatible ([4549c7e](https://github.com/snatalenko/node-cqrs/commit/4549c7e))
-* Make local events publishing sequential ([c7a0c09](https://github.com/snatalenko/node-cqrs/commit/c7a0c09))
-* Make SQLite locker and storage classes async to support async DB initialization ([34659df](https://github.com/snatalenko/node-cqrs/commit/34659df))
-* Make SqliteObjectView.get to wait until view is unlocked ([5d816bc](https://github.com/snatalenko/node-cqrs/commit/5d816bc))
-* Minor performance optimization ([425dc7a](https://github.com/snatalenko/node-cqrs/commit/425dc7a))
-* Minor refactoring ([e45f6ff](https://github.com/snatalenko/node-cqrs/commit/e45f6ff))
-* Minor refactoring of error handling in view restoration process ([c571bab](https://github.com/snatalenko/node-cqrs/commit/c571bab))
-* Move jest-deprecated setting to tsconfig ([7b00049](https://github.com/snatalenko/node-cqrs/commit/7b00049))
-* Move node-specific delay utility to integration tests ([13f20a0](https://github.com/snatalenko/node-cqrs/commit/13f20a0))
-* Move SqliteObjectStorage test to correct location ([d953bfc](https://github.com/snatalenko/node-cqrs/commit/d953bfc))
-* Optimize assertConnection method to return early if already initialized ([309004c](https://github.com/snatalenko/node-cqrs/commit/309004c))
-* Pass events as 2nd argument to concurrency error retry resolver ([67d785e](https://github.com/snatalenko/node-cqrs/commit/67d785e))
-* Rearrange scripts to separate rabbitmq integration tests ([2a1478c](https://github.com/snatalenko/node-cqrs/commit/2a1478c))
-* Refactor `publish` method to remove unnecessary arrays ([023ac63](https://github.com/snatalenko/node-cqrs/commit/023ac63))
-* Refactor command and event handling in AbstractAggregate and AbstractSaga; remove promiseOrSync util ([9adf241](https://github.com/snatalenko/node-cqrs/commit/9adf241))
-* Refactor command handling to support synchronous and asynchronous execution ([2297da0](https://github.com/snatalenko/node-cqrs/commit/2297da0))
-* Refactor constructor parameters in AbstractSqliteAccessor and AbstractSqliteView ([5b8aae4](https://github.com/snatalenko/node-cqrs/commit/5b8aae4))
-* Refactor dispatch argument validations to keep consistent between EventStore and EventDispatcher ([a68490a](https://github.com/snatalenko/node-cqrs/commit/a68490a))
-* Refactor event dispatching to support origin tracking and streamline event processing pipeline ([bee4be0](https://github.com/snatalenko/node-cqrs/commit/bee4be0))
-* Refactor event handling to use protected changes array ([c896ee6](https://github.com/snatalenko/node-cqrs/commit/c896ee6))
-* Refactor event type handling in RabbitMqGateway to use constant for wildcard ([1d6767a](https://github.com/snatalenko/node-cqrs/commit/1d6767a))
-* Refactor ignoreConcurrencyError parameter to remove its requirement from public interface ([37a8960](https://github.com/snatalenko/node-cqrs/commit/37a8960))
-* Refactor IObservable and IProjection interfaces ([fcc0b81](https://github.com/snatalenko/node-cqrs/commit/fcc0b81))
-* Refactor RabbitMqEventInjector to improve message handling and logging ([dea0f4b](https://github.com/snatalenko/node-cqrs/commit/dea0f4b))
-* Refactor SqliteViewLocker to extend AbstractSqliteAccessor and streamline database interactions ([83198ca](https://github.com/snatalenko/node-cqrs/commit/83198ca))
-* Refactor TerminationHandler to use 'once' for signal handling and ensure cleanup occurs after deregi ([cae8e81](https://github.com/snatalenko/node-cqrs/commit/cae8e81))
-* Refactoring ([405ade3](https://github.com/snatalenko/node-cqrs/commit/405ade3))
-* Refactoring ([9878c3a](https://github.com/snatalenko/node-cqrs/commit/9878c3a))
-* Refactoring ([5976ca3](https://github.com/snatalenko/node-cqrs/commit/5976ca3))
-* Refactoring and tests ([8c5ec26](https://github.com/snatalenko/node-cqrs/commit/8c5ec26))
-* Remove eventStorageWrite from default container as it's implementation-specific ([1030868](https://github.com/snatalenko/node-cqrs/commit/1030868))
-* Remove EventValidationProcessor implementation ([ad51b0a](https://github.com/snatalenko/node-cqrs/commit/ad51b0a))
-* Remove IEventStorageWriter ([9731076](https://github.com/snatalenko/node-cqrs/commit/9731076))
-* Remove InMemoryMessageBus implementation of IDispatchPipelineProcessor ([5a7803c](https://github.com/snatalenko/node-cqrs/commit/5a7803c))
-* Remove integration test step from CI workflow ([7299aba](https://github.com/snatalenko/node-cqrs/commit/7299aba))
-* Remove obsolete docs; update README.MD ([aa3fc76](https://github.com/snatalenko/node-cqrs/commit/aa3fc76))
-* Remove obsolete files ([cc172cd](https://github.com/snatalenko/node-cqrs/commit/cc172cd))
-* Remove RabbitMqEventInjector and related tests; simplify RabbitMqGateway and EventBus ([b38cfb0](https://github.com/snatalenko/node-cqrs/commit/b38cfb0))
-* Remove unnecessary handler binding ([4c3f374](https://github.com/snatalenko/node-cqrs/commit/4c3f374))
-* Remove unused dev dependency; update package-lock ([fa1f44b](https://github.com/snatalenko/node-cqrs/commit/fa1f44b))
-* Remove unused import ([7603e25](https://github.com/snatalenko/node-cqrs/commit/7603e25))
-* Revert removal of Identifier type ([407ed68](https://github.com/snatalenko/node-cqrs/commit/407ed68))
-* Separate IEventStorage interfaces ([edd8884](https://github.com/snatalenko/node-cqrs/commit/edd8884))
-* Split `storage` onto separate dependencies: `eventStorageReader`, `eventStorageWriter` ([aa5ea95](https://github.com/snatalenko/node-cqrs/commit/aa5ea95))
-* Tests ([cb57919](https://github.com/snatalenko/node-cqrs/commit/cb57919))
-* Update dependencies ([bb12afc](https://github.com/snatalenko/node-cqrs/commit/bb12afc))
-* Update dependencies ([79d5cb2](https://github.com/snatalenko/node-cqrs/commit/79d5cb2))
-* Update di0 to allow instance registration without alias ([8b9f58e](https://github.com/snatalenko/node-cqrs/commit/8b9f58e))
-* Update diagram ([e583b12](https://github.com/snatalenko/node-cqrs/commit/e583b12))
-* Update DispatchPipelineEnvelope to allow flexible origin types ([5c1166a](https://github.com/snatalenko/node-cqrs/commit/5c1166a))
-* Update emit and makeEvent methods to enforce payload type ([03f4bdb](https://github.com/snatalenko/node-cqrs/commit/03f4bdb))
-* Update github actions ([7babd03](https://github.com/snatalenko/node-cqrs/commit/7babd03))
-* Update Identifier type to include object as a valid identifier ([1844299](https://github.com/snatalenko/node-cqrs/commit/1844299))
-* Update Node.js version requirement to 16+ ([0bca676](https://github.com/snatalenko/node-cqrs/commit/0bca676))
-* Update package-lock ([13eb0e2](https://github.com/snatalenko/node-cqrs/commit/13eb0e2))
-* Update README examples ([2870eee](https://github.com/snatalenko/node-cqrs/commit/2870eee))
-* Update readme.md ([3bdd37d](https://github.com/snatalenko/node-cqrs/commit/3bdd37d))
-* Update README.md ([78a3475](https://github.com/snatalenko/node-cqrs/commit/78a3475))
-* Update tests for view locking during restoration behavior ([0bc9bda](https://github.com/snatalenko/node-cqrs/commit/0bc9bda))
-* Update type definitions settings in package.json and tsconfig.json ([6eea5cb](https://github.com/snatalenko/node-cqrs/commit/6eea5cb))
-* Use explicit unixepoch('now','subsec') in sqlite event lock timestamps ([a4a6d0d](https://github.com/snatalenko/node-cqrs/commit/a4a6d0d))
-* WIP on AbstractWorkerProjection that spawns worker process ([1e0d55b](https://github.com/snatalenko/node-cqrs/commit/1e0d55b))
-* WIP on SQLite infrastructure ([34836c8](https://github.com/snatalenko/node-cqrs/commit/34836c8))
-* Build: Add eslint to github actions; cleanup eslint rules ([405efb0](https://github.com/snatalenko/node-cqrs/commit/405efb0))
-* Build: Add ESM, CJS, and Browser builds ([e83018f](https://github.com/snatalenko/node-cqrs/commit/e83018f))
-* Build: Add pull_request trigger to Coveralls workflow ([8c7b95a](https://github.com/snatalenko/node-cqrs/commit/8c7b95a))
-* Build: default npm publish tag to "alpha" for numeric pre-ids; rework tag cleanup hierarchy ([6d89e7b](https://github.com/snatalenko/node-cqrs/commit/6d89e7b))
-* Build: Fix browser build with rollup ([cc70f71](https://github.com/snatalenko/node-cqrs/commit/cc70f71))
-* Build: refactor NPM publish step to handle pre-release and release tagging dynamically ([3f35a79](https://github.com/snatalenko/node-cqrs/commit/3f35a79))
-* Build: Remove comments from compiled dists ([d7124bd](https://github.com/snatalenko/node-cqrs/commit/d7124bd))
-* Build: Update changelog titles and commit message prefixes ([8c6ead0](https://github.com/snatalenko/node-cqrs/commit/8c6ead0))
-* Build: Update the CI workflow to request an OIDC ID token ([f4f86c7](https://github.com/snatalenko/node-cqrs/commit/f4f86c7))
-* Change: Add an option for ES concurrency errors ignoring ([5189ba0](https://github.com/snatalenko/node-cqrs/commit/5189ba0))
-* Change: Add option for queue expiration ([7073832](https://github.com/snatalenko/node-cqrs/commit/7073832))
-* Change: Add option to disable handler timeout on rabbitmq subscription ([dd76d5e](https://github.com/snatalenko/node-cqrs/commit/dd76d5e))
-* Change: allow extending WorkerProxyProjection via workerProxyFactory custom proxy type ([c9860b6](https://github.com/snatalenko/node-cqrs/commit/c9860b6))
-* Change: Apache-2.0 License ([576869b](https://github.com/snatalenko/node-cqrs/commit/576869b))
-* Change: Auto-reconnect to RabbitMQ ([ba80536](https://github.com/snatalenko/node-cqrs/commit/ba80536))
-* Change: Cache immediate aggregates to handle concurrent commands ([e193c4c](https://github.com/snatalenko/node-cqrs/commit/e193c4c))
-* Change: Enhance type safety in CqrsContainerBuilder with generics ([025765c](https://github.com/snatalenko/node-cqrs/commit/025765c))
-* Change: Exclude `getHandledMessageTypes` from export ([afa1cf6](https://github.com/snatalenko/node-cqrs/commit/afa1cf6))
-* Change: Make saga `startsWith` optional to reduce boilerplate ([34cc162](https://github.com/snatalenko/node-cqrs/commit/34cc162))
-* Change: Move reconnect logic to rabbitMqConnectionFactory; re-establish subscriptions on reconnect ([a42d138](https://github.com/snatalenko/node-cqrs/commit/a42d138))
-* Change: Move validation, snapshot and event persistence to EventDispatcher pipeline ([e781f7c](https://github.com/snatalenko/node-cqrs/commit/e781f7c))
-* Change: pass event meta through projection chain, allow skipping last event update for internal-orig ([dd36395](https://github.com/snatalenko/node-cqrs/commit/dd36395))
-* Change: publish events asynchronously without awaiting for subscribers to complete ([025edb8](https://github.com/snatalenko/node-cqrs/commit/025edb8))
-* Change: Remove `publishAsync` setting, simplify publishing sequence ([79257e5](https://github.com/snatalenko/node-cqrs/commit/79257e5))
-* Change: Resolve RabbitMQ appId from injected `rabbitMqAppId` provider ([56c2fe1](https://github.com/snatalenko/node-cqrs/commit/56c2fe1))
-* Change: Return established subscription details from `subscribe` method of RabbitMqGateway ([7768256](https://github.com/snatalenko/node-cqrs/commit/7768256))
-* Change: Support persistent views; Add SQLite infrastructure ([c235573](https://github.com/snatalenko/node-cqrs/commit/c235573))
-* Change: Use di0 resolvers to avoid explicit type alias declarations ([efcbc77](https://github.com/snatalenko/node-cqrs/commit/efcbc77))
-* Chore: Enable "x-single-active-consumer" on event queues ([6cf8e74](https://github.com/snatalenko/node-cqrs/commit/6cf8e74))
-* Chore: Enhance logging in RabbitMqGateway and AbstractProjection for better traceability ([57d3f30](https://github.com/snatalenko/node-cqrs/commit/57d3f30))
-* Chore: Expose connection state events on RabbitMqGateway ([42fe349](https://github.com/snatalenko/node-cqrs/commit/42fe349))
-* Chore: Move workers tests to "integration/", letting unit tests to run without build ([9038356](https://github.com/snatalenko/node-cqrs/commit/9038356))
-* Chore: Refactor subscription handling, improve logging on subscription removing ([72c5370](https://github.com/snatalenko/node-cqrs/commit/72c5370))
-* Chore: Update dependencies ([8c7478e](https://github.com/snatalenko/node-cqrs/commit/8c7478e))
-* Chore: Update Lock interface to support resource management with `using` keyword ([196332e](https://github.com/snatalenko/node-cqrs/commit/196332e))
-* Chore: Upgrade di0 to latest stable version with resolvers ([5f2c9ad](https://github.com/snatalenko/node-cqrs/commit/5f2c9ad))
-* Chore: use `structuredClone` for snapshot creation ([1d0e827](https://github.com/snatalenko/node-cqrs/commit/1d0e827))
-* Fix: all errors being ignored with concurrency resolution set to 'ignore' ([0cb10bc](https://github.com/snatalenko/node-cqrs/commit/0cb10bc))
-* Fix: asserting db connection in prolongLock and unlock methods ([b272473](https://github.com/snatalenko/node-cqrs/commit/b272473))
-* Fix: avoid finalization of already finalized MQ messages ([a9a1ea6](https://github.com/snatalenko/node-cqrs/commit/a9a1ea6))
-* Fix: Concurrent operations handling in SqliteObjectStorage updateEnforcingNew ([bab7807](https://github.com/snatalenko/node-cqrs/commit/bab7807))
-* Fix: failing synchronous event handler may prevent execution of other handlers ([fb026e5](https://github.com/snatalenko/node-cqrs/commit/fb026e5))
-* New: Add RabbitMQ command bus implementation and enhance MQ configuration options ([a565c59](https://github.com/snatalenko/node-cqrs/commit/a565c59))
-* New: multi-saga correlation via `message.sagaOrigins` + simplified ISaga (mutate/handle) with Abstra ([ae67594](https://github.com/snatalenko/node-cqrs/commit/ae67594))
-* New: RabbitMQ integration classes to support event publishing and subscription ([991c223](https://github.com/snatalenko/node-cqrs/commit/991c223))
-* New: Re-process commands on concurrency errors in EventStorage ([8a60560](https://github.com/snatalenko/node-cqrs/commit/8a60560))
-* Refactor: Allow EventStore to resolve reader from eventStorage alias ([91cd778](https://github.com/snatalenko/node-cqrs/commit/91cd778))
-* Refactor: Consolidate CommandBus into InMemoryMessageBus ([62b1b0a](https://github.com/snatalenko/node-cqrs/commit/62b1b0a))
-* Refactor: Rename InMemoryLock event to match IViewLocker interface ([1fe2eb1](https://github.com/snatalenko/node-cqrs/commit/1fe2eb1))
-* Refactor: Separate projection restoring from subscription; start explicitly in DI container ([3ddc649](https://github.com/snatalenko/node-cqrs/commit/3ddc649))
-* Refactor: Simplify aggregate interface ([3e141fd](https://github.com/snatalenko/node-cqrs/commit/3e141fd))
-* Refactor: Split AbstractWorkerProjection into worker-side and main-thread proxy ([751bfcf](https://github.com/snatalenko/node-cqrs/commit/751bfcf))
-* Tests: Fix broken AbstractWorkerProjection example ([5320b97](https://github.com/snatalenko/node-cqrs/commit/5320b97))
-* Tests: Improve test coverage ([b13e51d](https://github.com/snatalenko/node-cqrs/commit/b13e51d))
-* Tests: migrate chai+sinon tests to pure jest and remove legacy deps ([86840dd](https://github.com/snatalenko/node-cqrs/commit/86840dd))
-* Docs: Add AbstractWorkerProjection description to readme.md ([dd3952c](https://github.com/snatalenko/node-cqrs/commit/dd3952c))
-* Docs: Add CONTRIBUTING.md symlinks for coding agents ([878f25f](https://github.com/snatalenko/node-cqrs/commit/878f25f))
-* Docs: Rename GH workflow and corresponding badge ([8dd82df](https://github.com/snatalenko/node-cqrs/commit/8dd82df))
-* Docs: Update package description and keywords ([15ef847](https://github.com/snatalenko/node-cqrs/commit/15ef847))
-* Test: Allow running individual integration tests with `npm t` ([cfef9a8](https://github.com/snatalenko/node-cqrs/commit/cfef9a8))
-* Feat: Run projections derived from AbstractWorkerProjection in worker threads with remote view acces ([3d4c56a](https://github.com/snatalenko/node-cqrs/commit/3d4c56a))
-* Feat: Support selective restore event loading ([3a74da6](https://github.com/snatalenko/node-cqrs/commit/3a74da6))
-* fix: Proper milliseconds calculation for Event Locker ([ca4016a](https://github.com/snatalenko/node-cqrs/commit/ca4016a))
-
-## 0.17.0 (2025-08-12)
-
-* 0.17.0 ([828e399](https://github.com/snatalenko/node-cqrs/commit/828e399))
-* 1.0.0-rc.0 ([684ad1e](https://github.com/snatalenko/node-cqrs/commit/684ad1e))
-* 1.0.0-rc.1 ([a5e5a21](https://github.com/snatalenko/node-cqrs/commit/a5e5a21))
-* 1.0.0-rc.2 ([99e1bd9](https://github.com/snatalenko/node-cqrs/commit/99e1bd9))
-* 1.0.0-rc.3 ([f6275cb](https://github.com/snatalenko/node-cqrs/commit/f6275cb))
-* 1.0.0-rc.4 ([e46fd47](https://github.com/snatalenko/node-cqrs/commit/e46fd47))
-* 1.0.0-rc.5 ([88f00ae](https://github.com/snatalenko/node-cqrs/commit/88f00ae))
-* Add audit script, fix node versions ([85a2d61](https://github.com/snatalenko/node-cqrs/commit/85a2d61))
-* Add pretest and clean scripts ([4fb0110](https://github.com/snatalenko/node-cqrs/commit/4fb0110))
-* Add script badges to readme ([98ff29f](https://github.com/snatalenko/node-cqrs/commit/98ff29f))
-* Add test github action ([1133100](https://github.com/snatalenko/node-cqrs/commit/1133100))
-* Change transpiler target to ESNext ([45ddd9d](https://github.com/snatalenko/node-cqrs/commit/45ddd9d))
-* Decrease command processing failure logging level to "warn" ([eec585d](https://github.com/snatalenko/node-cqrs/commit/eec585d))
-* Delete travis config ([2ee27aa](https://github.com/snatalenko/node-cqrs/commit/2ee27aa))
-* Drop incorrect argument validation in EventStore constructor ([269fbc9](https://github.com/snatalenko/node-cqrs/commit/269fbc9))
-* Drop unused utility ([58ca0b5](https://github.com/snatalenko/node-cqrs/commit/58ca0b5))
-* Exclude .github/ configs from package ([4368ee8](https://github.com/snatalenko/node-cqrs/commit/4368ee8))
-* Export getMessageHandlerNames utility ([be09581](https://github.com/snatalenko/node-cqrs/commit/be09581))
-* Expose _map of InMemoryView as protected property ([6d9b2e8](https://github.com/snatalenko/node-cqrs/commit/6d9b2e8))
-* Fix "Tests" badge ([cc12970](https://github.com/snatalenko/node-cqrs/commit/cc12970))
-* Fix getAllEvents interface ([433ce05](https://github.com/snatalenko/node-cqrs/commit/433ce05))
-* Fix IAggregateState interface ([2f53ba2](https://github.com/snatalenko/node-cqrs/commit/2f53ba2))
-* Fix scripts for running integration tests ([ff995ed](https://github.com/snatalenko/node-cqrs/commit/ff995ed))
-* Improve restoring process logging ([f1a8477](https://github.com/snatalenko/node-cqrs/commit/f1a8477))
-* Internal Fix: EventStore not subscribing to events emitted by `storage` ([84eaea1](https://github.com/snatalenko/node-cqrs/commit/84eaea1))
-* Make InMemoryEventStorage async ([67fa908](https://github.com/snatalenko/node-cqrs/commit/67fa908))
-* Minor types fix ([d11ac9c](https://github.com/snatalenko/node-cqrs/commit/d11ac9c))
-* Quick-fix integration tests ([c6ce889](https://github.com/snatalenko/node-cqrs/commit/c6ce889))
-* Register default messageBus in DI builder ([85acd90](https://github.com/snatalenko/node-cqrs/commit/85acd90))
-* Remove default type from AbstractProjection view for better compatibility with JS ([88633ba](https://github.com/snatalenko/node-cqrs/commit/88633ba))
-* Replace setTimeout with setImmediate as data retrieving debounce ([f4c6311](https://github.com/snatalenko/node-cqrs/commit/f4c6311))
-* Restore coveralls dependency ([8234b49](https://github.com/snatalenko/node-cqrs/commit/8234b49))
-* Separate github workflows for tests and coveralls ([0a47737](https://github.com/snatalenko/node-cqrs/commit/0a47737))
-* Tweak ts-jest config to improve tests performance ([ba1e6b7](https://github.com/snatalenko/node-cqrs/commit/ba1e6b7))
-* Update dependencies ([1422421](https://github.com/snatalenko/node-cqrs/commit/1422421))
-* Update dependencies ([8afd875](https://github.com/snatalenko/node-cqrs/commit/8afd875))
-* Update dependencies ([97cef37](https://github.com/snatalenko/node-cqrs/commit/97cef37))
-* Change: Add `InMemoryView.prototype.getSync` method ([5d4adb9](https://github.com/snatalenko/node-cqrs/commit/5d4adb9))
-* Build: Add NPM publishing script ([3372990](https://github.com/snatalenko/node-cqrs/commit/3372990))
-* Build: Suppress audit and test for tags ([574a00c](https://github.com/snatalenko/node-cqrs/commit/574a00c))
-* Refactor: Migrate to TS and Jest ([6737d55](https://github.com/snatalenko/node-cqrs/commit/6737d55))
-* Fix: Vulnerability in minimist dependency ([07b8c68](https://github.com/snatalenko/node-cqrs/commit/07b8c68))
-
-## <small>0.16.4 (2022-08-28)</small>
-
-* 0.16.4 ([a94b6b2](https://github.com/snatalenko/node-cqrs/commit/a94b6b2))
-* Refactor: Use di package from npm ([0e8db91](https://github.com/snatalenko/node-cqrs/commit/0e8db91))
-
-## <small>0.16.3 (2022-01-28)</small>
-
-* 0.16.3 ([bd5b12f](https://github.com/snatalenko/node-cqrs/commit/bd5b12f))
-* Change: Remove InMemoryView data size calculation ([fb4260b](https://github.com/snatalenko/node-cqrs/commit/fb4260b))
-* Change: Update dev dependencies ([e76db7b](https://github.com/snatalenko/node-cqrs/commit/e76db7b))
-
-## <small>0.16.2 (2021-07-06)</small>
-
-* 0.16.2 ([6426207](https://github.com/snatalenko/node-cqrs/commit/6426207))
-* Fix: Vulnerabilities in dependencies ([1bdd491](https://github.com/snatalenko/node-cqrs/commit/1bdd491))
-
-## <small>0.16.1 (2021-05-28)</small>
-
-* 0.16.1 ([65acd45](https://github.com/snatalenko/node-cqrs/commit/65acd45))
-* Bump lodash from 4.17.15 to 4.17.19 ([05ba4b4](https://github.com/snatalenko/node-cqrs/commit/05ba4b4))
-* Bump lodash from 4.17.19 to 4.17.21 ([2aaf04c](https://github.com/snatalenko/node-cqrs/commit/2aaf04c))
-* Bump y18n from 4.0.0 to 4.0.1 ([cc06225](https://github.com/snatalenko/node-cqrs/commit/cc06225))
-* Change: Postpone view.get responses to next loop iteration ([950c2e4](https://github.com/snatalenko/node-cqrs/commit/950c2e4))
-* Fix: Mark aggregateId optional on command send ([f496ecf](https://github.com/snatalenko/node-cqrs/commit/f496ecf))
-
-## 0.16.0 (2020-03-18)
-
-* 0.16.0 ([d8fc582](https://github.com/snatalenko/node-cqrs/commit/d8fc582))
-* 0.16.0-0 ([4d6e699](https://github.com/snatalenko/node-cqrs/commit/4d6e699))
-* 0.16.0-1 ([f4b1cfe](https://github.com/snatalenko/node-cqrs/commit/f4b1cfe))
-* 0.16.0-2 ([f7ac78a](https://github.com/snatalenko/node-cqrs/commit/f7ac78a))
-* 0.16.0-3 ([c5d1fd7](https://github.com/snatalenko/node-cqrs/commit/c5d1fd7))
-* 0.16.0-4 ([791e516](https://github.com/snatalenko/node-cqrs/commit/791e516))
-* 0.16.0-5 ([7ef7096](https://github.com/snatalenko/node-cqrs/commit/7ef7096))
-* Add class and cleanup interface declarations ([36a99fd](https://github.com/snatalenko/node-cqrs/commit/36a99fd))
-* Add parent class info to CqrsContainerBuilder type ([6d1ebf0](https://github.com/snatalenko/node-cqrs/commit/6d1ebf0))
-* Add Set support to view size calculation ([dddb390](https://github.com/snatalenko/node-cqrs/commit/dddb390))
-* Add type definitions for protected methods ([0e805f1](https://github.com/snatalenko/node-cqrs/commit/0e805f1))
-* Allow empty payload and context on command sending ([cbf39c1](https://github.com/snatalenko/node-cqrs/commit/cbf39c1))
-* Bump acorn from 7.1.0 to 7.1.1 ([5ec0de1](https://github.com/snatalenko/node-cqrs/commit/5ec0de1))
-* Export types ([a58cf96](https://github.com/snatalenko/node-cqrs/commit/a58cf96))
-* Fix changelog ([ccac0dc](https://github.com/snatalenko/node-cqrs/commit/ccac0dc))
-* Fix coveralls script ([374dd56](https://github.com/snatalenko/node-cqrs/commit/374dd56))
-* Fix eslint ([4250d60](https://github.com/snatalenko/node-cqrs/commit/4250d60))
-* Fix EventStore types ([b28a1b6](https://github.com/snatalenko/node-cqrs/commit/b28a1b6))
-* Fix ISaga interface ([dfb6912](https://github.com/snatalenko/node-cqrs/commit/dfb6912))
-* Fix jsdoc ([1f750eb](https://github.com/snatalenko/node-cqrs/commit/1f750eb))
-* Fix repository name ([7f8f608](https://github.com/snatalenko/node-cqrs/commit/7f8f608))
-* Fix test ([d706c4f](https://github.com/snatalenko/node-cqrs/commit/d706c4f))
-* Fix tests ([abc4a58](https://github.com/snatalenko/node-cqrs/commit/abc4a58))
-* Fix tests ([7a599bf](https://github.com/snatalenko/node-cqrs/commit/7a599bf))
-* Fix typings ([8753cbd](https://github.com/snatalenko/node-cqrs/commit/8753cbd))
-* Fix typings ([9a4ba4f](https://github.com/snatalenko/node-cqrs/commit/9a4ba4f))
-* Fix typings ([55b5693](https://github.com/snatalenko/node-cqrs/commit/55b5693))
-* Improve typings of generics and extensions ([ac11608](https://github.com/snatalenko/node-cqrs/commit/ac11608))
-* Make EventStore to expect and produce async generators ([478f400](https://github.com/snatalenko/node-cqrs/commit/478f400))
-* Make view name optional on projection registration ([faa4ea4](https://github.com/snatalenko/node-cqrs/commit/faa4ea4))
-* Move projection restoring error handling to separate method ([e744132](https://github.com/snatalenko/node-cqrs/commit/e744132))
-* Move unit tests to subfolder ([5c36552](https://github.com/snatalenko/node-cqrs/commit/5c36552))
-* Remove examples from npm package ([cacc193](https://github.com/snatalenko/node-cqrs/commit/cacc193))
-* Replace istanbul with nyc ([8697a2b](https://github.com/snatalenko/node-cqrs/commit/8697a2b))
-* Separate npm run lint from npm test ([47c7f38](https://github.com/snatalenko/node-cqrs/commit/47c7f38))
-* Tweak comments and package.json ([eaae246](https://github.com/snatalenko/node-cqrs/commit/eaae246))
-* Update env requirements for async generators ([6390b4a](https://github.com/snatalenko/node-cqrs/commit/6390b4a))
-* Upgrade DI package, allow container method injections ([479b383](https://github.com/snatalenko/node-cqrs/commit/479b383))
-* Fix: Correctly set type of the extended container builder created from container ([1f2f632](https://github.com/snatalenko/node-cqrs/commit/1f2f632))
-* Fix: Debug output not using toString in Node 12 ([ca0d32f](https://github.com/snatalenko/node-cqrs/commit/ca0d32f))
-* Fix: Debug output on one time subscriptions ([2fd7601](https://github.com/snatalenko/node-cqrs/commit/2fd7601))
-* Fix: Moderate security issue in "minimist" dev dependency ([579d523](https://github.com/snatalenko/node-cqrs/commit/579d523))
-* New: Accept logger as an optional dependency ([65fe5ad](https://github.com/snatalenko/node-cqrs/commit/65fe5ad))
-* New: Detect circular dependencies in DI container ([1490b51](https://github.com/snatalenko/node-cqrs/commit/1490b51))
-* Change: Do not bind masterHandler to observer automatically ([d2ec79d](https://github.com/snatalenko/node-cqrs/commit/d2ec79d))
-* Change: Move DI container to a separate package ([350f3f4](https://github.com/snatalenko/node-cqrs/commit/350f3f4))
-* Change: Remove dependency to nodejs EventEmitter ([3fd7cd8](https://github.com/snatalenko/node-cqrs/commit/3fd7cd8))
-* Change: Remove deprecated InMemoryView..markAsReady method ([23015ec](https://github.com/snatalenko/node-cqrs/commit/23015ec))
-* Change: Remove IProjectionView interface ([eb8e723](https://github.com/snatalenko/node-cqrs/commit/eb8e723))
-* Change: Wrap types in NodeCqrs namespace ([74e9b67](https://github.com/snatalenko/node-cqrs/commit/74e9b67))
-* Build: Add conventional-changelog script ([da26a1c](https://github.com/snatalenko/node-cqrs/commit/da26a1c))
-* Build: Do not install global dependencies ([158783c](https://github.com/snatalenko/node-cqrs/commit/158783c))
-* Build: Exclude unnecessary files from package ([47b6797](https://github.com/snatalenko/node-cqrs/commit/47b6797))
-* Build: Prevent git push on version ([3ea9e38](https://github.com/snatalenko/node-cqrs/commit/3ea9e38))
-* Build: Replace changelog eslint preset with custom one ([8507262](https://github.com/snatalenko/node-cqrs/commit/8507262))
-* Build: Run tests in NodeJS 12 env ([1d4239c](https://github.com/snatalenko/node-cqrs/commit/1d4239c))
-* Docs: Add saga documentation ([e27d1e3](https://github.com/snatalenko/node-cqrs/commit/e27d1e3))
-* Tests: Fix tests in Node 12 ([beeb471](https://github.com/snatalenko/node-cqrs/commit/beeb471))
-* Tests: Run eslint for entire project folder ([d9055a1](https://github.com/snatalenko/node-cqrs/commit/d9055a1))
-* Tests: Run example domain tests with unit tests ([5ffdb43](https://github.com/snatalenko/node-cqrs/commit/5ffdb43))
-* Upgrade: debug, mocha, sinon ([ac80c27](https://github.com/snatalenko/node-cqrs/commit/ac80c27))
-
-## <small>0.15.1 (2019-08-26)</small>
-
-* 0.15.1 ([3abdd03](https://github.com/snatalenko/node-cqrs/commit/3abdd03))
-* Upgrade dependencies ([ef01cc3](https://github.com/snatalenko/node-cqrs/commit/ef01cc3))
-
-## 0.15.0 (2019-08-25)
-
-* - fix all view records retrieving w\o filter ([8500aa1](https://github.com/snatalenko/node-cqrs/commit/8500aa1))
-* - fix stack overflow in eventstream constructor ([a8fea87](https://github.com/snatalenko/node-cqrs/commit/a8fea87))
-* - lint fixes ([16994e4](https://github.com/snatalenko/node-cqrs/commit/16994e4))
-* - tests ([f13b3a9](https://github.com/snatalenko/node-cqrs/commit/f13b3a9))
-* ! changed named queus api ([dc7775a](https://github.com/snatalenko/node-cqrs/commit/dc7775a))
-* * added IConcurrentView interface, updated InMemoryView ([ccffc87](https://github.com/snatalenko/node-cqrs/commit/ccffc87))
-* * added named queue support validation ([51dee5a](https://github.com/snatalenko/node-cqrs/commit/51dee5a))
-* * changelog ([7cb5b5a](https://github.com/snatalenko/node-cqrs/commit/7cb5b5a))
-* * dependencies update ([589e556](https://github.com/snatalenko/node-cqrs/commit/589e556))
-* * extend ContainerBuilder typings ([9f0bd89](https://github.com/snatalenko/node-cqrs/commit/9f0bd89))
-* * made AbstractProjection to manage views ready flag ([d2bbb89](https://github.com/snatalenko/node-cqrs/commit/d2bbb89))
-* * omit method overrides in getMessageHandlerNames ([180771e](https://github.com/snatalenko/node-cqrs/commit/180771e))
-* * remove deprecated view.state property ([940cf59](https://github.com/snatalenko/node-cqrs/commit/940cf59))
-* * remove Observer class, export `subscribe` fn ([5e20e66](https://github.com/snatalenko/node-cqrs/commit/5e20e66))
-* * removed inner references to InMemoryView.prototype.has ([79ac971](https://github.com/snatalenko/node-cqrs/commit/79ac971))
-* * removed Observer class inheritance ([539d3a7](https://github.com/snatalenko/node-cqrs/commit/539d3a7))
-* * replace initial value param in `updateEnforcingNew` with default value ([4efd2f9](https://github.com/snatalenko/node-cqrs/commit/4efd2f9))
-* * replaced `should` with `expect` in tests ([6572305](https://github.com/snatalenko/node-cqrs/commit/6572305))
-* * separated IProjectionView and IInMemoryView ([4cca5a5](https://github.com/snatalenko/node-cqrs/commit/4cca5a5))
-* * typings and validations ([5e49e4c](https://github.com/snatalenko/node-cqrs/commit/5e49e4c))
-* * update dependencies ([d1f1678](https://github.com/snatalenko/node-cqrs/commit/d1f1678))
-* + add automatic message types resolving when setting up an observer subscription ([fa62e21](https://github.com/snatalenko/node-cqrs/commit/fa62e21))
-* + add getMessageHandlerNames helper fn ([fb255f9](https://github.com/snatalenko/node-cqrs/commit/fb255f9))
-* + added initial value argument to updateEnforcingView ([4d069e2](https://github.com/snatalenko/node-cqrs/commit/4d069e2))
-* + added InMemoryView.prototype.getAll as alternative to deprecated state ([b78a3d6](https://github.com/snatalenko/node-cqrs/commit/b78a3d6))
-* 0.15.0 ([d329763](https://github.com/snatalenko/node-cqrs/commit/d329763))
-* 0.15.0-0 ([f9f4769](https://github.com/snatalenko/node-cqrs/commit/f9f4769))
-* 0.15.0-1 ([32e2a8f](https://github.com/snatalenko/node-cqrs/commit/32e2a8f))
-* 0.15.0-2 ([ed714c3](https://github.com/snatalenko/node-cqrs/commit/ed714c3))
-* 0.15.0-3 ([3aab21f](https://github.com/snatalenko/node-cqrs/commit/3aab21f))
-* 0.15.0-4 ([45e59cb](https://github.com/snatalenko/node-cqrs/commit/45e59cb))
-* 0.15.0-5 ([154794b](https://github.com/snatalenko/node-cqrs/commit/154794b))
-* adding types for CqrsDomainContainer ([0150320](https://github.com/snatalenko/node-cqrs/commit/0150320))
-* Update changelog ([8877ba3](https://github.com/snatalenko/node-cqrs/commit/8877ba3))
-
-## <small>0.14.2 (2018-07-29)</small>
-
-* - removed object requirement from container.registerInstance ([e697537](https://github.com/snatalenko/node-cqrs/commit/e697537))
-* 0.14.2 ([a5f0f10](https://github.com/snatalenko/node-cqrs/commit/a5f0f10))
-
-## <small>0.14.1 (2018-07-14)</small>
-
-* - fixed snapshot obj modification thru aggregate state ([7dedbf9](https://github.com/snatalenko/node-cqrs/commit/7dedbf9))
-* - fixed tests for node@10 ([a144e45](https://github.com/snatalenko/node-cqrs/commit/a144e45))
-* * moved makeEvent to separate method ([d5d026b](https://github.com/snatalenko/node-cqrs/commit/d5d026b))
-* * readme update ([31512dd](https://github.com/snatalenko/node-cqrs/commit/31512dd))
-* * readme update ([f1b7ece](https://github.com/snatalenko/node-cqrs/commit/f1b7ece))
-* 0.14.1 ([fff3a2f](https://github.com/snatalenko/node-cqrs/commit/fff3a2f))
-* Add Abstract class to projections in README.md ([c1409b4](https://github.com/snatalenko/node-cqrs/commit/c1409b4))
-* Fix 'chech' typo in InMemoryView doc ([7e491ce](https://github.com/snatalenko/node-cqrs/commit/7e491ce))
-* Update travis to test on more node versions ([ef40dd4](https://github.com/snatalenko/node-cqrs/commit/ef40dd4))
-
-## 0.14.0 (2018-05-17)
-
-* - do not override command.context when it's set from saga ([95e9433](https://github.com/snatalenko/node-cqrs/commit/95e9433))
-* - eslint fixes in tests ([e4662b1](https://github.com/snatalenko/node-cqrs/commit/e4662b1))
-* - fixed a typo in typings ([ff68e30](https://github.com/snatalenko/node-cqrs/commit/ff68e30))
-* - fixed in-memory view tests ([589504e](https://github.com/snatalenko/node-cqrs/commit/589504e))
-* - fixed tests ([1f99697](https://github.com/snatalenko/node-cqrs/commit/1f99697))
-* - minor type fixes and refactoring ([0ef486d](https://github.com/snatalenko/node-cqrs/commit/0ef486d))
-* - removed obsolete command handler context validation ([650fcc7](https://github.com/snatalenko/node-cqrs/commit/650fcc7))
-* - type and annotation fixes ([16056d9](https://github.com/snatalenko/node-cqrs/commit/16056d9))
-* ! minor refactoring in projection view restoring ([0cbbb87](https://github.com/snatalenko/node-cqrs/commit/0cbbb87))
-* ! moved event.context copying to AbstractAggregate ([a11dab0](https://github.com/snatalenko/node-cqrs/commit/a11dab0))
-* * added user-domain example ([256eb41](https://github.com/snatalenko/node-cqrs/commit/256eb41))
-* * changed di container log level to 'trace' ([e43b50c](https://github.com/snatalenko/node-cqrs/commit/e43b50c))
-* * changelog ([90676d0](https://github.com/snatalenko/node-cqrs/commit/90676d0))
-* * dev dependencies update ([51b1d39](https://github.com/snatalenko/node-cqrs/commit/51b1d39))
-* * fixed required nodejs version ([cc9272b](https://github.com/snatalenko/node-cqrs/commit/cc9272b))
-* * improved logging and fixed jscheck warnings ([d41f888](https://github.com/snatalenko/node-cqrs/commit/d41f888))
-* * made event stream immutable ([e8bfeaa](https://github.com/snatalenko/node-cqrs/commit/e8bfeaa))
-* * made IProjectionView generic ([999512a](https://github.com/snatalenko/node-cqrs/commit/999512a))
-* * minor refactoring ([9f65abf](https://github.com/snatalenko/node-cqrs/commit/9f65abf))
-* * moved command context passing to AggregateCommandHandler ([8c6e496](https://github.com/snatalenko/node-cqrs/commit/8c6e496))
-* * moved default view initialization to allow view prop override ([2f38453](https://github.com/snatalenko/node-cqrs/commit/2f38453))
-* * moved named queues handling to MessageBus implementation ([0f4a82f](https://github.com/snatalenko/node-cqrs/commit/0f4a82f))
-* * moved save and publish to separate methods ([cc5b3af](https://github.com/snatalenko/node-cqrs/commit/cc5b3af))
-* * moved snapshot storage to a separate entity ([c2988fb](https://github.com/snatalenko/node-cqrs/commit/c2988fb))
-* * refactored di Container ([f9b1693](https://github.com/snatalenko/node-cqrs/commit/f9b1693))
-* * removed EventEmitter inheritance from InMemoryView ([bd778e4](https://github.com/snatalenko/node-cqrs/commit/bd778e4))
-* * separate saga.startsWith ([934dbc4](https://github.com/snatalenko/node-cqrs/commit/934dbc4))
-* * typings ([909c366](https://github.com/snatalenko/node-cqrs/commit/909c366))
-* * typings refactoring ([03abf3a](https://github.com/snatalenko/node-cqrs/commit/03abf3a))
-* + added changelog ([def7ec8](https://github.com/snatalenko/node-cqrs/commit/def7ec8))
-* + added example with manual instantiation ([9dd703b](https://github.com/snatalenko/node-cqrs/commit/9dd703b))
-* + added type definitions ([50c0888](https://github.com/snatalenko/node-cqrs/commit/50c0888))
-* + automatic event.sagaId assignments ([3f28e4f](https://github.com/snatalenko/node-cqrs/commit/3f28e4f))
-* + direct export of jsdoc class descriptions ([bc3e93c](https://github.com/snatalenko/node-cqrs/commit/bc3e93c))
-* 0.14.0 ([baec0ae](https://github.com/snatalenko/node-cqrs/commit/baec0ae))
-* 0.14.0-0 ([98e3ce6](https://github.com/snatalenko/node-cqrs/commit/98e3ce6))
-* 0.14.0-1 ([e869eeb](https://github.com/snatalenko/node-cqrs/commit/e869eeb))
-* 0.14.0-2 ([3244351](https://github.com/snatalenko/node-cqrs/commit/3244351))
-* 0.14.0-3 ([0d98423](https://github.com/snatalenko/node-cqrs/commit/0d98423))
-
-## 0.13.0 (2017-10-04)
-
-* - fixed documentation links ([72ef897](https://github.com/snatalenko/node-cqrs/commit/72ef897))
-* ! refactored InMemoryView to suspend get responses until ready ([173600a](https://github.com/snatalenko/node-cqrs/commit/173600a))
-* * added tests ([cdcc70b](https://github.com/snatalenko/node-cqrs/commit/cdcc70b))
-* * adjusted view summary logging ([18c19fb](https://github.com/snatalenko/node-cqrs/commit/18c19fb))
-* * allowed to skip view readiness awaiting ([847a2f9](https://github.com/snatalenko/node-cqrs/commit/847a2f9))
-* * deps upgrade ([f7e0571](https://github.com/snatalenko/node-cqrs/commit/f7e0571))
-* * eslint ([807dac3](https://github.com/snatalenko/node-cqrs/commit/807dac3))
-* * made AbstractProjection to restore view upon subscribe ([1284f36](https://github.com/snatalenko/node-cqrs/commit/1284f36))
-* * made projection to wait unti view is ready ([207af17](https://github.com/snatalenko/node-cqrs/commit/207af17))
-* * made sizeOf work with Maps ([3bac8ef](https://github.com/snatalenko/node-cqrs/commit/3bac8ef))
-* * postversion script ([2dcf112](https://github.com/snatalenko/node-cqrs/commit/2dcf112))
-* * refactored Observer ([91c29ca](https://github.com/snatalenko/node-cqrs/commit/91c29ca))
-* * removed docs from npm package ([90a6b8c](https://github.com/snatalenko/node-cqrs/commit/90a6b8c))
-* * tests ([89739c8](https://github.com/snatalenko/node-cqrs/commit/89739c8))
-* + documentation ([0a48e3a](https://github.com/snatalenko/node-cqrs/commit/0a48e3a))
-* 0.13.0 ([1a3690e](https://github.com/snatalenko/node-cqrs/commit/1a3690e))
-* 0.13.0-0 ([d54393f](https://github.com/snatalenko/node-cqrs/commit/d54393f))
-* 0.13.0-1 ([aeddc7b](https://github.com/snatalenko/node-cqrs/commit/aeddc7b))
-* 0.13.0-2 ([50658bd](https://github.com/snatalenko/node-cqrs/commit/50658bd))
-
-## <small>0.12.6 (2017-08-23)</small>
-
-* * moved documentation to GitBooks ([9c5be03](https://github.com/snatalenko/node-cqrs/commit/9c5be03))
-* * updated dependencies ([f1fea6f](https://github.com/snatalenko/node-cqrs/commit/f1fea6f))
-* 0.12.6 ([97fad4f](https://github.com/snatalenko/node-cqrs/commit/97fad4f))
-
-## <small>0.12.5 (2017-06-23)</small>
-
-* * enforced strict eslint on version update ([b6776bc](https://github.com/snatalenko/node-cqrs/commit/b6776bc))
-* * tests ([825a7e5](https://github.com/snatalenko/node-cqrs/commit/825a7e5))
-* + async saga handlers support ([5e8dfd1](https://github.com/snatalenko/node-cqrs/commit/5e8dfd1))
-* 0.12.5 ([d99f528](https://github.com/snatalenko/node-cqrs/commit/d99f528))
-
-## <small>0.12.4 (2017-04-25)</small>
-
-* - made aggregate version to restore from events ([c910ebc](https://github.com/snatalenko/node-cqrs/commit/c910ebc))
-* 0.12.4 ([0baa0ba](https://github.com/snatalenko/node-cqrs/commit/0baa0ba))
-
-## <small>0.12.3 (2017-04-24)</small>
-
-* + added snapshotVersion ([f251c79](https://github.com/snatalenko/node-cqrs/commit/f251c79))
-* 0.12.3 ([24d6177](https://github.com/snatalenko/node-cqrs/commit/24d6177))
-
-## <small>0.12.1 (2017-04-24)</small>
-
-* * changed snapshot field name in aggregate events query filter ([6c3b231](https://github.com/snatalenko/node-cqrs/commit/6c3b231))
-* 0.12.1 ([9e3f819](https://github.com/snatalenko/node-cqrs/commit/9e3f819))
-
-## 0.12.0 (2017-04-22)
-
-* ! aggregate snapshots ([05e75bb](https://github.com/snatalenko/node-cqrs/commit/05e75bb))
-* ! replaced co with async/await ([3e9e72b](https://github.com/snatalenko/node-cqrs/commit/3e9e72b))
-* * added license ([bdb0a7a](https://github.com/snatalenko/node-cqrs/commit/bdb0a7a))
-* * added npmignore ([8fb23be](https://github.com/snatalenko/node-cqrs/commit/8fb23be))
-* * added some tests ([e454c35](https://github.com/snatalenko/node-cqrs/commit/e454c35))
-* * dependencies upgrade ([54e739a](https://github.com/snatalenko/node-cqrs/commit/54e739a))
-* * eslint fixes ([c67a35e](https://github.com/snatalenko/node-cqrs/commit/c67a35e))
-* * eslint rules ([f523fea](https://github.com/snatalenko/node-cqrs/commit/f523fea))
-* * readme ([51d9a22](https://github.com/snatalenko/node-cqrs/commit/51d9a22))
-* * tests ([426458a](https://github.com/snatalenko/node-cqrs/commit/426458a))
-* * updated release scripts ([abc7af6](https://github.com/snatalenko/node-cqrs/commit/abc7af6))
-* * updated travis node version ([6ea7a82](https://github.com/snatalenko/node-cqrs/commit/6ea7a82))
-* 0.12.0 ([82ebf83](https://github.com/snatalenko/node-cqrs/commit/82ebf83))
-
-## <small>0.11.1 (2017-03-01)</small>
-
-* + added 'ready' flag to in-memory views ([9ab9227](https://github.com/snatalenko/node-cqrs/commit/9ab9227))
-* 0.11.1 ([56557e2](https://github.com/snatalenko/node-cqrs/commit/56557e2))
-
-## 0.11.0 (2017-01-18)
-
-* ! changed saga.enqueue format ([fe29281](https://github.com/snatalenko/node-cqrs/commit/fe29281))
-* * jsdoc comments ([bd1cf68](https://github.com/snatalenko/node-cqrs/commit/bd1cf68))
-* * removed passToHandler utils ([35b6cf5](https://github.com/snatalenko/node-cqrs/commit/35b6cf5))
-* + saga.onError handler ([324f3da](https://github.com/snatalenko/node-cqrs/commit/324f3da))
-* 0.11.0 ([bca789f](https://github.com/snatalenko/node-cqrs/commit/bca789f))
-
-## 0.10.0 (2017-01-16)
-
-* - additional check in one-time subscriptions ([954eaae](https://github.com/snatalenko/node-cqrs/commit/954eaae))
-* - fixed concurrent one-time subscriptions ([f44a3bd](https://github.com/snatalenko/node-cqrs/commit/f44a3bd))
-* - typo in debug output ([32ed641](https://github.com/snatalenko/node-cqrs/commit/32ed641))
-* ! changed event querying filter format ([3b18a34](https://github.com/snatalenko/node-cqrs/commit/3b18a34))
-* * abstract projection refactoring ([4aadf3c](https://github.com/snatalenko/node-cqrs/commit/4aadf3c))
-* * removed useless concurrency error handling ([7413d7a](https://github.com/snatalenko/node-cqrs/commit/7413d7a))
-* + EventStream ([20307f8](https://github.com/snatalenko/node-cqrs/commit/20307f8))
-* 0.10.0 ([a5db602](https://github.com/snatalenko/node-cqrs/commit/a5db602))
-
-## <small>0.9.3 (2017-01-06)</small>
-
-* * minor fix in debug output ([302f27d](https://github.com/snatalenko/node-cqrs/commit/302f27d))
-* 0.9.3 ([a44bd3f](https://github.com/snatalenko/node-cqrs/commit/a44bd3f))
-
-## <small>0.9.2 (2016-12-19)</small>
-
-* - don't create empty context without hostname ([e9c7590](https://github.com/snatalenko/node-cqrs/commit/e9c7590))
-* 0.9.2 ([4f7d671](https://github.com/snatalenko/node-cqrs/commit/4f7d671))
-
-## <small>0.9.1 (2016-12-17)</small>
-
-* + added named queue subscriptions for sagas ([4ff4d75](https://github.com/snatalenko/node-cqrs/commit/4ff4d75))
-* 0.9.1 ([32e073e](https://github.com/snatalenko/node-cqrs/commit/32e073e))
-
-## 0.9.0 (2016-12-17)
-
-* * command bus tests ([6b0323a](https://github.com/snatalenko/node-cqrs/commit/6b0323a))
-* * eslintrc ([c277fb2](https://github.com/snatalenko/node-cqrs/commit/c277fb2))
-* * minor refactoring and validations ([c5ff3bf](https://github.com/snatalenko/node-cqrs/commit/c5ff3bf))
-* * readme ([f0fa34c](https://github.com/snatalenko/node-cqrs/commit/f0fa34c))
-* + added queue subscriptions; ([785e637](https://github.com/snatalenko/node-cqrs/commit/785e637))
-* 0.9.0 ([c14f239](https://github.com/snatalenko/node-cqrs/commit/c14f239))
-
-## 0.8.0 (2016-12-07)
-
-* ! removed view editing methods from projection ([073ff27](https://github.com/snatalenko/node-cqrs/commit/073ff27))
-* * readme ([e2aa7b9](https://github.com/snatalenko/node-cqrs/commit/e2aa7b9))
-* 0.8.0 ([8fb593d](https://github.com/snatalenko/node-cqrs/commit/8fb593d))
-
-## <small>0.7.8 (2016-12-05)</small>
-
-* - fixed command send without payload ([ad64187](https://github.com/snatalenko/node-cqrs/commit/ad64187))
-* - fixed sizeOf is not a function ([fe38391](https://github.com/snatalenko/node-cqrs/commit/fe38391))
-* * added emitRaw to AbstractAggregate ([44fb857](https://github.com/snatalenko/node-cqrs/commit/44fb857))
-* * di container refactoring ([6471188](https://github.com/snatalenko/node-cqrs/commit/6471188))
-* * eslintrc ([4ccb5c1](https://github.com/snatalenko/node-cqrs/commit/4ccb5c1))
-* * node version ([a0c8394](https://github.com/snatalenko/node-cqrs/commit/a0c8394))
-* * test coverage scripts ([1f44dbc](https://github.com/snatalenko/node-cqrs/commit/1f44dbc))
-* * usage example ([99d18a9](https://github.com/snatalenko/node-cqrs/commit/99d18a9))
-* + .travis.yml ([a1838af](https://github.com/snatalenko/node-cqrs/commit/a1838af))
-* 0.7.8 ([6dab449](https://github.com/snatalenko/node-cqrs/commit/6dab449))
-
-## <small>0.7.7 (2016-12-04)</small>
-
-* * minor tests modifications ([38b841c](https://github.com/snatalenko/node-cqrs/commit/38b841c))
-* * tests for async aggregate command handling ([2953fca](https://github.com/snatalenko/node-cqrs/commit/2953fca))
-* + allowed additional command properties in cmd bus ([d862caa](https://github.com/snatalenko/node-cqrs/commit/d862caa))
-* 0.7.7 ([e9aa715](https://github.com/snatalenko/node-cqrs/commit/e9aa715))
-
-## <small>0.7.6 (2016-12-01)</small>
-
-* - fixed async aggregate.handle ([4565111](https://github.com/snatalenko/node-cqrs/commit/4565111))
-* 0.7.6 ([448e05b](https://github.com/snatalenko/node-cqrs/commit/448e05b))
-
-## <small>0.7.5 (2016-12-01)</small>
-
-* - fixed async events commit ([092b6e3](https://github.com/snatalenko/node-cqrs/commit/092b6e3))
-* 0.7.5 ([a4802e6](https://github.com/snatalenko/node-cqrs/commit/a4802e6))
-
-## <small>0.7.4 (2016-11-30)</small>
-
-* - fixed command context not transferring to event ([5a1df42](https://github.com/snatalenko/node-cqrs/commit/5a1df42))
-* 0.7.4 ([1fdf476](https://github.com/snatalenko/node-cqrs/commit/1fdf476))
-
-## <small>0.7.3 (2016-11-29)</small>
-
-* * aggregate command handler refacroring ([4f1a3ce](https://github.com/snatalenko/node-cqrs/commit/4f1a3ce))
-* 0.7.3 ([f7b1b12](https://github.com/snatalenko/node-cqrs/commit/f7b1b12))
-
-## <small>0.7.2 (2016-11-25)</small>
-
-* - fixed destructed param dependencies format ([0930103](https://github.com/snatalenko/node-cqrs/commit/0930103))
-* - minor jsdoc fix ([c90eb87](https://github.com/snatalenko/node-cqrs/commit/c90eb87))
-* 0.7.2 ([1b11919](https://github.com/snatalenko/node-cqrs/commit/1b11919))
-
-## <small>0.7.1 (2016-11-20)</small>
-
-* + added descructed parameter object support to di ([c80bbfb](https://github.com/snatalenko/node-cqrs/commit/c80bbfb))
-* 0.7.1 ([5ddb942](https://github.com/snatalenko/node-cqrs/commit/5ddb942))
-
-## 0.7.0 (2016-11-18)
-
-* * eslint rules based on airbnb guidelines ([c820264](https://github.com/snatalenko/node-cqrs/commit/c820264))
-* + allowed storage to be an event emitter ([77f2606](https://github.com/snatalenko/node-cqrs/commit/77f2606))
-* 0.7.0 ([79ab5a1](https://github.com/snatalenko/node-cqrs/commit/79ab5a1))
-
-## <small>0.6.10 (2016-10-24)</small>
-
-* * adjusted saga event stream filtering logic ([5bbadb3](https://github.com/snatalenko/node-cqrs/commit/5bbadb3))
-* 0.6.10 ([d2d79b3](https://github.com/snatalenko/node-cqrs/commit/d2d79b3))
-
-## <small>0.6.9 (2016-10-24)</small>
-
-* * changed getSagaEvents options format ([72ff1b6](https://github.com/snatalenko/node-cqrs/commit/72ff1b6))
-* 0.6.9 ([e47c9c8](https://github.com/snatalenko/node-cqrs/commit/e47c9c8))
-
-## <small>0.6.8 (2016-10-23)</small>
-
-* * added severity level to debug output ([982698e](https://github.com/snatalenko/node-cqrs/commit/982698e))
-* 0.6.8 ([7672020](https://github.com/snatalenko/node-cqrs/commit/7672020))
-
-## <small>0.6.7 (2016-10-23)</small>
-
-* * added 'restored' flag to AbstractSaga ([59b321d](https://github.com/snatalenko/node-cqrs/commit/59b321d))
-* * minor changes in test output ([5b3d242](https://github.com/snatalenko/node-cqrs/commit/5b3d242))
-* * minor fix of debug output ([608cc45](https://github.com/snatalenko/node-cqrs/commit/608cc45))
-* * readme ([a219794](https://github.com/snatalenko/node-cqrs/commit/a219794))
-* 0.6.7 ([646bf7d](https://github.com/snatalenko/node-cqrs/commit/646bf7d))
-
-## <small>0.6.6 (2016-08-23)</small>
-
-* * added ConcurrencyError name ([92a1b21](https://github.com/snatalenko/node-cqrs/commit/92a1b21))
-* * editorconfig ([a8ca8a7](https://github.com/snatalenko/node-cqrs/commit/a8ca8a7))
-* * eslint ([19d25dd](https://github.com/snatalenko/node-cqrs/commit/19d25dd))
-* 0.6.6 ([0e5025b](https://github.com/snatalenko/node-cqrs/commit/0e5025b))
-
-## <small>0.6.5 (2016-08-23)</small>
-
-* - fixed deps resolution w multiple nested blocks ([cf2e290](https://github.com/snatalenko/node-cqrs/commit/cf2e290))
-* - fixed tests ([e64effd](https://github.com/snatalenko/node-cqrs/commit/e64effd))
-* - made in-memory storage commit to return promise ([9bebc8f](https://github.com/snatalenko/node-cqrs/commit/9bebc8f))
-* * co usage for more clean code ([6e71693](https://github.com/snatalenko/node-cqrs/commit/6e71693))
-* * eslint config ([3daad66](https://github.com/snatalenko/node-cqrs/commit/3daad66))
-* * package.json ([6256c4e](https://github.com/snatalenko/node-cqrs/commit/6256c4e))
-* * refactored saga event handler to use co ([21c8e57](https://github.com/snatalenko/node-cqrs/commit/21c8e57))
-* 0.6.5 ([fe49090](https://github.com/snatalenko/node-cqrs/commit/fe49090))
-
-## <small>0.6.4 (2016-07-24)</small>
-
-* * allowed exposed properties re-registration ([463c237](https://github.com/snatalenko/node-cqrs/commit/463c237))
-* 0.6.4 ([26abfe6](https://github.com/snatalenko/node-cqrs/commit/26abfe6))
-
-## <small>0.6.3 (2016-07-06)</small>
-
-* * added publishAsync option ([63da906](https://github.com/snatalenko/node-cqrs/commit/63da906))
-* 0.6.3 ([ed82874](https://github.com/snatalenko/node-cqrs/commit/ed82874))
-
-## <small>0.6.2 (2016-07-02)</small>
-
-* - fixed the class validation ([b013225](https://github.com/snatalenko/node-cqrs/commit/b013225))
-* * added container as a registered instance ([7d9a05b](https://github.com/snatalenko/node-cqrs/commit/7d9a05b))
-* * fixed aggregate type validation ([d70edbc](https://github.com/snatalenko/node-cqrs/commit/d70edbc))
-* * formatting ([c758788](https://github.com/snatalenko/node-cqrs/commit/c758788))
-* * minor fix ([6d47048](https://github.com/snatalenko/node-cqrs/commit/6d47048))
-* 0.6.2 ([c1481a0](https://github.com/snatalenko/node-cqrs/commit/c1481a0))
-
-## <small>0.6.1 (2016-05-31)</small>
-
-* - fixed dependency resolution on ES5 classes ([42025b7](https://github.com/snatalenko/node-cqrs/commit/42025b7))
-* * added release-* scripts ([e88514f](https://github.com/snatalenko/node-cqrs/commit/e88514f))
-* * editorconfig update ([f023d6c](https://github.com/snatalenko/node-cqrs/commit/f023d6c))
-* * gitignore tweaks ([72d52df](https://github.com/snatalenko/node-cqrs/commit/72d52df))
-* * minor readme tweak ([49e9fc4](https://github.com/snatalenko/node-cqrs/commit/49e9fc4))
-* * package rename ([bd97a7e](https://github.com/snatalenko/node-cqrs/commit/bd97a7e))
-* * package rename ([60555af](https://github.com/snatalenko/node-cqrs/commit/60555af))
-* + added dependency resolution for constructor functions ([895497e](https://github.com/snatalenko/node-cqrs/commit/895497e))
-* 0.6.1 ([9ac7687](https://github.com/snatalenko/node-cqrs/commit/9ac7687))
-
-## 0.6.0 (2016-03-06)
-
-* - fixed async command processing by aggregateCommandHandler ([5fa4af3](https://github.com/snatalenko/node-cqrs/commit/5fa4af3))
-* - fixed string/numeric keys comparison ([a397138](https://github.com/snatalenko/node-cqrs/commit/a397138))
-* * refactoring ([fcb1b28](https://github.com/snatalenko/node-cqrs/commit/fcb1b28))
-* + added instance registration to DI container ([bb81231](https://github.com/snatalenko/node-cqrs/commit/bb81231))
-* 0.6.0 ([bae1b4e](https://github.com/snatalenko/node-cqrs/commit/bae1b4e))
-
-## 0.5.0 (2016-03-03)
-
-* * renamed bus to messageBus ([db5930c](https://github.com/snatalenko/node-cqrs/commit/db5930c))
-* 0.5.0 ([6f3485a](https://github.com/snatalenko/node-cqrs/commit/6f3485a))
-
-## 0.4.0 (2016-03-03)
-
-* * minor message corrections ([3ba1a4d](https://github.com/snatalenko/node-cqrs/commit/3ba1a4d))
-* + added saga/aggregate dependency resolution in container ([8ce3d7b](https://github.com/snatalenko/node-cqrs/commit/8ce3d7b))
-* 0.4.0 ([a710d04](https://github.com/snatalenko/node-cqrs/commit/a710d04))
-
-## <small>0.3.2 (2016-02-29)</small>
-
-* * minor refactoring ([62ed29a](https://github.com/snatalenko/node-cqrs/commit/62ed29a))
-* + added aggregate events commit concurrency error handling ([ab8c542](https://github.com/snatalenko/node-cqrs/commit/ab8c542))
-* 0.3.2 ([96d6e5d](https://github.com/snatalenko/node-cqrs/commit/96d6e5d))
-
-## <small>0.3.1 (2016-02-29)</small>
-
-* + createUnexposedInstances on container ([ae650e7](https://github.com/snatalenko/node-cqrs/commit/ae650e7))
-* 0.3.1 ([d127841](https://github.com/snatalenko/node-cqrs/commit/d127841))
-
-## 0.3.0 (2016-02-29)
-
-* ! global refactoring ([ab0fd83](https://github.com/snatalenko/node-cqrs/commit/ab0fd83))
-* 0.3.0 ([caca9b4](https://github.com/snatalenko/node-cqrs/commit/caca9b4))
-
-## <small>0.2.2 (2015-12-23)</small>
-
-* * moved in-memory gateway implementation from test mocks to exports ([e2aa4ed](https://github.com/snatalenko/node-cqrs/commit/e2aa4ed))
-* 0.2.2 ([ef0af52](https://github.com/snatalenko/node-cqrs/commit/ef0af52))
-
-## <small>0.2.1 (2015-12-22)</small>
-
-* - fixed getAggregate scope ([e6df9f2](https://github.com/snatalenko/node-cqrs/commit/e6df9f2))
-* 0.2.1 ([02b9e59](https://github.com/snatalenko/node-cqrs/commit/02b9e59))
-
-## 0.2.0 (2015-12-22)
-
-* - argument validation fixes ([766cf3c](https://github.com/snatalenko/node-cqrs/commit/766cf3c))
-* - fixed command handler to always pass events array to getAggregate ([7dedf1e](https://github.com/snatalenko/node-cqrs/commit/7dedf1e))
-* - fixed filtering in updateAll ([3611839](https://github.com/snatalenko/node-cqrs/commit/3611839))
-* - fixed passwordReset event validation ([7cdf7a1](https://github.com/snatalenko/node-cqrs/commit/7cdf7a1))
-* - fixed tests ([65c414f](https://github.com/snatalenko/node-cqrs/commit/65c414f))
-* - unused vars ([3b5dfb5](https://github.com/snatalenko/node-cqrs/commit/3b5dfb5))
-* ! initial commit ([13263bd](https://github.com/snatalenko/node-cqrs/commit/13263bd))
-* ! nodejs 4.0 ([ffd3328](https://github.com/snatalenko/node-cqrs/commit/ffd3328))
-* ! refactoring; async event emitting ([f9b4966](https://github.com/snatalenko/node-cqrs/commit/f9b4966))
-* * made aggregate state optional ([f043408](https://github.com/snatalenko/node-cqrs/commit/f043408))
-* * more async processing ([bc788a4](https://github.com/snatalenko/node-cqrs/commit/bc788a4))
-* * refactoring and tests ([8a1be65](https://github.com/snatalenko/node-cqrs/commit/8a1be65))
-* * various improvements and validations ([a8b6a17](https://github.com/snatalenko/node-cqrs/commit/a8b6a17))
-* + added deleteAll(filter) to in-memory view ([bb87d11](https://github.com/snatalenko/node-cqrs/commit/bb87d11))
-* 0.2.0 ([7253cb3](https://github.com/snatalenko/node-cqrs/commit/7253cb3))
+## [1.2.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.0...v1.2.1) (2026-08-21)
+
+
+### Fixes
+
+* Avoid logging error on intentional worker termination ([9ba155a](https://github.com/snatalenko/node-cqrs/commit/9ba155abc90d8a94a9d672948404edadd2ca6d05))
+
+
+# [1.2.0](https://github.com/snatalenko/node-cqrs/compare/v1.1.1...v1.2.0) (2026-08-15)
+
+
+### Features
+
+* Add sqlite-workers submodule for async SQLite reads ([1987a40](https://github.com/snatalenko/node-cqrs/commit/1987a403fdfd38a57cf4b2c82bc79e88568bc32e))
+* Allow SQLite worker connections to be created with a custom factory ([fb39cf1](https://github.com/snatalenko/node-cqrs/commit/fb39cf1e3be51c279de6571262c360bf057dea28))
+
+### Build System
+
+* Use Jekyll to build documentation from README's ([cd4dcc2](https://github.com/snatalenko/node-cqrs/commit/cd4dcc291a93f0da69560b6a75aff7bbe2cf306e))
+
+### Internal Fixes
+
+* Move duplicate worker utils into src/shared/worker-utils/ ([8b3c383](https://github.com/snatalenko/node-cqrs/commit/8b3c383be41edd40fcedfbb663104e4f5d530bcc))
+* Improve log output on rabbitmq message handler timeout ([f8dc3ca](https://github.com/snatalenko/node-cqrs/commit/f8dc3ca5ec9589b6ec7131056ee51118204f9cf4))
+
+
+## [1.1.1](https://github.com/snatalenko/node-cqrs/compare/v1.1.0...v1.1.1) (2026-07-17)
+
+
+### Fixes
+
+* Chained pipelines not preserving FIFO action start order ([ba27d1d](https://github.com/snatalenko/node-cqrs/commit/ba27d1d3be700c69c87e0df6e7385ea784824e63))
+
+
+# [1.1.0](https://github.com/snatalenko/node-cqrs/compare/v1.0.2...v1.1.0) (2026-05-26)
+
+
+### Features
+
+* Integrate OpenTelemetry for command and event tracing ([b03997f](https://github.com/snatalenko/node-cqrs/commit/b03997f17b0e88cccaeca6ca599ad5d43457390a))
+* RabbitMQ trace context propagation via W3C TraceContext AMQP headers ([1db354a](https://github.com/snatalenko/node-cqrs/commit/1db354af099cfe9c3884d0ea46087da1610e73da))
+* Redis-backed projection views with distributed locking (experimental) ([8ff0f1e](https://github.com/snatalenko/node-cqrs/commit/8ff0f1e14a6fdcd676d549a9d4c7ad2d2ce7cd4c))
+* SqliteEventStorage ([ffaf766](https://github.com/snatalenko/node-cqrs/commit/ffaf7669139e797488c50332cac94a234738cc62))
+* MongoDB-backed event storage ([53fb5e1](https://github.com/snatalenko/node-cqrs/commit/53fb5e1c0d7a027f9afebf88f8d3d516d06c3c48))
+* MongoDb-backed view model (`MongoObjectView`, `AbstractMongoObjectProjection`) ([4995bfe](https://github.com/snatalenko/node-cqrs/commit/4995bfe2daf53372d3e7e36d59ee103219ad6a35))
+* Option for rabbitmq queue-level message TTL ([d4461e6](https://github.com/snatalenko/node-cqrs/commit/d4461e68b0e69696340bfdb80c7f947146bca08b))
+
+### Changes
+
+* Remove "md5" from peer dependencies ([87600bc](https://github.com/snatalenko/node-cqrs/commit/87600bc5a857b0e251ceed37d99cc5cf66f61ee5))
+* Expose `restorePromises` on DI container for tracking async projection restoring processes ([ebdaa2c](https://github.com/snatalenko/node-cqrs/commit/ebdaa2ca4ff6d1088deba5d4069d7a027be65107))
+* Use `Identifier` as id type in redis and sqlite views ([dfbe964](https://github.com/snatalenko/node-cqrs/commit/dfbe9648a8ea8e7e5550aa40e0094ca8af1758ef))
+* Add default queueName for RabbitMqCommandBus ([ee4b5a1](https://github.com/snatalenko/node-cqrs/commit/ee4b5a170e44db6227e76d2ffb1695b6dfaef6e4))
+* Add error handling and drain functionality to event publishing process ([d23ea62](https://github.com/snatalenko/node-cqrs/commit/d23ea621c8a71e2cda4baaf091166534c4f5af2e))
+* Allow extra command parameters to be passed to AbstractAggregate handler as 3rd argument ([ae11b7e](https://github.com/snatalenko/node-cqrs/commit/ae11b7eb709e658fbc910aadb1376bc8a3fade1b))
+* Deliver events to worker in batches during restoring phase ([212e353](https://github.com/snatalenko/node-cqrs/commit/212e3535b22e6a763a7e0fd1f81036f9ef776ec0))
+
+### Fixes
+
+* Defer aggregate cache pre-warm to avoid orphaned async operations on command error ([677ed29](https://github.com/snatalenko/node-cqrs/commit/677ed29cd6dab5f80b021ee90ad1dd8c3586fcd3))
+
+### Documentation
+
+* Remove readme code samples in favor of runnable ./examples/ ([73417c3](https://github.com/snatalenko/node-cqrs/commit/73417c3b997f2d838b02dd0b91f05e0a6001e556))
+* Rearrange examples to use same aggregate and projection implementation ([5325901](https://github.com/snatalenko/node-cqrs/commit/532590143fd29a205b6eb3fd4d6c686b17956835))
+* Add detailed documentation for redis and mongodb modules ([72e66f5](https://github.com/snatalenko/node-cqrs/commit/72e66f5508a6df6c0a4a341e752cfab76830478a))
+* Detailed sqlite and rabbitmq instructions ([dd242fd](https://github.com/snatalenko/node-cqrs/commit/dd242fd73018bcfa0583ab1ddd12518c4f3a4777))
+* Minor spec update ([6a2883a](https://github.com/snatalenko/node-cqrs/commit/6a2883adc7b6a7a48bb5f62562c2242826860e89))
+* Add index.html for publishing with gh pages ([cac88ed](https://github.com/snatalenko/node-cqrs/commit/cac88edaaef1c9457af48fd7477daf8ae624eb43))
+* Fix homepage styles cdn ([6ab1ff2](https://github.com/snatalenko/node-cqrs/commit/6ab1ff28246b4496a7fc0b2911c01c8960f9959e))
+
+### Build System
+
+* Add "rebuild" npm script ([2e5e977](https://github.com/snatalenko/node-cqrs/commit/2e5e9771f760d15cc1cbbc2f68bc680cd6b97de3))
+
+### Internal Fixes
+
+* Rename telemetry metadata span field to `otelSpan`, enhance typings ([2ca2494](https://github.com/snatalenko/node-cqrs/commit/2ca2494625ea8dde11f86fdf078d85c1d848d10a))
+* Compiled AbstractWorkerProjection type compatibility ([bf8ca08](https://github.com/snatalenko/node-cqrs/commit/bf8ca08a09faacb4cbf0da141dd4f09d4647e86e))
+* Enhance message payload typing ([7911acc](https://github.com/snatalenko/node-cqrs/commit/7911accce07cba7c30ae4f5825a6e26e0934b8dc))
+* Expose `viewLocker` on WorkerProxyProjection ([628fbe3](https://github.com/snatalenko/node-cqrs/commit/628fbe3c7af141443092cdf1fb6c0824c19a6324))
+* Make `getHandler` to throw error if handler is not defined ([ecbd73e](https://github.com/snatalenko/node-cqrs/commit/ecbd73e0604c74eb85a946b15a4b872b688da01e))
+* Allow disposing worker projection proxy more than once ([768f73a](https://github.com/snatalenko/node-cqrs/commit/768f73a28a8a1a572449122f5046c102435dd5bd))
+
+
+## [1.0.2](https://github.com/snatalenko/node-cqrs/compare/v1.0.1...v1.0.2) (2026-04-03)
+
+
+### Changes
+
+* Set `x-consumer-timeout` on MQ according to configured `handlerProcessTimeout` ([3e272ea](https://github.com/snatalenko/node-cqrs/commit/3e272ea66da5d1ed44253c4b620b6a677e2038dc))
+* Disable DLQ setup for RabbitMqEventBus by default ([b953829](https://github.com/snatalenko/node-cqrs/commit/b95382924e3377e26574f36613e546ea6155ad73))
+
+### Internal Fixes
+
+* Event description formatting in logging ([419cc7d](https://github.com/snatalenko/node-cqrs/commit/419cc7d3da7ce45385605968e1e3b70174a44661))
+* Fix vulnerabilities in dev dependencies ([203ef19](https://github.com/snatalenko/node-cqrs/commit/203ef191cc1d64b1927427d02495d0a7997d567e))
+
+
+## [1.0.1](https://github.com/snatalenko/node-cqrs/compare/v1.0.0...v1.0.1) (2026-03-31)
+
+
+### Fixes
+
+* Use setImmediate in Node.js for nextCycle to avoid setTimeout performance overhead ([4b63706](https://github.com/snatalenko/node-cqrs/commit/4b63706c4271afd85470dff8b956605133863e9d))
+
+### Internal Fixes
+
+* Fix vulnerability in dev dependency ([610757b](https://github.com/snatalenko/node-cqrs/commit/610757ba24d39939b3827d99e2af2183758225b6))
+
+
+# [1.0.0](https://github.com/snatalenko/node-cqrs/compare/v0.17.0...v1.0.0) (2026-03-21)
+
+
+### Features
+
+* RabbitMQ integration classes to support event publishing and subscription ([991c223](https://github.com/snatalenko/node-cqrs/commit/991c2233185d3610a2b8930f6930a03c0cdea01d))
+* Run projections derived from AbstractWorkerProjection in worker threads with remote view access ([3d4c56a](https://github.com/snatalenko/node-cqrs/commit/3d4c56ac978f0ee11e98c8575befa2796755dc74))
+* Support selective restore event loading ([3a74da6](https://github.com/snatalenko/node-cqrs/commit/3a74da6807a0250bff0e05ae57f922922d8847be))
+* Multi-saga correlation via `message.sagaOrigins` + simplified ISaga (mutate/handle) with AbstractSaga state support ([ae67594](https://github.com/snatalenko/node-cqrs/commit/ae675944faa2b01aefed23d7c0e456e2581f066f))
+* Re-process commands on concurrency errors in EventStorage ([8a60560](https://github.com/snatalenko/node-cqrs/commit/8a60560b1e3dc7bff85217851a12c503730a9e19))
+* Add RabbitMQ command bus implementation and enhance MQ configuration options ([a565c59](https://github.com/snatalenko/node-cqrs/commit/a565c59f87fa46f2279781329ebacf55b1245805))
+
+### Changes
+
+* Remove `publishAsync` setting, simplify publishing sequence ([79257e5](https://github.com/snatalenko/node-cqrs/commit/79257e59d322df5dd8e41bedf5273c97ae77b609))
+* Support persistent views; Add SQLite infrastructure ([c235573](https://github.com/snatalenko/node-cqrs/commit/c235573678be349d031d1a696cab3993224979a2))
+* Move validation, snapshot and event persistence to EventDispatcher pipeline ([e781f7c](https://github.com/snatalenko/node-cqrs/commit/e781f7c6c2e4f7c9f8c4615b170d0d29d3e8f133))
+* Cache immediate aggregates to handle concurrent commands ([e193c4c](https://github.com/snatalenko/node-cqrs/commit/e193c4c8dc7b91de6cbc84e2ac668170ddb48bc0))
+* Enhance type safety in CqrsContainerBuilder with generics ([025765c](https://github.com/snatalenko/node-cqrs/commit/025765cc31eec5a004142dff5cafd8264af10ea9))
+* Move reconnect logic to rabbitMqConnectionFactory; re-establish subscriptions on reconnect ([a42d138](https://github.com/snatalenko/node-cqrs/commit/a42d138fc93bc767ae5d7fac75f5582cb3936103))
+* Auto-reconnect to RabbitMQ ([ba80536](https://github.com/snatalenko/node-cqrs/commit/ba8053697fb271a57fde7fc236d0f15c7d497c8e))
+* Apache-2.0 License ([576869b](https://github.com/snatalenko/node-cqrs/commit/576869bb6cc567745cc7a61f4c80bbf4428362e3))
+* Publish events asynchronously without awaiting for subscribers to complete ([025edb8](https://github.com/snatalenko/node-cqrs/commit/025edb8833d65ea07760ac7b8a1a416df5972955))
+* Make saga `startsWith` optional to reduce boilerplate ([34cc162](https://github.com/snatalenko/node-cqrs/commit/34cc162e02e2241956abfc18cb3ce5947e25c2e1))
+* Exclude `getHandledMessageTypes` from export ([afa1cf6](https://github.com/snatalenko/node-cqrs/commit/afa1cf6231ce00e1f992758b201cdd2d6928e797))
+* Use di0 resolvers to avoid explicit type alias declarations ([efcbc77](https://github.com/snatalenko/node-cqrs/commit/efcbc774a45c127821c0c3b94a646402e9526610))
+* Add an option for ES concurrency errors ignoring ([5189ba0](https://github.com/snatalenko/node-cqrs/commit/5189ba05c6fb0c5f8635251062acf76d032da8b0))
+* Allow extending WorkerProxyProjection via workerProxyFactory custom proxy type ([c9860b6](https://github.com/snatalenko/node-cqrs/commit/c9860b605a52e0cf0be167917b66e5efeb0fe29c))
+* Resolve RabbitMQ appId from injected `rabbitMqAppId` provider ([56c2fe1](https://github.com/snatalenko/node-cqrs/commit/56c2fe1b4c5d1e9d85bf72ae6364a5012daec48d))
+* Return established subscription details from `subscribe` method of RabbitMqGateway ([7768256](https://github.com/snatalenko/node-cqrs/commit/7768256639c58194d0792813afdb5ec9a0c2ee9c))
+* Add option for queue expiration ([7073832](https://github.com/snatalenko/node-cqrs/commit/7073832aa5287f5786d6f8f06d4ad67698ac3f19))
+* Add option to disable handler timeout on rabbitmq subscription ([dd76d5e](https://github.com/snatalenko/node-cqrs/commit/dd76d5e9c728739620ba7d4399108db97293772f))
+* Pass event meta through projection chain, allow skipping last event update for internal-origin events ([dd36395](https://github.com/snatalenko/node-cqrs/commit/dd36395a2ad4be712df0a81e60514701ec7e03b8))
+
+### Fixes
+
+* Asserting db connection in prolongLock and unlock methods ([b272473](https://github.com/snatalenko/node-cqrs/commit/b2724739b3ff483b13c0cfeea30c73c7d8ab8b94))
+* Proper milliseconds calculation for Event Locker ([ca4016a](https://github.com/snatalenko/node-cqrs/commit/ca4016a486a7b2a010f86174140bd21e0a1c0d08))
+* Concurrent operations handling in SqliteObjectStorage updateEnforcingNew ([bab7807](https://github.com/snatalenko/node-cqrs/commit/bab78078de52bd88bb86c293adb87eeb974241d5))
+* Failing synchronous event handler may prevent execution of other handlers ([fb026e5](https://github.com/snatalenko/node-cqrs/commit/fb026e5263f13c05e8e6999ff0162700551f587c))
+* All errors being ignored with concurrency resolution set to 'ignore' ([0cb10bc](https://github.com/snatalenko/node-cqrs/commit/0cb10bcaef5ec76050b14caf6d5ad710a005b6d0))
+* Avoid finalization of already finalized MQ messages ([a9a1ea6](https://github.com/snatalenko/node-cqrs/commit/a9a1ea63fc85ba8cd6b09e2c2330636e22639b2c))
+
+### Documentation
+
+* Rename GH workflow and corresponding badge ([8dd82df](https://github.com/snatalenko/node-cqrs/commit/8dd82df4d8b2ffa561d0a47aba56b5eac638e1fc))
+* Add CONTRIBUTING.md symlinks for coding agents ([878f25f](https://github.com/snatalenko/node-cqrs/commit/878f25fd99ff4884045ea4d8b2cb739f3e2bf5ff))
+* Update package description and keywords ([15ef847](https://github.com/snatalenko/node-cqrs/commit/15ef847b4b7dc7007f38423580704604901fc588))
+* Add AbstractWorkerProjection description to readme.md ([dd3952c](https://github.com/snatalenko/node-cqrs/commit/dd3952cc79d8a5762cd5b5bc320429ac9d0e7403))
+
+### Tests
+
+* Improve test coverage ([b13e51d](https://github.com/snatalenko/node-cqrs/commit/b13e51db11941fd6295e7e2296a50622db9da7ae))
+* Allow running individual integration tests with `npm t` ([cfef9a8](https://github.com/snatalenko/node-cqrs/commit/cfef9a87b6e0fce159205a1d55f38e51c6f9e8de))
+* Fix broken AbstractWorkerProjection example ([5320b97](https://github.com/snatalenko/node-cqrs/commit/5320b97644637981bacccf3c24c019ddeaabae35))
+* Migrate chai+sinon tests to pure jest and remove legacy deps ([86840dd](https://github.com/snatalenko/node-cqrs/commit/86840dd7313e6af217fb74b7c32227d09860433b))
+
+### Build System
+
+* Update changelog titles and commit message prefixes ([8c6ead0](https://github.com/snatalenko/node-cqrs/commit/8c6ead0a9b4f3feba7bbfba539082eeb0b09b9f9))
+* Add ESM, CJS, and Browser builds ([e83018f](https://github.com/snatalenko/node-cqrs/commit/e83018f3a9eb247db31ca447c2157bcf2ff71497))
+* Add pull_request trigger to Coveralls workflow ([8c7b95a](https://github.com/snatalenko/node-cqrs/commit/8c7b95a7fbdf68858841de5d89721d13f0d84c9b))
+* Add eslint to github actions; cleanup eslint rules ([405efb0](https://github.com/snatalenko/node-cqrs/commit/405efb06bdceeed723d8f30f3fd98e398cf7a6ec))
+* Update the CI workflow to request an OIDC ID token ([f4f86c7](https://github.com/snatalenko/node-cqrs/commit/f4f86c7fa30276d1dcf39e1e59b0d9b50678db1f))
+* Remove comments from compiled dists ([d7124bd](https://github.com/snatalenko/node-cqrs/commit/d7124bdb47d8cef12280f404146b4f4d8e0ae1e7))
+* Refactor NPM publish step to handle pre-release and release tagging dynamically ([3f35a79](https://github.com/snatalenko/node-cqrs/commit/3f35a797785ddbb557c4d4030d7f409e7d9e1a5d))
+* Fix browser build with rollup ([cc70f71](https://github.com/snatalenko/node-cqrs/commit/cc70f71a93d40d00384b79f4ce0da6d1478866ee))
+* Default npm publish tag to "alpha" for numeric pre-ids; rework tag cleanup hierarchy ([6d89e7b](https://github.com/snatalenko/node-cqrs/commit/6d89e7b303213d30adf030015dca839490c69d75))
+
+### Internal Fixes
+
+* Use `structuredClone` for snapshot creation ([1d0e827](https://github.com/snatalenko/node-cqrs/commit/1d0e827da71c760739588a37ae6afe63a4fa8d34))
+* Simplify aggregate interface ([3e141fd](https://github.com/snatalenko/node-cqrs/commit/3e141fd217c4a094a57fefe8788816d474020ffe))
+* Use "quorum" type for durable queues ([f617149](https://github.com/snatalenko/node-cqrs/commit/f6171498db544d820e876d550421eef75c66088f))
+* Vulnerability in js-yaml dev dependency ([0e9b25e](https://github.com/snatalenko/node-cqrs/commit/0e9b25edd0a81581fb084256638c9ab56afb4115))
+* Ensure proper subscription management in TerminationHandler ([506acc2](https://github.com/snatalenko/node-cqrs/commit/506acc2dde02dd4d83cb8e8d6079dc63fa992651))
+* Refactor subscription handling, improve logging on subscription removing ([72c5370](https://github.com/snatalenko/node-cqrs/commit/72c537092c435fe68e343c33ad46d99a1f474b06))
+* Close rabbitmq connection on SIGINT/SIGTERM ([21686be](https://github.com/snatalenko/node-cqrs/commit/21686bebb6a0ca5901263f3d382ffe369d62ef85))
+* MQ consumption starts before handler is properly recorded ([35a974b](https://github.com/snatalenko/node-cqrs/commit/35a974b15ab650728768d1efd655b45a6df052fb))
+* Enhance logging in RabbitMqGateway and AbstractProjection for better traceability ([57d3f30](https://github.com/snatalenko/node-cqrs/commit/57d3f3099cc52c19963279a2b4a66c79e5fbd3ee))
+* RabbitMQ connection not auto-closing on SIGTERM ([63b4f48](https://github.com/snatalenko/node-cqrs/commit/63b4f48f1abc6936472db66e821de2543dbc874b))
+* Update Lock interface to support resource management with `using` keyword ([196332e](https://github.com/snatalenko/node-cqrs/commit/196332e1f382880161e0f7192966e2fb4f222be7))
+* Expose connection state events on RabbitMqGateway ([42fe349](https://github.com/snatalenko/node-cqrs/commit/42fe3497ce886bc4e20efa6008b97104380a8ba5))
+* Move workers tests to "integration/", letting unit tests to run without build ([9038356](https://github.com/snatalenko/node-cqrs/commit/9038356202ad51e1df35cc726f55c93eb9885665))
+* Update di0 with fixed resolvers ([c4dcb4f](https://github.com/snatalenko/node-cqrs/commit/c4dcb4f7f9d524d6d506dcc24d8ace3399f609b2))
+* Split AbstractWorkerProjection into worker-side and main-thread proxy ([751bfcf](https://github.com/snatalenko/node-cqrs/commit/751bfcf9f63547bafcec51af4e949d77ca1d0077))
+* Rename InMemoryLock event to match IViewLocker interface ([1fe2eb1](https://github.com/snatalenko/node-cqrs/commit/1fe2eb149f8801e1b7e935a90cca05691d5d2017))
+* Separate projection restoring from subscription; start explicitly in DI container ([3ddc649](https://github.com/snatalenko/node-cqrs/commit/3ddc649feaa65e267d7eb5646289e88f8a4a332b))
+* Allow EventStore to resolve reader from eventStorage alias ([91cd778](https://github.com/snatalenko/node-cqrs/commit/91cd778171ed1ace11802a4ef1fb05384de11433))
+* Update dependencies ([8c7478e](https://github.com/snatalenko/node-cqrs/commit/8c7478e6f569426c8ad94fed9bc84a159f31bf1c))
+* Consolidate CommandBus into InMemoryMessageBus ([62b1b0a](https://github.com/snatalenko/node-cqrs/commit/62b1b0ad23e71ea78bafef780cd06d9366d8c803))
+* Upgrade di0 to latest stable version with resolvers ([5f2c9ad](https://github.com/snatalenko/node-cqrs/commit/5f2c9adfd101bb53e7250db95c89f1cbd1730362))
+* Enable "x-single-active-consumer" on event queues ([6cf8e74](https://github.com/snatalenko/node-cqrs/commit/6cf8e74485201b157bb4265feeb4b5d3088cf531))
+
+
+# [0.17.0](https://github.com/snatalenko/node-cqrs/compare/v0.16.4...v0.17.0) (2025-08-12)
+
+
+### Changes
+
+* Add `InMemoryView.prototype.getSync` method ([5d4adb9](https://github.com/snatalenko/node-cqrs/commit/5d4adb9109c4c85edae2b0f3dfd995e8c51aef06))
+
+### Fixes
+
+* Vulnerability in minimist dependency ([07b8c68](https://github.com/snatalenko/node-cqrs/commit/07b8c682fae4278965aa13a06caa994c037934e9))
+
+### Build System
+
+* Add NPM publishing script ([3372990](https://github.com/snatalenko/node-cqrs/commit/3372990ba2549695398e0949e35009396e660005))
+* Suppress audit and test for tags ([574a00c](https://github.com/snatalenko/node-cqrs/commit/574a00cc53af009994ca4dd3278cb764743b4ad6))
+
+### Internal Fixes
+
+* Migrate to TS and Jest ([6737d55](https://github.com/snatalenko/node-cqrs/commit/6737d5566a9dc6314df0b20a65d32414fc503e54))
+* EventStore not subscribing to events emitted by `storage` ([84eaea1](https://github.com/snatalenko/node-cqrs/commit/84eaea17650589717af1720921716246762fec86))
+
+
+## [0.16.4](https://github.com/snatalenko/node-cqrs/compare/v0.16.3...v0.16.4) (2022-08-28)
+
+
+### Internal Fixes
+
+* Use di package from npm ([0e8db91](https://github.com/snatalenko/node-cqrs/commit/0e8db91636541e95f804e2c266e2d8bbf0f49a8b))
+
+
+## [0.16.3](https://github.com/snatalenko/node-cqrs/compare/v0.16.2...v0.16.3) (2022-01-28)
+
+
+### Changes
+
+* Update dev dependencies ([e76db7b](https://github.com/snatalenko/node-cqrs/commit/e76db7be66b53afeb619bda459686e490530556f))
+* Remove InMemoryView data size calculation ([fb4260b](https://github.com/snatalenko/node-cqrs/commit/fb4260b94170e371c02be5b6867ba5b1cf7e428f))
+
+
+## [0.16.2](https://github.com/snatalenko/node-cqrs/compare/v0.16.1...v0.16.2) (2021-07-06)
+
+
+### Fixes
+
+* Vulnerabilities in dependencies ([1bdd491](https://github.com/snatalenko/node-cqrs/commit/1bdd4916e3080bd96b15d87c947f6b85e44d6d40))
+
+
+## [0.16.1](https://github.com/snatalenko/node-cqrs/compare/v0.16.0...v0.16.1) (2021-05-28)
+
+
+### Changes
+
+* Postpone view.get responses to next loop iteration ([950c2e4](https://github.com/snatalenko/node-cqrs/commit/950c2e42f62d7388b0cc668e81fb4f6718656fca))
+
+### Fixes
+
+* Mark aggregateId optional on command send ([f496ecf](https://github.com/snatalenko/node-cqrs/commit/f496ecfbd5413e8e2a4c69af7848ecc3f1a5365a))
+
+
+# [0.16.0](https://github.com/snatalenko/node-cqrs/compare/v0.15.1...v0.16.0) (2020-03-18)
+
+
+### Features
+
+* Accept logger as an optional dependency ([65fe5ad](https://github.com/snatalenko/node-cqrs/commit/65fe5ad8a9de48d548715a2bd651f6d9c4cb0af1))
+* Detect circular dependencies in DI container ([1490b51](https://github.com/snatalenko/node-cqrs/commit/1490b519c7581b1de6cd084d91f61875751d773b))
+
+### Changes
+
+* Move DI container to a separate package ([350f3f4](https://github.com/snatalenko/node-cqrs/commit/350f3f405a98fea2c7a85ea92f2b0f1aa945c75c))
+* Do not bind masterHandler to observer automatically ([d2ec79d](https://github.com/snatalenko/node-cqrs/commit/d2ec79dced5460f619cf9bed5f34df1bbb8e0132))
+* Remove deprecated InMemoryView..markAsReady method ([23015ec](https://github.com/snatalenko/node-cqrs/commit/23015ec3f5bc69f843cf6815caa1f4cda9fea27c))
+* Remove IProjectionView interface ([eb8e723](https://github.com/snatalenko/node-cqrs/commit/eb8e723385af84d82c8698adafd9c6c2c534c1be))
+* Remove dependency to nodejs EventEmitter ([3fd7cd8](https://github.com/snatalenko/node-cqrs/commit/3fd7cd84bb3c20ec4189bd0083ef83bc07dc62d5))
+* Wrap types in NodeCqrs namespace ([74e9b67](https://github.com/snatalenko/node-cqrs/commit/74e9b67833592c030d67fe605f160f99664d9b6c))
+
+### Fixes
+
+* Debug output not using toString in Node 12 ([ca0d32f](https://github.com/snatalenko/node-cqrs/commit/ca0d32f78a676faf45a342f4198ef4a93a3d0702))
+* Debug output on one time subscriptions ([2fd7601](https://github.com/snatalenko/node-cqrs/commit/2fd7601b6b8e8059f0b777af6c1294cc78cb787b))
+* Correctly set type of the extended container builder created from container ([1f2f632](https://github.com/snatalenko/node-cqrs/commit/1f2f6325ceab65c4c81494d145261668125d03b1))
+* Moderate security issue in "minimist" dev dependency ([579d523](https://github.com/snatalenko/node-cqrs/commit/579d523745a6d33902a5245bc7e9f3fe843abc2b))
+
+### Documentation
+
+* Add saga documentation ([e27d1e3](https://github.com/snatalenko/node-cqrs/commit/e27d1e34a0792bec7098535ebec20c97c0f01ed4))
+
+### Tests
+
+* Fix tests in Node 12 ([beeb471](https://github.com/snatalenko/node-cqrs/commit/beeb471faee9e1259f11b4c1c65877cd27309637))
+* Run example domain tests with unit tests ([5ffdb43](https://github.com/snatalenko/node-cqrs/commit/5ffdb43c0398fc6650a7a1d62a5f07870ee20bfd))
+* Run eslint for entire project folder ([d9055a1](https://github.com/snatalenko/node-cqrs/commit/d9055a158faa67dc9ece4f77b01517a5480b0a18))
+
+### Build System
+
+* Prevent git push on version ([3ea9e38](https://github.com/snatalenko/node-cqrs/commit/3ea9e38babf440ab384235e69d248fd92a2dfdff))
+* Add conventional-changelog script ([da26a1c](https://github.com/snatalenko/node-cqrs/commit/da26a1cf6db0a609fcb3f1ba3a29ce6db6d0ab95))
+* Run tests in NodeJS 12 env ([1d4239c](https://github.com/snatalenko/node-cqrs/commit/1d4239cf0f48e64105bfd6b28ab9a22f3fd23e7e))
+* Replace changelog eslint preset with custom one ([8507262](https://github.com/snatalenko/node-cqrs/commit/8507262eeb7c367bbb8bd52b74e04c678bfcf956))
+* Exclude unnecessary files from package ([47b6797](https://github.com/snatalenko/node-cqrs/commit/47b679750780c0d7840d4d45a1296dc9bef7d674))
+* Do not install global dependencies ([158783c](https://github.com/snatalenko/node-cqrs/commit/158783c299720e709b8a34f3ef74fba1390d03ad))
+
+
+## [0.15.1](https://github.com/snatalenko/node-cqrs/compare/v0.15.0...v0.15.1) (2019-08-26)
+
+
+### Changes
+
+* Upgrade dev dependencies to fix audit script ([ef01cc3](https://github.com/snatalenko/node-cqrs/commit/ef01cc33b63a95a8783a83b34c4fcb3f4830fe52))
+
+
+# [0.15.0](https://github.com/snatalenko/node-cqrs/compare/v0.14.2...v0.15.0) (2019-08-25)
+
+
+
+## [0.14.2](https://github.com/snatalenko/node-cqrs/compare/v0.14.1...v0.14.2) (2018-07-29)
+
+
+
+## [0.14.1](https://github.com/snatalenko/node-cqrs/compare/v0.14.0...v0.14.1) (2018-07-14)
+
+
+
+# [0.14.0](https://github.com/snatalenko/node-cqrs/compare/v0.13.0...v0.14.0) (2018-05-17)
+
+
+
+# [0.13.0](https://github.com/snatalenko/node-cqrs/compare/v0.12.6...v0.13.0) (2017-10-04)
+
+
+
+## [0.12.6](https://github.com/snatalenko/node-cqrs/compare/v0.12.5...v0.12.6) (2017-08-23)
+
+
+
+## [0.12.5](https://github.com/snatalenko/node-cqrs/compare/v0.12.4...v0.12.5) (2017-06-23)
+
+
+
+## [0.12.4](https://github.com/snatalenko/node-cqrs/compare/v0.12.3...v0.12.4) (2017-04-25)
+
+
+
+## [0.12.3](https://github.com/snatalenko/node-cqrs/compare/v0.12.1...v0.12.3) (2017-04-24)
+
+
+
+## [0.12.1](https://github.com/snatalenko/node-cqrs/compare/v0.12.0...v0.12.1) (2017-04-24)
+
+
+
+# [0.12.0](https://github.com/snatalenko/node-cqrs/compare/v0.11.1...v0.12.0) (2017-04-22)
+
+
+
+## [0.11.1](https://github.com/snatalenko/node-cqrs/compare/v0.11.0...v0.11.1) (2017-03-01)
+
+
+
+# [0.11.0](https://github.com/snatalenko/node-cqrs/compare/v0.10.0...v0.11.0) (2017-01-18)
+
+
+
+# [0.10.0](https://github.com/snatalenko/node-cqrs/compare/v0.9.3...v0.10.0) (2017-01-16)
+
+
+
+## [0.9.3](https://github.com/snatalenko/node-cqrs/compare/v0.9.2...v0.9.3) (2017-01-06)
+
+
+
+## [0.9.2](https://github.com/snatalenko/node-cqrs/compare/v0.9.1...v0.9.2) (2016-12-19)
+
+
+
+## [0.9.1](https://github.com/snatalenko/node-cqrs/compare/v0.9.0...v0.9.1) (2016-12-17)
+
+
+
+# [0.9.0](https://github.com/snatalenko/node-cqrs/compare/v0.8.0...v0.9.0) (2016-12-17)
+
+
+
+# [0.8.0](https://github.com/snatalenko/node-cqrs/compare/v0.7.8...v0.8.0) (2016-12-07)
+
+
+
+## [0.7.8](https://github.com/snatalenko/node-cqrs/compare/v0.7.7...v0.7.8) (2016-12-05)
+
+
+
+## [0.7.7](https://github.com/snatalenko/node-cqrs/compare/v0.7.6...v0.7.7) (2016-12-04)
+
+
+
+## [0.7.6](https://github.com/snatalenko/node-cqrs/compare/v0.7.5...v0.7.6) (2016-12-01)
+
+
+
+## [0.7.5](https://github.com/snatalenko/node-cqrs/compare/v0.7.4...v0.7.5) (2016-12-01)
+
+
+
+## [0.7.4](https://github.com/snatalenko/node-cqrs/compare/v0.7.3...v0.7.4) (2016-11-30)
+
+
+
+## [0.7.3](https://github.com/snatalenko/node-cqrs/compare/v0.7.2...v0.7.3) (2016-11-29)
+
+
+
+## [0.7.2](https://github.com/snatalenko/node-cqrs/compare/v0.7.1...v0.7.2) (2016-11-25)
+
+
+
+## [0.7.1](https://github.com/snatalenko/node-cqrs/compare/v0.7.0...v0.7.1) (2016-11-20)
+
+
+
+# [0.7.0](https://github.com/snatalenko/node-cqrs/compare/v0.6.10...v0.7.0) (2016-11-18)
+
+
+
+## [0.6.10](https://github.com/snatalenko/node-cqrs/compare/v0.6.9...v0.6.10) (2016-10-24)
+
+
+
+## [0.6.9](https://github.com/snatalenko/node-cqrs/compare/v0.6.8...v0.6.9) (2016-10-24)
+
+
+
+## [0.6.8](https://github.com/snatalenko/node-cqrs/compare/v0.6.7...v0.6.8) (2016-10-23)
+
+
+
+## [0.6.7](https://github.com/snatalenko/node-cqrs/compare/v0.6.6...v0.6.7) (2016-10-23)
+
+
+
+## [0.6.6](https://github.com/snatalenko/node-cqrs/compare/v0.6.5...v0.6.6) (2016-08-23)
+
+
+
+## [0.6.5](https://github.com/snatalenko/node-cqrs/compare/v0.6.4...v0.6.5) (2016-08-23)
+
+
+
+## [0.6.4](https://github.com/snatalenko/node-cqrs/compare/v0.6.3...v0.6.4) (2016-07-24)
+
+
+
+## [0.6.3](https://github.com/snatalenko/node-cqrs/compare/v0.6.2...v0.6.3) (2016-07-06)
+
+
+
+## [0.6.2](https://github.com/snatalenko/node-cqrs/compare/v0.6.1...v0.6.2) (2016-07-02)
+
+
+
+## [0.6.1](https://github.com/snatalenko/node-cqrs/compare/v0.6.0...v0.6.1) (2016-05-31)
+
+
+
+# [0.6.0](https://github.com/snatalenko/node-cqrs/compare/v0.5.0...v0.6.0) (2016-03-06)
+
+
+
+# [0.5.0](https://github.com/snatalenko/node-cqrs/compare/v0.4.0...v0.5.0) (2016-03-03)
+
+
+
+# [0.4.0](https://github.com/snatalenko/node-cqrs/compare/v0.3.2...v0.4.0) (2016-03-03)
+
+
+
+## [0.3.2](https://github.com/snatalenko/node-cqrs/compare/v0.3.1...v0.3.2) (2016-02-29)
+
+
+
+## [0.3.1](https://github.com/snatalenko/node-cqrs/compare/v0.3.0...v0.3.1) (2016-02-29)
+
+
+
+# [0.3.0](https://github.com/snatalenko/node-cqrs/compare/v0.2.2...v0.3.0) (2016-02-29)
+
+
+
+## [0.2.2](https://github.com/snatalenko/node-cqrs/compare/v0.2.1...v0.2.2) (2015-12-23)
+
+
+
+## [0.2.1](https://github.com/snatalenko/node-cqrs/compare/v0.2.0...v0.2.1) (2015-12-22)
+
+
+
+# 0.2.0 (2015-12-22)
+
+
+
