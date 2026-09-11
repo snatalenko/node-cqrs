@@ -288,12 +288,10 @@ class WelcomeEmailSaga extends AbstractSaga {
 	}
 }
 
-builder.register(EventIdAugmentor).as('eventIdAugmenter');
 builder.registerSaga(WelcomeEmailSaga);
 ```
 
-Saga starter events require ids. Register `EventIdAugmentor` when the selected event storage does not assign an
-id before saga delivery.
+Starter events use `event.id` as the saga origin; the default dispatch pipeline assigns missing IDs automatically.
 
 By default, a saga starts when a handled event has no origin for that saga type. Use `static startsWith` for
 explicit starter event types, `static handles` for additional events, and `static sagaDescriptor` for a stable
