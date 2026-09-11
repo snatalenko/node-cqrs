@@ -7,7 +7,7 @@
  * Run with Node.js 22+:
  *   node examples/mongodb-views/index.ts
  */
-import { MongoClient } from 'mongodb';
+import { type Db, MongoClient, MongoServerSelectionError } from 'mongodb';
 import { type IContainer, ContainerBuilder, InMemoryEventStorage } from '../../src/index.ts'; // 'node-cqrs';
 import { AbstractMongoObjectProjection, type MongoObjectView } from '../../src/mongodb/index.ts'; // 'node-cqrs/mongodb';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
@@ -43,17 +43,28 @@ class UsersProjection extends AbstractMongoObjectProjection<UserRecord> {
 
 interface MyContainer extends IContainer {
 	usersView: MongoObjectView<UserRecord>;
+	viewModelMongoDbFactory: () => Promise<Db>;
 }
 
 const builder = new ContainerBuilder<MyContainer>();
 
 builder.register(() => {
-	let client: MongoClient;
+	let connection: Promise<MongoClient> | undefined;
 	return async () => {
-		if (!client) {
-			client = new MongoClient('mongodb://localhost:27017');
-			await client.connect();
-		}
+		connection ??= (async () => {
+			// Credentials can be loaded from async storage here.
+			const client = new MongoClient('mongodb://localhost:27017', {
+				serverSelectionTimeoutMS: 2000
+			});
+			try {
+				return await client.connect();
+			}
+			catch (err) {
+				await client.close();
+				throw err;
+			}
+		})();
+		const client = await connection;
 		return client.db('node_cqrs_views_example');
 	};
 }).as('viewModelMongoDbFactory');
@@ -66,25 +77,37 @@ const { commandBus, usersView, eventStore, viewModelMongoDbFactory } = container
 
 // --- Run ---
 
-const [userCreated] = await commandBus.send('createUser', undefined, {
-	payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload
-});
+try {
+	await Promise.all(container.restorePromises ?? []);
 
-const userId = userCreated.aggregateId;
+	const [userCreated] = await commandBus.send('createUser', undefined, {
+		payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload
+	});
 
-await eventStore.drain();
-console.log('Created user:', await usersView.get(userId)); // { username: 'alice' }
+	const userId = userCreated.aggregateId;
+
+	await eventStore.drain();
+	console.log('Created user:', await usersView.get(userId)); // { username: 'alice' }
 
 
-await commandBus.send('renameUser', userId, {
-	payload: { username: 'alice-smith' } satisfies RenameUserCommandPayload
-});
+	await commandBus.send('renameUser', userId, {
+		payload: { username: 'alice-smith' } satisfies RenameUserCommandPayload
+	});
 
-await eventStore.drain();
-console.log('Renamed user:', await usersView.get(userId)); // { username: 'alice-smith' }
+	await eventStore.drain();
+	console.log('Renamed user:', await usersView.get(userId)); // { username: 'alice-smith' }
 
-// --- Cleanup ---
+	// --- Cleanup ---
 
-const db = await viewModelMongoDbFactory!();
-await db.dropDatabase();
-await db.client.close();
+	const db = await viewModelMongoDbFactory!();
+	await db.dropDatabase();
+}
+catch (err) {
+	if (!(err instanceof MongoServerSelectionError))
+		throw err;
+
+	console.warn('Skipping MongoDB views example: MongoDB is unavailable at localhost:27017.');
+}
+finally {
+	await Promise.resolve(viewModelMongoDbFactory!()).then(db => db.client.close(), () => {});
+}

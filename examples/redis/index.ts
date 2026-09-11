@@ -24,14 +24,14 @@ class UsersProjection extends AbstractRedisProjection<UserRecord> {
 		return '1';
 	}
 
-	async userCreated(event: UserCreatedEvent) {
-		await this.view.updateEnforcingNew(event.aggregateId!, () => ({
+	userCreated(event: UserCreatedEvent) {
+		return this.view.updateEnforcingNew(event.aggregateId!, () => ({
 			username: event.payload!.username
 		}));
 	}
 
-	async userRenamed(event: UserRenamedEvent) {
-		await this.view.updateEnforcingNew(event.aggregateId!, r => ({
+	userRenamed(event: UserRenamedEvent) {
+		return this.view.updateEnforcingNew(event.aggregateId!, r => ({
 			username: event.payload!.username ?? r!.username
 		}));
 	}
@@ -40,28 +40,64 @@ class UsersProjection extends AbstractRedisProjection<UserRecord> {
 // --- Wire up ---
 
 interface MyContainer extends IContainer {
-	viewModelRedis: Redis;
+	viewModelRedisFactory: () => Promise<Redis>;
 	usersView: RedisView<UserRecord>;
 }
 
+class RedisConnectionError extends Error {}
+
 const builder = new ContainerBuilder<MyContainer>();
-const redis = new Redis({ host: 'localhost', port: 6379 });
-builder.registerInstance(redis, 'viewModelRedis');
+builder.register(() => {
+	let connection: Promise<Redis> | undefined;
+	return async () => {
+		connection ??= (async () => {
+			// Credentials can be loaded from async storage here.
+			const client = new Redis('redis://localhost:6379', {
+				lazyConnect: true,
+				connectTimeout: 2000,
+				retryStrategy: () => null
+			});
+
+			// Report connection failures through the factory promise.
+			client.on('error', () => {});
+			try {
+				await client.connect();
+				return client;
+			}
+			catch (err) {
+				client.disconnect();
+				throw new RedisConnectionError('Redis is unavailable at localhost:6379.', { cause: err });
+			}
+		})();
+		return connection;
+	};
+}).as('viewModelRedisFactory');
 builder.register(InMemoryEventStorage);
 builder.registerAggregate(UserAggregate);
 builder.registerProjection(UsersProjection, 'usersView');
 
 const container = builder.container();
-const { commandBus, usersView, eventStore } = container;
+const { commandBus, usersView, eventStore, viewModelRedisFactory } = container;
 
 // --- Run ---
 
-const [userCreated] = await commandBus.send('createUser', undefined, {
-	payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload
-});
+try {
+	await Promise.all(container.restorePromises ?? []);
 
-await eventStore.drain();
-const user = await usersView.get(userCreated.aggregateId!);
-console.log('User stored in Redis:', user); // { username: 'alice' }
+	const [userCreated] = await commandBus.send('createUser', undefined, {
+		payload: { username: 'alice', password: 'magic' } satisfies CreateUserCommandPayload
+	});
 
-await redis.quit();
+	await eventStore.drain();
+	const user = await usersView.get(userCreated.aggregateId as string);
+	console.log('User stored in Redis:', user); // { username: 'alice' }
+}
+catch (err) {
+	if (!(err instanceof RedisConnectionError))
+		throw err;
+
+	console.warn('Skipping Redis example:', err.message);
+}
+finally {
+	await viewModelRedisFactory().then(client => client.disconnect(), () => {});
+}
