@@ -9,6 +9,9 @@ import {
 	type SqliteRunResult
 } from '../../../src/sqlite-workers/index.ts';
 
+// Workers run outside Jest's TS transform; compiled JS is needed for Node <22.6 without native TS support.
+const sqliteWorkerRunnerLocation = path.resolve('dist/cjs/sqlite-workers/SqliteWorkerRunner.js');
+
 class TestSqliteAccessor extends AbstractSqliteAccessor {
 	#workerProxy: SqliteWorkerProxy | undefined;
 	#insertRecordQuery!: Statement<[string], void>;
@@ -27,6 +30,7 @@ class TestSqliteAccessor extends AbstractSqliteAccessor {
 		`);
 
 		this.#workerProxy = new SqliteWorkerProxy({
+			sqliteWorkerRunnerLocation,
 			dbConfig: {
 				dbLocation: db.name,
 				pragmas: ['query_only = ON']
@@ -236,6 +240,7 @@ describe('SqliteWorkerProxy', () => {
 
 	it('validates worker configuration before creating the worker', async () => {
 		const proxy = new SqliteWorkerProxy({
+			sqliteWorkerRunnerLocation,
 			dbConfig: {
 				dbLocation: ''
 			}
@@ -264,6 +269,7 @@ describe('SqliteWorkerProxy', () => {
 		`);
 
 		const proxy = new SqliteWorkerProxy({
+			sqliteWorkerRunnerLocation,
 			dbConfig: {
 				dbLocation: dbPath,
 				pragmas: []
@@ -314,6 +320,7 @@ describe('SqliteWorkerProxy', () => {
 		`);
 
 		const proxy = new SqliteWorkerProxy({
+			sqliteWorkerRunnerLocation,
 			dbConfig: {
 				dbFactoryLocation: factoryPath,
 				dbFactoryParams: {
