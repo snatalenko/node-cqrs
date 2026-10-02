@@ -1,0 +1,22 @@
+name: Audit
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+  pull_request:
+  schedule:
+    - cron: '0 8 * * 1' # Mondays at 08:00 UTC
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7.0.1
+    - name: Use Node.js 24.x
+      uses: actions/setup-node@v7.0.0
+      with:
+        node-version: 24.x
+    - run: npm audit --parseable --omit=dev --audit-level=moderate

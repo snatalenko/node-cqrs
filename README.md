@@ -2,8 +2,9 @@ node-cqrs
 =========
 
 [![Version](https://img.shields.io/npm/v/node-cqrs.svg)](https://www.npmjs.com/package/node-cqrs)
-[![Tests/Audit](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml/badge.svg)](https://github.com/snatalenko/node-cqrs/actions/workflows/ci.yml)
-[![Coverage](https://coveralls.io/repos/github/snatalenko/node-cqrs/badge.svg)](https://coveralls.io/github/snatalenko/node-cqrs)
+[![Tests](https://github.com/snatalenko/node-cqrs/actions/workflows/tests.yml/badge.svg?branch=master&event=push)](https://github.com/snatalenko/node-cqrs/actions/workflows/tests.yml)
+[![Audit](https://github.com/snatalenko/node-cqrs/actions/workflows/audit.yml/badge.svg?branch=master)](https://github.com/snatalenko/node-cqrs/actions/workflows/audit.yml)
+[![Coverage](https://coveralls.io/repos/github/snatalenko/node-cqrs/badge.svg?branch=master)](https://coveralls.io/github/snatalenko/node-cqrs?branch=master)
 [![Downloads](https://img.shields.io/npm/dm/node-cqrs.svg)](https://www.npmjs.com/package/node-cqrs)
 [![License](https://img.shields.io/github/license/snatalenko/node-cqrs.svg)](https://github.com/snatalenko/node-cqrs)
 
