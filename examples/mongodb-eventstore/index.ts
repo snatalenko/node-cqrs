@@ -5,7 +5,7 @@
  *   docker run -d -p 27017:27017 mongo:7
  *
  * Run with Node.js 22+:
- *   node examples/mongodb-eventstore/index.ts
+ *   npm run example:mongodb-eventstore
  */
 import { MongoClient, MongoServerSelectionError } from 'mongodb';
 import { type IContainer, ContainerBuilder } from 'node-cqrs';

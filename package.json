@@ -92,6 +92,7 @@
     "example:workers-projection": "npm run build:cjs && node examples/workers-projection/index.cjs",
     "example:sqlite": "node examples/sqlite/index.ts",
     "example:redis": "node examples/redis/index.ts",
+    "preexample:mongodb-eventstore": "npm run build:esm",
     "example:mongodb-eventstore": "node examples/mongodb-eventstore/index.ts",
     "example:mongodb-views": "node examples/mongodb-views/index.ts",
     "example:postgresql": "node examples/postgresql/index.ts",
