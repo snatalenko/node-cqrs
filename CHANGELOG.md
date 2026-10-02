@@ -1,3 +1,9 @@
+## [1.3.0-alpha.7](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.6...v1.3.0-alpha.7) (2026-10-02)
+
+### Build System
+
+* Update build action and node versions; separte CI scripts ([e63e374](https://github.com/snatalenko/node-cqrs/commit/e63e374dc0e24104f8482618a0dbad3efd4f7e45))
+
 ## [1.3.0-alpha.6](https://github.com/snatalenko/node-cqrs/compare/v1.2.2-beta.1...v1.3.0-alpha.6) (2026-10-02)
 
 ### Features
