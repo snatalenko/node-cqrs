@@ -1,10 +1,4 @@
-## [1.3.0-alpha.7](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.6...v1.3.0-alpha.7) (2026-10-02)
-
-### Build System
-
-* Update build action and node versions; separte CI scripts ([e63e374](https://github.com/snatalenko/node-cqrs/commit/e63e374dc0e24104f8482618a0dbad3efd4f7e45))
-
-## [1.3.0-alpha.6](https://github.com/snatalenko/node-cqrs/compare/v1.2.2-beta.1...v1.3.0-alpha.6) (2026-10-02)
+## [1.3.0-alpha.8](https://github.com/snatalenko/node-cqrs/compare/v1.2.2-beta.1...v1.3.0-alpha.8) (2026-10-02)
 
 ### Features
 
@@ -22,6 +16,8 @@
 
 ### Build System
 
+* Update better-sqlite3 dev dependency for Node.js 26 compatibility ([b84a4ba](https://github.com/snatalenko/node-cqrs/commit/b84a4ba79c541bfbe968e24033a0da69eedbd560))
+* Update build action and node versions; separte CI scripts ([e63e374](https://github.com/snatalenko/node-cqrs/commit/e63e374dc0e24104f8482618a0dbad3efd4f7e45))
 * Upgrade conventional-changelog to latest version ([f148536](https://github.com/snatalenko/node-cqrs/commit/f148536cd2e4fa9953354577a5f01bb0e10f6b77))
 
 ### Tests
