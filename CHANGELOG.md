@@ -1,3 +1,11 @@
+## [1.2.2-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.2-beta.0...v1.2.2-beta.1) (2026-10-02)
+
+
+### Tests
+
+* Use compiled SQLite worker in tests for older Node.js versions ([03a30dd](https://github.com/snatalenko/node-cqrs/commit/03a30ddbdc791f73160a8fefddae1c0188127fb9))
+
+
 ## [1.2.2-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.2.1...v1.2.2-beta.0) (2026-09-11)
 
 
