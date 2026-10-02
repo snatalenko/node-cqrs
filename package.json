@@ -98,9 +98,12 @@
     "example:browser": "npm run build:browser && echo \"\nOpen ./examples/browser/index.html in your browser (check DevTools console)\n\"",
     "pretest:examples": "npm run build:cjs",
     "test:examples": "jest --roots='<rootDir>/examples'",
-    "test:coverage": "npm t -- --collect-coverage",
+    "pretest:coverage": "npm run build:cjs",
+    "test:coverage": "jest --collect-coverage --roots='<rootDir>/tests/unit' '<rootDir>/tests/integration/sqlite-workers'",
     "test:rabbitmq": "jest --verbose --roots='<rootDir>/tests/integration/rabbitmq'",
     "test:sqlite": "jest --verbose --roots='<rootDir>/tests/integration/sqlite'",
+    "pretest:sqlite-workers": "npm run build:cjs",
+    "test:sqlite-workers": "jest --verbose --roots='<rootDir>/tests/integration/sqlite-workers'",
     "test:redis": "jest --verbose --roots='<rootDir>/tests/integration/redis'",
     "test:mongodb": "jest --verbose --roots='<rootDir>/tests/integration/mongodb'",
     "test:postgresql": "jest --verbose --roots='<rootDir>/tests/integration/postgresql'",
@@ -169,7 +172,7 @@
     "rollup": "^4.63.6",
     "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.0"
   },
   "peerDependencies": {

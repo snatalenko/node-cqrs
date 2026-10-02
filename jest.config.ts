@@ -25,7 +25,11 @@ export default {
 	],
 	transform: {
 		'^.+\\.tsx?$': ['ts-jest', {
-			tsconfig: { rewriteRelativeImportExtensions: false }
+			tsconfig: {
+				module: 'CommonJS',
+				moduleResolution: 'bundler',
+				rewriteRelativeImportExtensions: false
+			}
 		}]
 	}
 };

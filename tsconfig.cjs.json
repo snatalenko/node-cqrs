@@ -1,7 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "rootDir": "./src",
     "module": "CommonJS",
+    "moduleResolution": "bundler",
     "target": "ES2022",
     "incremental": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo.cjs",

@@ -41,6 +41,11 @@ describe('SqliteWorkerRunner', () => {
 		return dbPath;
 	}
 
+	it('resolves its own file location in CommonJS', () => {
+		expect(SqliteWorkerRunner.location)
+			.toBe(path.resolve(__dirname, '../../../src/sqlite-workers/SqliteWorkerRunner.ts'));
+	});
+
 	it('executes direct and prepared read statements', async () => {
 		const dbPath = createFixtureDb();
 		const runner = await SqliteWorkerRunner.create({

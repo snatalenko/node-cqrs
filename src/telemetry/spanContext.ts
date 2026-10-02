@@ -1,5 +1,5 @@
 import type { Context } from '@opentelemetry/api';
-import type { IMessageMeta } from '../interfaces';
+import type { IMessageMeta } from '../interfaces/index.ts';
 import { createRequire } from 'node:module';
 
 let _api: typeof import('@opentelemetry/api') | undefined;
