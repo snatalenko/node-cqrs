@@ -1,3 +1,10 @@
+## [1.3.0-alpha.9](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.8...v1.3.0-alpha.9) (2026-10-02)
+
+### Build System
+
+* Upgrade TS to v6 ([ea7df5d](https://github.com/snatalenko/node-cqrs/commit/ea7df5d87e894932df016053bae6761c486e64d2))
+* Upgrade dev dependencies ([5d4c697](https://github.com/snatalenko/node-cqrs/commit/5d4c69794dcad41fe1a6aec5a00ac3d288e750ab))
+
 ## [1.3.0-alpha.8](https://github.com/snatalenko/node-cqrs/compare/v1.2.2-beta.1...v1.3.0-alpha.8) (2026-10-02)
 
 ### Features
