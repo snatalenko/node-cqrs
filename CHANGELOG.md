@@ -1,4 +1,4 @@
-## [1.3.0-alpha.5](https://github.com/snatalenko/node-cqrs/compare/v1.2.2-beta.0...v1.3.0-alpha.5) (2026-09-12)
+## [1.3.0-alpha.6](https://github.com/snatalenko/node-cqrs/compare/v1.2.2-beta.1...v1.3.0-alpha.6) (2026-10-02)
 
 ### Features
 
@@ -26,6 +26,12 @@
 
 * Move examples to a separate page ([46ba857](https://github.com/snatalenko/node-cqrs/commit/46ba8572293fde78498a5a3cd37b8eaca7135f18))
 * Improve setup and usage guides for library consumers ([2d05141](https://github.com/snatalenko/node-cqrs/commit/2d0514195eef408f60b3dd1f707b2dfa991519e6))
+
+## [1.2.2-beta.1](https://github.com/snatalenko/node-cqrs/compare/v1.2.2-beta.0...v1.2.2-beta.1) (2026-10-02)
+
+### Tests
+
+* Use compiled SQLite worker in tests for older Node.js versions ([03a30dd](https://github.com/snatalenko/node-cqrs/commit/03a30ddbdc791f73160a8fefddae1c0188127fb9))
 
 ## [1.2.2-beta.0](https://github.com/snatalenko/node-cqrs/compare/v1.2.1...v1.2.2-beta.0) (2026-09-11)
 
