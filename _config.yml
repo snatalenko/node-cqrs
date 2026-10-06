@@ -215,7 +215,7 @@ exclude:
   - "src/**/*.ts"
   - tests
   - eslint.config.mjs
-  - jest.config.ts
+  - jest.config.mjs
   - jsconfig.json
   - package-lock.json
   - package.json

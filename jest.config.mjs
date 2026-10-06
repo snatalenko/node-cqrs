@@ -1,11 +1,10 @@
-/// <reference types="node" />
-
-// Without native TypeScript support (Node.js < 22.18), Jest compiles this file with ts-node,
-// which type-checks it against tsconfig.json, where Node.js types are not included by default
+// Plain JavaScript config: a TypeScript one would require ts-node on Node.js versions
+// without native TypeScript support (< 22.18), which compiles it as an ES module Jest fails to load
 
 const hasExplicitPath = process.argv.length > 2 &&
-	process.argv.slice(2).some((arg: string) => !arg.startsWith('-') && arg.includes('/'));
+	process.argv.slice(2).some(arg => !arg.startsWith('-') && arg.includes('/'));
 
+/** @type {import('jest').Config} */
 export default {
 	testEnvironment: 'node',
 	roots: hasExplicitPath
