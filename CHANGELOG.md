@@ -1,14 +1,12 @@
-## [1.3.0-alpha.11](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.10...v1.3.0-alpha.11) (2026-10-06)
-
-### Build System
-
-* Make publishing dependent on Audit, Lint, and Tests ([3986462](https://github.com/snatalenko/node-cqrs/commit/39864628a4f2f245ef35087a29b69e100efeb7eb))
-
-## [1.3.0-alpha.10](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.9...v1.3.0-alpha.10) (2026-10-06)
+## [1.3.0-alpha.12](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.9...v1.3.0-alpha.12) (2026-10-06)
 
 ### Features
 
 * Await projected events with eventTracker.waitFor(); require Node.js 18+ ([45357be](https://github.com/snatalenko/node-cqrs/commit/45357bea7cb6620be5330ae462fb34ab55292cc6))
+
+### Build System
+
+* Make publishing dependent on Audit, Lint, and Tests ([3986462](https://github.com/snatalenko/node-cqrs/commit/39864628a4f2f245ef35087a29b69e100efeb7eb))
 
 ## [1.3.0-alpha.9](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.8...v1.3.0-alpha.9) (2026-10-02)
 
