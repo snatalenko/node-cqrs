@@ -1,3 +1,9 @@
+## [1.3.0-alpha.10](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.9...v1.3.0-alpha.10) (2026-10-06)
+
+### Features
+
+* Await projected events with eventTracker.waitFor(); require Node.js 18+ ([45357be](https://github.com/snatalenko/node-cqrs/commit/45357bea7cb6620be5330ae462fb34ab55292cc6))
+
 ## [1.3.0-alpha.9](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.8...v1.3.0-alpha.9) (2026-10-02)
 
 ### Build System
