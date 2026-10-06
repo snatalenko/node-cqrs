@@ -368,6 +368,115 @@ describe('RabbitMqGateway', () => {
 		});
 	});
 
+	describe('consume', () => {
+
+		const createMessage = (type: string, appId = 'other-app') => ({
+			content: Buffer.from(JSON.stringify({ type })),
+			fields: { consumerTag: 'ctag-1', routingKey: type },
+			properties: { headers: {}, appId, messageId: `msg-${type}` }
+		});
+
+		const createLogger = () => ({
+			log: jest.fn(),
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn()
+		});
+
+		it('runs handlers of the same message concurrently', async () => {
+			let resolveProjection!: () => void;
+			const projected = new Promise<void>(resolve => resolveProjection = resolve);
+			const calls: string[] = [];
+
+			// the receptor is registered first and awaits the projection, registered after it
+			await gateway.subscribeToQueue('test-exchange', 'test-queue', async () => {
+				calls.push('receptor started');
+				await projected;
+				calls.push('receptor completed');
+			});
+			await gateway.subscribeToQueue('test-exchange', 'test-queue', () => {
+				calls.push('projection completed');
+				resolveProjection();
+			});
+
+			const consumeCallback = channel.consume.mock.calls[0][1];
+			const msg = createMessage('userCreated');
+			await consumeCallback(msg);
+
+			expect(calls).toEqual(['receptor started', 'projection completed', 'receptor completed']);
+			expect(channel.ack).toHaveBeenCalledWith(msg);
+			expect(channel.nack).not.toHaveBeenCalled();
+		});
+
+		it('runs all handlers and rejects the message, when one of them fails', async () => {
+			const logger = createLogger();
+			const error = new Error('handler failed');
+			const succeedingHandler = jest.fn();
+			gateway = new RabbitMqGateway({ rabbitMqConnectionFactory: async () => connection as any, logger });
+
+			await gateway.subscribeToQueue('test-exchange', 'test-queue', () => {
+				throw error;
+			});
+			await gateway.subscribeToQueue('test-exchange', 'test-queue', succeedingHandler);
+
+			const consumeCallback = channel.consume.mock.calls[0][1];
+			const msg = createMessage('userCreated');
+			await consumeCallback(msg);
+
+			expect(succeedingHandler).toHaveBeenCalledTimes(1);
+			expect(channel.ack).not.toHaveBeenCalled();
+			expect(channel.nack).toHaveBeenCalledWith(msg, false, false);
+			expect(logger.error).toHaveBeenCalledWith('Message processing failed', expect.objectContaining({
+				error: expect.objectContaining({ message: 'handler failed' })
+			}));
+		});
+
+		it('rejects the message with an AggregateError, when several handlers fail', async () => {
+			const logger = createLogger();
+			gateway = new RabbitMqGateway({ rabbitMqConnectionFactory: async () => connection as any, logger });
+
+			await gateway.subscribeToQueue('test-exchange', 'test-queue', () => {
+				throw new Error('first failed');
+			});
+			await gateway.subscribeToQueue('test-exchange', 'test-queue', async () => {
+				throw new Error('second failed');
+			});
+
+			const consumeCallback = channel.consume.mock.calls[0][1];
+			const msg = createMessage('userCreated');
+			await consumeCallback(msg);
+
+			expect(channel.nack).toHaveBeenCalledWith(msg, false, false);
+			expect(logger.error).toHaveBeenCalledWith('Message processing failed', expect.objectContaining({
+				error: expect.objectContaining({
+					name: 'AggregateError',
+					message: '2 handlers failed to process "userCreated"; first failed; second failed'
+				})
+			}));
+		});
+
+		it('skips handlers ignoring own messages, while running the others', async () => {
+			gateway = new RabbitMqGateway({
+				rabbitMqConnectionFactory: async () => connection as any,
+				rabbitMqAppId: 'own-app'
+			});
+			const ignoringHandler = jest.fn();
+			const handler = jest.fn();
+
+			await gateway.subscribeToQueue('test-exchange', 'test-queue', ignoringHandler, { ignoreOwn: true });
+			await gateway.subscribeToQueue('test-exchange', 'test-queue', handler, { ignoreOwn: false });
+
+			const consumeCallback = channel.consume.mock.calls[0][1];
+			const msg = createMessage('userCreated', 'own-app');
+			await consumeCallback(msg);
+
+			expect(ignoringHandler).not.toHaveBeenCalled();
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(channel.ack).toHaveBeenCalledWith(msg);
+		});
+	});
+
 	describe('x-consumer-timeout', () => {
 
 		it('sets x-consumer-timeout to handlerProcessTimeout + 1000 on durable queue', async () => {

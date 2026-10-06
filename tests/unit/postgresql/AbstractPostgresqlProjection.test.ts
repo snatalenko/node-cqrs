@@ -76,6 +76,31 @@ describe('AbstractPostgresqlProjection', () => {
 		expect(db.viewLocks.has('TestProjection:1')).toBe(false);
 	});
 
+	it('resolves eventTracker.waitFor only after the runtime transaction is committed', async () => {
+		const db = new MockPostgresqlConnection();
+		const projection = new TestProjection(db);
+		let transactionLogOnResolve: string[] | undefined;
+		const waiting = projection.eventTracker!.waitFor(event.id!, { timeout: 1_000 }).then(() => {
+			transactionLogOnResolve = [...db.transactionLog];
+		});
+
+		await projection.project(event);
+		await waiting;
+
+		expect(transactionLogOnResolve).toEqual(['BEGIN', 'COMMIT']);
+	});
+
+	it('rejects eventTracker.waitFor when the handler fails', async () => {
+		const db = new MockPostgresqlConnection();
+		const projection = new TestProjection(db);
+		projection.shouldFail = true;
+		const waiting = projection.eventTracker!.waitFor(event.id!, { timeout: 1_000 });
+
+		await expect(projection.project(event)).rejects.toThrow('projection failed');
+
+		await expect(waiting).rejects.toThrow('projection failed');
+	});
+
 	it('waits for the view to become ready before opening the transaction', async () => {
 		const db = new MockPostgresqlConnection();
 		const projection = new TestProjection(db);

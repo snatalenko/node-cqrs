@@ -69,9 +69,9 @@ export abstract class AbstractWorkerProjection<TView>
 	}
 
 	/**
-	 * Returns the last projected event if the view implements IEventLocker, otherwise undefined.
+	 * Returns the last projected event if the view implements IEventTracker (or IEventLocker), otherwise undefined.
 	 */
 	public async getLastProjectedEvent(): Promise<IEvent | undefined> {
-		return this._eventLocker?.getLastEvent();
+		return (this.eventTracker ?? this._eventLocker)?.getLastEvent();
 	}
 }

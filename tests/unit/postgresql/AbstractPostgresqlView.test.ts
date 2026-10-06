@@ -118,4 +118,25 @@ describe('AbstractPostgresqlView', () => {
 				.rejects.toThrow(`Event ${testEvent.id} could not be marked as processed`);
 		});
 	});
+
+	describe('waitFor', () => {
+
+		it('resolves once the event is marked as projected', async () => {
+			await view.tryMarkAsProjecting(testEvent);
+			const waiting = view.waitFor(testEvent.id!, { timeout: 1_000 });
+
+			await view.markAsProjected(testEvent);
+
+			await expect(waiting).resolves.toBeUndefined();
+		});
+
+		it('rejects when the event is marked as failed', async () => {
+			const error = new Error('projection failed');
+			const waiting = view.waitFor(testEvent.id!, { timeout: 1_000 });
+
+			view.markAsFailed(testEvent, error);
+
+			await expect(waiting).rejects.toBe(error);
+		});
+	});
 });

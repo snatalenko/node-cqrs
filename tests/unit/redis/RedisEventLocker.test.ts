@@ -1,6 +1,7 @@
 import type { Redis } from 'ioredis';
 import { RedisEventLocker } from '../../../src/redis/index.ts';
 import type { IEvent } from '../../../src/interfaces/index.ts';
+import { TimeoutError } from '../../../src/errors/index.ts';
 import { createMockRedisForLockers } from './mockRedisForLockers.ts';
 import { promisify } from 'util';
 
@@ -174,6 +175,72 @@ describe('RedisEventLocker', () => {
 
 			const key = `myapp:evtlock:myproj:2:${testEvent.id}`;
 			expect(mockRedis.getAlive(key)).toBe('processing');
+		});
+	});
+
+	describe('waitFor', () => {
+
+		it('resolves once the event is marked as projected', async () => {
+			await locker.tryMarkAsProjecting(testEvent);
+			const waiting = locker.waitFor(testEvent.id!, { timeout: 1_000 });
+
+			await locker.markAsProjected(testEvent);
+
+			await expect(waiting).resolves.toBeUndefined();
+		});
+
+		it('resolves immediately for events projected earlier', async () => {
+			await locker.tryMarkAsProjecting(testEvent);
+			await locker.markAsProjected(testEvent);
+
+			await expect(locker.waitFor(testEvent.id!)).resolves.toBeUndefined();
+		});
+
+		it('resolves once another instance marks the event as projected in the shared storage', async () => {
+			const otherLocker = new RedisEventLocker({
+				viewModelRedis: mockRedis as unknown as Redis,
+				projectionName: 'test',
+				schemaVersion: '1.0'
+			});
+			const numericIdEvent: IEvent = { id: 42, type: 'TEST_EVENT', payload: {} };
+			await otherLocker.tryMarkAsProjecting(testEvent);
+			await otherLocker.tryMarkAsProjecting(numericIdEvent);
+
+			const waiting = locker.waitFor([testEvent.id!, numericIdEvent.id!], { timeout: 1_000 });
+
+			await otherLocker.markAsProjected(testEvent);
+			await otherLocker.markAsProjected(numericIdEvent);
+
+			await expect(waiting).resolves.toBeUndefined();
+		});
+
+		it('does not resolve for events still being projected by another instance', async () => {
+			const otherLocker = new RedisEventLocker({
+				viewModelRedis: mockRedis as unknown as Redis,
+				projectionName: 'test',
+				schemaVersion: '1.0',
+				eventLockTtl: 1_000
+			});
+			await otherLocker.tryMarkAsProjecting(testEvent);
+
+			await expect(locker.waitFor(testEvent.id!, { timeout: 100 })).rejects.toThrow(TimeoutError);
+		});
+
+		it('rejects when the event is marked as failed', async () => {
+			const error = new Error('projection failed');
+			const waiting = locker.waitFor(testEvent.id!, { timeout: 1_000 });
+
+			locker.markAsFailed(testEvent, error);
+
+			await expect(waiting).rejects.toBe(error);
+		});
+
+		it('does not resolve when the event could not be marked as projected', async () => {
+			const waiting = locker.waitFor(testEvent.id!, { timeout: 20 });
+
+			await expect(locker.markAsProjected(testEvent)).rejects.toThrow();
+
+			await expect(waiting).rejects.toThrow(TimeoutError);
 		});
 	});
 });

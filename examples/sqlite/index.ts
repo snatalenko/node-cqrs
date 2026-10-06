@@ -1,5 +1,5 @@
 import createDb from 'better-sqlite3';
-import { type IContainer, ContainerBuilder } from '../../src/index.ts';
+import { type IContainer, ContainerBuilder, type IEventTracker } from '../../src/index.ts';
 import { AbstractSqliteObjectProjection, SqliteEventStorage, type SqliteObjectView } from '../../src/sqlite/index.ts';
 import { UserAggregate } from '../user-domain-ts/UserAggregate.ts';
 import type { CreateUserCommandPayload, UserCreatedEvent, UserRecord, UserRenamedEvent } from '../user-domain-ts/messages.ts';
@@ -33,15 +33,20 @@ class UsersProjection extends AbstractSqliteObjectProjection<UserRecord> {
 
 interface MyContainer extends IContainer {
 	users: SqliteObjectView<UserRecord>;
-	viewModelSqliteDb?: import('better-sqlite3').Database;
+	usersEventTracker: IEventTracker;
+
+	viewModelSqliteDbFactory: () => import('better-sqlite3').Database;
 }
 
 const builder = new ContainerBuilder<MyContainer>();
 const db = createDb(':memory:');
 builder.registerAggregate(UserAggregate);
-builder.registerProjection(UsersProjection, 'users');
+builder.registerProjection(UsersProjection)
+	.exposes(p => p.view, 'users')
+	.exposes(p => p.eventTracker, 'usersEventTracker');
+
 builder.register(SqliteEventStorage);
-builder.registerInstance(() => createDb(':memory:'), 'viewModelSqliteDbFactory');
+builder.register(() => () => createDb(':memory:')).as('viewModelSqliteDbFactory');
 
 const { commandBus, users } = builder.container();
 

@@ -1,5 +1,5 @@
 import { AbstractSqliteView } from './AbstractSqliteView.ts';
-import type { IObjectStorage, IEventLocker, Identifier } from '../interfaces/index.ts';
+import type { IObjectStorage, IEventTracker, Identifier } from '../interfaces/index.ts';
 import { SqliteObjectStorage } from './SqliteObjectStorage.ts';
 import type { Database } from 'better-sqlite3';
 import { assertString } from '../utils/assert.ts';
@@ -7,7 +7,7 @@ import { assertString } from '../utils/assert.ts';
 /**
  * SQLite-backed object view with restore locking and last-processed-event tracking
  */
-export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IObjectStorage<TRecord>, IEventLocker {
+export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IObjectStorage<TRecord>, IEventTracker {
 
 	#sqliteObjectStorage: SqliteObjectStorage<TRecord>;
 

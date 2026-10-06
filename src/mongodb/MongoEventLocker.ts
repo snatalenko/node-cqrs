@@ -1,7 +1,8 @@
 import type { Collection, Db } from 'mongodb';
 import type { IContainer } from 'node-cqrs';
-import type { Identifier, IEvent, IEventLocker } from '../interfaces/index.ts';
+import type { EventTrackerWaitOptions, Identifier, IEvent, IEventTracker } from '../interfaces/index.ts';
 import { assertNonNegativeInteger, assertString } from '../utils/assert.ts';
+import { EventProgressTracker } from '../utils/EventProgressTracker.ts';
 import { serializeEvent } from '../utils/serializeEvent.ts';
 import { AbstractMongoAccessor } from './AbstractMongoAccessor.ts';
 import type { MongoProjectionDataParams } from './MongoProjectionDataParams.ts';
@@ -44,7 +45,7 @@ export type MongoEventLockerParams = MongoProjectionDataParams & {
 };
 
 /**
- * MongoDB-backed implementation of IEventLocker.
+ * MongoDB-backed implementation of IEventTracker.
  *
  * Uses two collections:
  * - `ncqrs_event_locks`: tracks per-event processing state
@@ -52,7 +53,7 @@ export type MongoEventLockerParams = MongoProjectionDataParams & {
  *
  * Event lock state machine: nil → processing → processed
  */
-export class MongoEventLocker extends AbstractMongoAccessor implements IEventLocker {
+export class MongoEventLocker extends AbstractMongoAccessor implements IEventTracker {
 
 	static DEFAULT_EVENT_LOCK_TTL = 15_000;
 	static DEFAULT_EVENT_LOCKS_COLLECTION = 'ncqrs_event_locks';
@@ -65,6 +66,7 @@ export class MongoEventLocker extends AbstractMongoAccessor implements IEventLoc
 	readonly #viewLocksCollectionName: string;
 	#eventLocksCollection: Collection<EventLockDocument> | undefined;
 	#viewLocksCollection: Collection<ViewLockDocument> | undefined;
+	readonly #progress = new EventProgressTracker(eventIds => this.#getProjectedEventIds(eventIds));
 
 	constructor(o: Partial<Pick<IContainer, 'viewModelMongoDb' | 'viewModelMongoDbFactory'>>
 		& MongoEventLockerParams) {
@@ -95,6 +97,18 @@ export class MongoEventLocker extends AbstractMongoAccessor implements IEventLoc
 
 	#eventLockId(eventId: Identifier): string {
 		return `${this.#lockIdPrefix}:${eventId}`;
+	}
+
+	/** Get IDs of the given events, which are marked as projected by any process */
+	async #getProjectedEventIds(eventIds: Identifier[]): Promise<Identifier[]> {
+		await this.assertConnection();
+
+		const eventIdsByLockId = new Map(eventIds.map(id => [this.#eventLockId(getEventId({ id } as IEvent)), id]));
+
+		const filter = { _id: { $in: [...eventIdsByLockId.keys()] }, processedAt: { $ne: null } };
+		const documents = await this.#eventLocksCollection!.find(filter, { projection: { _id: 1 } }).toArray();
+
+		return documents.map(d => eventIdsByLockId.get(d._id)!);
 	}
 
 	async tryMarkAsProjecting(event: IEvent): Promise<boolean> {
@@ -148,6 +162,16 @@ export class MongoEventLocker extends AbstractMongoAccessor implements IEventLoc
 
 		if (!result)
 			throw new Error(`Event ${event.id} could not be marked as processed`);
+
+		this.#progress.markAsCompleted(event);
+	}
+
+	markAsFailed(event: IEvent, error: unknown) {
+		this.#progress.markAsFailed(event, error);
+	}
+
+	waitFor(eventIds: Identifier | Identifier[], options?: EventTrackerWaitOptions): Promise<void> {
+		return this.#progress.waitFor(eventIds, options);
 	}
 
 	async markAsLastEvent(event: IEvent): Promise<void> {

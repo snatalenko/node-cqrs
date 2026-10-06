@@ -1,6 +1,7 @@
 import type { IContainer } from 'node-cqrs';
-import type { IEvent, IEventLocker } from '../interfaces/index.ts';
+import type { EventTrackerWaitOptions, IEvent, IEventTracker, Identifier } from '../interfaces/index.ts';
 import { assertNonNegativeInteger, assertString } from '../utils/assert.ts';
+import { EventProgressTracker } from '../utils/EventProgressTracker.ts';
 import type { PostgresqlConnection } from './PostgresqlConnection.ts';
 import type { PostgresqlProjectionDataParams } from './PostgresqlProjectionDataParams.ts';
 import type { PostgresqlViewLockerParams } from './PostgresqlViewLocker.ts';
@@ -29,12 +30,12 @@ export type PostgresqlEventLockerParams =
 	};
 
 /**
- * PostgreSQL-backed implementation of IEventLocker.
+ * PostgreSQL-backed implementation of IEventTracker.
  *
  * Uses one table for per-event processing locks and the view lock table for the
  * last processed event checkpoint.
  */
-export class PostgresqlEventLocker extends AbstractPostgresqlAccessor implements IEventLocker {
+export class PostgresqlEventLocker extends AbstractPostgresqlAccessor implements IEventTracker {
 
 	static DEFAULT_EVENT_LOCK_TTL = 15_000;
 	static DEFAULT_EVENT_LOCK_TABLE = 'ncqrs_event_locks';
@@ -45,6 +46,7 @@ export class PostgresqlEventLocker extends AbstractPostgresqlAccessor implements
 	readonly #viewLockTableName: string;
 	readonly #eventLockTableName: string;
 	readonly #eventLockTtl: number;
+	readonly #progress = new EventProgressTracker(eventIds => this.#getProjectedEventIds(eventIds));
 
 	constructor(o: Partial<Pick<IContainer, 'viewModelPostgresqlDb' | 'viewModelPostgresqlDbFactory'>>
 		& PostgresqlEventLockerParams) {
@@ -134,6 +136,17 @@ export class PostgresqlEventLocker extends AbstractPostgresqlAccessor implements
 
 		if (result.rowCount !== 1)
 			throw new Error(`Event ${event.id} could not be marked as processed`);
+
+		// When projected within a view transaction, changes become visible only once it is committed
+		this.afterCommit(() => this.#progress.markAsCompleted(event));
+	}
+
+	markAsFailed(event: IEvent, error: unknown) {
+		this.#progress.markAsFailed(event, error);
+	}
+
+	waitFor(eventIds: Identifier | Identifier[], options?: EventTrackerWaitOptions): Promise<void> {
+		return this.#progress.waitFor(eventIds, options);
 	}
 
 	async markAsLastEvent(event: IEvent): Promise<void> {
@@ -164,6 +177,33 @@ export class PostgresqlEventLocker extends AbstractPostgresqlAccessor implements
 			return undefined;
 
 		return JSON.parse(lastEvent);
+	}
+
+	/** Get IDs of the given events, which are marked as projected by any process */
+	async #getProjectedEventIds(eventIds: Identifier[]): Promise<Identifier[]> {
+		await this.assertConnection();
+
+		// A single connection running a transaction would expose uncommitted markers, which can still be rolled back.
+		// The lookup is skipped then and retried on the next poll
+		if (!this.readsCommittedOnly)
+			return [];
+
+		const eventIdsByLockKey = new Map(eventIds.map(id => [getEventId({ id } as IEvent), id]));
+
+		// `this.db` is used instead of `this.connection`, since polling outlives the transaction,
+		// in which the wait may have been started, and only committed changes need to be observed
+		const result = await this.db!.query<{ event_id: string }>(`
+			SELECT
+				event_id
+			FROM ${this.#eventLockTableName}
+			WHERE
+				projection_name = $1
+				AND schema_version = $2
+				AND event_id = ANY($3::text[])
+				AND processed_at IS NOT NULL
+		`, [this.#projectionName, this.#schemaVersion, [...eventIdsByLockKey.keys()]]);
+
+		return result.rows.map(r => eventIdsByLockKey.get(r.event_id)!);
 	}
 
 	#tableNameForIndex() {

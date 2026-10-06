@@ -1,4 +1,4 @@
-import { ContainerBuilder, type ClassOrFactory } from 'di0';
+import { ContainerBuilder, type ClassOrFactory, type TypeConfig } from 'di0';
 import { AggregateCommandHandler } from './AggregateCommandHandler.ts';
 import { EventStore } from './EventStore.ts';
 import { SagaEventHandler } from './SagaEventHandler.ts';
@@ -75,16 +75,22 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 	}
 
 	/**
-	 * Register projection, which will expose view and will be subscribed
-	 * to eventStore and will restore its state upon instance creation
+	 * Register projection, which will be subscribed to eventStore and will restore its state upon instance creation.
+	 *
+	 * When `exposedViewAlias` is provided, the projection view is exposed under that alias.
+	 * Other projection members, such as the event tracker, can be exposed with `.exposes()`:
+	 *
+	 * @example
+	 * builder.registerProjection(UsersProjection, 'usersView')
+	 *   .exposes(p => p.eventTracker, 'usersViewTracker');
 	 */
-	registerProjection(
-		typeOrFactory: ClassOrFactory<IProjection<any>, TContainerInterface>,
+	registerProjection<TProjection extends IProjection<any>>(
+		typeOrFactory: ClassOrFactory<TProjection, TContainerInterface>,
 		exposedViewAlias?: keyof TContainerInterface
-	) {
+	): TypeConfig<TProjection, TContainerInterface> {
 		assertFunction(typeOrFactory, 'typeOrFactory');
 
-		const projectionFactory = (container: TContainerInterface): IProjection<any> => {
+		const projectionFactory = (container: TContainerInterface): TProjection => {
 			const projection = container.createInstance(typeOrFactory);
 			projection.subscribe(container.eventStore);
 
@@ -95,16 +101,13 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 				container.restorePromises?.push(restoreResult);
 			}
 
-			if (exposedViewAlias)
-				return projection.view;
-
 			return projection;
 		};
 
 		const t = super.register(projectionFactory).asSingleInstance();
 
 		if (exposedViewAlias)
-			t.as(exposedViewAlias);
+			t.exposes(p => p.view as TContainerInterface[typeof exposedViewAlias], exposedViewAlias);
 
 		return t;
 	}

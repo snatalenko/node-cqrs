@@ -1,7 +1,8 @@
 import type { Redis } from 'ioredis';
 import type { IContainer } from 'node-cqrs';
-import type { Identifier, IEvent, IEventLocker } from '../interfaces/index.ts';
+import type { EventTrackerWaitOptions, Identifier, IEvent, IEventTracker } from '../interfaces/index.ts';
 import { assertString } from '../utils/assert.ts';
+import { EventProgressTracker } from '../utils/EventProgressTracker.ts';
 import { serializeEvent } from '../utils/serializeEvent.ts';
 import { AbstractRedisAccessor } from './AbstractRedisAccessor.ts';
 import type { RedisProjectionDataParams } from './RedisProjectionDataParams.ts';
@@ -53,7 +54,7 @@ export type RedisEventLockerParams = RedisProjectionDataParams & {
 };
 
 /**
- * Redis-backed implementation of IEventLocker.
+ * Redis-backed implementation of IEventTracker.
  *
  * Uses Lua scripts for atomic state transitions:
  * - `tryMarkAsProjecting`: SET key "processing" NX PX {ttl}
@@ -64,11 +65,12 @@ export type RedisEventLockerParams = RedisProjectionDataParams & {
  * - Event lock:  `{keyPrefix}:evtlock:{projectionName}:{schemaVersion}:{eventId}`
  * - Last event:  `{keyPrefix}:lastevent:{projectionName}:{schemaVersion}`
  */
-export class RedisEventLocker extends AbstractRedisAccessor implements IEventLocker {
+export class RedisEventLocker extends AbstractRedisAccessor implements IEventTracker {
 
 	#eventLockKeyPrefix: string;
 	#lastEventKey: string;
 	#eventLockTtl: number;
+	readonly #progress = new EventProgressTracker(eventIds => this.#getProjectedEventIds(eventIds));
 
 	constructor(o: Partial<Pick<IContainer, 'viewModelRedis' | 'viewModelRedisFactory'>>
 		& RedisEventLockerParams) {
@@ -90,6 +92,16 @@ export class RedisEventLocker extends AbstractRedisAccessor implements IEventLoc
 
 	#eventLockKey(eventId: Identifier): string {
 		return `${this.#eventLockKeyPrefix}:${eventId}`;
+	}
+
+	/** Get IDs of the given events, which are marked as projected by any process */
+	async #getProjectedEventIds(eventIds: Identifier[]): Promise<Identifier[]> {
+		await this.assertConnection();
+
+		const lockKeys = eventIds.map(id => this.#eventLockKey(getEventId({ id } as IEvent)));
+		const values = await this.redis!.mget(lockKeys);
+
+		return eventIds.filter((_id, i) => values[i] === 'processed');
 	}
 
 	async tryMarkAsProjecting(event: IEvent): Promise<boolean> {
@@ -118,6 +130,16 @@ export class RedisEventLocker extends AbstractRedisAccessor implements IEventLoc
 
 		if (result !== 1)
 			throw new Error(`Event ${event.id} could not be marked as processed`);
+
+		this.#progress.markAsCompleted(event);
+	}
+
+	markAsFailed(event: IEvent, error: unknown) {
+		this.#progress.markAsFailed(event, error);
+	}
+
+	waitFor(eventIds: Identifier | Identifier[], options?: EventTrackerWaitOptions): Promise<void> {
+		return this.#progress.waitFor(eventIds, options);
 	}
 
 	async markAsLastEvent(event: IEvent): Promise<void> {

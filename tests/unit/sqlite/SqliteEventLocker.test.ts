@@ -1,6 +1,7 @@
 import createDb from 'better-sqlite3';
 import { SqliteEventLocker } from '../../../src/sqlite/SqliteEventLocker';
 import { IEvent } from '../../../src/interfaces';
+import { TimeoutError } from '../../../src/errors';
 import { getEventId } from '../../../src/sqlite';
 import { promisify } from 'util';
 const delay = promisify(setTimeout);
@@ -103,5 +104,61 @@ describe('SqliteEventLocker', () => {
 
 		await expect(() => locker.markAsProjected(testEvent))
 			.rejects.toThrow(`Event ${testEvent.id} could not be marked as processed`);
+	});
+
+	describe('waitFor', () => {
+
+		it('resolves once the event is marked as projected', async () => {
+			await locker.tryMarkAsProjecting(testEvent);
+			const waiting = locker.waitFor(testEvent.id!, { timeout: 1_000 });
+
+			await locker.markAsProjected(testEvent);
+
+			await expect(waiting).resolves.toBeUndefined();
+		});
+
+		it('resolves immediately for events projected earlier', async () => {
+			await locker.tryMarkAsProjecting(testEvent);
+			await locker.markAsProjected(testEvent);
+
+			await expect(locker.waitFor(testEvent.id!)).resolves.toBeUndefined();
+		});
+
+		it('resolves once another instance marks the event as projected in the shared storage', async () => {
+			const otherLocker = new SqliteEventLocker({
+				viewModelSqliteDb: db,
+				projectionName: 'test',
+				schemaVersion: '1.0',
+				eventLockTableName: 'test_event_lock',
+				viewLockTableName: 'test_view_lock'
+			});
+			const numericIdEvent: IEvent<any> = { id: 42, type: 'TEST_EVENT', payload: {} };
+			await otherLocker.tryMarkAsProjecting(testEvent);
+			await otherLocker.tryMarkAsProjecting(numericIdEvent);
+
+			const waiting = locker.waitFor([testEvent.id!, numericIdEvent.id!], { timeout: 1_000 });
+
+			await otherLocker.markAsProjected(testEvent);
+			await otherLocker.markAsProjected(numericIdEvent);
+
+			await expect(waiting).resolves.toBeUndefined();
+		});
+
+		it('rejects when the event is marked as failed', async () => {
+			const error = new Error('projection failed');
+			const waiting = locker.waitFor(testEvent.id!, { timeout: 1_000 });
+
+			locker.markAsFailed(testEvent, error);
+
+			await expect(waiting).rejects.toBe(error);
+		});
+
+		it('does not resolve when the event could not be marked as projected', async () => {
+			const waiting = locker.waitFor(testEvent.id!, { timeout: 20 });
+
+			await expect(locker.markAsProjected(testEvent)).rejects.toThrow();
+
+			await expect(waiting).rejects.toThrow(TimeoutError);
+		});
 	});
 });

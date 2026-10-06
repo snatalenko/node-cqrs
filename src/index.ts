@@ -15,6 +15,7 @@ export * from './in-memory/index.ts';
 
 export * as Event from './Event.ts';
 export {
+	EventProgressTracker,
 	getMessageHandlerNames,
 	subscribe
 } from './utils/index.ts';

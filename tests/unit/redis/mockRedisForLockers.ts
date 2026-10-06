@@ -1,7 +1,7 @@
 /**
  * Minimal in-process Redis mock for unit testing Redis locker classes.
  *
- * Supports: GET, SET (with PX + NX options), DEL, PEXPIRE, and EVAL for the
+ * Supports: GET, MGET, SET (with PX + NX options), DEL, PEXPIRE, and EVAL for the
  * Lua scripts used by RedisEventLocker and RedisViewLocker.
  *
  * TTL is tracked via real wall-clock timestamps so the "re-lock after TTL" test
@@ -14,6 +14,7 @@ export type MockRedisForLockers = {
 	store: Map<string, Entry>;
 	getAlive(key: string): string | null;
 	get(key: string): Promise<string | null>;
+	mget(keys: string[]): Promise<Array<string | null>>;
 	set(key: string, value: string, ...options: (string | number)[]): Promise<'OK' | null>;
 	del(key: string): Promise<number>;
 	pexpire(key: string, ttl: number): Promise<number>;
@@ -40,6 +41,7 @@ export function createMockRedisForLockers(): MockRedisForLockers {
 		store,
 		getAlive,
 		get: (key: string) => Promise.resolve(getAlive(key)),
+		mget: (keys: string[]) => Promise.resolve(keys.map(getAlive)),
 
 		set: (key: string, value: string, ...options: (string | number)[]): Promise<'OK' | null> => {
 			const pxIdx = (options as string[]).indexOf('PX');

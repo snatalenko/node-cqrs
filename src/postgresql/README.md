@@ -100,6 +100,10 @@ builder.register(container => () => container.postgresqlDbFactory(), 'viewModelP
 
 The application can close the retained pool with `await pool?.end()` during shutdown.
 
+A factory must return the same pool instance on every call. Transactions are shared by components using the same
+pool: a projection view, its event locks and checkpoint commit together only when they resolve to one pool, while
+components using other pools are never enlisted in that transaction.
+
 ## Event storage
 
 `PostgresqlEventStorage` stores events in insertion order and preserves saga origin references. Each batch is

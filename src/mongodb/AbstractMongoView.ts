@@ -1,6 +1,13 @@
 import type { Db } from 'mongodb';
 import type { IContainer } from 'node-cqrs';
-import type { IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces/index.ts';
+import type {
+	EventTrackerWaitOptions,
+	IEvent,
+	IEventTracker,
+	Identifier,
+	ILogger,
+	IViewLocker
+} from '../interfaces/index.ts';
 import { MongoViewLocker, type MongoViewLockerParams } from './MongoViewLocker.ts';
 import { MongoEventLocker, type MongoEventLockerParams } from './MongoEventLocker.ts';
 import { AbstractMongoAccessor } from './AbstractMongoAccessor.ts';
@@ -9,7 +16,7 @@ import { assertString } from '../utils/assert.ts';
 /**
  * Base class for MongoDB-backed projection views with restore locking and last-processed-event tracking
  */
-export abstract class AbstractMongoView extends AbstractMongoAccessor implements IViewLocker, IEventLocker {
+export abstract class AbstractMongoView extends AbstractMongoAccessor implements IViewLocker, IEventTracker {
 
 	protected readonly schemaVersion: string;
 	protected readonly viewLocker: MongoViewLocker;
@@ -67,5 +74,13 @@ export abstract class AbstractMongoView extends AbstractMongoAccessor implements
 
 	markAsLastEvent(event: IEvent) {
 		return this.eventLocker.markAsLastEvent(event);
+	}
+
+	markAsFailed(event: IEvent, error: unknown) {
+		this.eventLocker.markAsFailed(event, error);
+	}
+
+	waitFor(eventIds: Identifier | Identifier[], options?: EventTrackerWaitOptions) {
+		return this.eventLocker.waitFor(eventIds, options);
 	}
 }

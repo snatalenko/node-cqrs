@@ -120,6 +120,9 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 		if (sql.includes('insert into') && sql.includes('event_id') && values.length === 4)
 			return this.acquireEventLock(values);
 
+		if (sql.startsWith('select event_id') && sql.includes('event_id = any($3::text[])'))
+			return this.getProjectedEventIds<TRow>(values);
+
 		if (sql.startsWith('update') && sql.includes('processed_at = now()'))
 			return this.finalizeEventLock(values);
 
@@ -259,6 +262,17 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 
 		lock.processedAt = new Date();
 		return this.result(1);
+	}
+
+	private getProjectedEventIds<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
+		const [projectionName, schemaVersion, eventIds] = values as [string, string, string[]];
+		const isProcessed = (eventId: string) =>
+			!!this.eventLocks.get(this.eventLockKey(projectionName, schemaVersion, eventId))?.processedAt;
+		const rows = eventIds
+			.filter(isProcessed)
+			.map(eventId => ({ event_id: eventId }) as unknown as TRow);
+
+		return this.result<TRow>(rows.length, rows);
 	}
 
 	private recordLastEvent(values: readonly unknown[]) {

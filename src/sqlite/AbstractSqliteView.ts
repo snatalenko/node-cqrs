@@ -1,5 +1,12 @@
 import type { IContainer } from 'node-cqrs';
-import type { IEvent, IEventLocker, ILogger, IViewLocker } from '../interfaces/index.ts';
+import type {
+	EventTrackerWaitOptions,
+	IEvent,
+	IEventTracker,
+	Identifier,
+	ILogger,
+	IViewLocker
+} from '../interfaces/index.ts';
 import { SqliteViewLocker, type SqliteViewLockerParams } from './SqliteViewLocker.ts';
 import { SqliteEventLocker, type SqliteEventLockerParams } from './SqliteEventLocker.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
@@ -7,7 +14,7 @@ import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
 /**
  * Base class for SQLite-backed projection views with restore locking and last-processed-event tracking
  */
-export abstract class AbstractSqliteView extends AbstractSqliteAccessor implements IViewLocker, IEventLocker {
+export abstract class AbstractSqliteView extends AbstractSqliteAccessor implements IViewLocker, IEventTracker {
 
 	protected readonly schemaVersion: string;
 	protected readonly viewLocker: SqliteViewLocker;
@@ -57,5 +64,13 @@ export abstract class AbstractSqliteView extends AbstractSqliteAccessor implemen
 
 	markAsLastEvent(event: IEvent<any>) {
 		return this.eventLocker.markAsLastEvent(event);
+	}
+
+	markAsFailed(event: IEvent<any>, error: unknown) {
+		this.eventLocker.markAsFailed(event, error);
+	}
+
+	waitFor(eventIds: Identifier | Identifier[], options?: EventTrackerWaitOptions) {
+		return this.eventLocker.waitFor(eventIds, options);
 	}
 }

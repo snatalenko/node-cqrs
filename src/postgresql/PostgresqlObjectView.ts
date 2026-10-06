@@ -1,4 +1,4 @@
-import type { IEventLocker, Identifier, IObjectStorage } from '../interfaces/index.ts';
+import type { IEventTracker, Identifier, IObjectStorage } from '../interfaces/index.ts';
 import { assertString } from '../utils/assert.ts';
 import { AbstractPostgresqlView } from './AbstractPostgresqlView.ts';
 import { PostgresqlObjectStorage } from './PostgresqlObjectStorage.ts';
@@ -9,7 +9,7 @@ import type { PostgresqlConnection } from './PostgresqlConnection.ts';
  */
 export class PostgresqlObjectView<TRecord>
 	extends AbstractPostgresqlView
-	implements IObjectStorage<TRecord>, IEventLocker {
+	implements IObjectStorage<TRecord>, IEventTracker {
 
 	readonly #postgresqlObjectStorage: PostgresqlObjectStorage<TRecord>;
 

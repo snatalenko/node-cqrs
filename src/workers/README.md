@@ -174,7 +174,7 @@ WorkerProxyProjection.RESTORE_BATCH_SIZE = 1_000;
 Reduce the batch size when events are large or worker messages consume too much memory. Increase it only after
 measuring restore performance.
 
-Checkpoint support comes from the worker-side view. If that view implements `IEventLocker`, restoration resumes
+Checkpoint support comes from the worker-side view. If that view implements `IEventTracker` (or the deprecated `IEventLocker`), restoration resumes
 after `getLastEvent()`. Otherwise, every new worker restores all matching events. An in-memory view loses its state
 when the worker or process exits.
 

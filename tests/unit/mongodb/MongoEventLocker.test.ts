@@ -1,6 +1,7 @@
 import type { Db } from 'mongodb';
 import { MongoEventLocker } from '../../../src/mongodb/MongoEventLocker.ts';
 import type { IEvent } from '../../../src/interfaces/index.ts';
+import { TimeoutError } from '../../../src/errors/index.ts';
 
 describe('MongoEventLocker', () => {
 
@@ -16,7 +17,8 @@ describe('MongoEventLocker', () => {
 			createIndex: jest.fn().mockResolvedValue('index'),
 			updateOne: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
 			insertOne: jest.fn().mockResolvedValue({ acknowledged: true }),
-			findOneAndUpdate: jest.fn().mockResolvedValue({ _id: 'lock' })
+			findOneAndUpdate: jest.fn().mockResolvedValue({ _id: 'lock' }),
+			find: jest.fn().mockReturnValue({ toArray: jest.fn().mockResolvedValue([]) })
 		};
 		viewLocks = {
 			updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
@@ -159,6 +161,58 @@ describe('MongoEventLocker', () => {
 			viewLocks.findOne.mockResolvedValue({ _id: 'test:1.0', lastEvent: JSON.stringify(testEvent) });
 
 			expect(await locker.getLastEvent()).toEqual(testEvent);
+		});
+	});
+
+	describe('waitFor', () => {
+
+		it('resolves once the event is marked as projected', async () => {
+			const waiting = locker.waitFor(testEvent.id!, { timeout: 1_000 });
+
+			await locker.markAsProjected(testEvent);
+
+			await expect(waiting).resolves.toBeUndefined();
+		});
+
+		it('resolves for events found projected in the shared storage', async () => {
+			eventLocks.find.mockReturnValue({ toArray: jest.fn().mockResolvedValue([{ _id: 'test:1.0:evt-1' }]) });
+
+			await expect(locker.waitFor(testEvent.id!, { timeout: 1_000 })).resolves.toBeUndefined();
+
+			expect(eventLocks.find).toHaveBeenCalledWith(
+				{ _id: { $in: ['test:1.0:evt-1'] }, processedAt: { $ne: null } },
+				{ projection: { _id: 1 } }
+			);
+		});
+
+		it('polls the shared storage until the event is projected', async () => {
+			const toArray = jest.fn()
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce([])
+				.mockResolvedValue([{ _id: 'test:1.0:evt-1' }]);
+			eventLocks.find.mockReturnValue({ toArray });
+
+			await expect(locker.waitFor(testEvent.id!, { timeout: 1_000 })).resolves.toBeUndefined();
+
+			expect(toArray).toHaveBeenCalledTimes(3);
+		});
+
+		it('rejects when the event is marked as failed', async () => {
+			const error = new Error('projection failed');
+			const waiting = locker.waitFor(testEvent.id!, { timeout: 1_000 });
+
+			locker.markAsFailed(testEvent, error);
+
+			await expect(waiting).rejects.toBe(error);
+		});
+
+		it('does not resolve when the event could not be marked as projected', async () => {
+			eventLocks.findOneAndUpdate.mockResolvedValue(null);
+			const waiting = locker.waitFor(testEvent.id!, { timeout: 20 });
+
+			await expect(locker.markAsProjected(testEvent)).rejects.toThrow();
+
+			await expect(waiting).rejects.toThrow(TimeoutError);
 		});
 	});
 });

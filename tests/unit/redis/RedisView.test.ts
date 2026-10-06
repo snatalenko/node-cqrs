@@ -138,4 +138,27 @@ describe('RedisView', () => {
 			expect(await view.getLastEvent()).toEqual(event);
 		});
 	});
+
+	describe('waitFor', () => {
+
+		const event: IEvent = { id: 'evt-wait', type: 'TEST_EVENT', payload: {} };
+
+		it('resolves once the event is marked as projected', async () => {
+			await view.tryMarkAsProjecting(event);
+			const waiting = view.waitFor(event.id!, { timeout: 1_000 });
+
+			await view.markAsProjected(event);
+
+			await expect(waiting).resolves.toBeUndefined();
+		});
+
+		it('rejects when the event is marked as failed', async () => {
+			const error = new Error('projection failed');
+			const waiting = view.waitFor(event.id!, { timeout: 1_000 });
+
+			view.markAsFailed(event, error);
+
+			await expect(waiting).rejects.toBe(error);
+		});
+	});
 });

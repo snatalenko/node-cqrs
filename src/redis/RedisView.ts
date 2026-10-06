@@ -1,5 +1,13 @@
 import type { IContainer } from 'node-cqrs';
-import type { IEvent, IEventLocker, ILogger, IObjectStorage, IViewLocker, Identifier } from '../interfaces/index.ts';
+import type {
+	EventTrackerWaitOptions,
+	IEvent,
+	IEventTracker,
+	ILogger,
+	IObjectStorage,
+	IViewLocker,
+	Identifier
+} from '../interfaces/index.ts';
 import { RedisViewLocker, type RedisViewLockerParams } from './RedisViewLocker.ts';
 import { RedisEventLocker, type RedisEventLockerParams } from './RedisEventLocker.ts';
 import { RedisObjectStorage } from './RedisObjectStorage.ts';
@@ -11,7 +19,7 @@ import type { Redis } from 'ioredis';
  * Redis-backed projection view with object storage, restore locking and last-processed-event tracking
  */
 export class RedisView<TRecord> extends AbstractRedisAccessor
-	implements IObjectStorage<TRecord>, IViewLocker, IEventLocker {
+	implements IObjectStorage<TRecord>, IViewLocker, IEventTracker {
 
 	protected readonly schemaVersion: string;
 	protected readonly viewLocker: RedisViewLocker;
@@ -76,6 +84,14 @@ export class RedisView<TRecord> extends AbstractRedisAccessor
 
 	markAsLastEvent(event: IEvent) {
 		return this.eventLocker.markAsLastEvent(event);
+	}
+
+	markAsFailed(event: IEvent, error: unknown) {
+		this.eventLocker.markAsFailed(event, error);
+	}
+
+	waitFor(eventIds: Identifier | Identifier[], options?: EventTrackerWaitOptions) {
+		return this.eventLocker.waitFor(eventIds, options);
 	}
 
 	async get(id: Identifier): Promise<TRecord | undefined> {

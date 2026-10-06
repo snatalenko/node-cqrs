@@ -4,6 +4,8 @@ import { isObject } from './isObject.ts';
 /**
  * Interface for tracking event processing state to prevent concurrent processing
  * by multiple processes.
+ *
+ * @deprecated Use `IEventTracker`
  */
 export interface IEventLocker {
 
@@ -32,6 +34,9 @@ export interface IEventLocker {
 	markAsLastEvent(event: IEvent): Promise<void> | void;
 }
 
+/**
+ * @deprecated Use `isEventTracker`
+ */
 export const isEventLocker = (view: unknown): view is IEventLocker =>
 	(
 		isObject(view)

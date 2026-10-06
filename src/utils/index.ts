@@ -1,6 +1,7 @@
 export * from './assert.ts';
 export * from './clone.ts';
 export * from './Deferred.ts';
+export * from './EventProgressTracker.ts';
 export * from './extractErrorDetails.ts';
 export * from './getClassName.ts';
 export * from './getHandler.ts';

@@ -5,6 +5,7 @@ import { recordSpanError, spanAttributes, spanContext } from './telemetry/index.
 import {
 	type IViewLocker,
 	type IEventLocker,
+	type IEventTracker,
 	type IProjection,
 	type ILogger,
 	type IExtendableLogger,
@@ -12,7 +13,8 @@ import {
 	type IObservable,
 	type IEventStorageReader,
 	isViewLocker,
-	isEventLocker
+	isEventLocker,
+	isEventTracker
 } from './interfaces/index.ts';
 
 import {
@@ -24,11 +26,24 @@ import {
 	assertFunction
 } from './utils/index.ts';
 
-export type AbstractProjectionParams<T> = {
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+/**
+ * Event tracker type of a projection with the given view type:
+ * the view type, when it implements IEventTracker, otherwise `IEventTracker | null`
+ */
+export type DefaultEventTracker<TView> =
+	IsAny<TView> extends true ? IEventTracker | null :
+		TView extends IEventTracker ? TView : IEventTracker | null;
+
+export type AbstractProjectionParams<
+	T,
+	TEventTracker extends IEventTracker | null = DefaultEventTracker<T>
+> = {
 
 	/**
 	 * The default view associated with the projection.
-	 * Can optionally implement IViewLocker and/or IEventLocker.
+	 * Can optionally implement IViewLocker and/or IEventTracker.
 	 */
 	view?: T,
 
@@ -39,7 +54,17 @@ export type AbstractProjectionParams<T> = {
 	viewLocker?: IViewLocker,
 
 	/**
+	 * Tracks event processing state to prevent concurrent handling by multiple processes,
+	 * and allows awaiting projection of specific events.
+	 * Ignored, when the object does not implement IEventTracker.
+	 */
+	eventTracker?: NonNullable<TEventTracker>,
+
+	/**
 	 * Tracks event processing state to prevent concurrent handling by multiple processes.
+	 * Used when no event tracker is available.
+	 *
+	 * @deprecated Use `eventTracker`
 	 */
 	eventLocker?: IEventLocker,
 
@@ -50,8 +75,15 @@ export type AbstractProjectionParams<T> = {
 
 /**
  * Base class for Projection definition
+ *
+ * @typeParam TView - Type of the view maintained by the projection
+ * @typeParam TEventTracker - Type of the projection event tracker.
+ * Defaults to `TView`, when it implements IEventTracker, otherwise to `IEventTracker | null`
  */
-export abstract class AbstractProjection<TView = any> implements IProjection<TView> {
+export abstract class AbstractProjection<
+	TView = any,
+	TEventTracker extends IEventTracker | null = DefaultEventTracker<TView>
+> implements IProjection<TView> {
 
 	/**
 	 * List of event types handled by the projection. Can be overridden in the projection implementation.
@@ -64,13 +96,14 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	#view?: TView;
 	#viewLocker?: IViewLocker | null;
 	#eventLocker?: IEventLocker | null;
+	#eventTracker?: IEventTracker | null;
 	protected _logger?: ILogger;
 	readonly #serviceName: string;
 	readonly #tracer: Tracer | undefined;
 
 	/**
 	 * The default view associated with the projection.
-	 * Can optionally implement IViewLocker and/or IEventLocker.
+	 * Can optionally implement IViewLocker and/or IEventTracker.
 	 */
 	public get view(): TView {
 		return this.#view ?? (this.#view = new InMemoryView() as TView);
@@ -97,6 +130,9 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 
 	/**
 	 * Tracks event processing state to prevent concurrent handling by multiple processes.
+	 * Used when no event tracker is available.
+	 *
+	 * @deprecated Use `eventTracker`
 	 */
 	protected get _eventLocker(): IEventLocker | null {
 		if (this.#eventLocker === undefined)
@@ -105,22 +141,60 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 		return this.#eventLocker;
 	}
 
+	/**
+	 * @deprecated Use `eventTracker`
+	 */
 	protected set _eventLocker(value: IEventLocker | undefined | null) {
 		this.#eventLocker = value;
+	}
+
+	/**
+	 * Tracks event processing state to prevent concurrent handling by multiple processes,
+	 * and allows awaiting until specific events are projected.
+	 *
+	 * Unless assigned explicitly, defaults to the event locker, when it implements IEventTracker,
+	 * since waits are resolved once events are marked as projected through the same instance.
+	 * `null` when the projection has no event tracker.
+	 *
+	 * The type reflects the default wiring: assigning another view, a deprecated `eventLocker`,
+	 * or an object not implementing IEventTracker can result in `null` regardless of the type.
+	 */
+	public get eventTracker(): TEventTracker {
+		if (this.#eventTracker !== undefined)
+			return this.#eventTracker as TEventTracker;
+
+		const eventLocker = this._eventLocker;
+		return (isEventTracker(eventLocker) ? eventLocker : null) as TEventTracker;
+	}
+
+	/**
+	 * Assigns the event tracker. Objects not implementing IEventTracker are replaced with `null`,
+	 * which disables the event tracker.
+	 */
+	protected set eventTracker(value: TEventTracker) {
+		this.#eventTracker = isEventTracker(value) ? value : null;
+	}
+
+	/** Event tracker or, when not available, the deprecated event locker used to process events */
+	get #eventProcessingTracker(): IEventTracker | IEventLocker | null {
+		return this.eventTracker ?? this._eventLocker;
 	}
 
 	constructor({
 		view,
 		viewLocker,
+		eventTracker,
 		eventLocker,
 		tracerFactory,
 		logger
-	}: AbstractProjectionParams<TView> = {}) {
+	}: AbstractProjectionParams<TView, TEventTracker> = {}) {
 		validateHandlers(this);
 
 		this.#view = view;
 		this.#viewLocker = viewLocker;
 		this.#eventLocker = eventLocker;
+		if (eventTracker !== undefined)
+			this.eventTracker = eventTracker;
 		this.#serviceName = getClassName(this);
 		this.#tracer = tracerFactory?.(this.#serviceName);
 
@@ -177,18 +251,26 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 	protected async _project(event: IEvent, meta?: Record<string, any>): Promise<void> {
 		const handler = getHandler(this, event.type);
 
-		if (this._eventLocker) {
-			const eventLockObtained = await this._eventLocker.tryMarkAsProjecting(event);
+		const tracker = this.#eventProcessingTracker;
+
+		if (tracker) {
+			const eventLockObtained = await tracker.tryMarkAsProjecting(event);
 			if (!eventLockObtained)
 				return;
 		}
 
-		await handler.call(this, event);
+		try {
+			await handler.call(this, event);
 
-		if (this._eventLocker) {
-			await this._eventLocker.markAsProjected(event);
-			if (this.shouldRecordLastEvent(event, meta))
-				await this._eventLocker.markAsLastEvent(event);
+			if (tracker) {
+				await tracker.markAsProjected(event);
+				if (this.shouldRecordLastEvent(event, meta))
+					await tracker.markAsLastEvent(event);
+			}
+		}
+		catch (error: unknown) {
+			this.eventTracker?.markAsFailed?.(event, error);
+			throw error;
 		}
 	}
 
@@ -224,10 +306,11 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 		assertFunction(eventStore?.getEventsByTypes, 'eventStore.getEventsByTypes');
 
 		let lastEvent: IEvent | undefined;
+		const tracker = this.#eventProcessingTracker;
 
-		if (this._eventLocker) {
+		if (tracker) {
 			this._logger?.debug('retrieving last event projected');
-			lastEvent = await this._eventLocker.getLastEvent();
+			lastEvent = await tracker.getLastEvent();
 		}
 
 		this._logger?.debug(`retrieving ${lastEvent ? `events after ${describe(lastEvent)}` : 'all events'}...`);
@@ -250,8 +333,8 @@ export abstract class AbstractProjection<TView = any> implements IProjection<TVi
 			}
 		}
 
-		if (this._eventLocker && lastRestoredEvent)
-			await this._eventLocker.markAsLastEvent(lastRestoredEvent);
+		if (tracker && lastRestoredEvent)
+			await tracker.markAsLastEvent(lastRestoredEvent);
 
 		this._logger?.info(`view restored from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}

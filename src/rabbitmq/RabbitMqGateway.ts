@@ -703,12 +703,20 @@ export class RabbitMqGateway {
 					throw new Error(`Message from queue "${queueGivenName}" was delivered to a consumer that does not handle type "${message.type}"`);
 
 				const ownAppId = handlers.some(s => s.ignoreOwn) ? await this.getAppId() : undefined;
-				for (const { handler, ignoreOwn } of handlers) {
-					if (ignoreOwn && msg.properties.appId === ownAppId)
-						continue;
 
-					await handler(message, { otelSpan });
-				}
+				// Handlers run concurrently, so a handler awaiting another one's outcome
+				// (e.g. a receptor waiting for a projection) does not block it
+				const results = await Promise.allSettled(handlers
+					.filter(({ ignoreOwn }) => !ignoreOwn || msg.properties.appId !== ownAppId)
+					.map(async ({ handler }) => handler(message, { otelSpan })));
+
+				const errors = results
+					.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+					.map(r => r.reason);
+				if (errors.length === 1)
+					throw errors[0];
+				if (errors.length > 1)
+					throw new AggregateError(errors, `${errors.length} handlers failed to process "${message.type}"`);
 
 				if (messageFinalized) {
 					this.#logger?.error('Handler resolved, but message has already been finalized', {

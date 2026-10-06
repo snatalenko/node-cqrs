@@ -1,12 +1,12 @@
 import { AbstractMongoView } from './AbstractMongoView.ts';
-import type { IObjectStorage, IEventLocker, Identifier } from '../interfaces/index.ts';
+import type { IObjectStorage, IEventTracker, Identifier } from '../interfaces/index.ts';
 import { MongoObjectStorage } from './MongoObjectStorage.ts';
 import { assertString } from '../utils/assert.ts';
 
 /**
  * MongoDB-backed object view with restore locking and last-processed-event tracking
  */
-export class MongoObjectView<TRecord> extends AbstractMongoView implements IObjectStorage<TRecord>, IEventLocker {
+export class MongoObjectView<TRecord> extends AbstractMongoView implements IObjectStorage<TRecord>, IEventTracker {
 
 	readonly #mongoObjectStorage: MongoObjectStorage<TRecord>;
 

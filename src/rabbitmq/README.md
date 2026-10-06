@@ -148,7 +148,10 @@ mode.
 
 ## Delivery and failures
 
-Messages are acknowledged after all matching handlers complete. RabbitMQ can redeliver a message when a
+Matching handlers of a message run concurrently, so a handler awaiting another one's outcome, such as a receptor
+waiting for a projection, does not block it. The message is acknowledged after all of them complete successfully;
+when any of them fails, the others still complete and the message is rejected with the failure, or with an
+`AggregateError` when several handlers fail. RabbitMQ can redeliver a message when a
 connection closes before its acknowledgement, including when the handler already produced external effects.
 Handlers should therefore be idempotent or deduplicate messages by event id.
 

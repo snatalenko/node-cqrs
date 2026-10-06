@@ -44,7 +44,7 @@ Infrastructure modules can be combined according to the deployment:
 npm install node-cqrs
 ```
 
-The built package supports Node.js 16 and later. The TypeScript examples can be executed directly with Node.js
+The built package supports Node.js 18 and later. The TypeScript examples can be executed directly with Node.js
 24 or later; earlier Node.js versions require normal TypeScript compilation or a loader.
 
 The browser bundle exposes the browser-compatible core API. Database adapters, RabbitMQ, and Node.js worker
@@ -160,7 +160,7 @@ Applications can implement these contracts directly or extend the supplied base 
 | [`IDispatchPipelineProcessor`](src/interfaces/IDispatchPipelineProcessor.ts) | Persistence, encoding, validation, or event augmentation |
 | [`IProjection`](src/interfaces/IProjection.ts) | Projection routing and view ownership |
 | [`IViewLocker`](src/interfaces/IViewLocker.ts) | Projection restore coordination |
-| [`IEventLocker`](src/interfaces/IEventLocker.ts) | Event deduplication and projection checkpoints |
+| [`IEventTracker`](src/interfaces/IEventTracker.ts) | Event deduplication, projection checkpoints, and awaiting projected events; replaces the deprecated `IEventLocker` |
 
 The [framework-free example](examples/user-domain-framework-free/index.ts) implements the core interfaces without
 using the supplied aggregate or projection base classes.
@@ -275,6 +275,62 @@ const usersView = container.usersView;
 
 Persistent projection implementations provide restore locking, event deduplication, and checkpoints. Their exact
 transaction and retry guarantees are documented by each infrastructure module.
+
+### Awaiting Projected Events
+
+Projections update their views asynchronously: a command resolves once its events are stored, while projections
+process them shortly after. Most of the time this is unnoticeable, but sometimes the next step depends on a view
+being up to date. For example, an API handler returns the record it has just created, a receptor sends an email
+using data from another projection's view, or one projection reads another one's view while handling the same event.
+
+In such cases, wait until the projection has processed the events in question with `eventTracker.waitFor(eventIds)`.
+Projections backed by the SQLite, PostgreSQL, MongoDB, or Redis views provide an event tracker; expose it on the
+container next to the view:
+
+```ts
+interface AppContainer extends IContainer {
+	usersView: SqliteObjectView<UserRecord>;
+	usersViewTracker: IEventTracker;
+}
+
+builder.registerProjection(UsersProjection, 'usersView')
+	.exposes(p => p.eventTracker, 'usersViewTracker');
+
+const events: IEventSet = await container.commandBus.send('createUser', undefined, { payload });
+const userCreated = events.find(e => e.type === 'userCreated')!;
+await container.usersViewTracker.waitFor(userCreated.id!, { timeout: 5_000 });
+
+const user = await container.usersView.get(userCreated.aggregateId!);
+```
+
+`waitFor` accepts one or more event IDs. Pass IDs of events the projection handles: waiting for any other event
+lasts until the timeout. It rejects when the projection of any of the events fails, on timeout, or when the
+`signal` is aborted. It guarantees completion only: by the time it resolves, the view may already reflect
+subsequent events.
+
+The timeout can be set per call with the `timeout` option. Defaults are stored in static properties of
+`EventProgressTracker`, used by the event trackers of the SQLite, PostgreSQL, MongoDB, and Redis views. Change them
+before views are created:
+
+```ts
+EventProgressTracker.DEFAULT_TIMEOUT = 30_000;          // wait timeout, in milliseconds; `0` disables it
+EventProgressTracker.DEFAULT_POLL_INTERVAL = 50;        // initial interval of polling events projected by other processes, in milliseconds
+EventProgressTracker.DEFAULT_MAX_POLL_INTERVAL = 1_000; // maximum polling interval the initial one grows to, in milliseconds
+```
+
+The in-memory and RabbitMQ event buses run all handlers of an event concurrently, so a handler waiting for another
+projection does not prevent that projection from processing the same event. When one projection needs data at the
+exact state of an event, handling that event in the projection itself is usually simpler than waiting for another one.
+
+Events projected in the same process resolve waits immediately. Events projected by other processes sharing the same
+storage are found by checking the event lock table once the wait starts, then polling it with an interval doubling
+from `DEFAULT_POLL_INTERVAL` up to `DEFAULT_MAX_POLL_INTERVAL` while waits are pending. Projection failures reject
+waits only in the process where they occur; other processes keep waiting until the event is projected or the wait
+times out.
+
+`projection.eventTracker` is `null` when the projection has no event tracker, for example with the default in-memory
+view. Its type follows the view type: it is non-nullable when the view implements `IEventTracker`, so exposing it
+under a non-nullable container alias type-checks only for such projections.
 
 ## Sagas
 

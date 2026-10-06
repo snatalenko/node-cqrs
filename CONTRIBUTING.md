@@ -10,7 +10,7 @@ and reflected in the version bump.
 
 Prerequisites:
 
-- Node.js 16+
+- Node.js 18+
 - npm
 
 Clone and install:

@@ -7,8 +7,19 @@ import {
 	InMemoryMessageBus,
 	EventDispatcher,
 	type IEventLocker,
+	type IEventTracker,
 	type IViewLocker
 } from '../../src';
+
+const createEventTracker = (overrides?: Partial<IEventTracker>) => ({
+	tryMarkAsProjecting: jest.fn().mockResolvedValue(true),
+	markAsProjected: jest.fn().mockResolvedValue(undefined),
+	markAsLastEvent: jest.fn().mockResolvedValue(undefined),
+	getLastEvent: jest.fn().mockResolvedValue(undefined),
+	waitFor: jest.fn().mockResolvedValue(undefined),
+	markAsFailed: jest.fn(),
+	...overrides
+});
 
 class MyProjection extends AbstractProjection<InMemoryView<{ somethingHappenedCnt?: number }>> {
 	static get handles() {
@@ -315,6 +326,180 @@ describe('AbstractProjection', function () {
 			};
 
 			await expect(tracedProjection.restore(es as any)).resolves.toBeUndefined();
+		});
+	});
+
+	describe('eventTracker', () => {
+
+		const event = { id: 'e1', type: 'somethingHappened', aggregateId: 1 };
+
+		it('is null when the projection has no event tracker', () => {
+			expect(projection.eventTracker).toBeNull();
+		});
+
+		it('returns the event tracker passed to constructor', () => {
+			const eventTracker = createEventTracker();
+			projection = new MyProjection({ view, eventTracker });
+
+			expect(projection.eventTracker).toBe(eventTracker);
+		});
+
+		it('returns the view, when it implements IEventTracker', () => {
+			const trackingView = Object.assign(new InMemoryView(), createEventTracker());
+			projection = new MyProjection({ view: trackingView });
+
+			expect(projection.eventTracker).toBe(trackingView);
+		});
+
+		it('uses the event tracker passed to constructor as event locker', async () => {
+			const eventTracker = createEventTracker();
+			projection = new MyProjection({ view, eventTracker });
+
+			await projection.project(event);
+
+			expect(eventTracker.tryMarkAsProjecting).toHaveBeenCalledWith(event);
+			expect(eventTracker.markAsProjected).toHaveBeenCalledWith(event);
+		});
+
+		it('is null when the event locker does not implement IEventTracker', async () => {
+			const { waitFor, ...eventLocker } = createEventTracker();
+			projection = new MyProjection({ view, eventLocker });
+
+			expect(projection.eventTracker).toBeNull();
+
+			await projection.project(event);
+			expect(eventLocker.tryMarkAsProjecting).toHaveBeenCalledWith(event);
+			expect(eventLocker.markAsProjected).toHaveBeenCalledWith(event);
+		});
+
+		it('is null when the view implements IEventLocker only', () => {
+			const { waitFor, ...eventLocker } = createEventTracker();
+			projection = new MyProjection({ view: Object.assign(new InMemoryView(), eventLocker) });
+
+			expect(projection.eventTracker).toBeNull();
+		});
+
+		it('returns the event locker passed to constructor, when it implements IEventTracker', () => {
+			const eventTracker = createEventTracker();
+			projection = new MyProjection({ view, eventLocker: eventTracker });
+
+			expect(projection.eventTracker).toBe(eventTracker);
+		});
+
+		it('prefers eventTracker over deprecated eventLocker passed to constructor', async () => {
+			const eventTracker = createEventTracker();
+			const { waitFor, ...eventLocker } = createEventTracker();
+			projection = new MyProjection({ view, eventLocker, eventTracker });
+
+			expect(projection.eventTracker).toBe(eventTracker);
+
+			await projection.project(event);
+			expect(eventTracker.markAsProjected).toHaveBeenCalledWith(event);
+			expect(eventLocker.markAsProjected).not.toHaveBeenCalled();
+		});
+
+		it('ignores eventTracker not implementing IEventTracker, falling back to the event locker', async () => {
+			const { waitFor: _, ...invalidTracker } = createEventTracker();
+			const { waitFor, ...eventLocker } = createEventTracker();
+			projection = new MyProjection({ view, eventLocker, eventTracker: invalidTracker as any });
+
+			expect(projection.eventTracker).toBeNull();
+
+			await projection.project(event);
+			expect(invalidTracker.markAsProjected).not.toHaveBeenCalled();
+			expect(eventLocker.markAsProjected).toHaveBeenCalledWith(event);
+		});
+
+		it('uses deprecated eventLocker instead of the view implementing IEventTracker', async () => {
+			const trackingView = Object.assign(new InMemoryView(), createEventTracker());
+			const { waitFor, ...eventLocker } = createEventTracker();
+			projection = new MyProjection({ view: trackingView, eventLocker });
+
+			expect(projection.eventTracker).toBeNull();
+
+			await projection.project(event);
+			expect(eventLocker.markAsProjected).toHaveBeenCalledWith(event);
+			expect(trackingView.markAsProjected).not.toHaveBeenCalled();
+		});
+
+		it('returns the event locker assigned in a derived constructor, when it implements IEventTracker', () => {
+			const eventTracker = createEventTracker();
+			const projectionWithSetters = new ProjectionWithSetters({ eventLocker: eventTracker });
+
+			expect(projectionWithSetters.eventTracker).toBe(eventTracker);
+		});
+
+		it('uses the event tracker assigned in a derived constructor as event locker', async () => {
+			const eventTracker = createEventTracker();
+			class ProjectionWithTracker extends MyProjection {
+				constructor() {
+					super();
+					this.eventTracker = eventTracker;
+				}
+			}
+			projection = new ProjectionWithTracker();
+
+			expect(projection.eventTracker).toBe(eventTracker);
+
+			await projection.project(event);
+			expect(eventTracker.tryMarkAsProjecting).toHaveBeenCalledWith(event);
+		});
+
+		it('marks event as failed when the handler throws', async () => {
+			const error = new Error('handler failed');
+			const eventTracker = createEventTracker();
+			projection = new MyProjection({ view, eventTracker });
+			jest.spyOn(projection, '_somethingHappened').mockRejectedValue(error);
+
+			await expect(projection.project(event)).rejects.toBe(error);
+
+			expect(eventTracker.markAsFailed).toHaveBeenCalledWith(event, error);
+			expect(eventTracker.markAsProjected).not.toHaveBeenCalled();
+		});
+
+		it('marks event as failed when markAsProjected throws', async () => {
+			const error = new Error('could not be marked as processed');
+			const eventTracker = createEventTracker({ markAsProjected: jest.fn().mockRejectedValue(error) });
+			projection = new MyProjection({ view, eventTracker });
+
+			await expect(projection.project(event)).rejects.toBe(error);
+
+			expect(eventTracker.markAsFailed).toHaveBeenCalledWith(event, error);
+		});
+
+		it('marks event as failed during restore', async () => {
+			const error = new Error('handler failed');
+			const eventTracker = createEventTracker();
+			projection = new MyProjection({ view, eventTracker });
+			jest.spyOn(projection, '_somethingHappened').mockRejectedValue(error);
+			const eventStore = {
+				async* getEventsByTypes() {
+					yield event;
+				}
+			};
+
+			await expect(projection.restore(eventStore as any)).rejects.toBe(error);
+
+			expect(eventTracker.markAsFailed).toHaveBeenCalledWith(event, error);
+		});
+
+		it('does not mark event as failed when the event lock is not obtained', async () => {
+			const eventTracker = createEventTracker({ tryMarkAsProjecting: jest.fn().mockResolvedValue(false) });
+			projection = new MyProjection({ view, eventTracker });
+
+			await projection.project(event);
+
+			expect(eventTracker.markAsFailed).not.toHaveBeenCalled();
+			expect(eventTracker.markAsProjected).not.toHaveBeenCalled();
+		});
+
+		it('works with event trackers that do not implement markAsFailed', async () => {
+			const error = new Error('handler failed');
+			const { markAsFailed, ...eventTracker } = createEventTracker();
+			projection = new MyProjection({ view, eventTracker });
+			jest.spyOn(projection, '_somethingHappened').mockRejectedValue(error);
+
+			await expect(projection.project(event)).rejects.toBe(error);
 		});
 	});
 

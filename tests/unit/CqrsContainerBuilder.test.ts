@@ -264,6 +264,87 @@ describe('CqrsContainerBuilder', function () {
 			expect((container as any).myProjection).toBeInstanceOf(MyProjection);
 		});
 
+		it('does not expose projection event tracker by default', () => {
+			builder.registerProjection(MyProjection, 'myView');
+
+			const container = builder.container();
+
+			expect(container.has('myViewTracker')).toBe(false);
+		});
+
+		describe('exposes', () => {
+
+			const createEventTracker = () => ({
+				getLastEvent: jest.fn(),
+				tryMarkAsProjecting: jest.fn(),
+				markAsProjected: jest.fn(),
+				markAsLastEvent: jest.fn(),
+				waitFor: jest.fn()
+			});
+
+			it('exposes projection event tracker alongside the view', () => {
+				const eventTracker = createEventTracker();
+				class TrackedProjection extends MyProjection {
+					constructor() {
+						super({ eventTracker });
+					}
+				}
+
+				builder.registerProjection(TrackedProjection, 'myView')
+					.exposes(p => p.eventTracker, 'myViewTracker');
+
+				const container = builder.container() as any;
+
+				expect(container.myViewTracker).toBe(eventTracker);
+				expect(container.myView).toBeInstanceOf(InMemoryView);
+			});
+
+			it('exposes projection event tracker without exposing the view', () => {
+				const eventTracker = createEventTracker();
+				class TrackedProjection extends MyProjection {
+					constructor() {
+						super({ eventTracker });
+					}
+				}
+
+				builder.registerProjection(TrackedProjection)
+					.exposes(p => p.eventTracker, 'myViewTracker');
+
+				const container = builder.container() as any;
+
+				expect(container.myViewTracker).toBe(eventTracker);
+			});
+
+			it('derives the view and the event tracker from a single subscribed projection instance', () => {
+				let instances = 0;
+				class CountedProjection extends MyProjection {
+					constructor() {
+						super({ eventTracker: createEventTracker() });
+						instances += 1;
+					}
+				}
+
+				builder.registerProjection(CountedProjection, 'myView')
+					.exposes(p => p.eventTracker, 'myViewTracker');
+
+				const container = builder.container() as any;
+				container.myViewTracker;
+				container.myView;
+
+				expect(instances).toBe(1);
+				expect(container.restorePromises).toHaveLength(1);
+			});
+
+			it('resolves event tracker to null, when the projection does not provide it', () => {
+				builder.registerProjection(MyProjection, 'myView')
+					.exposes(p => p.eventTracker as any, 'myViewTracker');
+
+				const container = builder.container() as any;
+
+				expect(container.myViewTracker).toBeNull();
+			});
+		});
+
 		it('restorePromises resolves when all projection restores complete', async () => {
 			builder.registerProjection(MyProjection, 'myView');
 
