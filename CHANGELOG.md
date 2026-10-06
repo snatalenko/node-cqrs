@@ -1,4 +1,4 @@
-## [1.3.0-alpha.12](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.9...v1.3.0-alpha.12) (2026-10-06)
+## [1.3.0-alpha.13](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.9...v1.3.0-alpha.13) (2026-10-06)
 
 ### Features
 
