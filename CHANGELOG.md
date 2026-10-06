@@ -1,3 +1,9 @@
+## [1.3.0-alpha.11](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.10...v1.3.0-alpha.11) (2026-10-06)
+
+### Build System
+
+* Make publishing dependent on Audit, Lint, and Tests ([3986462](https://github.com/snatalenko/node-cqrs/commit/39864628a4f2f245ef35087a29b69e100efeb7eb))
+
 ## [1.3.0-alpha.10](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.9...v1.3.0-alpha.10) (2026-10-06)
 
 ### Features
