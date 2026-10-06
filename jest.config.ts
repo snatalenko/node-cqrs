@@ -1,5 +1,10 @@
+/// <reference types="node" />
+
+// Without native TypeScript support (Node.js < 22.18), Jest compiles this file with ts-node,
+// which type-checks it against tsconfig.json, where Node.js types are not included by default
+
 const hasExplicitPath = process.argv.length > 2 &&
-	process.argv.slice(2).some(arg => !arg.startsWith('-') && arg.includes('/'));
+	process.argv.slice(2).some((arg: string) => !arg.startsWith('-') && arg.includes('/'));
 
 export default {
 	testEnvironment: 'node',
