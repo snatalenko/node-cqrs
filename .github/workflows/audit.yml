@@ -4,11 +4,10 @@ on:
   push:
     branches:
       - master
-    tags:
-      - 'v*.*.*'
   pull_request:
   schedule:
     - cron: '0 8 * * 1' # Mondays at 08:00 UTC
+  workflow_call: # required to pass before publishing, see publish.yml
 
 jobs:
   audit:
