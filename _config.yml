@@ -37,32 +37,32 @@ defaults:
       path: README.md
     values:
       layout: docs
-      title: "node-cqrs: CQRS and Event Sourcing for TypeScript"
+      title: "node-cqrs: CQRS and Event Sourcing for Node.js and TypeScript"
       nav: overview
       nav_title: Overview
       nav_group: primary
       nav_order: 1
-      description: Build CQRS and Event Sourcing applications in TypeScript with aggregates, sagas, projections, dependency injection, and pluggable infrastructure.
+      description: Build CQRS and Event Sourcing applications for Node.js in TypeScript with aggregates, sagas, projections, and pluggable persistence and messaging.
       source_path: README.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/README.md
       permalink: /
       content_start_id: features
-      last_modified_at: 2026-08-14
+      last_modified_at: 2026-10-08
       sitemap: true
   - scope:
       path: examples/README.md
     values:
       layout: docs
-      title: Examples
+      title: TypeScript CQRS and Event Sourcing Examples
       nav: examples
       nav_title: Examples
       nav_group: resources
       eyebrow: node-cqrs resources
-      description: Runnable node-cqrs examples for core CQRS workflows, sagas, projections, telemetry, and infrastructure modules.
+      description: Run TypeScript and CommonJS CQRS and Event Sourcing examples for Node.js, including aggregates, sagas, projections, and database adapters.
       source_path: examples/README.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/examples/README.md
       permalink: /examples/
-      last_modified_at: 2026-08-15
+      last_modified_at: 2026-10-08
       sitemap: true
   - scope:
       path: src/sqlite/README.md
@@ -130,7 +130,7 @@ defaults:
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/postgresql/README.md
       permalink: /postgresql/
       content_start_id: overview
-      last_modified_at: 2026-08-14
+      last_modified_at: 2026-10-06
       sitemap: true
   - scope:
       path: src/rabbitmq/README.md
@@ -147,7 +147,7 @@ defaults:
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/rabbitmq/README.md
       permalink: /rabbitmq/
       content_start_id: overview
-      last_modified_at: 2026-08-14
+      last_modified_at: 2026-10-06
       sitemap: true
   - scope:
       path: src/workers/README.md
@@ -164,7 +164,7 @@ defaults:
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/src/workers/README.md
       permalink: /workers/
       content_start_id: overview
-      last_modified_at: 2026-08-14
+      last_modified_at: 2026-10-06
       sitemap: true
   - scope:
       path: CHANGELOG.md
@@ -178,7 +178,7 @@ defaults:
       source_path: CHANGELOG.md
       source_url: https://github.com/snatalenko/node-cqrs/blob/master/CHANGELOG.md
       permalink: /changelog/
-      last_modified_at: 2026-08-14
+      last_modified_at: 2026-10-07
       sitemap: true
 
 markdown: kramdown

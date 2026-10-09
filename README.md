@@ -105,6 +105,13 @@ persistent event store from [Infrastructure](#infrastructure) for an application
 
 ## How It Fits Together
 
+CQRS (Command Query Responsibility Segregation) separates commands that change application state from queries
+that read it. In `node-cqrs`, aggregates handle commands and projections build the views used by queries.
+
+Event Sourcing records state changes as events. An aggregate restores its state by replaying its event history;
+projections use those events to build read models. `node-cqrs` combines these patterns for Node.js applications
+written in TypeScript or JavaScript.
+
 ![Commands flow through aggregates and events update projections and sagas](docs/images/node-cqrs-flow.svg)
 
 Domain behavior is split into three small blocks:
