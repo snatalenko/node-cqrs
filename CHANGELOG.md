@@ -1,3 +1,13 @@
+## [1.3.0-alpha.14](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.13...v1.3.0-alpha.14) (2026-10-09)
+
+### Internal Fixes
+
+* Make PostgreSQL schema initialization safe under concurrency and rollbacks ([637e15e](https://github.com/snatalenko/node-cqrs/commit/637e15e0619c6866b83a1f126ab0d44f08e7ea44))
+
+### Documentation
+
+* Hide internal fixes from final changelog ([a9aede9](https://github.com/snatalenko/node-cqrs/commit/a9aede97f2d99ab1da817f31ee60951642473d9a))
+
 ## [1.3.0-alpha.13](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.9...v1.3.0-alpha.13) (2026-10-06)
 
 ### Features
