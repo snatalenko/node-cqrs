@@ -329,12 +329,16 @@ passed from a projection constructor to `AbstractPostgresqlObjectProjection` or 
 ## Operations
 
 - Tables and indexes are created lazily on first use with `CREATE TABLE IF NOT EXISTS` and
-  `CREATE INDEX IF NOT EXISTS`.
+  `CREATE INDEX IF NOT EXISTS`. Instances starting concurrently against an empty database may create the same
+  objects at once; initialization is repeated when PostgreSQL reports such a conflict.
+- Views create their tables before a runtime transaction starts. An accessor used for the first time within a
+  transaction creates its tables in that transaction, and creates them again if the transaction is rolled back.
 - The database role must be able to create those objects and read and write their tables.
 - Prefer `pg.Pool` for concurrent applications. A shared `pg.Client` is only appropriate when database work is
   serialized by the application.
 - Table names are quoted as identifiers. Use separate configuration when multiple applications share a database.
-- The adapter does not close the supplied connection or pool.
+- The adapter does not close the supplied connection or pool, and does not release a supplied client checked out of a
+  pool.
 
 ## Advanced APIs
 

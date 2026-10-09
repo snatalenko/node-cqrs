@@ -35,6 +35,11 @@ export class PostgresqlObjectView<TRecord>
 		// No need to initialize the table here, it's done in PostgresqlObjectStorage
 	}
 
+	override async assertConnection() {
+		await super.assertConnection();
+		await this.#postgresqlObjectStorage.assertConnection();
+	}
+
 	async get(id: Identifier): Promise<TRecord | undefined> {
 		if (!this.ready)
 			await this.once('ready');

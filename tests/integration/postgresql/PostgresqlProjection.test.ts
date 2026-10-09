@@ -180,6 +180,55 @@ describe('PostgreSQL projections (integration)', () => {
 		expect(await storage.get('user1')).toBeUndefined();
 	});
 
+	it('initializes fresh tables concurrently from separate pools', async () => {
+		const pools = Array.from({ length: 20 }, () => new Pool({ connectionString: CONNECTION_STRING }));
+		try {
+			const projections = pools.map(p => new UsersProjection({ viewModelPostgresqlDb: p }));
+
+			await Promise.all(projections.map((p, i) => p.project(event(`event${i}`, `user${i}`, `user${i}`))));
+
+			expect(await objectView().get('user4')).toMatchObject({ username: 'user4' });
+		}
+		finally {
+			await Promise.all(pools.map(p => p.end()));
+		}
+	});
+
+	it('projects with a one-connection pool, after the first cold projection fails', async () => {
+		const singlePool = new Pool({ connectionString: CONNECTION_STRING, max: 1 });
+		try {
+			const p = new UsersProjection({ viewModelPostgresqlDb: singlePool });
+			const e = event('event1', 'user1', 'alice');
+			p.shouldFail = true;
+			await expect(p.project(e)).rejects.toThrow('failed');
+
+			p.shouldFail = false;
+			await p.project(e);
+
+			expect(await p.view.get('user1')).toMatchObject({ username: 'alice' });
+		}
+		finally {
+			await singlePool.end();
+		}
+	});
+
+	it('projects through a client checked out of a pool without releasing it', async () => {
+		const client = await pool.connect();
+		const release = jest.spyOn(client, 'release');
+		try {
+			const p = new UsersProjection({ viewModelPostgresqlDb: client });
+
+			await p.project(event('event1', 'user1', 'alice'));
+
+			expect(await p.view.get('user1')).toMatchObject({ username: 'alice' });
+			expect(release).not.toHaveBeenCalled();
+		}
+		finally {
+			release.mockRestore();
+			client.release();
+		}
+	});
+
 	it('coordinates schema-migration view locks across instances', async () => {
 		const first = new PostgresqlViewLocker({
 			viewModelPostgresqlDb: pool,

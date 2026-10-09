@@ -42,6 +42,16 @@ export abstract class AbstractPostgresqlView extends AbstractPostgresqlAccessor 
 			options.logger;
 	}
 
+	/**
+	 * Initializes the lockers along with the view,
+	 * so that runtime transactions do not start with uncommitted schema changes
+	 */
+	override async assertConnection() {
+		await super.assertConnection();
+		await this.viewLocker.assertConnection();
+		await this.eventLocker.assertConnection();
+	}
+
 	async lock() {
 		return this.viewLocker.lock();
 	}

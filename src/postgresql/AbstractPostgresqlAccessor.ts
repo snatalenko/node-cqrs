@@ -28,6 +28,16 @@ const transactionStorages = new WeakMap<PostgresqlConnection, AsyncLocalStorage<
  */
 const connectionsInTransaction = new WeakSet<PostgresqlConnection>();
 
+/**
+ * Errors raised when concurrent sessions create the same object, which `IF NOT EXISTS` does not prevent.
+ * The conflicting object is committed by then, so repeating the initialization skips it.
+ */
+const CONCURRENT_CREATION_ERROR_CODES = new Set(['23505', '42P07', '42710']);
+const MAX_INITIALIZE_ATTEMPTS = 5;
+
+const isConcurrentCreationError = (error: unknown) =>
+	CONCURRENT_CREATION_ERROR_CODES.has((error as { code?: string } | undefined)?.code ?? '');
+
 type PostgresqlAccessorParams = {
 	db?: PostgresqlConnection;
 	dbFactory?: () => Promise<PostgresqlConnection> | PostgresqlConnection;
@@ -50,6 +60,7 @@ export abstract class AbstractPostgresqlAccessor {
 	readonly #dbFactory: (() => Promise<PostgresqlConnection> | PostgresqlConnection) | undefined;
 	readonly #initLocker = new Lock();
 	#initialized = false;
+	readonly #initializedTransactions = new WeakSet<TransactionContext>();
 
 	constructor(c: PostgresqlAccessorParams) {
 		const db = c.db ?? c.viewModelPostgresqlDb;
@@ -78,13 +89,14 @@ export abstract class AbstractPostgresqlAccessor {
 		return storage;
 	}
 
-	/** Current transaction of the accessor connection pool */
-	get #transaction(): TransactionContext | undefined {
+	/** Get current transaction of the accessor connection pool */
+	#getTransaction(): TransactionContext | undefined {
 		return this.#transactionStorage?.getStore();
 	}
 
+	/** Get connection of current transaction, or general connection pool when outside of transaction */
 	protected get connection(): PostgresqlConnection {
-		return this.#transaction?.connection ?? this.db!;
+		return this.#getTransaction()?.connection ?? this.db!;
 	}
 
 	/**
@@ -101,11 +113,17 @@ export abstract class AbstractPostgresqlAccessor {
 	 * or immediately outside of a transaction. Callbacks of rolled back transactions are discarded.
 	 */
 	protected afterCommit(callback: () => void) {
-		const transaction = this.#transaction;
+		const transaction = this.#getTransaction();
 		if (transaction)
 			transaction.commitCallbacks.push(callback);
 		else
 			callback();
+	}
+
+	/** Check if the schema is initialized, or created within the current transaction that is not committed yet */
+	#isInitialized(): boolean {
+		const transaction = this.#getTransaction();
+		return this.#initialized || (!!transaction && this.#initializedTransactions.has(transaction));
 	}
 
 	/**
@@ -114,37 +132,65 @@ export abstract class AbstractPostgresqlAccessor {
 	 * If the connection is not already set, it creates one using the provided factory
 	 * and then calls the `initialize` method.
 	 *
+	 * Within a transaction, the schema is created on the transaction connection
+	 * and is considered initialized only once the transaction is committed.
+	 *
 	 * This method is idempotent and safe to call multiple times.
 	 */
 	async assertConnection() {
-		if (this.#initialized)
+		if (this.#isInitialized())
 			return;
 
 		try {
 			await this.#initLocker.acquire();
-			if (this.#initialized)
-				return;
-
 			if (!this.db)
 				this.db = await this.#dbFactory!();
 
-			await this.initialize(this.db);
+			if (this.#isInitialized())
+				return;
 
-			this.#initialized = true;
+			const transaction = this.#getTransaction();
+			if (transaction) {
+				await this.initialize(transaction.connection);
+				this.#initializedTransactions.add(transaction);
+
+				transaction.commitCallbacks.push(() => {
+					this.#initialized = true;
+				});
+			}
+			else {
+				await this.#initializeRetryingConcurrentCreation(this.db);
+				this.#initialized = true;
+			}
 		}
 		finally {
 			this.#initLocker.release();
 		}
 	}
 
+	async #initializeRetryingConcurrentCreation(db: PostgresqlConnection) {
+		for (let attempt = 1; ; attempt++) {
+			try {
+				return await this.initialize(db);
+			}
+			catch (error) {
+				if (attempt === MAX_INITIALIZE_ATTEMPTS || !isConcurrentCreationError(error))
+					throw error;
+			}
+		}
+	}
+
 	async runInTransaction<T>(callback: () => Promise<T> | T): Promise<T> {
 		await this.assertConnection();
 
-		if (this.#transaction)
+		if (this.#getTransaction())
 			return callback();
 
 		const transactionStorage = this.#transactionStorage!;
-		const transactionConnection = await this.getTransactionConnection();
+		const pooledConnection = AbstractPostgresqlAccessor.isConnectionPool(this.db) ?
+			await this.db.connect() :
+			undefined;
+		const transactionConnection = pooledConnection ?? this.db!;
 		const transaction: TransactionContext = { connection: transactionConnection, commitCallbacks: [] };
 
 		let result: T;
@@ -163,8 +209,7 @@ export abstract class AbstractPostgresqlAccessor {
 		}
 		finally {
 			connectionsInTransaction.delete(transactionConnection);
-			if ('release' in transactionConnection)
-				transactionConnection.release();
+			pooledConnection?.release();
 		}
 
 		for (const commitCallback of transaction.commitCallbacks)
@@ -173,14 +218,8 @@ export abstract class AbstractPostgresqlAccessor {
 		return result;
 	}
 
-	private async getTransactionConnection(): Promise<PostgresqlConnection | ReleasablePostgresqlConnection> {
-		if (AbstractPostgresqlAccessor.isConnectionPool(this.db))
-			return this.db.connect();
-
-		return this.db!;
-	}
-
+	/** A pool hands out releasable connections; a connection checked out of a pool already is not a pool itself */
 	private static isConnectionPool(db: PostgresqlConnection | undefined): db is PostgresqlConnectionPool {
-		return typeof (db as PostgresqlConnectionPool | undefined)?.connect === 'function';
+		return typeof (db as PostgresqlConnectionPool | undefined)?.connect === 'function' && !('release' in db!);
 	}
 }

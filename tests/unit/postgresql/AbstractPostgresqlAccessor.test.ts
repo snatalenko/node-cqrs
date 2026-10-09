@@ -70,6 +70,81 @@ describe('AbstractPostgresqlAccessor', () => {
 		});
 	});
 
+	describe('assertConnection', () => {
+
+		let pool: MockPostgresqlConnection;
+		let accessor: TestAccessor;
+		let initialize: jest.SpyInstance;
+
+		beforeEach(() => {
+			pool = new MockPostgresqlConnection();
+			accessor = new TestAccessor({ viewModelPostgresqlDb: pool });
+			initialize = jest.spyOn(accessor as any, 'initialize');
+		});
+
+		it('repeats initialization failed by concurrent creation of the same objects', async () => {
+			initialize.mockRejectedValueOnce(Object.assign(new Error('duplicate key'), { code: '23505' }));
+
+			await accessor.assertConnection();
+
+			expect(initialize).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not repeat initialization failed by other errors', async () => {
+			initialize.mockRejectedValueOnce(Object.assign(new Error('permission denied'), { code: '42501' }));
+
+			await expect(accessor.assertConnection()).rejects.toThrow('permission denied');
+
+			expect(initialize).toHaveBeenCalledTimes(1);
+		});
+
+		it('initializes on the transaction connection once per transaction', async () => {
+			const owner = new TestAccessor({ viewModelPostgresqlDb: pool });
+
+			await owner.runInTransaction(async () => {
+				await accessor.assertConnection();
+				await accessor.assertConnection();
+
+				expect(initialize).toHaveBeenCalledTimes(1);
+				expect(initialize).toHaveBeenCalledWith(owner.currentConnection);
+			});
+
+			await accessor.assertConnection();
+			expect(initialize).toHaveBeenCalledTimes(1);
+		});
+
+		it('initializes again after the transaction it initialized in is rolled back', async () => {
+			const owner = new TestAccessor({ viewModelPostgresqlDb: pool });
+
+			await expect(owner.runInTransaction(async () => {
+				await accessor.assertConnection();
+				throw new Error('failed');
+			})).rejects.toThrow('failed');
+
+			await accessor.assertConnection();
+
+			expect(initialize).toHaveBeenCalledTimes(2);
+			expect(initialize).toHaveBeenLastCalledWith(pool);
+		});
+	});
+
+	describe('with a connection checked out of a pool', () => {
+
+		it('runs transactions on it without reconnecting or releasing it', async () => {
+			const pool = new MockPostgresqlConnection();
+			const client = Object.assign(await pool.connect(), { connect: jest.fn() });
+			const accessor = new TestAccessor({ viewModelPostgresqlDb: client });
+
+			await accessor.runInTransaction(() => {
+				expect(accessor.currentConnection).toBe(client);
+			});
+
+			expect(client.connect).not.toHaveBeenCalled();
+			expect(pool.releaseCount).toBe(0);
+			expect(pool.transactionLog).toEqual(['BEGIN', 'COMMIT']);
+		});
+	});
+
 	describe('afterCommit', () => {
 
 		let pool: MockPostgresqlConnection;
