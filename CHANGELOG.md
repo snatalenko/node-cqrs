@@ -1,3 +1,9 @@
+## [1.3.0-alpha.15](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.14...v1.3.0-alpha.15) (2026-10-10)
+
+### Changes
+
+* Run projections in view transactions, add SQLite transactions ([341bbf1](https://github.com/snatalenko/node-cqrs/commit/341bbf1aef930089d7af3f5191c0e35abd8a6932))
+
 ## [1.3.0-alpha.14](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.13...v1.3.0-alpha.14) (2026-10-09)
 
 ### Internal Fixes
