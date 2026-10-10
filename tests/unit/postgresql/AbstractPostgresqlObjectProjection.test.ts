@@ -26,6 +26,27 @@ describe('AbstractPostgresqlObjectProjection', () => {
 		expect(projection.view).toBeInstanceOf(PostgresqlObjectView);
 	});
 
+	it('projects events per aggregate by default, unless another projection mode is passed', () => {
+		class Projection extends AbstractPostgresqlObjectProjection<{ name: string }> {
+			static override get tableName() {
+				return 'users';
+			}
+
+			static override get schemaVersion() {
+				return '1';
+			}
+
+			get mode() {
+				return this.projectionMode;
+			}
+		}
+
+		const db = new MockPostgresqlConnection();
+
+		expect(new Projection({ viewModelPostgresqlDb: db }).mode).toBe('per-aggregate');
+		expect(new Projection({ viewModelPostgresqlDb: db, projectionMode: 'concurrent' }).mode).toBe('concurrent');
+	});
+
 	it('requires tableName static getter', () => {
 		class Projection extends AbstractPostgresqlObjectProjection<{ name: string }> {
 			static override get schemaVersion() {

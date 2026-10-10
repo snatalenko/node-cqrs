@@ -287,6 +287,29 @@ When the view implements `ITransactionalView`, as the SQLite and PostgreSQL view
 runtime event within `view.runInTransaction()`: the view changes, the processed marker, and the checkpoint are
 committed together, or rolled back when the handler fails.
 
+By default, runtime events are projected concurrently, so handlers awaiting asynchronous work, or transactions
+committed on separate connections, can complete in a different order than events were received. When a projection
+depends on the order of events, set `projectionMode` in the constructor parameters, or assign `this.projectionMode`
+in the derived class constructor:
+
+| `projectionMode` | Behavior |
+|---|---|
+| `'concurrent'` (default) | Events are projected as they are received, without waiting for each other |
+| `'per-aggregate'` | Events of the same aggregate are projected one at a time, in the order they are received; events of different aggregates are projected concurrently, and events without `aggregateId` form a queue of their own |
+| `'sequential'` | All events are projected one at a time, in the order they are received |
+
+```ts
+class UsersProjection extends AbstractProjection<UsersView> {
+	constructor() {
+		super({ view: new UsersView(), projectionMode: 'per-aggregate' });
+	}
+}
+```
+
+Use `'per-aggregate'` when each handler only depends on earlier events of the same aggregate, and `'sequential'` when
+the view combines data across aggregates. The ordering applies within one projection instance; another application
+instance can still project the same events concurrently. Restoration always projects events sequentially.
+
 ### Awaiting Projected Events
 
 Projections update their views asynchronously: a command resolves once its events are stored, while projections

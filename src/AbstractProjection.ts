@@ -12,6 +12,7 @@ import {
 	type IEvent,
 	type IObservable,
 	type IEventStorageReader,
+	type ILockerLease,
 	isViewLocker,
 	isEventLocker,
 	isEventTracker,
@@ -24,7 +25,8 @@ import {
 	getHandler,
 	subscribe,
 	getMessageHandlerNames,
-	assertFunction
+	assertFunction,
+	Lock
 } from './utils/index.ts';
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
@@ -36,6 +38,19 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 export type DefaultEventTracker<TView> =
 	IsAny<TView> extends true ? IEventTracker | null :
 		TView extends IEventTracker ? TView : IEventTracker | null;
+
+/**
+ * Order in which a projection processes runtime events:
+ *
+ * - `concurrent` - events are projected as they are received, without waiting for each other;
+ * - `per-aggregate` - events of the same aggregate are projected one at a time, in the order they are received,
+ *   while events of different aggregates are projected concurrently.
+ *   Events without `aggregateId` form a queue of their own;
+ * - `sequential` - all events are projected one at a time, in the order they are received.
+ *
+ * Ordering applies within the projection instance; restoration always projects events sequentially.
+ */
+export type ProjectionMode = 'concurrent' | 'per-aggregate' | 'sequential';
 
 export type AbstractProjectionParams<
 	T,
@@ -69,6 +84,14 @@ export type AbstractProjectionParams<
 	 */
 	eventLocker?: IEventLocker,
 
+	/**
+	 * Order in which runtime events are projected.
+	 *
+	 * @default 'concurrent'
+	 * @see ProjectionMode
+	 */
+	projectionMode?: ProjectionMode,
+
 	logger?: ILogger | IExtendableLogger,
 
 	tracerFactory?: (name: string) => Tracer
@@ -98,7 +121,15 @@ export abstract class AbstractProjection<
 	#viewLocker?: IViewLocker | null;
 	#eventLocker?: IEventLocker | null;
 	#eventTracker?: IEventTracker | null;
+	readonly #projectLock = new Lock();
 	protected _logger?: ILogger;
+
+	/**
+	 * Order in which runtime events are projected. Can be assigned in the constructor of a derived class.
+	 *
+	 * @see ProjectionMode
+	 */
+	protected projectionMode: ProjectionMode;
 	readonly #serviceName: string;
 	readonly #tracer: Tracer | undefined;
 
@@ -186,6 +217,7 @@ export abstract class AbstractProjection<
 		viewLocker,
 		eventTracker,
 		eventLocker,
+		projectionMode = 'concurrent',
 		tracerFactory,
 		logger
 	}: AbstractProjectionParams<TView, TEventTracker> = {}) {
@@ -194,6 +226,7 @@ export abstract class AbstractProjection<
 		this.#view = view;
 		this.#viewLocker = viewLocker;
 		this.#eventLocker = eventLocker;
+		this.projectionMode = projectionMode;
 		if (eventTracker !== undefined)
 			this.eventTracker = eventTracker;
 		this.#serviceName = getClassName(this);
@@ -219,32 +252,51 @@ export abstract class AbstractProjection<
 	 * Runs within the view transaction, when the view implements ITransactionalView.
 	 */
 	async project(event: IEvent, meta?: Record<string, any>): Promise<void> {
-		if (this._viewLocker && !this._viewLocker.ready) {
-			this._logger?.debug(`view is locked, awaiting until it is ready to process ${describe(event)}`);
-			await this._viewLocker.once('ready');
-			this._logger?.debug(`view is ready, processing ${describe(event)}`);
-		}
-
-		const otelSpan = this.#tracer?.startSpan(`${this.#serviceName}.project ${event.type}`,
-			spanAttributes('projection', event, ['type', 'aggregateId']),
-			spanContext(meta)
-		);
-
+		// The queue is entered before awaiting the view readiness,
+		// so that events received meanwhile do not get ahead once the view becomes ready
+		const lease = await this.#enterProjectionQueue(event);
 		try {
-			if (isTransactionalView(this.view))
-				await this.view.runInTransaction(() => this._project(event, meta));
-			else
-				await this._project(event, meta);
-		}
-		catch (error: any) {
-			// Handler failures are already reported by _project, but the transaction can fail on commit as well
-			this.eventTracker?.markAsFailed?.(event, error);
-			recordSpanError(otelSpan, error);
-			throw error;
+			if (this._viewLocker && !this._viewLocker.ready) {
+				this._logger?.debug(`view is locked, awaiting until it is ready to process ${describe(event)}`);
+				await this._viewLocker.once('ready');
+				this._logger?.debug(`view is ready, processing ${describe(event)}`);
+			}
+
+			const otelSpan = this.#tracer?.startSpan(`${this.#serviceName}.project ${event.type}`,
+				spanAttributes('projection', event, ['type', 'aggregateId']),
+				spanContext(meta)
+			);
+
+			try {
+				if (isTransactionalView(this.view))
+					await this.view.runInTransaction(() => this._project(event, meta));
+				else
+					await this._project(event, meta);
+			}
+			catch (error: any) {
+				// Handler failures are already reported by _project, but the transaction can fail on commit as well
+				this.eventTracker?.markAsFailed?.(event, error);
+				recordSpanError(otelSpan, error);
+				throw error;
+			}
+			finally {
+				otelSpan?.end();
+			}
 		}
 		finally {
-			otelSpan?.end();
+			lease?.release();
 		}
+	}
+
+	/** Waits for the turn of the event according to the projection mode */
+	#enterProjectionQueue(event: IEvent): Promise<ILockerLease> | undefined {
+		// Events without aggregateId share the queue named "undefined"
+		if (this.projectionMode === 'per-aggregate')
+			return this.#projectLock.acquire(String(event.aggregateId));
+		if (this.projectionMode === 'sequential')
+			return this.#projectLock.acquire();
+
+		return undefined;
 	}
 
 	/**

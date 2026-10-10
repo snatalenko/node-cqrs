@@ -206,6 +206,17 @@ When two application instances receive the same event, one transaction processes
 the first transaction fails, its claim and view changes are rolled back, allowing the waiting instance to process
 the event. Different events that update the same object use optimistic retries to avoid lost updates.
 
+Transactions of different events run concurrently on separate pool connections and could commit in a different
+order than events were received. `AbstractPostgresqlObjectProjection` therefore uses the `'per-aggregate'`
+projection mode: events of the same aggregate are projected one at a time, in the order they are received within the
+application instance, while events of different aggregates are still projected concurrently. Pass
+`projectionMode: 'sequential'` to the projection constructor when the view combines data across aggregates, or
+`projectionMode: 'concurrent'` when its handlers do not depend on the order of events.
+
+Projections extending `AbstractProjection` directly, such as those maintaining a relational view, project events
+concurrently by default. Pass `projectionMode` to the constructor, or assign `this.projectionMode` in the derived
+class constructor, when their handlers depend on the order of events.
+
 ### Restore and schema versions
 
 On startup, the projection resumes after its last saved checkpoint. Restore uses a distributed view lock, so only

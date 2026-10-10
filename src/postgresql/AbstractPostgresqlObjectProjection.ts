@@ -1,5 +1,5 @@
 import type { IContainer } from 'node-cqrs';
-import { AbstractProjection } from '../AbstractProjection.ts';
+import { AbstractProjection, type AbstractProjectionParams } from '../AbstractProjection.ts';
 import { PostgresqlObjectView } from './PostgresqlObjectView.ts';
 
 type PostgresqlObjectProjectionParams =
@@ -16,7 +16,8 @@ type PostgresqlObjectProjectionParams =
 		'eventLockTtl' |
 		'viewLockTableName' |
 		'viewLockTtl'
-	>>;
+	>>
+	& Pick<AbstractProjectionParams<unknown>, 'projectionMode'>;
 
 export abstract class AbstractPostgresqlObjectProjection<T> extends AbstractProjection<PostgresqlObjectView<T>> {
 
@@ -33,12 +34,13 @@ export abstract class AbstractPostgresqlObjectProjection<T> extends AbstractProj
 		eventLockTtl,
 		logger,
 		postgresqlObjectStorageMaxRetries,
+		projectionMode = 'per-aggregate',
 		viewLockTableName,
 		viewLockTtl,
 		viewModelPostgresqlDb,
 		viewModelPostgresqlDbFactory
 	}: PostgresqlObjectProjectionParams) {
-		super({ logger });
+		super({ logger, projectionMode });
 
 		this.view = new PostgresqlObjectView({
 			schemaVersion: new.target.schemaVersion,

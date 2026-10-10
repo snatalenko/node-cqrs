@@ -6,6 +6,7 @@ import {
 	EventStore,
 	InMemoryMessageBus,
 	EventDispatcher,
+	type IEvent,
 	type IEventLocker,
 	type IEventTracker,
 	type IViewLocker
@@ -325,6 +326,167 @@ describe('AbstractProjection', function () {
 
 				expect(calls).not.toContain('begin');
 			});
+		});
+	});
+
+	describe('projectionMode', () => {
+
+		class GatedProjection extends AbstractProjection<any> {
+			calls: string[] = [];
+			gates = new Map<string, Promise<void>>();
+
+			async somethingHappened({ id }: IEvent) {
+				this.calls.push(`start:${id}`);
+				await this.gates.get(String(id));
+				this.calls.push(`end:${id}`);
+			}
+		}
+
+		class SequentialProjection extends GatedProjection {
+			constructor() {
+				super();
+				this.projectionMode = 'sequential';
+			}
+		}
+
+		const event = (id: string, aggregateId?: string): IEvent =>
+			({ id, type: 'somethingHappened', aggregateId });
+
+		function gate(gatedProjection: GatedProjection, id: string) {
+			let open!: () => void;
+			gatedProjection.gates.set(id, new Promise(resolve => {
+				open = resolve;
+			}));
+			return open;
+		}
+
+		const nextTick = () => new Promise<void>(resolve => setImmediate(resolve));
+
+		it('projects events concurrently by default', async () => {
+			const p = new GatedProjection();
+			const open = gate(p, '1');
+
+			const projecting = Promise.all([p.project(event('1', 'a')), p.project(event('2', 'a'))]);
+			await nextTick();
+			open();
+			await projecting;
+
+			expect(p.calls).toEqual(['start:1', 'start:2', 'end:2', 'end:1']);
+		});
+
+		describe('per-aggregate', () => {
+
+			it('projects events of the same aggregate one at a time in the order received', async () => {
+				const p = new GatedProjection({ projectionMode: 'per-aggregate' });
+				const open = gate(p, '1');
+
+				const projecting = Promise.all([
+					p.project(event('1', 'a')),
+					p.project(event('2', 'a')),
+					p.project(event('3', 'a'))
+				]);
+				await nextTick();
+				open();
+				await projecting;
+
+				expect(p.calls).toEqual(['start:1', 'end:1', 'start:2', 'end:2', 'start:3', 'end:3']);
+			});
+
+			it('projects events of different aggregates concurrently', async () => {
+				const p = new GatedProjection({ projectionMode: 'per-aggregate' });
+				const open = gate(p, '1');
+
+				const projecting = Promise.all([p.project(event('1', 'a')), p.project(event('2', 'b'))]);
+				await nextTick();
+				open();
+				await projecting;
+
+				expect(p.calls).toEqual(['start:1', 'start:2', 'end:2', 'end:1']);
+			});
+
+			it('projects events without aggregateId one at a time, concurrently with aggregate events', async () => {
+				const p = new GatedProjection({ projectionMode: 'per-aggregate' });
+				const open = gate(p, '1');
+
+				const projecting = Promise.all([
+					p.project(event('1')),
+					p.project(event('2')),
+					p.project(event('3', 'a'))
+				]);
+				await nextTick();
+				open();
+				await projecting;
+
+				expect(p.calls).toEqual(['start:1', 'start:3', 'end:3', 'end:1', 'start:2', 'end:2']);
+			});
+		});
+
+		describe('sequential', () => {
+
+			it('projects all events one at a time in the order received', async () => {
+				const p = new GatedProjection({ projectionMode: 'sequential' });
+				const open = gate(p, '1');
+
+				const projecting = Promise.all([
+					p.project(event('1', 'a')),
+					p.project(event('2', 'b')),
+					p.project(event('3'))
+				]);
+				await nextTick();
+				open();
+				await projecting;
+
+				expect(p.calls).toEqual(['start:1', 'end:1', 'start:2', 'end:2', 'start:3', 'end:3']);
+			});
+
+			it('can be enabled in a derived class constructor', async () => {
+				const p = new SequentialProjection();
+				const open = gate(p, '1');
+
+				const projecting = Promise.all([p.project(event('1', 'a')), p.project(event('2', 'b'))]);
+				await nextTick();
+				open();
+				await projecting;
+
+				expect(p.calls).toEqual(['start:1', 'end:1', 'start:2', 'end:2']);
+			});
+		});
+
+		it.each(['per-aggregate', 'sequential'] as const)(
+			'keeps the order of events received while the view becomes ready in %s mode',
+			async projectionMode => {
+				let markReady!: () => void;
+				const readiness = new Promise<void>(resolve => {
+					markReady = resolve;
+				});
+				const viewLocker = {
+					ready: false,
+					lock: () => true,
+					unlock: () => { },
+					once: () => readiness
+				};
+				const p = new GatedProjection({ projectionMode, viewLocker });
+
+				const first = p.project(event('1', 'a'));
+				await nextTick();
+
+				viewLocker.ready = true;
+				markReady();
+				const second = p.project(event('2', 'a'));
+				await Promise.all([first, second]);
+
+				expect(p.calls).toEqual(['start:1', 'end:1', 'start:2', 'end:2']);
+			}
+		);
+
+		it('releases the lock when the handler fails', async () => {
+			const p = new GatedProjection({ projectionMode: 'per-aggregate' });
+			p.gates.set('1', Promise.reject(new Error('failed')));
+
+			await expect(p.project(event('1', 'a'))).rejects.toThrow('failed');
+			await p.project(event('2', 'a'));
+
+			expect(p.calls).toEqual(['start:1', 'start:2', 'end:2']);
 		});
 	});
 
