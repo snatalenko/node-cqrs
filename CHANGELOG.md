@@ -1,3 +1,9 @@
+## [1.3.0-alpha.16](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.15...v1.3.0-alpha.16) (2026-10-10)
+
+### Features
+
+* projectionMode option (concurrent, per-aggregate, sequential), default per-aggregate for PostgreSQL object projections ([14ea23a](https://github.com/snatalenko/node-cqrs/commit/14ea23a8ed1ce7aa335f653fa4e522e392ccc3f4))
+
 ## [1.3.0-alpha.15](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.14...v1.3.0-alpha.15) (2026-10-10)
 
 ### Changes
