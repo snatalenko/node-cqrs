@@ -57,15 +57,14 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 
 	async get(id: Identifier): Promise<TRecord | undefined> {
 		assertDefined(id, 'id');
-		await this.assertConnection();
 
-		const r = this.#getQuery.get(guid(id));
-		if (!r)
-			return undefined;
-
-		return JSON.parse(r.data);
+		return this.runExclusively(() => this.getSync(id));
 	}
 
+	/**
+	 * Reads the record synchronously, without waiting for transactions in progress,
+	 * so the result can include their uncommitted changes. Requires an initialized connection.
+	 */
 	getSync(id: Identifier): TRecord | undefined {
 		assertDefined(id, 'id');
 		const r = this.#getQuery.get(guid(id));
@@ -77,9 +76,8 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 
 	async create(id: Identifier, data: TRecord) {
 		assertDefined(id, 'id');
-		await this.assertConnection();
 
-		this.#createSync(id, data);
+		await this.runExclusively(() => this.#createSync(id, data));
 	}
 
 	#createSync(id: Identifier, data: TRecord) {
@@ -92,9 +90,7 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 		assertDefined(id, 'id');
 		assertFunction(update, 'update');
 
-		await this.assertConnection();
-
-		this.#updateSync(id, update);
+		await this.runExclusively(() => this.#updateSync(id, update));
 	}
 
 	#updateSync(id: Identifier, update: (r: TRecord) => TRecord) {
@@ -124,20 +120,18 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 		assertDefined(id, 'id');
 		assertFunction(update, 'update');
 
-		await this.assertConnection();
-
-		const record = this.#getQuery.get(guid(id));
-		if (record)
-			this.#updateExistingSync(id, record, update as (r: TRecord) => TRecord);
-		else
-			this.#createSync(id, update());
+		await this.runExclusively(() => {
+			const record = this.#getQuery.get(guid(id));
+			if (record)
+				this.#updateExistingSync(id, record, update as (r: TRecord) => TRecord);
+			else
+				this.#createSync(id, update());
+		});
 	}
 
 	async delete(id: Identifier): Promise<boolean> {
 		assertDefined(id, 'id');
-		await this.assertConnection();
 
-		const r = this.#deleteQuery.run(guid(id));
-		return r.changes === 1;
+		return this.runExclusively(() => this.#deleteQuery.run(guid(id)).changes === 1);
 	}
 }

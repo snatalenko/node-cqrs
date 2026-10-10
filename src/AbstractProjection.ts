@@ -14,7 +14,8 @@ import {
 	type IEventStorageReader,
 	isViewLocker,
 	isEventLocker,
-	isEventTracker
+	isEventTracker,
+	isTransactionalView
 } from './interfaces/index.ts';
 
 import {
@@ -213,7 +214,10 @@ export abstract class AbstractProjection<
 		});
 	}
 
-	/** Pass event to projection event handler */
+	/**
+	 * Pass event to projection event handler.
+	 * Runs within the view transaction, when the view implements ITransactionalView.
+	 */
 	async project(event: IEvent, meta?: Record<string, any>): Promise<void> {
 		if (this._viewLocker && !this._viewLocker.ready) {
 			this._logger?.debug(`view is locked, awaiting until it is ready to process ${describe(event)}`);
@@ -227,9 +231,14 @@ export abstract class AbstractProjection<
 		);
 
 		try {
-			await this._project(event, meta);
+			if (isTransactionalView(this.view))
+				await this.view.runInTransaction(() => this._project(event, meta));
+			else
+				await this._project(event, meta);
 		}
 		catch (error: any) {
+			// Handler failures are already reported by _project, but the transaction can fail on commit as well
+			this.eventTracker?.markAsFailed?.(event, error);
 			recordSpanError(otelSpan, error);
 			throw error;
 		}

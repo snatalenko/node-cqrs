@@ -36,7 +36,7 @@ The application owns the pool and must close it during shutdown with `pool.end()
 | Requirement | Use |
 |---|---|
 | Store and restore aggregate events | `PostgresqlEventStorage` |
-| Build a relational read model with custom SQL | `AbstractPostgresqlView` and `AbstractPostgresqlProjection` |
+| Build a relational read model with custom SQL | `AbstractPostgresqlView` with an `AbstractProjection` |
 | Store a document-like or key/value read model as `jsonb` | `AbstractPostgresqlObjectProjection` |
 | Compose storage and locking manually | The lower-level APIs described under [Advanced APIs](#advanced-apis) |
 
@@ -194,9 +194,8 @@ id, JSON data, and a version used for optimistic updates.
 
 ### Runtime processing
 
-`AbstractPostgresqlObjectProjection` inherits transactional runtime processing from
-`AbstractPostgresqlProjection`. For each event received at runtime, it commits these operations in one PostgreSQL
-transaction:
+PostgreSQL views implement `ITransactionalView`, so projections process each event received at runtime in one
+PostgreSQL transaction, which commits these operations together:
 
 1. Claim the event for this projection.
 2. Modify the object view.
@@ -222,8 +221,7 @@ waits when a restore is currently in progress.
 ## Relational views
 
 Use `AbstractPostgresqlView` to model a read model with PostgreSQL tables, joins, indexes, constraints, and
-query-specific columns. Pair it with `AbstractPostgresqlProjection` for transactional runtime event processing.
-The view provides restore locking, event deduplication, and checkpoints, while your subclass owns its schema and
+query-specific columns. Projections process runtime events within the view transaction. The view provides restore locking, event deduplication, and checkpoints, while your subclass owns its schema and
 queries.
 
 ```ts
@@ -268,14 +266,13 @@ class UsersByStatusView extends AbstractPostgresqlView {
 }
 ```
 
-Extend `AbstractPostgresqlProjection` and assign the relational view in the projection constructor. The base class
-commits the event claim, custom SQL, processed marker, and checkpoint atomically at runtime:
+Extend `AbstractProjection` and assign the relational view in the projection constructor. The event claim, custom
+SQL, processed marker, and checkpoint are committed atomically at runtime:
 
 ```ts
-import type { IEvent } from 'node-cqrs';
-import { AbstractPostgresqlProjection } from 'node-cqrs/postgresql';
+import { AbstractProjection, type IEvent } from 'node-cqrs';
 
-class UsersByStatusProjection extends AbstractPostgresqlProjection<UsersByStatusView> {
+class UsersByStatusProjection extends AbstractProjection<UsersByStatusView> {
 	constructor(options: PostgresqlDependencies) {
 		super({ logger: options.logger });
 		this.view = new UsersByStatusView(options);

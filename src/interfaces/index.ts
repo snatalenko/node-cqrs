@@ -28,4 +28,5 @@ export * from './IObserver.ts';
 export * from './IProjection.ts';
 export * from './ISaga.ts';
 export * from './ISnapshotEvent.ts';
+export * from './ITransactionalView.ts';
 export * from './IViewLocker.ts';

@@ -31,6 +31,11 @@ export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IOb
 		// No need to initialize the table here, it's done in SqliteObjectStorage
 	}
 
+	override async assertConnection() {
+		await super.assertConnection();
+		await this.#sqliteObjectStorage.assertConnection();
+	}
+
 	async get(id: Identifier): Promise<TRecord | undefined> {
 		if (!this.ready)
 			await this.once('ready');

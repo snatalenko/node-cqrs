@@ -217,11 +217,9 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 		ignoreConcurrencyError?: boolean;
 		meta?: Record<string, unknown> | null;
 	}): Promise<IEventSet> {
-		await this.assertConnection();
-
 		const metaJson = options?.meta ? JSON.stringify(options.meta) : null;
 
-		this.db!.transaction(() => {
+		await this.runExclusively(db => db.transaction(() => {
 			for (const event of events) {
 				if (event.aggregateId !== undefined)
 					assertGuidIdentifier(event.aggregateId, 'event.aggregateId');
@@ -256,51 +254,50 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 					}
 				}
 			}
-		})();
+		})());
 
 		return events;
 	}
 
 	async* getAggregateEvents(aggregateId: Identifier, options?: AggregateEventsQueryParams): IEventStream {
-		await this.assertConnection();
-
 		assertGuidIdentifier(aggregateId, 'aggregateId');
 
-		const rows = this.#getAggregateEventsQuery.all({
+		const rows = await this.runExclusively(() => this.#getAggregateEventsQuery.all({
 			aggregateId: guid(aggregateId),
 			afterVersion: options?.snapshot?.aggregateVersion ?? null,
 			eventTypes: options?.eventTypes
 				? JSON.stringify(options.eventTypes)
 				: null,
 			tail: options?.tail ?? null
-		});
+		}));
 
 		for (const row of rows)
 			yield reconstructEvent(row);
 	}
 
 	async* getSagaEvents(sagaId: Identifier, { beforeEvent }: { beforeEvent: IEvent }): IEventStream {
-		await this.assertConnection();
-
-		assertGuidIdentifier(beforeEvent?.id, 'beforeEvent.id');
+		const beforeEventId = beforeEvent?.id;
+		assertGuidIdentifier(beforeEventId, 'beforeEvent.id');
 
 		const { sagaDescriptor, originEventId } = parseSagaId(sagaId);
 		if (beforeEvent.sagaOrigins?.[sagaDescriptor] !== originEventId)
 			throw new TypeError('beforeEvent.sagaOrigins does not match sagaId');
 
-		const originRowid = this.#getRowidQuery.get(guid(originEventId));
-		if (!originRowid)
-			throw new Error(`origin event ${originEventId} not found`);
+		const rows = await this.runExclusively(() => {
+			const originRowid = this.#getRowidQuery.get(guid(originEventId));
+			if (!originRowid)
+				throw new Error(`origin event ${originEventId} not found`);
 
-		const beforeRowid = this.#getRowidQuery.get(guid(beforeEvent.id));
-		if (!beforeRowid)
-			throw new Error(`beforeEvent ${beforeEvent.id} not found`);
+			const beforeRowid = this.#getRowidQuery.get(guid(beforeEventId));
+			if (!beforeRowid)
+				throw new Error(`beforeEvent ${beforeEventId} not found`);
 
-		const rows = this.#getSagaEventsQuery.all({
-			sagaDescriptor,
-			originId: guid(originEventId),
-			originRowid: originRowid.rowid,
-			beforeRowid: beforeRowid.rowid
+			return this.#getSagaEventsQuery.all({
+				sagaDescriptor,
+				originId: guid(originEventId),
+				originRowid: originRowid.rowid,
+				beforeRowid: beforeRowid.rowid
+			});
 		});
 
 		for (const row of rows)
@@ -308,21 +305,22 @@ export class SqliteEventStorage extends AbstractSqliteAccessor implements
 	}
 
 	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
-		await this.assertConnection();
-
-		let afterRowid = 0;
-		if (options?.afterEvent) {
-			const lastEventId = options.afterEvent.id;
+		const lastEventId = options?.afterEvent?.id;
+		if (options?.afterEvent)
 			assertGuidIdentifier(lastEventId, 'options.afterEvent.id');
 
-			const row = this.#getRowidQuery.get(guid(lastEventId));
-			if (!row)
-				return;
+		const rows = await this.runExclusively(() => {
+			let afterRowid = 0;
+			if (lastEventId) {
+				const row = this.#getRowidQuery.get(guid(lastEventId));
+				if (!row)
+					return [];
 
-			afterRowid = row.rowid;
-		}
+				afterRowid = row.rowid;
+			}
 
-		const rows = this.#getEventsByTypesQuery.all(afterRowid);
+			return this.#getEventsByTypesQuery.all(afterRowid);
+		});
 
 		for (const row of rows) {
 			if (eventTypes.includes(row.type))

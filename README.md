@@ -283,6 +283,10 @@ const usersView = container.usersView;
 Persistent projection implementations provide restore locking, event deduplication, and checkpoints. Their exact
 transaction and retry guarantees are documented by each infrastructure module.
 
+When the view implements `ITransactionalView`, as the SQLite and PostgreSQL views do, the projection processes each
+runtime event within `view.runInTransaction()`: the view changes, the processed marker, and the checkpoint are
+committed together, or rolled back when the handler fails.
+
 ### Awaiting Projected Events
 
 Projections update their views asynchronously: a command resolves once its events are stored, while projections

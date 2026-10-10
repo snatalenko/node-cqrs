@@ -2,9 +2,11 @@
 
 Thanks for taking the time to contribute!
 
-This library is used in production environments, so please be mindful of breaking changes.
-Avoid them wherever possible; when a breaking change is unavoidable, ensure it is properly communicated
-and reflected in the version bump.
+This library is used in production, so please avoid breaking changes. When one is unavoidable,
+call it out clearly and reflect it in the version bump.
+
+This applies to stable releases: versions tagged on `master` without an `-alpha` or `-beta` suffix.
+Functionality that has only shipped in prereleases can still change.
 
 ## Development setup
 

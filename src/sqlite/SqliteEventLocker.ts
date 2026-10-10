@@ -124,30 +124,26 @@ export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventT
 	}
 
 	async tryMarkAsProjecting(event: IEvent<any>) {
-		await this.assertConnection();
-
-		const r = this.#lockEventQuery.run({
+		const r = await this.runExclusively(() => this.#lockEventQuery.run({
 			projectionName: this.#projectionName,
 			schemaVersion: this.#schemaVersion,
 			eventId: getEventId(event),
 			eventLockTtl: this.#eventLockTtl
-		});
+		}));
 
 		return r.changes !== 0;
 	}
 
 	async markAsProjected(event: IEvent<any>) {
-		await this.assertConnection();
-
-		const updateResult = this.#finalizeEventLockQuery.run({
+		const updateResult = await this.runExclusively(() => this.#finalizeEventLockQuery.run({
 			projectionName: this.#projectionName,
 			schemaVersion: this.#schemaVersion,
 			eventId: getEventId(event)
-		});
+		}));
 		if (updateResult.changes === 0)
 			throw new Error(`Event ${event.id} could not be marked as processed`);
 
-		this.#progress.markAsCompleted(event);
+		this.afterCommit(() => this.#progress.markAsCompleted(event));
 	}
 
 	markAsFailed(event: IEvent, error: unknown) {
@@ -159,22 +155,18 @@ export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventT
 	}
 
 	async markAsLastEvent(event: IEvent<any>) {
-		await this.assertConnection();
-
-		this.#upsertLastEventQuery.run({
+		await this.runExclusively(() => this.#upsertLastEventQuery.run({
 			projectionName: this.#projectionName,
 			schemaVersion: this.#schemaVersion,
 			lastEvent: serializeEvent(event)
-		});
+		}));
 	}
 
 	async getLastEvent(): Promise<IEvent<any> | undefined> {
-		await this.assertConnection();
-
-		const viewInfoRecord = this.#getLastEventQuery.get({
+		const viewInfoRecord = await this.runExclusively(() => this.#getLastEventQuery.get({
 			projectionName: this.#projectionName,
 			schemaVersion: this.#schemaVersion
-		});
+		}));
 		if (!viewInfoRecord?.last_event)
 			return undefined;
 
@@ -183,15 +175,13 @@ export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventT
 
 	/** Get IDs of the given events, which are marked as projected by any process */
 	async #getProjectedEventIds(eventIds: Identifier[]): Promise<Identifier[]> {
-		await this.assertConnection();
-
 		const lockKeys = eventIds.map(id => getEventId({ id } as IEvent).toString('hex'));
 
-		const rows = this.#getProjectedEventIdsQuery.all({
+		const rows = await this.runExclusively(() => this.#getProjectedEventIdsQuery.all({
 			projectionName: this.#projectionName,
 			schemaVersion: this.#schemaVersion,
 			lockKeys: JSON.stringify(lockKeys)
-		});
+		}));
 
 		return rows.map(r => eventIds[r.position]);
 	}

@@ -100,12 +100,11 @@ export class SqliteViewLocker extends AbstractSqliteAccessor implements IViewLoc
 	async lock() {
 		this.#lockMarker = new Deferred();
 
-		await this.assertConnection();
-
 		let lockAcquired = false;
 		while (!lockAcquired) {
 			const lockedTill = Date.now() + this.#viewLockTtl;
-			const upsertResult = this.#upsertTableLockQuery.run(this.#projectionName, this.#schemaVersion, lockedTill);
+			const upsertResult = await this.runExclusively(() =>
+				this.#upsertTableLockQuery.run(this.#projectionName, this.#schemaVersion, lockedTill));
 
 			lockAcquired = upsertResult.changes === 1;
 			if (!lockAcquired) {
@@ -136,10 +135,9 @@ export class SqliteViewLocker extends AbstractSqliteAccessor implements IViewLoc
 	}
 
 	private async prolongLock() {
-		await this.assertConnection();
-
 		const lockedTill = Date.now() + this.#viewLockTtl;
-		const r = this.#updateTableLockQuery.run(lockedTill, this.#projectionName, this.#schemaVersion);
+		const r = await this.runExclusively(() =>
+			this.#updateTableLockQuery.run(lockedTill, this.#projectionName, this.#schemaVersion));
 		if (r.changes !== 1)
 			throw new Error(`"${this.#projectionName}" lock could not be prolonged`);
 
@@ -152,9 +150,8 @@ export class SqliteViewLocker extends AbstractSqliteAccessor implements IViewLoc
 
 		this.cancelLockProlongation();
 
-		await this.assertConnection();
-
-		const updateResult = this.#removeTableLockQuery.run(this.#projectionName, this.#schemaVersion);
+		const updateResult = await this.runExclusively(() =>
+			this.#removeTableLockQuery.run(this.#projectionName, this.#schemaVersion));
 		if (updateResult.changes === 1)
 			this.#logger?.debug(`"${this.#projectionName}" lock released`);
 		else

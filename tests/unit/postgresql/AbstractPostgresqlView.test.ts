@@ -1,3 +1,4 @@
+import { AbstractProjection } from '../../../src/AbstractProjection.ts';
 import type { IEvent } from '../../../src/interfaces/index.ts';
 import {
 	AbstractPostgresqlView,
@@ -9,6 +10,30 @@ class TestPostgresqlView extends AbstractPostgresqlView {
 
 	protected initialize(_db: PostgresqlConnection): Promise<void> | void {
 		// No custom schema is needed for these tests.
+	}
+
+	async recordEvent(e: IEvent) {
+		await this.assertConnection();
+		await this.connection.query(`
+			INSERT INTO projection_records (id, data)
+			VALUES ($1, $2::jsonb)
+		`, [e.aggregateId!, JSON.stringify({ eventId: e.id })]);
+	}
+}
+
+class TestProjection extends AbstractProjection<TestPostgresqlView> {
+	shouldFail = false;
+	processedEvents: IEvent[] = [];
+
+	constructor(view: TestPostgresqlView) {
+		super({ view });
+	}
+
+	async somethingHappened(e: IEvent) {
+		this.processedEvents.push(e);
+		await this.view.recordEvent(e);
+		if (this.shouldFail)
+			throw new Error('projection failed');
 	}
 }
 
@@ -137,6 +162,88 @@ describe('AbstractPostgresqlView', () => {
 			view.markAsFailed(testEvent, error);
 
 			await expect(waiting).rejects.toBe(error);
+		});
+	});
+
+	describe('as a projection view', () => {
+
+		let projection: TestProjection;
+
+		beforeEach(() => {
+			projection = new TestProjection(view);
+		});
+
+		it('commits event processing markers and checkpoint in one runtime transaction', async () => {
+			await projection.project(testEvent);
+
+			expect(db.transactionLog).toEqual(['BEGIN', 'COMMIT']);
+			expect(db.objectRecords.get('1')?.data).toEqual({ eventId: 'evt1' });
+			expect(db.eventLocks.get('test:1:evt1')?.processedAt).toBeInstanceOf(Date);
+			expect(JSON.parse(db.viewLocks.get('test:1')!.lastEvent!)).toEqual(testEvent);
+		});
+
+		it('rolls back event processing markers when the handler fails', async () => {
+			projection.shouldFail = true;
+
+			await expect(projection.project(testEvent)).rejects.toThrow('projection failed');
+
+			expect(db.transactionLog).toEqual(['BEGIN', 'ROLLBACK']);
+			expect(db.objectRecords.has('1')).toBe(false);
+			expect(db.eventLocks.has('test:1:evt1')).toBe(false);
+			expect(db.viewLocks.has('test:1')).toBe(false);
+		});
+
+		it('resolves eventTracker.waitFor only after the runtime transaction is committed', async () => {
+			let transactionLogOnResolve: string[] | undefined;
+			const waiting = projection.eventTracker.waitFor(testEvent.id!, { timeout: 1_000 }).then(() => {
+				transactionLogOnResolve = [...db.transactionLog];
+			});
+
+			await projection.project(testEvent);
+			await waiting;
+
+			expect(transactionLogOnResolve).toEqual(['BEGIN', 'COMMIT']);
+		});
+
+		it('rejects eventTracker.waitFor when the handler fails', async () => {
+			projection.shouldFail = true;
+			const waiting = projection.eventTracker.waitFor(testEvent.id!, { timeout: 1_000 });
+
+			await expect(projection.project(testEvent)).rejects.toThrow('projection failed');
+
+			await expect(waiting).rejects.toThrow('projection failed');
+		});
+
+		it('waits for the view to become ready before opening the transaction', async () => {
+			await view.lock();
+
+			let processed = false;
+			const processing = projection.project(testEvent).then(() => {
+				processed = true;
+			});
+
+			await new Promise<void>(resolve => setImmediate(resolve));
+			expect(processed).toBe(false);
+			expect(db.transactionLog).toEqual([]);
+
+			await view.unlock();
+			await processing;
+
+			expect(processed).toBe(true);
+			expect(db.transactionLog).toEqual(['BEGIN', 'COMMIT']);
+		});
+
+		it('does not open a transaction for every event during restore', async () => {
+			const eventStore = {
+				async* getEventsByTypes() {
+					yield testEvent;
+				}
+			};
+
+			await projection.restore(eventStore as any);
+
+			expect(db.transactionLog).toEqual([]);
+			expect(projection.processedEvents).toEqual([testEvent]);
 		});
 	});
 });

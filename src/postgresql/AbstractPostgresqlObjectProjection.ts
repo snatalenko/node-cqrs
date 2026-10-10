@@ -1,6 +1,6 @@
 import type { IContainer } from 'node-cqrs';
+import { AbstractProjection } from '../AbstractProjection.ts';
 import { PostgresqlObjectView } from './PostgresqlObjectView.ts';
-import { AbstractPostgresqlProjection } from './AbstractPostgresqlProjection.ts';
 
 type PostgresqlObjectProjectionParams =
 	Partial<Pick<
@@ -18,8 +18,7 @@ type PostgresqlObjectProjectionParams =
 		'viewLockTtl'
 	>>;
 
-export abstract class AbstractPostgresqlObjectProjection<T>
-	extends AbstractPostgresqlProjection<PostgresqlObjectView<T>> {
+export abstract class AbstractPostgresqlObjectProjection<T> extends AbstractProjection<PostgresqlObjectView<T>> {
 
 	static get tableName(): string {
 		throw new Error('tableName is not defined');

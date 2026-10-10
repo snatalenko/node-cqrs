@@ -152,27 +152,25 @@ class UsersByStatusView extends AbstractSqliteView {
 	}
 
 	async upsertUser(userId: string, username: string, status: string) {
-		await this.assertConnection();
-		this.db!.prepare(`
+		await this.runExclusively(db => db.prepare(`
 			INSERT INTO users_by_status (user_id, username, status)
 			VALUES (?, ?, ?)
 			ON CONFLICT(user_id) DO UPDATE SET
 				username = excluded.username,
 				status = excluded.status
-		`).run(userId, username, status);
+		`).run(userId, username, status));
 	}
 
 	async findByStatus(status: string) {
 		if (!this.ready)
 			await this.once('ready');
 
-		await this.assertConnection();
-		return this.db!.prepare(`
+		return this.runExclusively(db => db.prepare(`
 			SELECT user_id, username, status
 			FROM users_by_status
 			WHERE status = ?
 			ORDER BY username
-		`).all(status);
+		`).all(status));
 	}
 }
 
@@ -200,9 +198,31 @@ builder.registerInstance(db, 'viewModelSqliteDb');
 builder.registerProjection(UsersByStatusProjection, 'usersByStatus');
 ```
 
-SQLite views do not currently wrap the event claim, view mutation, processed marker, and checkpoint in one
-transaction. Handler failures are propagated to the application, which is responsible for deciding whether and
-how to retry the event.
+Run view statements through `runExclusively()`, as in `upsertUser()` and `findByStatus()`. The callback receives the
+connection and must be synchronous; its statements join the transaction of the event being projected, or run
+outside of any transaction otherwise.
+
+### Runtime transactions
+
+SQLite views implement `ITransactionalView`, so projections process each event received at runtime in one SQLite
+transaction, which commits these operations together:
+
+1. Claim the event for this projection.
+2. Modify the view.
+3. Mark the event as processed.
+4. Save the last-event checkpoint.
+
+When the handler fails, all of them are rolled back and the error is propagated to the application, which decides
+whether and how to retry the event. `waitFor()` resolves only after the transaction is committed. Restoration does
+not open a transaction per replayed event.
+
+A connection runs one transaction at a time, so events projected through the same `Database` instance are processed
+one after another, including events of different projections. Statements issued outside of a transaction through
+the adapter, such as `get()` calls, event-store reads, and event commits, wait until the transaction in progress
+completes, so they neither observe nor become part of its uncommitted changes. A handler awaiting slow work delays
+those statements; keep handlers short and perform external calls elsewhere.
+
+Transactions start with `BEGIN IMMEDIATE`, which holds the database write lock until the transaction completes.
 
 ## JSON object views
 
@@ -243,8 +263,9 @@ builder.registerProjection(UsersProjection, 'users');
 ```
 
 The physical object table is `${tableName}_${schemaVersion}`; the example uses `users_1`. Its rows contain an id,
-JSON data, and a version used for optimistic updates. `SqliteObjectView.get()` waits for restoration to finish;
-only use `getSync()` after the view is ready.
+JSON data, and a version used for optimistic updates. `SqliteObjectView.get()` waits for restoration and for the
+transaction in progress to finish. `getSync()` waits for neither: use it only after the view is ready, and expect it
+to observe uncommitted changes of an event being projected.
 
 ## Asynchronous reads
 
@@ -366,6 +387,12 @@ views write to a new versioned table automatically. Relational views own their t
   connection gives each accessor an isolated database; return a shared connection when components must use the
   same database.
 - File-backed databases persist after shutdown. The application must close every connection it creates.
+- Use one `Database` instance per file within a process, and return that same instance from
+  `viewModelSqliteDbFactory`. Statements of other callers wait for a transaction only when they use the same
+  instance. A transaction started on another connection waits for the write lock without blocking the main thread,
+  up to that connection's busy timeout, but statements issued outside of a transaction on another connection block
+  the main thread while a projection transaction holds the write lock, until they fail with `SQLITE_BUSY`.
+  Read-only connections, such as the [`SqliteWorkerProxy`](#asynchronous-reads) worker, are not affected in WAL mode.
 - Tables and indexes are created lazily on first use.
 - The module uses synchronous `better-sqlite3` operations behind asynchronous CQRS interfaces. Use
   [`SqliteWorkerProxy`](#asynchronous-reads) for reads that should run outside the main thread.

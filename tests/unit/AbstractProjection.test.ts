@@ -270,6 +270,62 @@ describe('AbstractProjection', function () {
 			expect(projection._somethingHappened).toHaveBeenCalledTimes(1);
 			expect(projection._somethingHappened.mock.calls.at(-1)).toEqual([event2]);
 		});
+
+		describe('with a view implementing ITransactionalView', () => {
+
+			let calls: string[];
+			let eventTracker: ReturnType<typeof createEventTracker>;
+
+			beforeEach(() => {
+				calls = [];
+				Object.assign(view, {
+					runInTransaction: jest.fn(async (callback: () => Promise<unknown>) => {
+						calls.push('begin');
+						const result = await callback();
+						calls.push('commit');
+						return result;
+					})
+				});
+				eventTracker = createEventTracker({
+					tryMarkAsProjecting: jest.fn(async () => {
+						calls.push('tryMarkAsProjecting');
+						return true;
+					}),
+					markAsLastEvent: jest.fn(async () => {
+						calls.push('markAsLastEvent');
+					})
+				});
+				projection = new MyProjection({ view, eventTracker });
+			});
+
+			it('processes the event within the view transaction', async () => {
+				await projection.project(event);
+
+				expect(calls).toEqual(['begin', 'tryMarkAsProjecting', 'markAsLastEvent', 'commit']);
+			});
+
+			it('marks the event as failed when the transaction fails on commit', async () => {
+				const error = new Error('commit failed');
+				(view as any).runInTransaction = async (callback: () => Promise<unknown>) => {
+					await callback();
+					throw error;
+				};
+
+				await expect(projection.project(event)).rejects.toBe(error);
+
+				expect(eventTracker.markAsFailed).toHaveBeenCalledWith(event, error);
+			});
+
+			it('does not open a transaction per event during restore', async () => {
+				await projection.restore({
+					async* getEventsByTypes() {
+						yield event;
+					}
+				} as any);
+
+				expect(calls).not.toContain('begin');
+			});
+		});
 	});
 
 	describe('tracerFactory', () => {
