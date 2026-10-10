@@ -114,11 +114,17 @@ describe('AbstractWorkerProjection', () => {
 		expect(await projectionProxy.view.getCounter()).toBe(0);
 	});
 
-	it('exposes last projected event via remote projection api', async () => {
+	it('exposes last restored event via remote projection api', async () => {
 
-		await projectionProxy.project({ id: '1', type: 'somethingHappened' });
+		await projectionProxy.restore(createEventStore([{ id: '1', type: 'somethingHappened' }]));
 		const lastEvent = await projectionProxy.remoteProjection.getLastProjectedEvent();
 		expect(lastEvent?.id).toBe('1');
+	});
+
+	it('does not record the restore checkpoint for runtime events', async () => {
+
+		await projectionProxy.project({ id: '1', type: 'somethingHappened' });
+		expect(await projectionProxy.remoteProjection.getLastProjectedEvent()).toBeFalsy();
 	});
 
 	it('projects events in worker thread', async () => {

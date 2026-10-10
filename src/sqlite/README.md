@@ -210,7 +210,6 @@ transaction, which commits these operations together:
 1. Claim the event for this projection.
 2. Modify the view.
 3. Mark the event as processed.
-4. Save the last-event checkpoint.
 
 When the handler fails, all of them are rolled back and the error is propagated to the application, which decides
 whether and how to retry the event. `waitFor()` resolves only after the transaction is committed. Restoration does
@@ -370,8 +369,10 @@ references `sqlite-worker-db.js`.
 
 ## Restore and schema versions
 
-`registerProjection()` starts restoration from the last saved checkpoint. Wait for all restoration promises
-before serving requests that depend on views:
+`registerProjection()` starts restoration from the last saved checkpoint. The checkpoint is saved by restoration
+only: it replays events after the checkpoint, skips those already processed at runtime, projects the missed ones,
+and saves the last restored event. When restoration fails, the last event restored before the failure is saved.
+Wait for all restoration promises before serving requests that depend on views:
 
 ```ts
 const { restorePromises } = builder.container();

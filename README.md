@@ -283,9 +283,16 @@ const usersView = container.usersView;
 Persistent projection implementations provide restore locking, event deduplication, and checkpoints. Their exact
 transaction and retry guarantees are documented by each infrastructure module.
 
+The restore checkpoint is saved by restoration only. Runtime events are marked as processed but do not move the
+checkpoint, since events processed concurrently can complete out of order. Restoration replays events after the
+checkpoint, skips those already processed, projects the ones missed at runtime, and saves the last restored event;
+when it fails, the last event restored before the failure is saved. When runtime events cannot complete out of
+order, for example in the `sequential` projection mode with a single instance, override `shouldRecordLastEvent()`
+to return `true` so that runtime events also save the checkpoint and shorten the next restoration.
+
 When the view implements `ITransactionalView`, as the SQLite and PostgreSQL views do, the projection processes each
-runtime event within `view.runInTransaction()`: the view changes, the processed marker, and the checkpoint are
-committed together, or rolled back when the handler fails.
+runtime event within `view.runInTransaction()`: the view changes and the processed marker are committed together,
+or rolled back when the handler fails.
 
 By default, runtime events are projected concurrently, so handlers awaiting asynchronous work, or transactions
 committed on separate connections, can complete in a different order than events were received. When a projection

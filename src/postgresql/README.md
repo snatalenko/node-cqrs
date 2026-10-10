@@ -101,7 +101,7 @@ builder.register(container => () => container.postgresqlDbFactory(), 'viewModelP
 The application can close the retained pool with `await pool?.end()` during shutdown.
 
 A factory must return the same pool instance on every call. Transactions are shared by components using the same
-pool: a projection view, its event locks and checkpoint commit together only when they resolve to one pool, while
+pool: a projection view and its event locks commit together only when they resolve to one pool, while
 components using other pools are never enlisted in that transaction.
 
 ## Event storage
@@ -200,7 +200,6 @@ PostgreSQL transaction, which commits these operations together:
 1. Claim the event for this projection.
 2. Modify the object view.
 3. Mark the event as processed.
-4. Save the last-event checkpoint.
 
 When two application instances receive the same event, one transaction processes it and the other skips it. If
 the first transaction fails, its claim and view changes are rolled back, allowing the waiting instance to process
@@ -222,6 +221,14 @@ class constructor, when their handlers depend on the order of events.
 On startup, the projection resumes after its last saved checkpoint. Restore uses a distributed view lock, so only
 one application instance rebuilds a given projection and schema version at a time. Other instances wait for that
 view to become ready.
+
+The checkpoint is saved by restore only, not by runtime processing: events processed concurrently, by one or several
+application instances, can complete out of order, so a later event could otherwise move the checkpoint past an
+earlier event that is still being processed and would be lost on a crash. Restore replays events after the
+checkpoint, skips those already marked as processed, projects the ones missed at runtime, and saves the last restored
+event as the new checkpoint. When restoring fails, the last event restored before the failure is saved, so that the
+next restore resumes from the failed event once it is fixed or removed. Replay therefore covers the events processed
+since the previous restore.
 
 Change `schemaVersion` when the shape or meaning of a read model changes and its events must be replayed into a
 new object table. Restore is protected by the view lock; it does not open one transaction per replayed event.
@@ -278,7 +285,7 @@ class UsersByStatusView extends AbstractPostgresqlView {
 ```
 
 Extend `AbstractProjection` and assign the relational view in the projection constructor. The event claim, custom
-SQL, processed marker, and checkpoint are committed atomically at runtime:
+SQL, and processed marker are committed atomically at runtime:
 
 ```ts
 import { AbstractProjection, type IEvent } from 'node-cqrs';

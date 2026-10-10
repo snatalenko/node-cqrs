@@ -173,13 +173,13 @@ describe('AbstractPostgresqlView', () => {
 			projection = new TestProjection(view);
 		});
 
-		it('commits event processing markers and checkpoint in one runtime transaction', async () => {
+		it('commits view changes and event processing markers in one runtime transaction', async () => {
 			await projection.project(testEvent);
 
 			expect(db.transactionLog).toEqual(['BEGIN', 'COMMIT']);
 			expect(db.objectRecords.get('1')?.data).toEqual({ eventId: 'evt1' });
 			expect(db.eventLocks.get('test:1:evt1')?.processedAt).toBeInstanceOf(Date);
-			expect(JSON.parse(db.viewLocks.get('test:1')!.lastEvent!)).toEqual(testEvent);
+			expect(db.viewLocks.has('test:1')).toBe(false);
 		});
 
 		it('rolls back event processing markers when the handler fails', async () => {

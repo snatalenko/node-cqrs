@@ -8,11 +8,12 @@ export interface IWorkerProjection<TView> extends IProjection<TView> {
 	getLastProjectedEvent(): Promise<IEvent | undefined>;
 
 	/**
-	 * Project restore events in batches to avoid one Comlink roundtrip per event
+	 * Project restore events in batches to avoid one Comlink roundtrip per event,
+	 * recording the last projected event as the restore checkpoint
 	 *
 	 * @internal
 	 */
-	_projectBatch(events: IEventSet): Promise<void>;
+	_restoreBatch(events: IEventSet): Promise<void>;
 }
 
 export interface IWorkerProjectionType<

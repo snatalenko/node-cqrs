@@ -300,12 +300,17 @@ export abstract class AbstractProjection<
 	}
 
 	/**
-	 * Determines whether an event should be recorded as the last projected event (restore checkpoint).
-	 * Override in derived classes to control checkpoint behavior based on event metadata.
+	 * Determines whether a projected event should be recorded as the restore checkpoint.
+	 *
+	 * Disabled by default, since the checkpoint is recorded by the restoration process:
+	 * events projected concurrently, by one or several instances, can complete out of order,
+	 * so a later event could move the checkpoint past an earlier event that is still being projected.
+	 * Enable it only when events cannot complete out of order, such as in the `sequential` projection mode
+	 * with a single projection instance, to shorten the restoration.
 	 */
 	// eslint-disable-next-line class-methods-use-this
 	protected shouldRecordLastEvent(_event: IEvent, _meta?: Record<string, any>): boolean {
-		return true;
+		return false;
 	}
 
 	/** Pass event to projection event handler, without awaiting for restore operation to complete */
@@ -383,19 +388,22 @@ export abstract class AbstractProjection<
 		let lastRestoredEvent: IEvent | undefined;
 		const startTs = Date.now();
 
-		for await (const event of eventsIterable) {
-			try {
-				await this._project(event);
-				lastRestoredEvent = event;
-				eventsCount += 1;
-			}
-			catch (err: unknown) {
-				this._onRestoringError(err, event);
+		try {
+			for await (const event of eventsIterable) {
+				try {
+					await this._project(event);
+					lastRestoredEvent = event;
+					eventsCount += 1;
+				}
+				catch (err: unknown) {
+					this._onRestoringError(err, event);
+				}
 			}
 		}
-
-		if (tracker && lastRestoredEvent)
-			await tracker.markAsLastEvent(lastRestoredEvent);
+		finally {
+			if (tracker && lastRestoredEvent)
+				await tracker.markAsLastEvent(lastRestoredEvent);
+		}
 
 		this._logger?.info(`view restored from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}

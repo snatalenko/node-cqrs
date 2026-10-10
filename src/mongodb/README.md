@@ -249,8 +249,8 @@ class UsersByStatusProjection extends AbstractProjection<UsersByStatusView> {
 ## Runtime processing
 
 MongoDB views coordinate event handling across application instances. A projection first claims an event, then
-runs its handler, marks the event as processed, and saves its checkpoint. If another instance receives the same
-event concurrently, it cannot claim it and skips that delivery.
+runs its handler, and marks the event as processed. If another instance receives the same event concurrently, it
+cannot claim it and skips that delivery. The checkpoint is saved by restore only, as described below.
 
 These steps are separate MongoDB operations and are not wrapped in a transaction. If processing stops after the
 view mutation but before the processed marker, a later retry can apply the handler again. If it stops before the
@@ -263,6 +263,10 @@ decide how failed runtime deliveries are retried.
 On startup, a projection resumes after its last saved checkpoint. A distributed view lock ensures that only one
 application instance restores a given projection and schema version at a time. The lock is prolonged while held;
 other instances wait and then continue from the resulting checkpoint.
+
+Restore replays events after the checkpoint, skips those already marked as processed, projects the ones missed at
+runtime, and saves the last restored event as the new checkpoint. When restoring fails, the last event restored
+before the failure is saved, so that the next restore resumes from the failed event.
 
 Change `schemaVersion` when the shape or meaning of a read model changes and its events must be replayed. Object
 views write to a new versioned collection automatically. Custom views own their collection naming and migration

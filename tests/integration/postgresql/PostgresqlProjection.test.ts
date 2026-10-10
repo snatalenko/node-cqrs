@@ -262,7 +262,7 @@ describe('PostgreSQL projections (integration)', () => {
 		await second.unlock();
 	});
 
-	it('commits event claim, view update, processed marker, and checkpoint atomically', async () => {
+	it('commits event claim, view update, and processed marker atomically, without moving the checkpoint', async () => {
 		const p = projection('first');
 		const e = event('event1', 'user1', 'alice');
 
@@ -285,7 +285,7 @@ describe('PostgreSQL projections (integration)', () => {
 			WHERE projection_name = $1
 				AND schema_version = $2
 		`, ['UsersProjection', '1']);
-		expect(checkpoint.rows[0].last_event).toEqual(JSON.stringify(e));
+		expect(checkpoint.rows[0]?.last_event ?? null).toBeNull();
 	});
 
 	it('rolls back event claim and view update when projection handler fails', async () => {

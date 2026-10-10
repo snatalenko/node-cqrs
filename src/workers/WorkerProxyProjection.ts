@@ -117,13 +117,13 @@ export class WorkerProxyProjection<
 			eventsCount += 1;
 
 			if (batch.length >= WorkerProxyProjection.RESTORE_BATCH_SIZE) {
-				await this._projectBatch(batch);
+				await this._restoreBatch(batch);
 				batch.length = 0;
 			}
 		}
 
 		if (batch.length)
-			await this._projectBatch(batch);
+			await this._restoreBatch(batch);
 
 		this.#logger?.info(`view restored from ${eventsCount} event(s) in ${Date.now() - startTs} ms`);
 	}
@@ -156,8 +156,8 @@ export class WorkerProxyProjection<
 		return this.#remoteProjection.project(event);
 	}
 
-	protected _projectBatch(batch: IEventSet): Promise<void> {
-		return this.remoteProjection._projectBatch(batch);
+	protected _restoreBatch(batch: IEventSet): Promise<void> {
+		return this.remoteProjection._restoreBatch(batch);
 	}
 
 	dispose() {

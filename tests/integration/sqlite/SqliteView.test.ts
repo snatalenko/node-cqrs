@@ -157,20 +157,18 @@ describe('SqliteView', () => {
 			await projection.view.getLastEvent();
 		});
 
-		it('rolls back view changes, event claim, and checkpoint when the handler fails', async () => {
+		it('rolls back view changes and event claim when the handler fails', async () => {
 			const e = userCreated('Jon');
 			projection.shouldFail = true;
 
 			await expect(projection.project(e)).rejects.toThrow('projection failed');
 
 			expect(await projection.view.get(e.aggregateId!)).toBeUndefined();
-			expect(await projection.view.getLastEvent()).toBeUndefined();
 
 			projection.shouldFail = false;
 			await projection.project(e);
 
 			expect(await projection.view.get(e.aggregateId!)).toEqual({ name: 'Jon' });
-			expect(await projection.view.getLastEvent()).toEqual(e);
 		});
 
 		it('serializes concurrent events projected through the same database', async () => {

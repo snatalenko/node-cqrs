@@ -28,7 +28,7 @@ export abstract class AbstractWorkerProjection<TView>
 
 		const projectionMethodsToWire = [
 			'project',
-			'_projectBatch',
+			'_restoreBatch',
 			'ping',
 			'getLastProjectedEvent'
 		] as Extract<keyof T, string>[];
@@ -62,10 +62,22 @@ export abstract class AbstractWorkerProjection<TView>
 		return true;
 	}
 
-	/** @internal Project restore events in batches to avoid one Comlink roundtrip per event */
-	async _projectBatch(events: IEvent[]): Promise<void> {
-		for (const event of events)
-			await this._project(event);
+	/**
+	 * @internal Project restore events in batches to avoid one Comlink roundtrip per event.
+	 * Records the last projected event as the restore checkpoint, also when projecting fails.
+	 */
+	async _restoreBatch(events: IEvent[]): Promise<void> {
+		let lastProjectedEvent: IEvent | undefined;
+		try {
+			for (const event of events) {
+				await this._project(event);
+				lastProjectedEvent = event;
+			}
+		}
+		finally {
+			if (lastProjectedEvent)
+				await (this.eventTracker ?? this._eventLocker)?.markAsLastEvent(lastProjectedEvent);
+		}
 	}
 
 	/**

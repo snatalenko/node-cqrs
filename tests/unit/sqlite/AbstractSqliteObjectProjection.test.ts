@@ -75,12 +75,12 @@ describe('AbstractSqliteObjectProjection', () => {
 			db.close();
 		});
 
-		it('commits view changes, processed marker, and checkpoint in one transaction', async () => {
+		it('commits view changes and processed marker in one transaction, without moving the checkpoint', async () => {
 			await projection.project(event);
 
 			expect(await projection.view.get('1')).toEqual({ name: 'Alice' });
 			expect(count('tbl_event_lock WHERE processed_at IS NOT NULL')).toBe(1);
-			expect(await projection.view.getLastEvent()).toEqual(event);
+			expect(await projection.view.getLastEvent()).toBeUndefined();
 		});
 
 		it('rolls back view changes and event claim when the handler fails', async () => {

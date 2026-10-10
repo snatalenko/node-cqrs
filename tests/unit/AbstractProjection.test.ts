@@ -212,6 +212,62 @@ describe('AbstractProjection', function () {
 				expect(err).toBeInstanceOf(TypeError);
 			});
 		});
+
+		describe('checkpoint', () => {
+
+			class FailingProjection extends MyProjection {
+				swallowErrors = false;
+
+				async _somethingHappened(e: IEvent) {
+					if (e.aggregateId === 'fail')
+						throw new Error('restore failed');
+
+					return super._somethingHappened(e);
+				}
+
+				protected _onRestoringError(error: unknown, event: IEvent) {
+					if (!this.swallowErrors)
+						super._onRestoringError(error, event);
+				}
+			}
+
+			const events = (...aggregateIds: string[]) => ({
+				async* getEventsByTypes() {
+					for (const aggregateId of aggregateIds)
+						yield { id: aggregateId, type: 'somethingHappened', aggregateId };
+				}
+			}) as any;
+
+			let eventTracker: ReturnType<typeof createEventTracker>;
+			let failingProjection: FailingProjection;
+
+			beforeEach(() => {
+				eventTracker = createEventTracker();
+				failingProjection = new FailingProjection({ view: new InMemoryView(), eventTracker });
+			});
+
+			it('records the last restored event once restoring completes', async () => {
+				await failingProjection.restore(events('a', 'b'));
+
+				expect(eventTracker.markAsLastEvent).toHaveBeenCalledTimes(1);
+				expect(eventTracker.markAsLastEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));
+			});
+
+			it('records the last event restored before the failed one, when restoring fails', async () => {
+				await expect(failingProjection.restore(events('a', 'fail', 'b'))).rejects.toThrow('restore failed');
+
+				expect(eventTracker.markAsLastEvent).toHaveBeenCalledTimes(1);
+				expect(eventTracker.markAsLastEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }));
+			});
+
+			it('keeps advancing the checkpoint past a failed event, when _onRestoringError does not throw', async () => {
+				failingProjection.swallowErrors = true;
+
+				await failingProjection.restore(events('a', 'fail', 'b'));
+
+				expect(eventTracker.markAsLastEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));
+			});
+		});
 	});
 
 	describe('project(event)', () => {
@@ -292,8 +348,8 @@ describe('AbstractProjection', function () {
 						calls.push('tryMarkAsProjecting');
 						return true;
 					}),
-					markAsLastEvent: jest.fn(async () => {
-						calls.push('markAsLastEvent');
+					markAsProjected: jest.fn(async () => {
+						calls.push('markAsProjected');
 					})
 				});
 				projection = new MyProjection({ view, eventTracker });
@@ -302,7 +358,7 @@ describe('AbstractProjection', function () {
 			it('processes the event within the view transaction', async () => {
 				await projection.project(event);
 
-				expect(calls).toEqual(['begin', 'tryMarkAsProjecting', 'markAsLastEvent', 'commit']);
+				expect(calls).toEqual(['begin', 'tryMarkAsProjecting', 'markAsProjected', 'commit']);
 			});
 
 			it('marks the event as failed when the transaction fails on commit', async () => {
@@ -755,42 +811,50 @@ describe('AbstractProjection', function () {
 			expect(tryMarkAsProjecting.mock.calls.at(-1)).toEqual([event]);
 			expect(markAsProjected).toHaveBeenCalledTimes(1);
 			expect(markAsProjected.mock.calls.at(-1)).toEqual([event]);
-			expect(markAsLastEvent).toHaveBeenCalledTimes(1);
-			expect(markAsLastEvent.mock.calls.at(-1)).toEqual([event]);
 		});
 
-		it('calls markAsLastEvent based on shouldRecordLastEvent', async () => {
-			const tryMarkAsProjecting = jest.fn().mockResolvedValue(true);
-			const markAsProjected = jest.fn().mockResolvedValue(undefined);
+		it('does not record the restore checkpoint for runtime events', async () => {
 			const markAsLastEvent = jest.fn().mockResolvedValue(undefined);
-			const getLastEvent = jest.fn().mockResolvedValue(undefined);
-			const eventLocker: IEventLocker = {
-				tryMarkAsProjecting,
-				markAsProjected,
-				markAsLastEvent,
-				getLastEvent
-			};
+			const proj = new ProjectionWithSetters({
+				view: new InMemoryView(),
+				eventLocker: {
+					tryMarkAsProjecting: jest.fn().mockResolvedValue(true),
+					markAsProjected: jest.fn().mockResolvedValue(undefined),
+					markAsLastEvent,
+					getLastEvent: jest.fn().mockResolvedValue(undefined)
+				}
+			});
 
-			class ProjectionWithSkip extends ProjectionWithSetters {
+			await proj.project({ type: 'somethingHappened', aggregateId: 1 });
+
+			expect(markAsLastEvent).not.toHaveBeenCalled();
+		});
+
+		it('records the restore checkpoint for runtime events accepted by shouldRecordLastEvent', async () => {
+			const markAsLastEvent = jest.fn().mockResolvedValue(undefined);
+
+			class ProjectionRecordingExternalEvents extends ProjectionWithSetters {
 				protected shouldRecordLastEvent(_event: any, meta?: Record<string, any>) {
-					return meta?.origin !== 'internal';
+					return meta?.origin === 'external';
 				}
 			}
 
-			const proj = new ProjectionWithSkip({
+			const proj = new ProjectionRecordingExternalEvents({
 				view: new InMemoryView(),
-				eventLocker
+				eventLocker: {
+					tryMarkAsProjecting: jest.fn().mockResolvedValue(true),
+					markAsProjected: jest.fn().mockResolvedValue(undefined),
+					markAsLastEvent,
+					getLastEvent: jest.fn().mockResolvedValue(undefined)
+				}
 			});
-
 			const event = { type: 'somethingHappened', aggregateId: 1 };
 
 			await proj.project(event, { origin: 'internal' });
-			expect(markAsProjected).toHaveBeenCalledTimes(1);
 			expect(markAsLastEvent).not.toHaveBeenCalled();
 
 			await proj.project(event, { origin: 'external' });
-			expect(markAsProjected).toHaveBeenCalledTimes(2);
-			expect(markAsLastEvent).toHaveBeenCalledTimes(1);
+			expect(markAsLastEvent).toHaveBeenCalledWith(event);
 		});
 
 		it('returns early when event lock is not obtained', async () => {

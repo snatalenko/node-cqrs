@@ -146,8 +146,9 @@ more than once and must not perform external side effects.
 ## Runtime processing
 
 Redis views coordinate event handling across application instances. A projection first claims an event, runs
-its handler, marks the event as processed, and saves its checkpoint. The claim and processed transitions are
-individually atomic Lua operations, so only one instance can claim a given event at a time.
+its handler, and marks the event as processed. The claim and processed transitions are individually atomic Lua
+operations, so only one instance can claim a given event at a time. The checkpoint is saved by restore only, as
+described below.
 
 The complete sequence is not transactional with the view mutation. If processing stops after the mutation but
 before the processed marker, a later retry can apply the handler again. If it stops earlier, the processing key
@@ -160,6 +161,10 @@ failed runtime deliveries are retried.
 On startup, a projection resumes after its last checkpoint. A distributed lock ensures that only one application
 instance restores a projection and schema version at a time. The lock is prolonged while held; other instances
 wait and then continue from the resulting checkpoint.
+
+Restore replays events after the checkpoint, skips those already marked as processed, projects the ones missed at
+runtime, and saves the last restored event as the new checkpoint. When restoring fails, the last event restored
+before the failure is saved, so that the next restore resumes from the failed event.
 
 Change `schemaVersion` when a read model must be replayed. Object records, processing markers, and checkpoints
 use the schema version in their keys, so the new projection starts with a separate namespace. Old keys are not

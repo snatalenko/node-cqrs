@@ -71,7 +71,7 @@ describe('AbstractPostgresqlObjectProjection', () => {
 		})).toThrow('schemaVersion is not defined');
 	});
 
-	it('commits event lock, object storage update, processed marker, and checkpoint together', async () => {
+	it('commits event lock, object storage update, and processed marker together', async () => {
 		const event: IEvent<{ name: string }> = {
 			id: 'event1',
 			type: 'userCreated',
@@ -108,7 +108,7 @@ describe('AbstractPostgresqlObjectProjection', () => {
 		expect(db.releaseCount).toBe(1);
 		expect(db.objectRecords.get('user1')?.data).toEqual({ name: 'Alice' });
 		expect(db.eventLocks.get('Projection:1:event1')?.processedAt).toBeInstanceOf(Date);
-		expect(JSON.parse(db.viewLocks.get('Projection:1')!.lastEvent!)).toEqual(event);
+		expect(db.viewLocks.has('Projection:1')).toBe(false);
 	});
 
 	it('uses the base connection directly when it is not a pool', async () => {
