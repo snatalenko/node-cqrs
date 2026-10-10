@@ -1,3 +1,9 @@
+## [1.3.0-alpha.17](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.16...v1.3.0-alpha.17) (2026-10-10)
+
+### Changes
+
+* Record restore checkpoint during restoration only, unless shouldRecordLastEvent opts in for runtime events ([6c2135d](https://github.com/snatalenko/node-cqrs/commit/6c2135dde77a0f1e02bf3700a8af3694f99484b5))
+
 ## [1.3.0-alpha.16](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.15...v1.3.0-alpha.16) (2026-10-10)
 
 ### Features
