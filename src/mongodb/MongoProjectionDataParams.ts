@@ -14,3 +14,6 @@ export type MongoProjectionDataParams = {
 	 */
 	schemaVersion: string;
 };
+
+/** Context passed to connection factories for projection views, their storage, and their locks */
+export type MongoProjectionDbFactoryParams = MongoProjectionDataParams;

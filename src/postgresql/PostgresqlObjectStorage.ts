@@ -3,6 +3,7 @@ import type { Identifier, IObjectStorage } from '../interfaces/index.ts';
 import { assertDefined, assertFunction, assertNonNegativeInteger, assertString } from '../utils/assert.ts';
 import { AbstractPostgresqlAccessor } from './AbstractPostgresqlAccessor.ts';
 import type { PostgresqlConnection } from './PostgresqlConnection.ts';
+import type { PostgresqlProjectionDbFactoryParams } from './PostgresqlProjectionDataParams.ts';
 import { quoteIdentifier } from './utils/index.ts';
 
 type RecordRow<TRecord> = {
@@ -19,7 +20,9 @@ type RecordRow<TRecord> = {
  * atomically commit only when the version still matches.
  * On mismatch the operation retries up to `maxRetries` times.
  */
-export class PostgresqlObjectStorage<TRecord> extends AbstractPostgresqlAccessor implements IObjectStorage<TRecord> {
+export class PostgresqlObjectStorage<TRecord>
+	extends AbstractPostgresqlAccessor<PostgresqlProjectionDbFactoryParams>
+	implements IObjectStorage<TRecord> {
 
 	readonly #tableName: string;
 	readonly #maxRetries: number;
@@ -27,8 +30,13 @@ export class PostgresqlObjectStorage<TRecord> extends AbstractPostgresqlAccessor
 	constructor(o: Partial<Pick<IContainer, 'viewModelPostgresqlDb' | 'viewModelPostgresqlDbFactory'>> & {
 		tableName: string;
 		maxRetries?: number;
+		viewModelPostgresqlDbFactoryParams?: PostgresqlProjectionDbFactoryParams;
 	}) {
-		super(o);
+		super({
+			postgreSqlDb: o.viewModelPostgresqlDb,
+			postgreSqlDbFactory: o.viewModelPostgresqlDbFactory,
+			postgreSqlDbFactoryParams: o.viewModelPostgresqlDbFactoryParams
+		});
 
 		assertString(o.tableName, 'tableName');
 		if (o.maxRetries !== undefined)

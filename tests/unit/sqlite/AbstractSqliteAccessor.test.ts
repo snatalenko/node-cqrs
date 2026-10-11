@@ -1,7 +1,8 @@
 import createDb, { type Database } from 'better-sqlite3';
-import { AbstractSqliteAccessor } from '../../../src/sqlite/index.ts';
+import { AbstractSqliteAccessor, type SqliteProjectionDbFactoryParams } from '../../../src/sqlite/index.ts';
 
-class TestAccessor extends AbstractSqliteAccessor {
+class TestAccessor<TFactoryParams extends object = SqliteProjectionDbFactoryParams>
+	extends AbstractSqliteAccessor<TFactoryParams> {
 
 	initializeCalls = 0;
 
@@ -148,6 +149,34 @@ describe('AbstractSqliteAccessor', () => {
 	});
 
 	describe('assertConnection', () => {
+
+		it('passes the parameter object unchanged and creates the connection only once', async () => {
+			const params = { tenant: 'tenant1' };
+			const factory = jest.fn(async (_params?: { tenant: string }) => db);
+			const lazyAccessor = new TestAccessor<{ tenant: string }>({
+				viewModelSqliteDbFactory: factory,
+				sqliteDbFactoryParams: params
+			});
+			expect(factory).not.toHaveBeenCalled();
+
+			await Promise.all([lazyAccessor.assertConnection(), lazyAccessor.assertConnection()]);
+
+			expect(factory).toHaveBeenCalledTimes(1);
+			expect(factory.mock.calls[0][0]).toBe(params);
+			expect(lazyAccessor.initializeCalls).toBe(1);
+		});
+
+		it('passes undefined to the factory when parameters are omitted', async () => {
+			const factory = jest.fn((params?: { tenant: string }) => {
+				expect(params).toBeUndefined();
+				return db;
+			});
+			const lazyAccessor = new TestAccessor<{ tenant: string }>({ viewModelSqliteDbFactory: factory });
+
+			await lazyAccessor.assertConnection();
+
+			expect(factory).toHaveBeenCalledWith(undefined);
+		});
 
 		it('initializes on first use within a transaction once per transaction', async () => {
 			const owner = new TestAccessor({ viewModelSqliteDb: db });

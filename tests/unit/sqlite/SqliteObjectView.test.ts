@@ -1,5 +1,5 @@
 import createDb from 'better-sqlite3';
-import { SqliteObjectView } from '../../../src/sqlite';
+import { SqliteObjectView, type SqliteProjectionDbFactoryParams } from '../../../src/sqlite/index.ts';
 import { promisify } from 'util';
 const delay = promisify(setTimeout);
 
@@ -19,6 +19,59 @@ describe('SqliteObjectView', function () {
 
 	afterEach(() => {
 		viewModelSqliteDb.close();
+	});
+
+	it('routes projection versions to databases shared by the view, storage, and lockers', async () => {
+		const databases = new Map([
+			['Users:1', createDb(':memory:')],
+			['Users:2', createDb(':memory:')],
+			['Orders:1', createDb(':memory:')]
+		]);
+		const factory = jest.fn((params?: SqliteProjectionDbFactoryParams) => {
+			if (!params)
+				throw new Error('Projection context required');
+
+			return databases.get(`${params.projectionName}:${params.schemaVersion}`)!;
+		});
+
+		try {
+			for (const key of databases.keys()) {
+				const [projectionName, schemaVersion] = key.split(':');
+				const view = new SqliteObjectView<{ name: string }>({
+					viewModelSqliteDbFactory: factory,
+					projectionName,
+					schemaVersion,
+					tableNamePrefix: 'records'
+				});
+				const event = { id: 'a0000000000000000000000000000001', type: 'Created', payload: { name: key } };
+
+				await expect(view.runInTransaction(async () => {
+					expect(await view.tryMarkAsProjecting(event)).toBe(true);
+					await view.create('1', { name: key });
+					await view.markAsProjected(event);
+					throw new Error('failed');
+				})).rejects.toThrow('failed');
+				expect(await view.get('1')).toBeUndefined();
+
+				await view.runInTransaction(async () => {
+					expect(await view.tryMarkAsProjecting(event)).toBe(true);
+					await view.create('1', { name: key });
+					await view.markAsProjected(event);
+				});
+				expect(await view.get('1')).toEqual({ name: key });
+				expect(await view.tryMarkAsProjecting(event)).toBe(false);
+			}
+
+			expect(factory.mock.calls).toEqual([
+				...Array(4).fill([{ projectionName: 'Users', schemaVersion: '1' }]),
+				...Array(4).fill([{ projectionName: 'Users', schemaVersion: '2' }]),
+				...Array(4).fill([{ projectionName: 'Orders', schemaVersion: '1' }])
+			]);
+		}
+		finally {
+			for (const db of databases.values())
+				db.close();
+		}
 	});
 
 	it('creates db connection from viewModelSqliteDbFactory when db is not provided', async () => {

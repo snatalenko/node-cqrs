@@ -28,7 +28,14 @@ export abstract class AbstractSqliteView extends AbstractSqliteAccessor implemen
 	constructor(options: Partial<Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory' | 'logger'>>
 		& SqliteEventLockerParams
 		& SqliteViewLockerParams) {
-		super(options);
+		super({
+			viewModelSqliteDb: options.viewModelSqliteDb,
+			viewModelSqliteDbFactory: options.viewModelSqliteDbFactory,
+			sqliteDbFactoryParams: {
+				projectionName: options.projectionName,
+				schemaVersion: options.schemaVersion
+			}
+		});
 
 		this.schemaVersion = options.schemaVersion;
 		this.viewLocker = new SqliteViewLocker(options);

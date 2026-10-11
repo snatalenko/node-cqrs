@@ -1,4 +1,5 @@
 import type { Db } from 'mongodb';
+import type { MongoProjectionDbFactoryParams } from './MongoProjectionDataParams.ts';
 
 declare module 'node-cqrs' {
 	interface IContainer {
@@ -6,6 +7,6 @@ declare module 'node-cqrs' {
 		eventStorageMongoDbFactory?: () => Promise<Db> | Db;
 		mongoEventStorageConfig?: { collection?: string };
 		viewModelMongoDb?: Db;
-		viewModelMongoDbFactory?: () => Promise<Db> | Db;
+		viewModelMongoDbFactory?: (params?: MongoProjectionDbFactoryParams) => Promise<Db> | Db;
 	}
 }

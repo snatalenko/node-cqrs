@@ -58,6 +58,20 @@ describe('AbstractPostgresqlView', () => {
 		view = makeView(db);
 	});
 
+	it('passes projection context to the connection factories for the view and its locks', async () => {
+		const factory = jest.fn(() => db);
+		const factoryView = new TestPostgresqlView({
+			viewModelPostgresqlDbFactory: factory,
+			projectionName: 'Users',
+			schemaVersion: '2'
+		});
+
+		await factoryView.recordEvent(testEvent);
+
+		expect(factory.mock.calls).toEqual(Array(3).fill([{ projectionName: 'Users', schemaVersion: '2' }]));
+		expect(db.objectRecords.has('1')).toBe(true);
+	});
+
 	describe('ready', () => {
 
 		it('is true initially', () => {

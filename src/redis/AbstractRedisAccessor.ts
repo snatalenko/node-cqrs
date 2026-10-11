@@ -1,4 +1,4 @@
-import type { IContainer } from 'node-cqrs';
+import type { RedisProjectionDbFactoryParams } from './RedisProjectionDataParams.ts';
 import type { Redis } from 'ioredis';
 import { Lock } from '../utils/index.ts';
 
@@ -7,23 +7,30 @@ import { Lock } from '../utils/index.ts';
  *
  * Manages the Redis client lifecycle, ensuring initialization via `assertConnection`.
  * Supports providing a Redis instance directly or a factory function for lazy initialization.
+ * The optional `redisFactoryParams` object is passed unchanged to the factory.
  *
  * Subclasses must implement the `initialize` method for specific setup tasks
  * (e.g. registering Lua commands with `defineCommand`).
  */
-export abstract class AbstractRedisAccessor {
+export abstract class AbstractRedisAccessor<TFactoryParams extends object = RedisProjectionDbFactoryParams> {
 
 	protected redis: Redis | undefined;
-	#redisFactory: (() => Promise<Redis> | Redis) | undefined;
-	#initLocker = new Lock();
+	readonly #redisFactory: ((params?: TFactoryParams) => Promise<Redis> | Redis) | undefined;
+	readonly #redisFactoryParams: TFactoryParams | undefined;
+	readonly #initLocker = new Lock();
 	#initialized = false;
 
-	constructor(c: Partial<Pick<IContainer, 'viewModelRedis' | 'viewModelRedisFactory'>>) {
+	constructor(c: {
+		viewModelRedis?: Redis;
+		viewModelRedisFactory?: (params?: TFactoryParams) => Promise<Redis> | Redis;
+		redisFactoryParams?: TFactoryParams;
+	}) {
 		if (!c.viewModelRedis && !c.viewModelRedisFactory)
 			throw new TypeError('either viewModelRedis or viewModelRedisFactory argument required');
 
 		this.redis = c.viewModelRedis;
 		this.#redisFactory = c.viewModelRedisFactory;
+		this.#redisFactoryParams = c.redisFactoryParams;
 	}
 
 	protected abstract initialize(redis: Redis): Promise<void> | void;
@@ -46,7 +53,7 @@ export abstract class AbstractRedisAccessor {
 				return;
 
 			if (!this.redis)
-				this.redis = await this.#redisFactory!();
+				this.redis = await this.#redisFactory!(this.#redisFactoryParams);
 
 			await this.initialize(this.redis);
 

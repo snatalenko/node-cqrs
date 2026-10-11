@@ -1,5 +1,5 @@
 import type { Redis } from 'ioredis';
-import { RedisObjectStorage } from '../../../src/redis/index.ts';
+import { RedisObjectStorage, type RedisProjectionDbFactoryParams } from '../../../src/redis/index.ts';
 import { createMockRedis } from './mockRedis.ts';
 
 type Item = { name: string; value: number };
@@ -44,6 +44,23 @@ describe('RedisObjectStorage', () => {
 			await s.assertConnection();
 			expect(factoryCalled).toBe(true);
 		});
+
+		it.each([undefined, { projectionName: 'Users', schemaVersion: '2' }])(
+			'forwards optional storage factory params: %p', async params => {
+				const factory = jest.fn((_params?: RedisProjectionDbFactoryParams) => mockRedis as unknown as Redis);
+				const s = new RedisObjectStorage<Item>({
+					viewModelRedisFactory: factory,
+					viewModelRedisFactoryParams: params,
+					tableName: 'test_items'
+				});
+
+				await s.create('factory-item', { name: 'Alice', value: 1 });
+
+				expect(factory).toHaveBeenCalledWith(params);
+				expect(factory.mock.calls[0][0]).toBe(params);
+				expect(await s.get('factory-item')).toEqual({ name: 'Alice', value: 1 });
+			}
+		);
 	});
 
 	describe('get', () => {

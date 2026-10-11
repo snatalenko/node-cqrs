@@ -1,5 +1,5 @@
 import createDb from 'better-sqlite3';
-import { guid, SqliteObjectStorage } from '../../../src/sqlite';
+import { guid, SqliteObjectStorage, type SqliteProjectionDbFactoryParams } from '../../../src/sqlite/index.ts';
 
 describe('SqliteObjectStorage', function () {
 	let db: import('better-sqlite3').Database;
@@ -17,6 +17,22 @@ describe('SqliteObjectStorage', function () {
 	afterEach(() => {
 		db.close();
 	});
+
+	it.each([undefined, { projectionName: 'Users', schemaVersion: '2' }])(
+		'passes optional connection factory parameters %p when used independently', async params => {
+			const factory = jest.fn((_params?: SqliteProjectionDbFactoryParams) => db);
+			const factoryStorage = new SqliteObjectStorage({
+				viewModelSqliteDbFactory: factory,
+				viewModelSqliteDbFactoryParams: params,
+				tableName: 'factory_records'
+			});
+
+			await factoryStorage.create('1', { name: 'Alice' });
+
+			expect(factory).toHaveBeenCalledWith(params);
+			expect(await factoryStorage.get('1')).toEqual({ name: 'Alice' });
+		}
+	);
 
 	it('stores and retrieves an object', async function () {
 

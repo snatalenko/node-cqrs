@@ -38,7 +38,14 @@ export class RedisView<TRecord> extends AbstractRedisAccessor
 		assertString(options?.tableNamePrefix, 'options.tableNamePrefix');
 		assertString(options?.schemaVersion, 'options.schemaVersion');
 
-		super(options);
+		super({
+			viewModelRedis: options.viewModelRedis,
+			viewModelRedisFactory: options.viewModelRedisFactory,
+			redisFactoryParams: {
+				projectionName: options.projectionName,
+				schemaVersion: options.schemaVersion
+			}
+		});
 
 		this.schemaVersion = options.schemaVersion;
 		this.viewLocker = new RedisViewLocker(options);
@@ -46,6 +53,10 @@ export class RedisView<TRecord> extends AbstractRedisAccessor
 		this.#objectStorage = new RedisObjectStorage<TRecord>({
 			viewModelRedis: options.viewModelRedis,
 			viewModelRedisFactory: options.viewModelRedisFactory,
+			viewModelRedisFactoryParams: {
+				projectionName: options.projectionName,
+				schemaVersion: options.schemaVersion
+			},
 			tableName: `${options.tableNamePrefix}_${options.schemaVersion}`
 		});
 		this.logger = options.logger && 'child' in options.logger ?

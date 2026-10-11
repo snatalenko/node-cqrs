@@ -1,5 +1,5 @@
 import type { Db } from 'mongodb';
-import type { IContainer } from 'node-cqrs';
+import type { MongoProjectionDbFactoryParams } from './MongoProjectionDataParams.ts';
 import { Lock } from '../utils/index.ts';
 
 /**
@@ -7,23 +7,30 @@ import { Lock } from '../utils/index.ts';
  *
  * Manages the database connection lifecycle, ensuring initialization via `assertConnection`.
  * Supports providing a Db instance directly or a factory function for lazy initialization.
+ * The optional `mongoDbFactoryParams` object is passed unchanged to the factory.
  *
  * Subclasses must implement the `initialize` method for specific setup tasks
  * (e.g. creating collections or indexes).
  */
-export abstract class AbstractMongoAccessor {
+export abstract class AbstractMongoAccessor<TFactoryParams extends object = MongoProjectionDbFactoryParams> {
 
 	protected db: Db | undefined;
-	readonly #dbFactory: (() => Promise<Db> | Db) | undefined;
+	readonly #dbFactory: ((params?: TFactoryParams) => Promise<Db> | Db) | undefined;
+	readonly #dbFactoryParams: TFactoryParams | undefined;
 	readonly #initLocker = new Lock();
 	#initialized = false;
 
-	constructor(c: Partial<Pick<IContainer, 'viewModelMongoDb' | 'viewModelMongoDbFactory'>>) {
-		if (!c.viewModelMongoDb && !c.viewModelMongoDbFactory)
-			throw new TypeError('either viewModelMongoDb or viewModelMongoDbFactory argument required');
+	constructor(c: {
+		mongoDb?: Db;
+		mongoDbFactory?: (params?: TFactoryParams) => Promise<Db> | Db;
+		mongoDbFactoryParams?: TFactoryParams;
+	}) {
+		if (!c.mongoDb && !c.mongoDbFactory)
+			throw new TypeError('either mongoDb or mongoDbFactory argument required');
 
-		this.db = c.viewModelMongoDb;
-		this.#dbFactory = c.viewModelMongoDbFactory;
+		this.db = c.mongoDb;
+		this.#dbFactory = c.mongoDbFactory;
+		this.#dbFactoryParams = c.mongoDbFactoryParams;
 	}
 
 	protected abstract initialize(db: Db): Promise<void> | void;
@@ -46,7 +53,7 @@ export abstract class AbstractMongoAccessor {
 				return;
 
 			if (!this.db)
-				this.db = await this.#dbFactory!();
+				this.db = await this.#dbFactory!(this.#dbFactoryParams);
 
 			await this.initialize(this.db);
 

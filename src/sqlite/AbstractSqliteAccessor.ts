@@ -1,8 +1,8 @@
-import type { IContainer } from 'node-cqrs';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { promisify } from 'node:util';
 import { Lock } from '../utils/index.ts';
 import type { Database } from 'better-sqlite3';
+import type { SqliteProjectionDbFactoryParams } from './SqliteProjectionDataParams.ts';
 
 const delay = promisify(setTimeout);
 
@@ -62,26 +62,33 @@ async function beginImmediate(db: Database) {
  *
  * Manages the database connection lifecycle, ensuring initialization via `assertConnection`.
  * Supports providing a database instance directly or a factory function for lazy initialization.
+ * The optional `sqliteDbFactoryParams` object is passed unchanged to the factory.
  *
  * Transactions started with `runInTransaction` are shared by accessors using the same database instance,
  * so a factory must return the same instance for accessors expected to participate in the same transaction.
  *
  * Subclasses must implement the `initialize` method for specific setup tasks.
  */
-export abstract class AbstractSqliteAccessor {
+export abstract class AbstractSqliteAccessor<TFactoryParams extends object = SqliteProjectionDbFactoryParams> {
 
 	protected db: Database | undefined;
-	readonly #dbFactory: (() => Promise<Database> | Database) | undefined;
+	readonly #dbFactory: ((params?: TFactoryParams) => Promise<Database> | Database) | undefined;
+	readonly #dbFactoryParams: TFactoryParams | undefined;
 	readonly #initLocker = new Lock();
 	#initialized = false;
 	readonly #initializedTransactions = new WeakSet<TransactionContext>();
 
-	constructor(c: Partial<Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory'>>) {
+	constructor(c: {
+		viewModelSqliteDb?: Database;
+		viewModelSqliteDbFactory?: (params?: TFactoryParams) => Promise<Database> | Database;
+		sqliteDbFactoryParams?: TFactoryParams;
+	}) {
 		if (!c.viewModelSqliteDb && !c.viewModelSqliteDbFactory)
 			throw new TypeError('either viewModelSqliteDb or viewModelSqliteDbFactory argument required');
 
 		this.db = c.viewModelSqliteDb;
 		this.#dbFactory = c.viewModelSqliteDbFactory;
+		this.#dbFactoryParams = c.sqliteDbFactoryParams;
 	}
 
 	protected abstract initialize(db: Database): Promise<void> | void;
@@ -131,7 +138,7 @@ export abstract class AbstractSqliteAccessor {
 
 		if (!this.db) {
 			await this.#initLocker.runExclusively(undefined, async () => {
-				this.db ??= await this.#dbFactory!();
+				this.db ??= await this.#dbFactory!(this.#dbFactoryParams);
 			});
 		}
 

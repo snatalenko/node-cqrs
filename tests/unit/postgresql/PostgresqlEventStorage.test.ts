@@ -45,9 +45,7 @@ describe('PostgresqlEventStorage', () => {
 		});
 
 		it('requires an event storage database', () => {
-			expect(() => new PostgresqlEventStorage({})).toThrow(
-				'either eventStoragePostgresqlDb or eventStoragePostgresqlDbFactory argument required'
-			);
+			expect(() => new PostgresqlEventStorage({})).toThrow(TypeError);
 		});
 
 		it('creates the database through eventStoragePostgresqlDbFactory', async () => {

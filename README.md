@@ -468,6 +468,11 @@ Choose infrastructure by deployment need. Modules can be used independently or c
 MongoDB, Redis, and PostgreSQL support is currently experimental and has not yet been validated in production.
 Their APIs may change in minor versions.
 
+Use `{ projectionName, schemaVersion }` in view connection factories to choose a database per projection or version.
+See the setup for [SQLite](src/sqlite/README.md#database-setup),
+[PostgreSQL](src/postgresql/README.md#container-setup), [MongoDB](src/mongodb/README.md#database-setup)
+and [Redis](src/redis/README.md#client-setup).
+
 ### Event Storage
 
 | Implementation | Notes |

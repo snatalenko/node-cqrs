@@ -60,7 +60,14 @@ export class MongoViewLocker extends AbstractMongoAccessor implements IViewLocke
 
 	constructor(o: Partial<Pick<IContainer, 'viewModelMongoDb' | 'viewModelMongoDbFactory' | 'logger'>>
 		& MongoViewLockerParams) {
-		super(o);
+		super({
+			mongoDb: o.viewModelMongoDb,
+			mongoDbFactory: o.viewModelMongoDbFactory,
+			mongoDbFactoryParams: {
+				projectionName: o.projectionName,
+				schemaVersion: o.schemaVersion
+			}
+		});
 
 		assertString(o.projectionName, 'projectionName');
 		assertString(o.schemaVersion, 'schemaVersion');

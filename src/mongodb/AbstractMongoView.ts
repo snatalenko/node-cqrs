@@ -33,7 +33,14 @@ export abstract class AbstractMongoView extends AbstractMongoAccessor implements
 		assertString(options.projectionName, 'projectionName');
 		assertString(options.schemaVersion, 'schemaVersion');
 
-		super(options);
+		super({
+			mongoDb: options.viewModelMongoDb,
+			mongoDbFactory: options.viewModelMongoDbFactory,
+			mongoDbFactoryParams: {
+				projectionName: options.projectionName,
+				schemaVersion: options.schemaVersion
+			}
+		});
 
 		this.schemaVersion = options.schemaVersion;
 		this.viewLocker = new MongoViewLocker(options);

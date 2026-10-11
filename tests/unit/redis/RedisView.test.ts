@@ -1,6 +1,6 @@
 import type { Redis } from 'ioredis';
 import { promisify } from 'util';
-import { RedisView } from '../../../src/redis/index.ts';
+import { RedisView, type RedisProjectionDbFactoryParams } from '../../../src/redis/index.ts';
 import type { IEvent } from '../../../src/interfaces/index.ts';
 import { createMockRedisForView } from './mockRedisForView.ts';
 
@@ -20,6 +20,45 @@ describe('RedisView', () => {
 			tableNamePrefix: 'items',
 			schemaVersion: '1'
 		});
+	});
+
+	it('routes view storage and both lockers by projection name and schema version', async () => {
+		const clients = new Map([
+			['Users:1', createMockRedisForView()],
+			['Users:2', createMockRedisForView()],
+			['Orders:1', createMockRedisForView()]
+		]);
+		const factory = jest.fn((params?: RedisProjectionDbFactoryParams) => {
+			const client = clients.get(`${params?.projectionName}:${params?.schemaVersion}`);
+			if (!client)
+				throw new Error('Unknown projection connection');
+
+			return client as unknown as Redis;
+		});
+		const event: IEvent = { id: 'shared-event', type: 'TEST', payload: {} };
+
+		for (const [key, client] of clients) {
+			const [projectionName, schemaVersion] = key.split(':');
+			const factoryView = new RedisView<Item>({
+				viewModelRedisFactory: factory,
+				projectionName,
+				schemaVersion,
+				tableNamePrefix: 'items'
+			});
+
+			await factoryView.assertConnection();
+			await factoryView.create('shared-id', { name: key, value: 1 });
+			await factoryView.markAsLastEvent(event);
+			await factoryView.lock();
+			await factoryView.unlock();
+
+			expect(await factoryView.get('shared-id')).toEqual({ name: key, value: 1 });
+			expect(await factoryView.getLastEvent()).toEqual(event);
+			expect(client.store.has(`items_${schemaVersion}:shared-id`)).toBe(true);
+			expect(factory.mock.calls.slice(-4)).toEqual(Array(4).fill([{ projectionName, schemaVersion }]));
+		}
+
+		expect(factory).toHaveBeenCalledTimes(12);
 	});
 
 	it('creates a client from viewModelRedisFactory when direct client is not provided', async () => {

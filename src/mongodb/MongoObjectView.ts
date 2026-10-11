@@ -21,6 +21,10 @@ export class MongoObjectView<TRecord> extends AbstractMongoView implements IObje
 		this.#mongoObjectStorage = new MongoObjectStorage<TRecord>({
 			viewModelMongoDb: options.viewModelMongoDb,
 			viewModelMongoDbFactory: options.viewModelMongoDbFactory,
+			viewModelMongoDbFactoryParams: {
+				projectionName: options.projectionName,
+				schemaVersion: options.schemaVersion
+			},
 			tableName: `${options.tableNamePrefix}_${options.schemaVersion}`
 		});
 	}

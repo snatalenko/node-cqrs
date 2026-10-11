@@ -1,4 +1,3 @@
-import type { IContainer } from 'node-cqrs';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Lock } from '../utils/index.ts';
 import type { PostgresqlConnection } from './PostgresqlConnection.ts';
@@ -38,39 +37,39 @@ const MAX_INITIALIZE_ATTEMPTS = 5;
 const isConcurrentCreationError = (error: unknown) =>
 	CONCURRENT_CREATION_ERROR_CODES.has((error as { code?: string } | undefined)?.code ?? '');
 
-type PostgresqlAccessorParams = {
-	db?: PostgresqlConnection;
-	dbFactory?: () => Promise<PostgresqlConnection> | PostgresqlConnection;
-} & Partial<Pick<IContainer, 'viewModelPostgresqlDb' | 'viewModelPostgresqlDbFactory'>>;
-
 /**
  * Abstract base class for accessing a PostgreSQL connection.
  *
  * Manages the connection lifecycle, ensuring initialization via `assertConnection`.
  * Supports providing a query-capable connection directly or a factory function for lazy initialization.
+ * The optional `postgreSqlDbFactoryParams` object is passed unchanged to the factory.
  *
  * Transactions started with `runInTransaction` are shared by accessors using the same connection pool instance,
  * so a factory must return the same pool for accessors expected to participate in the same transaction.
  *
  * Subclasses must implement the `initialize` method for specific setup tasks.
  */
-export abstract class AbstractPostgresqlAccessor {
+export abstract class AbstractPostgresqlAccessor<TFactoryParams extends object = object> {
 
 	protected db: PostgresqlConnection | undefined;
-	readonly #dbFactory: (() => Promise<PostgresqlConnection> | PostgresqlConnection) | undefined;
+	readonly #dbFactory:
+		((params?: TFactoryParams) => Promise<PostgresqlConnection> | PostgresqlConnection) | undefined;
+	readonly #dbFactoryParams: TFactoryParams | undefined;
 	readonly #initLocker = new Lock();
 	#initialized = false;
 	readonly #initializedTransactions = new WeakSet<TransactionContext>();
 
-	constructor(c: PostgresqlAccessorParams) {
-		const db = c.db ?? c.viewModelPostgresqlDb;
-		const dbFactory = c.dbFactory ?? c.viewModelPostgresqlDbFactory;
+	constructor(c: {
+		postgreSqlDb?: PostgresqlConnection;
+		postgreSqlDbFactory?: (params?: TFactoryParams) => Promise<PostgresqlConnection> | PostgresqlConnection;
+		postgreSqlDbFactoryParams?: TFactoryParams;
+	}) {
+		if (!c.postgreSqlDb && !c.postgreSqlDbFactory)
+			throw new TypeError('either postgreSqlDb or postgreSqlDbFactory argument required');
 
-		if (!db && !dbFactory)
-			throw new TypeError('either viewModelPostgresqlDb or viewModelPostgresqlDbFactory argument required');
-
-		this.db = db;
-		this.#dbFactory = dbFactory;
+		this.db = c.postgreSqlDb;
+		this.#dbFactory = c.postgreSqlDbFactory;
+		this.#dbFactoryParams = c.postgreSqlDbFactoryParams;
 	}
 
 	protected abstract initialize(db: PostgresqlConnection): Promise<void> | void;
@@ -144,7 +143,7 @@ export abstract class AbstractPostgresqlAccessor {
 		try {
 			await this.#initLocker.acquire();
 			if (!this.db)
-				this.db = await this.#dbFactory!();
+				this.db = await this.#dbFactory!(this.#dbFactoryParams);
 
 			if (this.#isInitialized())
 				return;

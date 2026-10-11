@@ -3,6 +3,7 @@ import type { IContainer } from 'node-cqrs';
 import type { IObjectStorage, Identifier } from '../interfaces/index.ts';
 import { assertDefined, assertFunction, assertString } from '../utils/assert.ts';
 import { AbstractRedisAccessor } from './AbstractRedisAccessor.ts';
+import type { RedisProjectionDbFactoryParams } from './RedisProjectionDataParams.ts';
 
 /**
  * Lua script for atomic version-checked update.
@@ -44,8 +45,13 @@ export class RedisObjectStorage<TRecord> extends AbstractRedisAccessor implement
 	constructor(o: Partial<Pick<IContainer, 'viewModelRedis' | 'viewModelRedisFactory'>> & {
 		tableName: string;
 		maxRetries?: number;
+		viewModelRedisFactoryParams?: RedisProjectionDbFactoryParams;
 	}) {
-		super(o);
+		super({
+			viewModelRedis: o.viewModelRedis,
+			viewModelRedisFactory: o.viewModelRedisFactory,
+			redisFactoryParams: o.viewModelRedisFactoryParams
+		});
 
 		assertString(o.tableName, 'o.tableName');
 

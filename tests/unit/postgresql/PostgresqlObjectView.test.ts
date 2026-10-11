@@ -1,4 +1,4 @@
-import { PostgresqlObjectView } from '../../../src/postgresql/index.ts';
+import { PostgresqlObjectView, type PostgresqlProjectionDbFactoryParams } from '../../../src/postgresql/index.ts';
 import { MockPostgresqlConnection } from './MockPostgresqlConnection.ts';
 
 describe('PostgresqlObjectView', () => {
@@ -14,6 +14,42 @@ describe('PostgresqlObjectView', () => {
 			schemaVersion: '1',
 			tableNamePrefix: 'users'
 		});
+	});
+
+	it('resolves the same connection for a projection view, its storage, and its locks', async () => {
+		const pools = new Map([
+			['Users:1', new MockPostgresqlConnection()],
+			['Users:2', new MockPostgresqlConnection()],
+			['Orders:1', new MockPostgresqlConnection()]
+		]);
+		const factory = jest.fn((params?: PostgresqlProjectionDbFactoryParams) => {
+			if (!params)
+				throw new Error('Projection context required');
+
+			return pools.get(`${params.projectionName}:${params.schemaVersion}`)!;
+		});
+
+		for (const [key, pool] of pools) {
+			const [projectionName, schemaVersion] = key.split(':');
+			const factoryView = new PostgresqlObjectView<{ name: string }>({
+				viewModelPostgresqlDbFactory: factory,
+				projectionName,
+				schemaVersion,
+				tableNamePrefix: 'records'
+			});
+
+			await factoryView.runInTransaction(() => factoryView.create('1', { name: key }));
+
+			expect(await factoryView.get('1')).toEqual({ name: key });
+			expect(pool.transactionLog).toEqual(['BEGIN', 'COMMIT']);
+			expect(pool.connectCount).toBe(1);
+		}
+
+		expect(factory.mock.calls).toEqual([
+			...Array(4).fill([{ projectionName: 'Users', schemaVersion: '1' }]),
+			...Array(4).fill([{ projectionName: 'Users', schemaVersion: '2' }]),
+			...Array(4).fill([{ projectionName: 'Orders', schemaVersion: '1' }])
+		]);
 	});
 
 	it('creates db connection from viewModelPostgresqlDbFactory when db is not provided', async () => {

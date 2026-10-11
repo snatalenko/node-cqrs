@@ -7,5 +7,6 @@ export * from './SqliteEventLocker.ts';
 export * from './SqliteEventStorage.ts';
 export * from './SqliteObjectStorage.ts';
 export * from './SqliteObjectView.ts';
+export * from './SqliteProjectionDataParams.ts';
 export * from './SqliteViewLocker.ts';
 export * from './utils/index.ts';

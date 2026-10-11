@@ -1,3 +1,11 @@
+/** Context passed to connection factories for projection views, their storage, and their locks */
+export type PostgresqlProjectionDbFactoryParams = {
+	projectionName: string;
+
+	/** Schema version of the projection */
+	schemaVersion: string;
+};
+
 export type PostgresqlProjectionDataParams = {
 
 	/**

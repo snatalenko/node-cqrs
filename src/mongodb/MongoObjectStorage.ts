@@ -3,6 +3,7 @@ import type { IContainer } from 'node-cqrs';
 import type { IObjectStorage, Identifier } from '../interfaces/index.ts';
 import { assertDefined, assertFunction, assertNonNegativeInteger, assertString } from '../utils/assert.ts';
 import { AbstractMongoAccessor } from './AbstractMongoAccessor.ts';
+import type { MongoProjectionDbFactoryParams } from './MongoProjectionDataParams.ts';
 
 type RecordDocument<TRecord> = {
 	_id: string;
@@ -28,8 +29,13 @@ export class MongoObjectStorage<TRecord> extends AbstractMongoAccessor implement
 	constructor(o: Partial<Pick<IContainer, 'viewModelMongoDb' | 'viewModelMongoDbFactory'>> & {
 		tableName: string;
 		maxRetries?: number;
+		viewModelMongoDbFactoryParams?: MongoProjectionDbFactoryParams;
 	}) {
-		super(o);
+		super({
+			mongoDb: o.viewModelMongoDb,
+			mongoDbFactory: o.viewModelMongoDbFactory,
+			mongoDbFactoryParams: o.viewModelMongoDbFactoryParams
+		});
 
 		assertString(o.tableName, 'tableName');
 		if (o.maxRetries !== undefined)

@@ -1,7 +1,7 @@
-import createDb from 'better-sqlite3';
-import { AbstractProjection } from '../../../src';
-import { SqliteObjectView } from '../../../src/sqlite';
-import type { IEvent } from '../../../src/interfaces';
+import createDb, { type Database } from 'better-sqlite3';
+import { AbstractProjection } from '../../../src/index.ts';
+import { AbstractSqliteView, SqliteObjectView } from '../../../src/sqlite/index.ts';
+import type { IEvent } from '../../../src/interfaces/index.ts';
 
 function makeView(db: import('better-sqlite3').Database, extra?: object) {
 	return new SqliteObjectView({
@@ -27,6 +27,26 @@ describe('AbstractSqliteView', function () {
 
 	afterEach(() => {
 		db.close();
+	});
+
+	it('passes projection context to a relational view and its lockers', async () => {
+		class RelationalView extends AbstractSqliteView {
+			protected override initialize(connection: Database) {
+				connection.exec('CREATE TABLE IF NOT EXISTS factory_records (id TEXT PRIMARY KEY)');
+			}
+		}
+
+		const factory = jest.fn(() => db);
+		const factoryView = new RelationalView({
+			viewModelSqliteDbFactory: factory,
+			projectionName: 'Users',
+			schemaVersion: '2'
+		});
+
+		await factoryView.assertConnection();
+
+		expect(factory.mock.calls).toEqual(Array(3).fill([{ projectionName: 'Users', schemaVersion: '2' }]));
+		expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'factory_records'").get()).toBeDefined();
 	});
 
 	describe('ready', () => {

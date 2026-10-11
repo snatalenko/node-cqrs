@@ -84,6 +84,30 @@ with `viewModelMongoDbFactory` for a lazily connected view database. Both factor
 the same `MongoClient`, but separate dependency names allow event and view data to use different databases or
 clusters. Concurrent `connect()` calls for the shared client wait on the MongoDB driver's connection lock.
 
+Use `{ projectionName, schemaVersion }` in `viewModelMongoDbFactory` to select from configured databases:
+
+```ts
+import type { MongoProjectionDbFactoryParams } from 'node-cqrs/mongodb';
+
+const projectionDbs = new Map([
+	['UsersProjection:1.0.0', client.db('users_v1')],
+	['UsersProjection:2.0.0', client.db('users_v2')]
+]);
+
+builder.registerInstance((params?: MongoProjectionDbFactoryParams) => {
+	if (!params)
+		return client.db('application_views');
+
+	const db = projectionDbs.get(`${params.projectionName}:${params.schemaVersion}`);
+	if (!db)
+		throw new Error('No database configured for this projection');
+
+	return db;
+}, 'viewModelMongoDbFactory');
+```
+
+Return the same database for each projection and schema version so its records and locks stay together.
+
 ## Event storage
 
 `MongoEventStorage` stores events, preserves saga origin references, and generates MongoDB `ObjectId`-based event
@@ -295,6 +319,9 @@ Most consumers do not need to construct these classes directly:
 | `MongoObjectStorage` | Only MongoDB-backed key/value storage is needed |
 | `MongoViewLocker` | A custom component needs distributed restore or migration locking |
 | `MongoEventLocker` | A custom projection needs event deduplication and checkpoints |
+
+For standalone `MongoObjectStorage`, set `viewModelMongoDbFactoryParams` to
+`{ projectionName, schemaVersion }` to select a database through the factory.
 
 The default restore lock TTL is 120 seconds and is prolonged automatically. The default event-processing lock
 TTL is 15 seconds. Collection names and TTLs can be supplied when constructing views or lockers directly.

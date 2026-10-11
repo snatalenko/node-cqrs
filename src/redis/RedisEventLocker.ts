@@ -74,7 +74,14 @@ export class RedisEventLocker extends AbstractRedisAccessor implements IEventTra
 
 	constructor(o: Partial<Pick<IContainer, 'viewModelRedis' | 'viewModelRedisFactory'>>
 		& RedisEventLockerParams) {
-		super(o);
+		super({
+			viewModelRedis: o.viewModelRedis,
+			viewModelRedisFactory: o.viewModelRedisFactory,
+			redisFactoryParams: {
+				projectionName: o.projectionName,
+				schemaVersion: o.schemaVersion
+			}
+		});
 
 		assertString(o.projectionName, 'o.projectionName');
 		assertString(o.schemaVersion, 'o.schemaVersion');

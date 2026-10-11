@@ -96,6 +96,34 @@ builder.register(container => async () => {
 Keep the encryption key outside application configuration files and apply it before the adapter executes any
 queries. The application still owns and must close the encrypted connection.
 
+Use `{ projectionName, schemaVersion }` in `viewModelSqliteDbFactory` to choose a database file or encryption
+configuration per projection. This example stores each version in a separate file and uses a default database
+for calls without projection parameters:
+
+```ts
+import type { SqliteProjectionDbFactoryParams } from 'node-cqrs/sqlite';
+
+const defaultDb = createDb('application.sqlite');
+const projectionDbs = new Map([
+	['UsersProjection:1', createDb('users-v1.sqlite')],
+	['UsersProjection:2', createDb('users-v2.sqlite')]
+]);
+
+builder.registerInstance((params?: SqliteProjectionDbFactoryParams) => {
+	if (!params)
+		return defaultDb;
+
+	const db = projectionDbs.get(`${params.projectionName}:${params.schemaVersion}`);
+	if (!db)
+		throw new Error(`No database configured for ${params.projectionName}:${params.schemaVersion}`);
+
+	return db;
+}, 'viewModelSqliteDbFactory');
+```
+
+Reuse one `Database` instance per file so view updates and event locks share a transaction.
+Close all connections during application shutdown.
+
 ## Event storage
 
 `SqliteEventStorage` stores events in insertion order and preserves saga origin references. Each event batch and
@@ -410,6 +438,9 @@ Most consumers do not need to construct these classes directly:
 | `SqliteObjectStorage` | Only SQLite-backed key/value storage is needed |
 | `SqliteViewLocker` | A custom component needs restoration locking |
 | `SqliteEventLocker` | A custom projection needs event deduplication and checkpoints |
+
+For standalone `SqliteObjectStorage`, set `viewModelSqliteDbFactoryParams` to
+`{ projectionName, schemaVersion }` to select a database through the factory.
 
 ## Run locally
 

@@ -3,6 +3,7 @@ import { guid } from './utils/index.ts';
 import type { IContainer } from 'node-cqrs';
 import type { IObjectStorage, Identifier } from '../interfaces/index.ts';
 import { AbstractSqliteAccessor } from './AbstractSqliteAccessor.ts';
+import type { SqliteProjectionDbFactoryParams } from './SqliteProjectionDataParams.ts';
 import { assertDefined, assertFunction } from '../utils/assert.ts';
 
 export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor implements IObjectStorage<TRecord> {
@@ -14,9 +15,14 @@ export class SqliteObjectStorage<TRecord> extends AbstractSqliteAccessor impleme
 	#deleteQuery!: Statement<[Buffer], void>;
 
 	constructor(o: Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory'> & {
-		tableName: string
+		tableName: string;
+		viewModelSqliteDbFactoryParams?: SqliteProjectionDbFactoryParams;
 	}) {
-		super(o);
+		super({
+			viewModelSqliteDb: o.viewModelSqliteDb,
+			viewModelSqliteDbFactory: o.viewModelSqliteDbFactory,
+			sqliteDbFactoryParams: o.viewModelSqliteDbFactoryParams
+		});
 
 		this.#tableName = o.tableName;
 	}

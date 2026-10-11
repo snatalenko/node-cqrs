@@ -14,7 +14,7 @@ import type {
 	Identifier
 } from '../interfaces/index.ts';
 import { ConcurrencyError } from '../errors/index.ts';
-import { assertFunction, assertString, parseSagaId } from '../utils/index.ts';
+import { assertString, parseSagaId } from '../utils/index.ts';
 import { AbstractPostgresqlAccessor } from './AbstractPostgresqlAccessor.ts';
 import type { PostgresqlConnection } from './PostgresqlConnection.ts';
 import { quoteIdentifier } from './utils/index.ts';
@@ -71,21 +71,6 @@ function indexPrefix(tableName: string): string {
 	return tableName.replaceAll('"', '').replaceAll('.', '_');
 }
 
-function eventStorageConnectionOptions(
-	db: PostgresqlConnection | undefined,
-	dbFactory: (() => Promise<PostgresqlConnection> | PostgresqlConnection) | undefined
-) {
-	if (!db && !dbFactory)
-		throw new TypeError('either eventStoragePostgresqlDb or eventStoragePostgresqlDbFactory argument required');
-	if (!db && dbFactory !== undefined)
-		assertFunction(dbFactory, 'eventStoragePostgresqlDbFactory');
-
-	return {
-		db,
-		dbFactory
-	};
-}
-
 function reconstructEvent(row: EventRow): Readonly<IEvent> {
 	const data = parseJson(row.data) as Omit<IEvent, 'id' | 'sagaOrigins'>;
 	const event: IEvent = {
@@ -121,7 +106,10 @@ export class PostgresqlEventStorage extends AbstractPostgresqlAccessor implement
 		'eventStoragePostgresqlDb' |
 		'eventStoragePostgresqlDbFactory'
 	>>) {
-		super(eventStorageConnectionOptions(eventStoragePostgresqlDb, eventStoragePostgresqlDbFactory));
+		super({
+			postgreSqlDb: eventStoragePostgresqlDb,
+			postgreSqlDbFactory: eventStoragePostgresqlDbFactory
+		});
 
 		const eventsTableName = postgresqlEventStorageConfig?.eventsTableName ?? PostgresqlEventStorage.EVENTS_TABLE;
 		const eventSagasTableName = postgresqlEventStorageConfig?.eventSagasTableName ??

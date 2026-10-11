@@ -3,7 +3,8 @@ import type { EventTrackerWaitOptions, IEvent, IEventTracker, Identifier } from 
 import { assertNonNegativeInteger, assertString } from '../utils/assert.ts';
 import { EventProgressTracker } from '../utils/EventProgressTracker.ts';
 import type { PostgresqlConnection } from './PostgresqlConnection.ts';
-import type { PostgresqlProjectionDataParams } from './PostgresqlProjectionDataParams.ts';
+import type { PostgresqlProjectionDataParams, PostgresqlProjectionDbFactoryParams }
+	from './PostgresqlProjectionDataParams.ts';
 import type { PostgresqlViewLockerParams } from './PostgresqlViewLocker.ts';
 import { AbstractPostgresqlAccessor } from './AbstractPostgresqlAccessor.ts';
 import { getEventId, quoteIdentifier } from './utils/index.ts';
@@ -35,7 +36,9 @@ export type PostgresqlEventLockerParams =
  * Uses one table for per-event processing locks and the view lock table for the
  * last processed event checkpoint.
  */
-export class PostgresqlEventLocker extends AbstractPostgresqlAccessor implements IEventTracker {
+export class PostgresqlEventLocker
+	extends AbstractPostgresqlAccessor<PostgresqlProjectionDbFactoryParams>
+	implements IEventTracker {
 
 	static DEFAULT_EVENT_LOCK_TTL = 15_000;
 	static DEFAULT_EVENT_LOCK_TABLE = 'ncqrs_event_locks';
@@ -50,7 +53,14 @@ export class PostgresqlEventLocker extends AbstractPostgresqlAccessor implements
 
 	constructor(o: Partial<Pick<IContainer, 'viewModelPostgresqlDb' | 'viewModelPostgresqlDbFactory'>>
 		& PostgresqlEventLockerParams) {
-		super(o);
+		super({
+			postgreSqlDb: o.viewModelPostgresqlDb,
+			postgreSqlDbFactory: o.viewModelPostgresqlDbFactory,
+			postgreSqlDbFactoryParams: {
+				projectionName: o.projectionName,
+				schemaVersion: o.schemaVersion
+			}
+		});
 
 		assertString(o.projectionName, 'o.projectionName');
 		assertString(o.schemaVersion, 'o.schemaVersion');

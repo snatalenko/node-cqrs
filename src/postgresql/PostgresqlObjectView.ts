@@ -25,6 +25,10 @@ export class PostgresqlObjectView<TRecord>
 		this.#postgresqlObjectStorage = new PostgresqlObjectStorage<TRecord>({
 			viewModelPostgresqlDb: options.viewModelPostgresqlDb,
 			viewModelPostgresqlDbFactory: options.viewModelPostgresqlDbFactory,
+			viewModelPostgresqlDbFactoryParams: {
+				projectionName: options.projectionName,
+				schemaVersion: options.schemaVersion
+			},
 			tableName: `${options.tableNamePrefix}_${options.schemaVersion}`,
 			maxRetries: options.postgresqlObjectStorageMaxRetries
 		});

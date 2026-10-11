@@ -22,6 +22,10 @@ export class SqliteObjectView<TRecord> extends AbstractSqliteView implements IOb
 		this.#sqliteObjectStorage = new SqliteObjectStorage<TRecord>({
 			viewModelSqliteDb: options.viewModelSqliteDb,
 			viewModelSqliteDbFactory: options.viewModelSqliteDbFactory,
+			viewModelSqliteDbFactoryParams: {
+				projectionName: options.projectionName,
+				schemaVersion: options.schemaVersion
+			},
 			tableName: `${options.tableNamePrefix}_${options.schemaVersion}`
 		});
 	}

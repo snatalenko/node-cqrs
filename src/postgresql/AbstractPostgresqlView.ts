@@ -11,11 +11,14 @@ import { assertString } from '../utils/assert.ts';
 import { AbstractPostgresqlAccessor } from './AbstractPostgresqlAccessor.ts';
 import { PostgresqlEventLocker, type PostgresqlEventLockerParams } from './PostgresqlEventLocker.ts';
 import { PostgresqlViewLocker, type PostgresqlViewLockerParams } from './PostgresqlViewLocker.ts';
+import type { PostgresqlProjectionDbFactoryParams } from './PostgresqlProjectionDataParams.ts';
 
 /**
  * Base class for PostgreSQL-backed projection views with restore locking and last-processed-event tracking.
  */
-export abstract class AbstractPostgresqlView extends AbstractPostgresqlAccessor implements IViewLocker, IEventTracker {
+export abstract class AbstractPostgresqlView
+	extends AbstractPostgresqlAccessor<PostgresqlProjectionDbFactoryParams>
+	implements IViewLocker, IEventTracker {
 
 	protected readonly schemaVersion: string;
 	protected readonly viewLocker: PostgresqlViewLocker;
@@ -32,7 +35,14 @@ export abstract class AbstractPostgresqlView extends AbstractPostgresqlAccessor 
 		assertString(options.projectionName, 'projectionName');
 		assertString(options.schemaVersion, 'schemaVersion');
 
-		super(options);
+		super({
+			postgreSqlDb: options.viewModelPostgresqlDb,
+			postgreSqlDbFactory: options.viewModelPostgresqlDbFactory,
+			postgreSqlDbFactoryParams: {
+				projectionName: options.projectionName,
+				schemaVersion: options.schemaVersion
+			}
+		});
 
 		this.schemaVersion = options.schemaVersion;
 		this.viewLocker = new PostgresqlViewLocker(options);

@@ -4,7 +4,7 @@ import {
 } from '../../../src/postgresql/index.ts';
 import { MockPostgresqlConnection } from './MockPostgresqlConnection.ts';
 
-class TestAccessor extends AbstractPostgresqlAccessor {
+class TestAccessor<TFactoryParams extends object = object> extends AbstractPostgresqlAccessor<TFactoryParams> {
 
 	protected override initialize(_db: PostgresqlConnection) { }
 
@@ -26,11 +26,11 @@ describe('AbstractPostgresqlAccessor', () => {
 
 		beforeEach(() => {
 			pool = new MockPostgresqlConnection();
-			accessor = new TestAccessor({ viewModelPostgresqlDb: pool });
+			accessor = new TestAccessor({ postgreSqlDb: pool });
 		});
 
 		it('shares the transaction with accessors using the same pool', async () => {
-			const otherAccessor = new TestAccessor({ viewModelPostgresqlDb: pool });
+			const otherAccessor = new TestAccessor({ postgreSqlDb: pool });
 			await otherAccessor.assertConnection();
 
 			await accessor.runInTransaction(() => {
@@ -40,7 +40,7 @@ describe('AbstractPostgresqlAccessor', () => {
 		});
 
 		it('joins the transaction, when started by another accessor using the same pool', async () => {
-			const otherAccessor = new TestAccessor({ viewModelPostgresqlDb: pool });
+			const otherAccessor = new TestAccessor({ postgreSqlDb: pool });
 
 			await accessor.runInTransaction(() => otherAccessor.runInTransaction(() => { }));
 
@@ -50,7 +50,7 @@ describe('AbstractPostgresqlAccessor', () => {
 
 		it('does not share the transaction with accessors using another pool', async () => {
 			const otherPool = new MockPostgresqlConnection();
-			const otherAccessor = new TestAccessor({ viewModelPostgresqlDb: otherPool });
+			const otherAccessor = new TestAccessor({ postgreSqlDb: otherPool });
 			await otherAccessor.assertConnection();
 
 			await accessor.runInTransaction(async () => {
@@ -78,8 +78,47 @@ describe('AbstractPostgresqlAccessor', () => {
 
 		beforeEach(() => {
 			pool = new MockPostgresqlConnection();
-			accessor = new TestAccessor({ viewModelPostgresqlDb: pool });
+			accessor = new TestAccessor({ postgreSqlDb: pool });
 			initialize = jest.spyOn(accessor as any, 'initialize');
+		});
+
+		it('creates the connection lazily through postgreSqlDbFactory once under concurrent initialization', async () => {
+			const factory = jest.fn(async () => pool);
+			const lazyAccessor = new TestAccessor({ postgreSqlDbFactory: factory });
+			expect(factory).not.toHaveBeenCalled();
+
+			await Promise.all([lazyAccessor.assertConnection(), lazyAccessor.assertConnection()]);
+
+			expect(factory).toHaveBeenCalledTimes(1);
+			expect(factory).toHaveBeenCalledWith(undefined);
+			expect(lazyAccessor.currentConnection).toBe(pool);
+		});
+
+		it('passes the supplied parameter object to the factory', async () => {
+			const params = { tenant: 'tenant1' };
+			const factory = jest.fn((_params?: object) => pool);
+			const lazyAccessor = new TestAccessor({
+				postgreSqlDbFactory: factory,
+				postgreSqlDbFactoryParams: params
+			});
+
+			await lazyAccessor.assertConnection();
+
+			expect(factory.mock.calls[0][0]).toBe(params);
+			expect(lazyAccessor.currentConnection).toBe(pool);
+		});
+
+		it('passes undefined to a typed factory when no parameters are supplied', async () => {
+			const factory = jest.fn((params?: { tenant: string }) => {
+				expect(params).toBeUndefined();
+				return pool;
+			});
+			const lazyAccessor = new TestAccessor<{ tenant: string }>({ postgreSqlDbFactory: factory });
+
+			await lazyAccessor.assertConnection();
+
+			expect(factory).toHaveBeenCalledWith(undefined);
+			expect(lazyAccessor.currentConnection).toBe(pool);
 		});
 
 		it('repeats initialization failed by concurrent creation of the same objects', async () => {
@@ -99,7 +138,7 @@ describe('AbstractPostgresqlAccessor', () => {
 		});
 
 		it('initializes on the transaction connection once per transaction', async () => {
-			const owner = new TestAccessor({ viewModelPostgresqlDb: pool });
+			const owner = new TestAccessor({ postgreSqlDb: pool });
 
 			await owner.runInTransaction(async () => {
 				await accessor.assertConnection();
@@ -114,7 +153,7 @@ describe('AbstractPostgresqlAccessor', () => {
 		});
 
 		it('initializes again after the transaction it initialized in is rolled back', async () => {
-			const owner = new TestAccessor({ viewModelPostgresqlDb: pool });
+			const owner = new TestAccessor({ postgreSqlDb: pool });
 
 			await expect(owner.runInTransaction(async () => {
 				await accessor.assertConnection();
@@ -133,7 +172,7 @@ describe('AbstractPostgresqlAccessor', () => {
 		it('runs transactions on it without reconnecting or releasing it', async () => {
 			const pool = new MockPostgresqlConnection();
 			const client = Object.assign(await pool.connect(), { connect: jest.fn() });
-			const accessor = new TestAccessor({ viewModelPostgresqlDb: client });
+			const accessor = new TestAccessor({ postgreSqlDb: client });
 
 			await accessor.runInTransaction(() => {
 				expect(accessor.currentConnection).toBe(client);
@@ -152,7 +191,7 @@ describe('AbstractPostgresqlAccessor', () => {
 
 		beforeEach(() => {
 			pool = new MockPostgresqlConnection();
-			accessor = new TestAccessor({ viewModelPostgresqlDb: pool });
+			accessor = new TestAccessor({ postgreSqlDb: pool });
 		});
 
 		it('runs callbacks after the transaction is committed', async () => {
@@ -187,7 +226,7 @@ describe('AbstractPostgresqlAccessor', () => {
 		});
 
 		it('runs callbacks immediately within a transaction of another pool', async () => {
-			const otherAccessor = new TestAccessor({ viewModelPostgresqlDb: new MockPostgresqlConnection() });
+			const otherAccessor = new TestAccessor({ postgreSqlDb: new MockPostgresqlConnection() });
 			await otherAccessor.assertConnection();
 			const callback = jest.fn();
 
@@ -219,7 +258,7 @@ describe('AbstractPostgresqlAccessor', () => {
 		}
 
 		const accessor = new Accessor({
-			viewModelPostgresqlDb: new MockPostgresqlConnection()
+			postgreSqlDb: new MockPostgresqlConnection()
 		});
 
 		const firstAssertion = accessor.assertConnection();

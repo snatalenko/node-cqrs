@@ -53,7 +53,14 @@ export class SqliteEventLocker extends AbstractSqliteAccessor implements IEventT
 	#getProjectedEventIdsQuery!: Statement<ProjectionQueryParams & { lockKeys: string }, { position: number }>;
 
 	constructor(o: Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory'> & SqliteEventLockerParams) {
-		super(o);
+		super({
+			viewModelSqliteDb: o.viewModelSqliteDb,
+			viewModelSqliteDbFactory: o.viewModelSqliteDbFactory,
+			sqliteDbFactoryParams: {
+				projectionName: o.projectionName,
+				schemaVersion: o.schemaVersion
+			}
+		});
 
 		assertString(o?.projectionName, 'o.projectionName');
 		assertString(o?.schemaVersion, 'o.schemaVersion');

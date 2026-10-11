@@ -79,7 +79,7 @@ type CredentialsStore = {
 
 interface DatabaseContainer extends IContainer {
 	credentialsStore: CredentialsStore;
-	postgresqlDbFactory: () => Promise<Pool>;
+	postgreSqlDbFactory: () => Promise<Pool>;
 }
 
 const builder = new ContainerBuilder<DatabaseContainer>();
@@ -92,17 +92,36 @@ builder.register(container => async () => {
 	const connectionString = await container.credentialsStore.getPostgresqlConnectionString();
 	pool ??= new Pool({ connectionString });
 	return pool;
-}, 'postgresqlDbFactory');
+}, 'postgreSqlDbFactory');
 
-builder.register(container => () => container.postgresqlDbFactory(), 'eventStoragePostgresqlDbFactory');
-builder.register(container => () => container.postgresqlDbFactory(), 'viewModelPostgresqlDbFactory');
+builder.register(container => () => container.postgreSqlDbFactory(), 'eventStoragePostgresqlDbFactory');
+builder.register(container => () => container.postgreSqlDbFactory(), 'viewModelPostgresqlDbFactory');
 ```
 
 The application can close the retained pool with `await pool?.end()` during shutdown.
 
-A factory must return the same pool instance on every call. Transactions are shared by components using the same
-pool: a projection view and its event locks commit together only when they resolve to one pool, while
-components using other pools are never enlisted in that transaction.
+Use `{ projectionName, schemaVersion }` in `viewModelPostgresqlDbFactory` to choose a pool per projection.
+This example stores each projection version in a separate database:
+
+```ts
+import type { PostgresqlProjectionDbFactoryParams } from 'node-cqrs/postgresql';
+
+const projectionPools = new Map([
+	['UsersProjection:1', new Pool({ connectionString: process.env.USERS_V1_DATABASE_URL })],
+	['UsersProjection:2', new Pool({ connectionString: process.env.USERS_V2_DATABASE_URL })]
+]);
+
+builder.registerInstance((params?: PostgresqlProjectionDbFactoryParams) => {
+	const pool = params && projectionPools.get(`${params.projectionName}:${params.schemaVersion}`);
+	if (!pool)
+		throw new Error('No pool configured for this projection');
+
+	return pool;
+}, 'viewModelPostgresqlDbFactory');
+```
+
+Return the same pool instance for each projection and schema version so view updates and locks commit together.
+Connections from other pools do not participate in that transaction. Close all pools during application shutdown.
 
 ## Event storage
 
@@ -329,7 +348,7 @@ async findByStatus(status: string) {
 | `eventStoragePostgresqlDb` | - | Existing connection or `pg.Pool` used by event storage |
 | `eventStoragePostgresqlDbFactory` | - | Lazy event-storage connection or pool factory |
 | `viewModelPostgresqlDb` | - | An existing PostgreSQL connection or `pg.Pool` |
-| `viewModelPostgresqlDbFactory` | - | Lazy connection or pool factory; use instead of `viewModelPostgresqlDb` |
+| `viewModelPostgresqlDbFactory` | - | Lazy connection or pool factory receiving `{ projectionName, schemaVersion }` |
 | `postgresqlEventStorageConfig.eventsTableName` | `tbl_events` | Event table name |
 | `postgresqlEventStorageConfig.eventSagasTableName` | `tbl_event_sagas` | Saga reference table name |
 | `postgresqlObjectStorageMaxRetries` | `100` | Retries when concurrent events update the same object |
@@ -365,6 +384,9 @@ Most consumers do not need to construct these classes directly:
 | `PostgresqlObjectStorage` | Only PostgreSQL-backed key/value storage is needed |
 | `PostgresqlViewLocker` | A custom component needs distributed restore or migration locking |
 | `PostgresqlEventLocker` | A custom projection needs event deduplication and checkpoints |
+
+For standalone `PostgresqlObjectStorage`, set `viewModelPostgresqlDbFactoryParams` to
+`{ projectionName, schemaVersion }` to select a pool through the factory.
 
 `PostgresqlViewLocker` and `PostgresqlEventLocker` expose mutable static defaults for global table names and TTLs.
 Prefer per-instance options when applications share a process or database.

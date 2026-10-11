@@ -72,6 +72,31 @@ builder.register(container => async () => {
 
 Close the retained client during shutdown with `await redis?.quit()`.
 
+Use `{ projectionName, schemaVersion }` in `viewModelRedisFactory` to choose a client per projection:
+
+```ts
+import { Redis } from 'ioredis';
+import { ContainerBuilder } from 'node-cqrs';
+import type { RedisProjectionDbFactoryParams } from 'node-cqrs/redis';
+
+const builder = new ContainerBuilder();
+const defaultRedis = new Redis({ host: 'localhost', port: 6379, db: 0 });
+const clients = new Map([
+	['UsersProjection:1', new Redis({ host: 'localhost', port: 6379, db: 1 })],
+	['UsersProjection:2', new Redis({ host: 'localhost', port: 6379, db: 2 })]
+]);
+
+builder.register(() => (params?: RedisProjectionDbFactoryParams) => {
+	if (!params) return defaultRedis;
+	const client = clients.get(`${params.projectionName}:${params.schemaVersion}`);
+	if (!client) throw new Error('No Redis client configured for this projection');
+	return client;
+}, 'viewModelRedisFactory');
+```
+
+Reuse clients so each projection's records and locks use the same Redis database.
+Close all clients during application shutdown.
+
 ## Document views
 
 Use `AbstractRedisProjection` when each read-model record is naturally addressed by id and can be stored as one
@@ -178,7 +203,7 @@ an in-progress local restore.
 | Option | Default | Purpose |
 |---|---|---|
 | `viewModelRedis` | - | Existing `ioredis` client used by views |
-| `viewModelRedisFactory` | - | Lazy Redis client factory; use instead of `viewModelRedis` |
+| `viewModelRedisFactory` | - | Lazy client factory receiving optional `{ projectionName, schemaVersion }` |
 | `tableName` / `tableNamePrefix` | - | Namespace for object-record keys |
 | `keyPrefix` | `ncqrs` | Namespace for restore locks, event markers, and checkpoints |
 | `eventLockTtl` | `15_000` ms | Time after which an abandoned processing claim expires |
@@ -209,6 +234,9 @@ Most consumers do not need to construct these classes directly:
 | `RedisObjectStorage` | A custom projection needs Redis-backed object storage without locking or checkpoints |
 | `RedisViewLocker` | A custom component needs distributed restore or migration locking |
 | `RedisEventLocker` | A custom projection needs event deduplication and checkpoints |
+
+For standalone `RedisObjectStorage`, set `viewModelRedisFactoryParams` to
+`{ projectionName, schemaVersion }` to select a client through the factory.
 
 ## Run locally
 

@@ -1,4 +1,4 @@
-import { PostgresqlObjectStorage } from '../../../src/postgresql/index.ts';
+import { PostgresqlObjectStorage, type PostgresqlProjectionDbFactoryParams } from '../../../src/postgresql/index.ts';
 import { MockPostgresqlConnection } from './MockPostgresqlConnection.ts';
 
 describe('PostgresqlObjectStorage', () => {
@@ -14,20 +14,39 @@ describe('PostgresqlObjectStorage', () => {
 		});
 	});
 
-	it('creates db connection from viewModelPostgresqlDbFactory when db is not provided', async () => {
+	it('passes connection factory parameters when used independently', async () => {
+		const factory = jest.fn(() => db);
 		const factoryStorage = new PostgresqlObjectStorage({
-			viewModelPostgresqlDbFactory: () => db,
+			viewModelPostgresqlDbFactory: factory,
+			viewModelPostgresqlDbFactoryParams: { projectionName: 'Users', schemaVersion: '2' },
 			tableName: 'test_records'
 		});
 
 		await factoryStorage.create('1', { name: 'Alice' });
+
+		expect(factory).toHaveBeenCalledWith({ projectionName: 'Users', schemaVersion: '2' });
+		expect(await factoryStorage.get('1')).toEqual({ name: 'Alice' });
+	});
+
+	it('creates db connection from viewModelPostgresqlDbFactory when db is not provided', async () => {
+		const factory = jest.fn((params?: PostgresqlProjectionDbFactoryParams) => {
+			expect(params).toBeUndefined();
+			return db;
+		});
+		const factoryStorage = new PostgresqlObjectStorage({
+			viewModelPostgresqlDbFactory: factory,
+			tableName: 'test_records'
+		});
+
+		await factoryStorage.create('1', { name: 'Alice' });
+		expect(factory).toHaveBeenCalledWith(undefined);
 		expect(await factoryStorage.get('1')).toEqual({ name: 'Alice' });
 	});
 
 	it('requires a db or factory', () => {
 		expect(() => new PostgresqlObjectStorage({
 			tableName: 'test_records'
-		} as any)).toThrow('either viewModelPostgresqlDb or viewModelPostgresqlDbFactory argument required');
+		} as any)).toThrow('either postgreSqlDb or postgreSqlDbFactory argument required');
 	});
 
 	it('rejects invalid table names', () => {

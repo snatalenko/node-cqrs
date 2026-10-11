@@ -43,7 +43,14 @@ export class SqliteViewLocker extends AbstractSqliteAccessor implements IViewLoc
 
 	constructor(o: Partial<Pick<IContainer, 'viewModelSqliteDb' | 'viewModelSqliteDbFactory' | 'logger'>>
 		& SqliteViewLockerParams) {
-		super(o);
+		super({
+			viewModelSqliteDb: o.viewModelSqliteDb,
+			viewModelSqliteDbFactory: o.viewModelSqliteDbFactory,
+			sqliteDbFactoryParams: {
+				projectionName: o.projectionName,
+				schemaVersion: o.schemaVersion
+			}
+		});
 
 		assertString(o?.projectionName, 'o.projectionName');
 		assertString(o?.schemaVersion, 'o.schemaVersion');

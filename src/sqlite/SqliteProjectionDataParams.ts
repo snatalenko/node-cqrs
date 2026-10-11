@@ -13,4 +13,7 @@ export type SqliteProjectionDataParams = {
 	 * @example "20250519", "1.0.0"
 	 */
 	schemaVersion: string;
-}
+};
+
+/** Context passed to connection factories for projection views, their storage, and their locks */
+export type SqliteProjectionDbFactoryParams = SqliteProjectionDataParams;

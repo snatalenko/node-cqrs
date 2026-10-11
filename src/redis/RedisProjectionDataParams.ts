@@ -22,3 +22,6 @@ export type RedisProjectionDataParams = {
 	 */
 	keyPrefix?: string;
 };
+
+/** Context passed to client factories for projection views, their storage, and their locks */
+export type RedisProjectionDbFactoryParams = Pick<RedisProjectionDataParams, 'projectionName' | 'schemaVersion'>;

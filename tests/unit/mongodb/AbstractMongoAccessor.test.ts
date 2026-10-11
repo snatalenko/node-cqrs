@@ -3,7 +3,7 @@ import { AbstractMongoAccessor } from '../../../src/mongodb/AbstractMongoAccesso
 
 describe('AbstractMongoAccessor', () => {
 
-	class TestAccessor extends AbstractMongoAccessor {
+	class TestAccessor<TFactoryParams extends object = object> extends AbstractMongoAccessor<TFactoryParams> {
 		initializeCalls = 0;
 
 		protected override async initialize(_db: Db): Promise<void> {
@@ -11,16 +11,29 @@ describe('AbstractMongoAccessor', () => {
 		}
 	}
 
+	it.each([undefined, { databaseName: 'tenant_views' }])('passes optional factory params unchanged: %p', async params => {
+		const factory = jest.fn((_params?: { databaseName: string }) => ({} as Db));
+		const accessor = new TestAccessor({
+			mongoDbFactory: factory,
+			mongoDbFactoryParams: params
+		});
+
+		await accessor.assertConnection();
+
+		expect(factory).toHaveBeenCalledWith(params);
+		expect(factory.mock.calls[0][0]).toBe(params);
+	});
+
 	it('throws when neither db nor factory is provided', () => {
 		expect(() => new TestAccessor({}))
-			.toThrow('either viewModelMongoDb or viewModelMongoDbFactory argument required');
+			.toThrow('either mongoDb or mongoDbFactory argument required');
 	});
 
 	it('initializes only once for concurrent assertConnection() calls', async () => {
 		const db = {} as Db;
 		let factoryCalls = 0;
 		const accessor = new TestAccessor({
-			viewModelMongoDbFactory: () => {
+			mongoDbFactory: () => {
 				factoryCalls += 1;
 				return db;
 			}

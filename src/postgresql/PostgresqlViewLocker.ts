@@ -4,7 +4,8 @@ import { assertNonNegativeInteger, assertString, Deferred } from '../utils/index
 import { promisify } from 'util';
 import { randomUUID } from 'node:crypto';
 import type { PostgresqlConnection } from './PostgresqlConnection.ts';
-import type { PostgresqlProjectionDataParams } from './PostgresqlProjectionDataParams.ts';
+import type { PostgresqlProjectionDataParams, PostgresqlProjectionDbFactoryParams }
+	from './PostgresqlProjectionDataParams.ts';
 import { AbstractPostgresqlAccessor } from './AbstractPostgresqlAccessor.ts';
 import { quoteIdentifier } from './utils/index.ts';
 
@@ -35,7 +36,9 @@ export type PostgresqlViewLockerParams = PostgresqlProjectionDataParams & {
  * The lock is automatically prolonged at half the TTL interval to prevent expiration
  * while processing is in progress.
  */
-export class PostgresqlViewLocker extends AbstractPostgresqlAccessor implements IViewLocker {
+export class PostgresqlViewLocker
+	extends AbstractPostgresqlAccessor<PostgresqlProjectionDbFactoryParams>
+	implements IViewLocker {
 
 	static DEFAULT_VIEW_LOCK_TTL = 120_000;
 	static DEFAULT_TABLE = 'ncqrs_view_locks';
@@ -51,7 +54,14 @@ export class PostgresqlViewLocker extends AbstractPostgresqlAccessor implements 
 
 	constructor(o: Partial<Pick<IContainer, 'viewModelPostgresqlDb' | 'viewModelPostgresqlDbFactory' | 'logger'>>
 		& PostgresqlViewLockerParams) {
-		super(o);
+		super({
+			postgreSqlDb: o.viewModelPostgresqlDb,
+			postgreSqlDbFactory: o.viewModelPostgresqlDbFactory,
+			postgreSqlDbFactoryParams: {
+				projectionName: o.projectionName,
+				schemaVersion: o.schemaVersion
+			}
+		});
 
 		assertString(o.projectionName, 'o.projectionName');
 		assertString(o.schemaVersion, 'o.schemaVersion');
