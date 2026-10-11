@@ -1,3 +1,9 @@
+## [1.3.0-alpha.18](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.17...v1.3.0-alpha.18) (2026-10-11)
+
+### Features
+
+* Pass projection name and schema version to database connection factories ([2c66ce5](https://github.com/snatalenko/node-cqrs/commit/2c66ce56f0afc7960ded30fa8f74e50f92c866cc))
+
 ## [1.3.0-alpha.17](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.16...v1.3.0-alpha.17) (2026-10-10)
 
 ### Changes
