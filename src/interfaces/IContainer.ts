@@ -5,6 +5,7 @@ import type { IEventDispatcher } from './IEventDispatcher.ts';
 import type { IEventStore } from './IEventStore.ts';
 import type { IEventBus } from './IEventBus.ts';
 import type { IDispatchPipelineProcessor } from './IDispatchPipelineProcessor.ts';
+import type { IEventFeed } from './IEventFeed.ts';
 import type { IEventStorageReader } from './IEventStorageReader.ts';
 import type { IAggregateSnapshotStorage } from './IAggregateSnapshotStorage.ts';
 import type { IIdentifierProvider } from './IIdentifierProvider.ts';
@@ -42,6 +43,12 @@ export interface IContainer extends Container {
 
 	/** Multiple event dispatch pipelines per origin */
 	eventDispatchPipelines?: Record<string, IDispatchPipelineProcessor[]>;
+
+	/** Event feeds registered with `registerEventFeed()`, started by the event store before it reads events by types */
+	eventFeeds?: readonly IEventFeed[];
+
+	/** Pipelines of event feed origins, merged into the event dispatcher pipelines */
+	eventFeedPipelines?: readonly Readonly<Record<string, readonly IDispatchPipelineProcessor[]>>[];
 
 	executionLocker?: ILocker;
 

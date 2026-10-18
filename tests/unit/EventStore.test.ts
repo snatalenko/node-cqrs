@@ -172,6 +172,99 @@ describe('EventStore', () => {
 		});
 	});
 
+	describe('getEventsByTypes', () => {
+
+		it('starts event feeds before reading events', async () => {
+			const calls: string[] = [];
+			const eventFeeds = [{
+				startEventFeed: jest.fn(async () => {
+					calls.push('start feeds');
+				}),
+				stopEventFeed: jest.fn()
+			}];
+			mockStorage.getEventsByTypes.mockImplementation(async () => {
+				calls.push('read');
+				return [];
+			});
+			store = new EventStore({
+				eventBus,
+				eventDispatcher,
+				eventStorageReader: mockStorage,
+				identifierProvider: mockIdentifierProvider,
+				eventFeeds
+			});
+
+			const events = [];
+			for await (const event of store.getEventsByTypes(['somethingHappened']))
+				events.push(event);
+
+			expect(events).toEqual([]);
+			expect(calls).toEqual(['start feeds', 'read']);
+		});
+	});
+
+	describe('event feeds', () => {
+
+		const createFeed = (start: () => unknown = () => { }) => ({
+			startEventFeed: jest.fn(start),
+			stopEventFeed: jest.fn()
+		});
+
+		const createStore = (eventFeeds: any[]) => new EventStore({
+			eventBus,
+			eventDispatcher,
+			eventStorageReader: mockStorage,
+			identifierProvider: mockIdentifierProvider,
+			eventFeeds
+		});
+
+		async function readAll(eventTypes: string[]) {
+			const events = [];
+			for await (const event of store.getEventsByTypes(eventTypes))
+				events.push(event);
+			return events;
+		}
+
+		it('starts feeds once, on the first read by types', async () => {
+			const feed = createFeed();
+			store = createStore([feed]);
+			expect(feed.startEventFeed).not.toHaveBeenCalled();
+
+			await Promise.all([readAll(['a']), readAll(['b'])]);
+			await readAll(['c']);
+
+			expect(feed.startEventFeed).toHaveBeenCalledTimes(1);
+		});
+
+		it('starts feeds concurrently', async () => {
+			let startFirst!: () => void;
+			const first = createFeed(() => new Promise<void>(resolve => {
+				startFirst = resolve;
+			}));
+			const second = createFeed();
+			store = createStore([first, second]);
+
+			const reading = readAll(['a']);
+			await new Promise(setImmediate);
+
+			expect(second.startEventFeed).toHaveBeenCalled();
+			expect(mockStorage.getEventsByTypes).not.toHaveBeenCalled();
+
+			startFirst();
+			await reading;
+			expect(mockStorage.getEventsByTypes).toHaveBeenCalledTimes(1);
+		});
+
+		it('rejects an object that does not declare itself an event feed', () => {
+			expect(() => createStore([{ start() { }, stop() { } }])).toThrow('is not an event feed');
+		});
+
+		it('rejects a feed that is the event bus', () => {
+			Object.assign(eventBus, { startEventFeed() { }, stopEventFeed() { } });
+			expect(() => createStore([eventBus])).toThrow('cannot be both an event feed and the eventBus');
+		});
+	});
+
 	describe('getAggregateEvents', () => {
 
 		it('retrieves aggregate events including snapshot if available', async () => {

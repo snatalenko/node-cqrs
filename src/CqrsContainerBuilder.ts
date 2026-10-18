@@ -9,16 +9,20 @@ import {
 	type IAggregateConstructor,
 	type ICommandHandler,
 	type IContainer,
+	type IDispatchPipelineProcessor,
+	type EventFeedParams,
+	type IEventFeed,
 	type IEventReceptor,
 	type IProjection,
 	type ISagaConstructor,
+	DEFAULT_EVENT_FEED_ORIGIN,
 	isDispatchPipelineProcessor,
 	isExecutionLocker,
 	isAggregateSnapshotStorage,
 	isIdentifierProvider,
 	isEventStorageReader
 } from './interfaces/index.ts';
-import { assertClass, assertFunction } from './utils/assert.ts';
+import { assertClass, assertFunction, assertString } from './utils/assert.ts';
 
 export class CqrsContainerBuilder<TContainerInterface extends IContainer = IContainer>
 	extends ContainerBuilder<TContainerInterface> {
@@ -52,6 +56,38 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 		super.register(c => [...c.defaultEventDispatchPipeline]).as('eventDispatchPipeline');
 
 		super.register(() => [] as Promise<void>[]).as('restorePromises');
+	}
+
+	/**
+	 * Register an event feed delivering events committed by other nodes with the given `origin` (default `'external'`),
+	 * through the pipeline of that origin extended with `pipeline` processors.
+	 *
+	 * @example
+	 *   builder.registerEventFeed(PostgresqlEventStorage);
+	 */
+	registerEventFeed<TFeed extends IEventFeed>(
+		type: ClassOrFactory<TFeed, TContainerInterface>,
+		options?: {
+			origin?: string,
+			pipeline?: readonly IDispatchPipelineProcessor[] |
+			((container: TContainerInterface) => readonly IDispatchPipelineProcessor[])
+		}
+	): TypeConfig<TFeed, TContainerInterface> {
+		assertFunction(type, 'type');
+
+		const { origin = DEFAULT_EVENT_FEED_ORIGIN, pipeline = [] } = options ?? {};
+		assertString(origin, 'options.origin');
+		if (typeof pipeline !== 'function' && !Array.isArray(pipeline))
+			throw new TypeError('options.pipeline must be an Array or a factory function');
+
+		super.register(c => ({
+			[origin]: typeof pipeline === 'function' ?
+				pipeline(c) :
+				pipeline
+		})).asOneOf('eventFeedPipelines');
+
+		return super.register(c => c.createInstance(type, { eventFeedOrigin: origin } satisfies EventFeedParams))
+			.asOneOf('eventFeeds');
 	}
 
 	/** Register command handler, which will be subscribed to commandBus upon instance creation */
@@ -97,7 +133,7 @@ export class CqrsContainerBuilder<TContainerInterface extends IContainer = ICont
 			// start async projection restoring
 			const restoreResult = projection.restore(container.eventStore);
 			if (restoreResult) {
-				restoreResult.catch(() => {}); // surfaced via Promise.all(restorePromises)
+				restoreResult.catch(() => { }); // surfaced via Promise.all(restorePromises)
 				container.restorePromises?.push(restoreResult);
 			}
 

@@ -5,6 +5,7 @@ import {
 	type IDispatchPipelineProcessor,
 	type DispatchPipelineEnvelope,
 	type IEventSet,
+	type IEventMeta,
 	type IEventBus,
 	type IContainer,
 	isEventSet
@@ -22,7 +23,7 @@ export class EventDispatcher implements IEventDispatcher {
 	static DEFAULT_CONCURRENT_LIMIT = 100;
 
 	/** Default router that uses `meta.origin` as the pipeline name */
-	static DEFAULT_ROUTER = (_e: IEventSet, meta?: Record<string, any>) => meta?.origin;
+	static DEFAULT_ROUTER = (_e: IEventSet, meta?: IEventMeta) => meta?.origin;
 
 	/**
 	 * Event bus where dispatched messages are delivered after processing.
@@ -36,7 +37,7 @@ export class EventDispatcher implements IEventDispatcher {
 	concurrentLimit: number;
 
 	/** Router that selects a pipeline name given events and meta */
-	eventDispatchRouter?: (events: IEventSet, meta?: Record<string, any>) => string | undefined;
+	eventDispatchRouter?: (events: IEventSet, meta?: IEventMeta) => string | undefined;
 
 	/**
 	 * Called when a fire-and-forget event bus publish fails.
@@ -47,12 +48,12 @@ export class EventDispatcher implements IEventDispatcher {
 	readonly #pipelines = new Map<string, EventDispatchPipeline>();
 	readonly #tracer: Tracer | undefined;
 
-	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchPipeline' | 'tracerFactory'> & {
+	constructor(o?: Pick<IContainer, 'eventBus' | 'eventDispatchPipeline' | 'eventFeedPipelines' | 'tracerFactory'> & {
 		eventDispatcherConfig?: {
 			concurrentLimit?: number
 		},
 		eventDispatchPipelines?: Record<string, IDispatchPipelineProcessor[]>,
-		eventDispatchRouter?: (events: IEventSet, meta?: Record<string, any>) => string | undefined,
+		eventDispatchRouter?: (events: IEventSet, meta?: IEventMeta) => string | undefined,
 		eventPublishErrorHandler?: (error: Error) => void
 	}) {
 		if (o?.eventDispatcherConfig?.concurrentLimit !== undefined)
@@ -68,19 +69,25 @@ export class EventDispatcher implements IEventDispatcher {
 		this.eventDispatchRouter = o?.eventDispatchRouter ?? EventDispatcher.DEFAULT_ROUTER;
 		this.eventPublishErrorHandler = o?.eventPublishErrorHandler;
 
-		if (o?.eventDispatchPipelines) {
-			// Initialize pipelines if provided
-			for (const [name, processors] of Object.entries(o.eventDispatchPipelines))
-				this.addPipeline(name, processors);
+		// Named pipelines when provided, otherwise a single pipeline (empty at minimum) becomes the default pipeline
+		const pipelines = new Map<string, IDispatchPipelineProcessor[]>(o?.eventDispatchPipelines ?
+			Object.entries(o.eventDispatchPipelines).map(([name, processors]) => [name, [...processors]]) :
+			[[EventDispatcher.DEFAULT_PIPELINE, [...o?.eventDispatchPipeline ?? []]]]);
+
+		// Processors of event feed origins are appended to pipelines of the same name, each processor once
+		for (const feedPipelines of o?.eventFeedPipelines ?? []) {
+			for (const [name, processors] of Object.entries(feedPipelines)) {
+				const pipeline = pipelines.get(name) ?? [];
+				for (const processor of processors) {
+					if (!pipeline.includes(processor))
+						pipeline.push(processor);
+				}
+				pipelines.set(name, pipeline);
+			}
 		}
-		else if (o?.eventDispatchPipeline) {
-			// Single pipeline provided becomes the default pipeline
-			this.addPipeline(EventDispatcher.DEFAULT_PIPELINE, o.eventDispatchPipeline);
-		}
-		else {
-			// Ensure default pipeline exists at minimum
-			this.addPipeline(EventDispatcher.DEFAULT_PIPELINE, []);
-		}
+
+		for (const [name, processors] of pipelines)
+			this.addPipeline(name, processors);
 	}
 
 	/** Add or create the default pipeline processors */
@@ -125,7 +132,7 @@ export class EventDispatcher implements IEventDispatcher {
 	}
 
 	/** Dispatch events through a routed pipeline and publish to the shared eventBus */
-	async dispatch(events: IEventSet, meta?: Record<string, any>) {
+	async dispatch(events: IEventSet, meta?: IEventMeta) {
 		if (!isEventSet(events) || events.length === 0)
 			throw new TypeError('dispatch requires a non-empty array of events');
 

@@ -24,6 +24,7 @@ npm install node-cqrs amqplib
 | Assign each event delivery to one worker in a group | `eventBus.queue('worker-name')` |
 | Keep one active event consumer with standby instances | `RabbitMqEventBus` with a durable `queueName` |
 | Deliver each command to one application instance | `RabbitMqCommandBus` |
+| Keep in-process views of instances sharing an event store in sync | `RabbitMqEventBridge` registered as an event feed |
 | Build custom RabbitMQ publishing or subscription behavior | `RabbitMqGateway` |
 
 All exchanges are durable topic exchanges. Message types are routing keys, so subscriptions can select a type
@@ -145,6 +146,62 @@ await emailQueue.on('userCreated', async event => {
 Alternatively, set `queueName` in `rabbitMqEventBusConfig` when one active instance should receive the event
 stream and other instances should remain on standby. These subscriptions enable RabbitMQ's single-active-consumer
 mode.
+
+## Event bridge for a shared event store
+
+When application instances share one event store, each instance publishes the events it commits to its own event
+bus, so its in-memory views and receptors do not see events committed by other instances. `RabbitMqEventBridge`
+delivers them through RabbitMQ when the event store cannot notify instances about new commits itself; the
+[PostgreSQL event storage](../postgresql/README.md#multiple-application-instances) can, and needs no bridge.
+
+Keep the local in-memory event bus and register one bridge instance in two roles: as an
+[event feed](../../README.md#event-feeds), and as the last processor of the local dispatch pipeline:
+
+```ts
+builder.register(RabbitMqGateway).as('rabbitMqGateway');
+builder.registerEventFeed(RabbitMqEventBridge).as('rabbitMqEventBridge');
+builder.register(c => [...c.defaultEventDispatchPipeline, c.rabbitMqEventBridge!]).as('eventDispatchPipeline');
+```
+
+- In the dispatch pipeline, after event storage, it publishes each event committed by its instance to the
+  `node-cqrs.events` exchange.
+- As a feed, it consumes events published by other instances and dispatches them locally with `meta.origin` set to
+  the feed origin, `'external'` by default, through the feed pipeline, which is empty by default.
+
+The bridge awaits the broker's confirmation of each publish before events reach the local event bus, so every
+dispatch includes a RabbitMQ round trip. By default, a failed publish is reported to `eventPublishErrorHandler`, or
+logged, and the dispatch continues: local projections receive the event, other instances do not. To fail the dispatch
+instead, so that the event is not distributed further, set `throwOnPublishError`:
+
+```ts
+builder.registerInstance({ throwOnPublishError: true }, 'rabbitMqEventBridgeConfig');
+```
+
+The dispatch then rejects with the publish error and the event does not reach the local event bus. Whether the
+event remains stored depends on the event storage. A custom `eventPublishErrorHandler` that throws has the same
+effect on the bridge, but the dispatcher calls the same handler for failed event bus publishes, where a thrown error
+is not handled; prefer `throwOnPublishError`.
+
+An event committed by an instance that stops before publishing it is not delivered to other instances; their
+projections pick it up the next time they restore. Events published while an instance is disconnected are lost for it
+unless the bridge uses a durable queue.
+
+| Option (`rabbitMqEventBridgeConfig`) | Default | Purpose |
+|---|---|---|
+| `exchange` | `node-cqrs.events` | Exchange events are published to and consumed from |
+| `queueName` | Temporary exclusive queue | Durable queue, unique per instance, keeping events while it is disconnected |
+| `concurrentLimit` | Unlimited | Maximum unacknowledged deliveries |
+| `handlerProcessTimeout` | 1 hour | Reject a message if its dispatch takes longer |
+| `deadLetterQueue` | `false` | Route messages whose dispatch fails to `${queueName}.failed` |
+| `messageTtl` | Unlimited | Discard or dead-letter messages waiting longer than this many milliseconds |
+| `queueExpires` | Never | Delete an unused durable queue after this many milliseconds |
+| `throwOnPublishError` | `false` | Reject the dispatch when publishing an event fails, instead of reporting the error |
+
+A message is acknowledged once its dispatch completes and rejected when a feed pipeline processor fails. Use the
+bridge instead of `RabbitMqEventBus`, not alongside it on the same exchange: an instance using `RabbitMqEventBus` as
+its event bus already receives every event, and would receive events of other instances twice. The bridge publishes
+only events of the `EventStore.DEFAULT_ORIGIN` origin, or without an origin, and fails the dispatch of any other, so
+it cannot be placed in a feed pipeline by mistake.
 
 ## Delivery and failures
 

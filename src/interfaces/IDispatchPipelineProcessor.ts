@@ -1,6 +1,6 @@
 import type { IEvent } from './IEvent.ts';
 import { isObject } from './isObject.ts';
-import type { IMessageMeta } from './IMessageMeta.ts';
+import type { IEventMeta } from './IEventMeta.ts';
 
 /**
  * Represents a wrapper for an event that can optionally contain additional metadata.
@@ -9,18 +9,13 @@ import type { IMessageMeta } from './IMessageMeta.ts';
 export type DispatchPipelineEnvelope = {
 
 	/**
-	 * Origin of the event. Can be used to distinguish between events coming from different sources.
-	 */
-	origin?: string;
-
-	/**
 	 * When true, storage writers may bypass optimistic-concurrency checks for this batch.
 	 */
 	ignoreConcurrencyError?: boolean;
 
 	event?: IEvent;
 
-} & IMessageMeta;
+} & IEventMeta;
 
 /**
  * A batch of event envelopes. Can contain custom envelope types extending EventEnvelope.

@@ -535,4 +535,32 @@ describe('SagaEventHandler', function () {
 		expect(cmdA.sagaOrigins).not.toHaveProperty('SagaB');
 		expect(cmdB.sagaOrigins).not.toHaveProperty('SagaA');
 	});
+
+	describe('event origin', () => {
+
+		it('starts a saga for an event of the default origin', async () => {
+			const send = jest.spyOn(commandBus, 'send').mockResolvedValue([]);
+
+			await sagaEventHandler.handle(triggeringEvent, { origin: EventStore.DEFAULT_ORIGIN });
+
+			expect(send).toHaveBeenCalledTimes(1);
+		});
+
+		it('starts a saga for an event without origin', async () => {
+			const send = jest.spyOn(commandBus, 'send').mockResolvedValue([]);
+
+			await sagaEventHandler.handle(triggeringEvent, {});
+
+			expect(send).toHaveBeenCalledTimes(1);
+		});
+
+		it('ignores events of other origins, such as events delivered by feeds', async () => {
+			const send = jest.spyOn(commandBus, 'send').mockResolvedValue([]);
+
+			await sagaEventHandler.handle(triggeringEvent, { origin: 'external' });
+			await sagaEventHandler.handle(triggeringEvent, { origin: 'custom' });
+
+			expect(send).not.toHaveBeenCalled();
+		});
+	});
 });

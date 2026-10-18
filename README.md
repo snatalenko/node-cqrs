@@ -317,6 +317,29 @@ Use `'per-aggregate'` when each handler only depends on earlier events of the sa
 the view combines data across aggregates. The ordering applies within one projection instance; another application
 instance can still project the same events concurrently. Restoration always projects events sequentially.
 
+### Repeated Events
+
+The same event can reach a projection more than once: from restoration and from an [event feed](#event-feeds), or
+through a message broker redelivering it. Persistent views skip events already projected using their event tracker.
+Projections whose view does not track events, such as in-memory views, get an in-process event tracker instead. It
+remembers the IDs of the most recently projected events and skips repeated ones, as well as an event repeated while
+it is still being projected. An event whose handler fails is not remembered, so it is projected again when
+redelivered. Events without an ID are always projected.
+
+The number of remembered IDs is set by `DEDUPLICATION_WINDOW`, `10_000` by default. Override it in a projection
+class, or change the default for all of them before projections are created; `0` disables the in-process tracker:
+
+```ts
+class UsersProjection extends AbstractProjection<Map<Identifier, UserRecord>> {
+	static DEDUPLICATION_WINDOW = 50_000;
+}
+
+AbstractProjection.DEDUPLICATION_WINDOW = 0; // projections without their own setting keep every repeated event
+```
+
+Raise the window when an event can be repeated after many other events were projected, for example when
+restoration overlaps a heavy stream of events committed by other instances.
+
 ### Awaiting Projected Events
 
 Projections update their views asynchronously: a command resolves once its events are stored, while projections
@@ -325,8 +348,8 @@ being up to date. For example, an API handler returns the record it has just cre
 using data from another projection's view, or one projection reads another one's view while handling the same event.
 
 In such cases, wait until the projection has processed the events in question with `eventTracker.waitFor(eventIds)`.
-Projections backed by the SQLite, PostgreSQL, MongoDB, or Redis views provide an event tracker; expose it on the
-container next to the view:
+Projections backed by the SQLite, PostgreSQL, MongoDB, or Redis views provide an event tracker shared across
+processes, and other projections an in-process one; expose it on the container next to the view:
 
 ```ts
 interface AppContainer extends IContainer {
@@ -369,9 +392,11 @@ from `DEFAULT_POLL_INTERVAL` up to `DEFAULT_MAX_POLL_INTERVAL` while waits are p
 waits only in the process where they occur; other processes keep waiting until the event is projected or the wait
 times out.
 
-`projection.eventTracker` is `null` when the projection has no event tracker, for example with the default in-memory
-view. Its type follows the view type: it is non-nullable when the view implements `IEventTracker`, so exposing it
-under a non-nullable container alias type-checks only for such projections.
+Projections whose view does not track events, such as the default in-memory view, provide the in-process event
+tracker described in [Repeated Events](#repeated-events), so `waitFor` works for them too.
+`projection.eventTracker` is `null` when the projection has no event tracker, for example when its
+`DEDUPLICATION_WINDOW` is `0`. Its type follows the view type: it is non-nullable when the view implements
+`IEventTracker`, so exposing it under a non-nullable container alias type-checks only for such projections.
 
 ## Sagas
 
@@ -394,6 +419,11 @@ Starter events use `event.id` as the saga origin; the default dispatch pipeline 
 By default, a saga starts when a handled event has no origin for that saga type. Use `static startsWith` for
 explicit starter event types, `static handles` for additional events, and `static sagaDescriptor` for a stable
 origin key independent of the class name.
+
+Sagas handle only events dispatched with the `EventStore.DEFAULT_ORIGIN` origin (`'internal'`), which
+`eventStore.dispatch()` sets unless the dispatch meta sets another one, and events without an origin. Events delivered
+by [event feeds](#event-feeds) are ignored, so each saga reacts once, on the application instance that committed the
+event.
 
 The [simple saga](examples/sagas-simple/index.ts) and
 [overlapping sagas](examples/sagas-overlaps/index.ts) demonstrate state restoration and origin propagation.
@@ -424,6 +454,67 @@ Pipeline registrations replace earlier registrations, so the last one wins. A re
 
 `eventIdAugmenter` only fills in missing IDs, keeping IDs already assigned to events and IDs returned by the `IIdentifierProvider` as they are, whether they are strings, numbers or objects. Components that need a string key, such as saga correlation, projection locks and transport metadata, stringify the ID at their own boundary and never modify the event, so object IDs must have a stable and unique string representation. Storage modules add their own requirements: MongoDB event storage needs ObjectId-compatible IDs, SQLite event storage needs GUID-compatible ones.
 
+### Event Feeds
+
+When several application instances share one event store, each instance dispatches the events it commits to its own
+event bus, so its in-process views and receptors never see events committed by the other instances. An event feed
+delivers those events: it watches the shared store, or a message broker, and passes events committed elsewhere to
+the local event bus.
+
+```ts
+builder.registerEventFeed(PostgresqlEventStorage);
+```
+
+Feeds are provided by the [PostgreSQL event storage](src/postgresql/README.md), which detects commits of other
+instances on its own, and by the [RabbitMQ event bridge](src/rabbitmq/README.md), for shared stores that cannot.
+Register one feed per shared store: two feeds watching the same store deliver every event twice.
+
+Events committed locally keep their usual path: they are published to the local event bus right after the commit,
+with `meta.origin` set to `'internal'`, without waiting for a feed. Events delivered by a feed are dispatched with
+the feed origin, `'external'` by default, through a pipeline of their own, which is empty by default, so they are
+not committed again. The builder creates the feed with that origin as the `eventFeedOrigin` constructor parameter.
+Pass processors when feed events need local processing:
+
+```ts
+builder.registerEventFeed(RabbitMqEventBridge, {
+	origin: 'external',
+	pipeline: c => [c.createInstance(DecryptionProcessor)]
+}).as('rabbitMqEventBridge');
+```
+
+Feeds registered with the same origin share its pipeline, combining their processors in registration order, after
+the processors of a pipeline configured under that origin in `eventDispatchPipelines`. Feeds are never added to the
+local dispatch pipeline: a feed that also publishes local events, such as the RabbitMQ bridge, is added there
+explicitly. An application that registers its own `eventDispatcher` must pass it
+`eventFeedPipelines` or configure the feed origin pipelines itself; otherwise feed
+events fall back to the default pipeline and are committed again.
+
+Local and remote events can reach a view in a different order than they were committed. For example, an instance
+continuing an aggregate created by another instance can project its own event before the earlier remote one arrives.
+Handle the order in projections that depend on it.
+
+Every instance receives feed events, so components that must act once per event across the deployment check the
+origin. Sagas handle only events of the `EventStore.DEFAULT_ORIGIN` origin: each saga reacts on the instance that
+committed the event. Receptors with side effects, such as sending emails, should do the same:
+
+```ts
+class WelcomeEmailReceptor {
+	static get handles() {
+		return ['userSignedUp'];
+	}
+
+	userSignedUp(event: IEvent, meta?: IEventMeta) {
+		if (meta?.origin !== EventStore.DEFAULT_ORIGIN)
+			return; // handled by the instance that committed the event
+
+		// send the email
+	}
+}
+```
+
+Projections skip events they have already projected, so an event delivered both by restoration and by a feed is
+projected once; see [Repeated Events](#repeated-events).
+
 ## Runtime Lifecycle And Guarantees
 
 Container dependencies are resolved lazily. Access each exposed projection view during startup to create its
@@ -436,6 +527,17 @@ Event dispatch has two stages:
 1. `commandBus.send()` waits for command handling and the configured dispatch pipeline, including event storage.
 2. Event-bus publication runs asynchronously after pipeline processing so command throughput is not tied to every
    subscriber.
+
+The event store starts event feeds when projections first read events to restore, before the read, so events
+committed by other instances during restoration are delivered by the feed; projection views stay locked until
+restoration completes. Feeds start concurrently. Without projections, start the registered feeds explicitly; stop
+them during shutdown:
+
+```ts
+await Promise.all(container.eventFeeds?.map(feed => feed.startEventFeed()) ?? []);
+// ...
+await Promise.all(container.eventFeeds?.map(feed => feed.stopEventFeed()) ?? []);
+```
 
 Use `await eventStore.drain()` when a caller, test, or shutdown path must wait for all currently queued event
 publications. A completed command does not otherwise guarantee that every projection has finished processing its

@@ -36,6 +36,7 @@ The application owns the pool and must close it during shutdown with `pool.end()
 | Requirement | Use |
 |---|---|
 | Store and restore aggregate events | `PostgresqlEventStorage` |
+| Deliver events committed by other application instances | `PostgresqlEventStorage` registered as an [event feed](#multiple-application-instances) |
 | Build a relational read model with custom SQL | `AbstractPostgresqlView` with an `AbstractProjection` |
 | Store a document-like or key/value read model as `jsonb` | `AbstractPostgresqlObjectProjection` |
 | Compose storage and locking manually | The lower-level APIs described under [Advanced APIs](#advanced-apis) |
@@ -125,8 +126,19 @@ Connections from other pools do not participate in that transaction. Close all p
 
 ## Event storage
 
-`PostgresqlEventStorage` stores events in insertion order and preserves saga origin references. Each batch is
-committed in one transaction: either all events and saga references are written, or none are.
+`PostgresqlEventStorage` stores events with the id of the transaction that wrote them and preserves saga origin
+references. Each batch is committed in one transaction: either all events and saga references are written, or none
+are. It requires PostgreSQL 13 or later.
+
+Projections restore from events read in commit order. Concurrent transactions can commit in a different order than
+they inserted events, so a read continuing after a restore checkpoint returns only events of transactions that had
+completed when the read started. An event committed later by a transaction that started earlier is returned by the
+next restore instead of being skipped. Reads without a checkpoint, such as restoring an in-memory view, return every
+committed event.
+
+Any transaction left open in the PostgreSQL cluster, even one unrelated to the event tables, holds back
+checkpointed reads and [event feeds](#multiple-application-instances) until it ends. Keep transactions short, monitor
+their age, and consider setting `idle_in_transaction_session_timeout`.
 
 Register it with the container builder:
 
@@ -360,6 +372,60 @@ async findByStatus(status: string) {
 Connection options and event-storage configuration are normally registered in the container. Lock options can be
 passed from a projection constructor to `AbstractPostgresqlObjectProjection` or `AbstractPostgresqlView`.
 
+## Multiple application instances
+
+Application instances sharing one events table commit events independently. Each instance publishes the events it
+commits to its own event bus, so projections with in-memory or SQLite views, and receptors such as WebSocket
+notifiers, do not see events committed by other instances. Register the event storage as an
+[event feed](../../README.md#event-feeds) to deliver those events as well:
+
+```ts
+import { Client } from 'pg';
+
+// one instance stores events and acts as the feed, so it recognizes the events it commits itself
+builder.registerEventFeed(PostgresqlEventStorage).as('eventStorage').as('identifierProvider');
+
+// optional: a dedicated connection notified on every commit
+builder.registerInstance(async () => {
+	const client = new Client({ connectionString: process.env.DATABASE_URL });
+	await client.connect();
+	return client;
+}, 'eventStoragePostgresqlListenerFactory');
+```
+
+Register it through `registerEventFeed` rather than `builder.register(PostgresqlEventStorage)`: the storage
+registered as the feed must be the one committing events, so that it can skip them. A storage registered with aliases
+is not detected by capability, so name its `eventStorage` and `identifierProvider` roles explicitly.
+
+The feed reads new events from the events table and dispatches them with `meta.origin` set to the feed origin,
+`'external'` by default. It skips events committed by the same storage instance, which are already published
+locally, and events committed before it started, which projections read while restoring. The event store starts it
+before projections read events to restore; it stops on `SIGINT` and `SIGTERM` when `process` is registered in the
+container, or with `await storage.stopEventFeed()`.
+
+Each commit sends a PostgreSQL notification. With a listener connection, the feed reads new events as soon as one
+arrives; without it, or while the listener reconnects, it reads them every `pollInterval`. The listener must be a
+dedicated connection, such as a `pg.Client`: a pooled connection loses its `LISTEN` once it returns to the pool.
+
+Events are delivered in commit order, and none is skipped when transactions commit in a different order than they
+inserted events: the feed delivers an event only once every transaction that started before it has completed. Any
+transaction left open in the PostgreSQL cluster, even one unrelated to the event tables, therefore delays delivery
+until it ends. Keep transactions short and consider `idle_in_transaction_session_timeout`.
+
+Events committed by the instance itself reach its projections first, so an instance continuing an aggregate created
+by another instance can project its own event before the earlier remote one arrives. Projections with persistent
+views skip events they have already projected; projections with in-memory views do the same for recently projected
+events.
+
+| Option (`postgresqlEventFeedConfig`) | Default | Purpose |
+|---|---|---|
+| `pollInterval` | `1_000` ms | Interval of reads without notifications |
+| `batchSize` | `500` | Maximum number of events read at once |
+| `channel` | Derived from the events table name | Notification channel; must match across instances |
+
+Projections with PostgreSQL views do not need a feed to stay current: the instance that commits an event projects it
+into the shared view. They still receive feed events and skip those already projected.
+
 ## Operations
 
 - Tables and indexes are created lazily on first use with `CREATE TABLE IF NOT EXISTS` and
@@ -410,6 +476,13 @@ npm run example:postgresql
 
 Set `DATABASE_URL` to use a different local connection. The complete source is
 [examples/postgresql/index.ts](../../examples/postgresql/index.ts).
+
+Two application instances keeping in-memory views in sync through the event feed are shown in
+[examples/postgresql-multi-node/index.ts](../../examples/postgresql-multi-node/index.ts):
+
+```bash
+npm run example:postgresql-multi-node
+```
 
 Run the PostgreSQL integration tests against the same instance with:
 

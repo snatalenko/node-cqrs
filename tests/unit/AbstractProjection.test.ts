@@ -2,6 +2,7 @@ import { trace } from '@opentelemetry/api';
 import {
 	AbstractProjection,
 	InMemoryView,
+	InMemoryEventTracker,
 	InMemoryEventStorage,
 	EventStore,
 	InMemoryMessageBus,
@@ -607,8 +608,28 @@ describe('AbstractProjection', function () {
 
 		const event = { id: 'e1', type: 'somethingHappened', aggregateId: 1 };
 
-		it('is null when the projection has no event tracker', () => {
-			expect(projection.eventTracker).toBeNull();
+		it('defaults to an in-process event tracker, when the view does not track events', () => {
+			expect(projection.eventTracker).toBeInstanceOf(InMemoryEventTracker);
+			expect(projection.eventTracker).toBe(projection.eventTracker);
+		});
+
+		it('is null when DEDUPLICATION_WINDOW is 0 and the view does not track events', () => {
+			class UntrackedProjection extends MyProjection {
+				static DEDUPLICATION_WINDOW = 0;
+			}
+
+			expect(new UntrackedProjection({ view }).eventTracker).toBeNull();
+		});
+
+		it('is null when a deprecated event locker does not implement IEventTracker', () => {
+			const eventLocker: IEventLocker = {
+				getLastEvent: jest.fn(),
+				tryMarkAsProjecting: jest.fn().mockResolvedValue(true),
+				markAsProjected: jest.fn(),
+				markAsLastEvent: jest.fn()
+			};
+
+			expect(new MyProjection({ view, eventLocker }).eventTracker).toBeNull();
 		});
 
 		it('returns the event tracker passed to constructor', () => {
@@ -774,6 +795,123 @@ describe('AbstractProjection', function () {
 			jest.spyOn(projection, '_somethingHappened').mockRejectedValue(error);
 
 			await expect(projection.project(event)).rejects.toBe(error);
+		});
+	});
+
+	describe('deduplication', () => {
+
+		const event = { id: 'e1', type: 'somethingHappened', aggregateId: 1 };
+		const eventStoreOf = (...events: IEvent[]) => ({
+			async* getEventsByTypes() {
+				yield* events;
+			}
+		});
+
+		afterEach(() => {
+			AbstractProjection.DEDUPLICATION_WINDOW = 10_000;
+		});
+
+		it('projects an event delivered by restore and at runtime once', async () => {
+			await projection.restore(eventStoreOf(event) as any);
+			await projection.project(event, { origin: 'external' });
+
+			expect(await view.get(1)).toEqual({ somethingHappenedCnt: 1 });
+		});
+
+		it('projects a redelivered event once', async () => {
+			await projection.project(event);
+			await projection.project(event);
+
+			expect(await view.get(1)).toEqual({ somethingHappenedCnt: 1 });
+		});
+
+		it('projects concurrent duplicates once in per-aggregate mode', async () => {
+			projection = new MyProjection({ view, projectionMode: 'per-aggregate' });
+
+			await Promise.all([projection.project(event), projection.project(event)]);
+
+			expect(await view.get(1)).toEqual({ somethingHappenedCnt: 1 });
+		});
+
+		it('projects an event again after its handler failed', async () => {
+			const handler = jest.spyOn(projection as any, '_somethingHappened')
+				.mockRejectedValueOnce(new Error('failed'));
+
+			await expect(projection.project(event)).rejects.toThrow('failed');
+			await projection.project(event);
+
+			expect(handler).toHaveBeenCalledTimes(2);
+			expect(await view.get(1)).toEqual({ somethingHappenedCnt: 1 });
+		});
+
+		it('projects an event again after the view transaction failed to commit', async () => {
+			let commitFailure: Error | undefined = new Error('commit failed');
+			(view as any).runInTransaction = async (callback: () => Promise<unknown>) => {
+				const result = await callback();
+				const error = commitFailure;
+				commitFailure = undefined;
+				if (error)
+					throw error;
+
+				return result;
+			};
+			const handler = jest.spyOn(projection as any, '_somethingHappened');
+
+			await expect(projection.project(event)).rejects.toThrow('commit failed');
+			await projection.project(event);
+
+			expect(handler).toHaveBeenCalledTimes(2);
+		});
+
+		it('projects events without id every time', async () => {
+			const withoutId = { type: 'somethingHappened', aggregateId: 1 };
+
+			await projection.project(withoutId);
+			await projection.project(withoutId);
+
+			expect(await view.get(1)).toEqual({ somethingHappenedCnt: 2 });
+		});
+
+		it('resolves waitFor once the event is projected', async () => {
+			const waiting = projection.eventTracker!.waitFor('e1', { timeout: 1_000 });
+
+			await projection.project(event);
+
+			await expect(waiting).resolves.toBeUndefined();
+		});
+
+		it('remembers DEDUPLICATION_WINDOW recently projected events', async () => {
+			class SmallWindowProjection extends MyProjection {
+				static DEDUPLICATION_WINDOW = 1;
+			}
+			projection = new SmallWindowProjection({ view });
+
+			await projection.project(event);
+			await projection.project({ ...event, id: 'e2' });
+			await projection.project(event);
+
+			expect(await view.get(1)).toEqual({ somethingHappenedCnt: 3 });
+		});
+
+		it('uses an overridden AbstractProjection.DEDUPLICATION_WINDOW as default', async () => {
+			AbstractProjection.DEDUPLICATION_WINDOW = 0;
+			projection = new MyProjection({ view });
+
+			await projection.project(event);
+			await projection.project(event);
+
+			expect(projection.eventTracker).toBeNull();
+			expect(await view.get(1)).toEqual({ somethingHappenedCnt: 2 });
+		});
+
+		it('relies on the view event tracker, when the view tracks events', async () => {
+			const eventTracker = createEventTracker({ tryMarkAsProjecting: jest.fn().mockResolvedValue(false) });
+			projection = new MyProjection({ view, eventTracker });
+
+			await projection.project(event);
+
+			expect(eventTracker.tryMarkAsProjecting).toHaveBeenCalledWith(event);
+			expect(await view.get(1)).toBeUndefined();
 		});
 	});
 

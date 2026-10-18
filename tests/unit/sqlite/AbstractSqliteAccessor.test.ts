@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import createDb, { type Database } from 'better-sqlite3';
 import { AbstractSqliteAccessor, type SqliteProjectionDbFactoryParams } from '../../../src/sqlite/index.ts';
 
@@ -110,6 +113,54 @@ describe('AbstractSqliteAccessor', () => {
 			await writing;
 			expect(await reading).toEqual([]);
 			expect(await accessor.ids()).toEqual(['b']);
+		});
+
+		describe('with a write lock held by another connection', () => {
+
+			let dir: string;
+			let holder: Database;
+			let fileDb: Database;
+
+			beforeEach(() => {
+				dir = mkdtempSync(join(tmpdir(), 'node-cqrs-sqlite-'));
+				const file = join(dir, 'db.sqlite');
+				holder = createDb(file);
+				holder.exec('CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY)');
+				fileDb = createDb(file);
+			});
+
+			afterEach(() => {
+				if (holder.inTransaction)
+					holder.exec('ROLLBACK');
+				holder.close();
+				fileDb.close();
+				rmSync(dir, { recursive: true, force: true });
+			});
+
+			it('waits for the lock within the busy timeout', async () => {
+				fileDb.pragma('busy_timeout = 1000');
+				const fileAccessor = new TestAccessor({ viewModelSqliteDb: fileDb });
+				await fileAccessor.assertConnection();
+				holder.exec('BEGIN IMMEDIATE');
+
+				const transaction = fileAccessor.runInTransaction(() => fileAccessor.insert('a'));
+				await new Promise(resolve => setTimeout(resolve, 30));
+				holder.exec('COMMIT');
+
+				await expect(transaction).resolves.toBeDefined();
+				expect(await fileAccessor.ids()).toEqual(['a']);
+				expect(fileDb.pragma('busy_timeout', { simple: true })).toBe(1000);
+			});
+
+			it('fails once the busy timeout elapses', async () => {
+				fileDb.pragma('busy_timeout = 20');
+				const fileAccessor = new TestAccessor({ viewModelSqliteDb: fileDb });
+				await fileAccessor.assertConnection();
+				holder.exec('BEGIN IMMEDIATE');
+
+				await expect(fileAccessor.runInTransaction(() => fileAccessor.insert('a')))
+					.rejects.toHaveProperty('code', 'SQLITE_BUSY');
+			});
 		});
 	});
 

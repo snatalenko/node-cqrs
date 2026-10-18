@@ -80,6 +80,11 @@ export function assertNonNegativeInteger(value: unknown, argName: string): asser
 		throw new TypeError(`${argName} must be a non-negative integer`);
 }
 
+export function assertPositiveInteger(value: unknown, argName: string): asserts value is number {
+	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0)
+		throw new TypeError(`${argName} must be a positive integer`);
+}
+
 export function assertBoolean(value: unknown, argName: string): asserts value is boolean {
 	if (typeof value !== 'boolean')
 		throw new TypeError(`${argName} must be a Boolean`);

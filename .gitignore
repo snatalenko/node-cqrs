@@ -15,22 +15,17 @@ _site/
 
 # IDE's
 # =====
-.project
-.settings/
 .*.md.html
-.metadata
-*~.nib
-local.properties
-*.iml
-.c9/
-.vs/
-.idea/
+.agents/
+.claude/
+.metadata/
+.obsidian/
+.project/
+.settings/
 .vscode/
-data/
-mongod
 *.sublime-project
 *.sublime-workspace
-.obsidian/
+openspec/*
 
 # OS-specific
 # ===========

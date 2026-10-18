@@ -2,6 +2,7 @@ import {
 	AbstractProjection,
 	ContainerBuilder,
 	InMemoryView,
+	InMemoryEventTracker,
 	type IContainer,
 	type IEventTracker
 } from '../../src/index.ts';
@@ -67,7 +68,7 @@ describe('AbstractProjection types', () => {
 
 	it('types eventTracker as nullable, when the view does not implement IEventTracker', () => {
 		assertType<Equals<InMemoryUsersProjection['eventTracker'], IEventTracker | null>>();
-		expect(new InMemoryUsersProjection().eventTracker).toBeNull();
+		expect(new InMemoryUsersProjection().eventTracker).toBeInstanceOf(InMemoryEventTracker);
 	});
 
 	it('types eventTracker as explicitly provided tracker type', () => {

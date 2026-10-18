@@ -18,6 +18,9 @@ const CONNECTION_STRING = process.env.DATABASE_URL ??
 const EVENTS_TABLE = 'int_pg_events';
 const EVENT_SAGAS_TABLE = 'int_pg_event_sagas';
 
+/** Container `get` method, resolving no dependencies */
+const get = () => undefined as any;
+
 describe('PostgresqlEventStorage (integration)', () => {
 	let pool: Pool;
 	let storage: PostgresqlEventStorage;
@@ -39,6 +42,7 @@ describe('PostgresqlEventStorage (integration)', () => {
 	beforeEach(async () => {
 		await dropIntegrationTables();
 		storage = new PostgresqlEventStorage({
+			get,
 			eventStoragePostgresqlDb: pool,
 			postgresqlEventStorageConfig: {
 				eventsTableName: EVENTS_TABLE,
@@ -123,6 +127,7 @@ describe('PostgresqlEventStorage (integration)', () => {
 
 	it('prevents concurrent duplicate aggregate versions across instances', async () => {
 		const first = new PostgresqlEventStorage({
+			get,
 			eventStoragePostgresqlDb: pool,
 			postgresqlEventStorageConfig: {
 				eventsTableName: EVENTS_TABLE,
@@ -130,6 +135,7 @@ describe('PostgresqlEventStorage (integration)', () => {
 			}
 		});
 		const second = new PostgresqlEventStorage({
+			get,
 			eventStoragePostgresqlDb: pool,
 			postgresqlEventStorageConfig: {
 				eventsTableName: EVENTS_TABLE,
@@ -155,5 +161,71 @@ describe('PostgresqlEventStorage (integration)', () => {
 		for await (const event of storage.getAggregateEvents(aggregateId))
 			events.push(event);
 		expect(events).toHaveLength(1);
+	});
+
+	describe('commit order', () => {
+
+		async function readByTypes(eventTypes: string[], afterEvent?: { id: string, type: string }) {
+			const events = [];
+			for await (const event of storage.getEventsByTypes(eventTypes, { afterEvent }))
+				events.push(event);
+			return events;
+		}
+
+		/** Opens a transaction inserting an event, which stays uncommitted until the returned function is called */
+		async function insertInOpenTransaction(event: { id: string, type: string }) {
+			const client = await pool.connect();
+			await client.query('BEGIN');
+			await client.query(`INSERT INTO ${EVENTS_TABLE} (id, type, data) VALUES ($1, $2, $3::jsonb)`,
+				[event.id, event.type, JSON.stringify({ type: event.type })]);
+
+			return async () => {
+				try {
+					await client.query('COMMIT');
+				}
+				finally {
+					client.release();
+				}
+			};
+		}
+
+		it('records the committing transaction id of each event', async () => {
+			await storage.commitEvents([{ id: 'e1', type: 'A' }, { id: 'e2', type: 'A' }]);
+			await storage.commitEvents([{ id: 'e3', type: 'A' }]);
+
+			const rows = await pool.query(`SELECT id, tx_id::text AS tx_id FROM ${EVENTS_TABLE} ORDER BY position`);
+			const [first, second, third] = rows.rows;
+			expect(first.tx_id).toBe(second.tx_id);
+			expect(BigInt(third.tx_id)).toBeGreaterThan(BigInt(first.tx_id));
+			expect((await readByTypes(['A'], { id: 'e1', type: 'A' })).map(e => e.id)).toEqual(['e2', 'e3']);
+		});
+
+		it('returns every committed event when reading without a checkpoint', async () => {
+			await storage.commitEvents([{ id: 'e0', type: 'A' }]);
+			const commitUnrelated = await insertInOpenTransaction({ id: 'unrelated', type: 'B' });
+			try {
+				await storage.commitEvents([{ id: 'e1', type: 'A' }]);
+
+				expect((await readByTypes(['A'])).map(e => e.id)).toEqual(['e0', 'e1']);
+			}
+			finally {
+				await commitUnrelated();
+			}
+		});
+
+		it('does not skip an event committed after a later-positioned one when reading after a checkpoint', async () => {
+			await storage.commitEvents([{ id: 'checkpoint', type: 'A' }]);
+
+			const commitEarlier = await insertInOpenTransaction({ id: 'earlier', type: 'A' });
+			await storage.commitEvents([{ id: 'later', type: 'A' }]);
+
+			// the open transaction can still commit an event ordered before "later", so "later" is not returned yet
+			expect(await readByTypes(['A'], { id: 'checkpoint', type: 'A' })).toEqual([]);
+
+			await commitEarlier();
+
+			expect((await readByTypes(['A'], { id: 'checkpoint', type: 'A' })).map(e => e.id))
+				.toEqual(['earlier', 'later']);
+		});
 	});
 });

@@ -2,6 +2,8 @@ import {
 	type IAggregateSnapshotStorage,
 	type IEvent,
 	type IEventStorageReader,
+	type IEventFeed,
+	type IEventMeta,
 	type IEventSet,
 	type ILogger,
 	type IMessageHandler,
@@ -16,6 +18,7 @@ import {
 	type IEventBus,
 	type IContainer,
 	type AggregateEventsQueryParams,
+	isEventFeed,
 	isIdentifierProvider,
 	isObservableQueueProvider
 } from './interfaces/index.ts';
@@ -24,6 +27,7 @@ import {
 	assertDefined,
 	assertObservable,
 	assertStringArray,
+	getClassName,
 	parseSagaId,
 	setupOneTimeEmitterSubscription
 } from './utils/index.ts';
@@ -31,11 +35,19 @@ import { EventDispatcher } from './EventDispatcher.ts';
 
 export class EventStore implements IEventStore {
 
+	/**
+	 * Origin of events dispatched through the event store, unless the dispatch meta sets another one.
+	 * Events delivered by event feeds have other origins.
+	 */
+	static DEFAULT_ORIGIN = 'internal';
+
 	readonly #identifierProvider: IIdentifierProvider;
 	readonly #eventStorageReader: IEventStorageReader;
 	readonly #snapshotStorage: IAggregateSnapshotStorage | undefined;
 	readonly eventBus: IEventBus;
 	readonly #eventDispatcher: IEventDispatcher;
+	readonly #eventFeeds: readonly IEventFeed[];
+	#eventFeedsStarted: Promise<unknown> | undefined;
 	readonly #logger?: ILogger;
 
 	constructor({
@@ -47,6 +59,8 @@ export class EventStore implements IEventStore {
 		eventDispatcher,
 		eventDispatchPipeline,
 		eventDispatchPipelines,
+		eventFeedPipelines,
+		eventFeeds = [],
 		tracerFactory,
 		logger
 	}: Pick<IContainer,
@@ -59,11 +73,22 @@ export class EventStore implements IEventStore {
 		'logger' |
 		'eventDispatchPipeline' |
 		'eventDispatchPipelines' |
+		'eventFeedPipelines' |
+		'eventFeeds' |
 		'tracerFactory'
 	>) {
 		assertDefined(eventStorageReader, 'eventStorageReader or eventStorage');
 		assertDefined(identifierProvider, 'identifierProvider');
 		assertObservable(eventBus, 'eventBus');
+
+		for (const feed of eventFeeds) {
+			if (!isEventFeed(feed)) {
+				const name = typeof feed === 'object' && feed ? getClassName(feed) : String(feed);
+				throw new TypeError(`${name} is not an event feed (IEventFeed)`);
+			}
+			if ((feed as unknown) === eventBus)
+				throw new TypeError(`${getClassName(feed)} cannot be both an event feed and the eventBus`);
+		}
 
 		this.#eventStorageReader = eventStorageReader;
 		this.#identifierProvider = identifierProvider;
@@ -72,9 +97,11 @@ export class EventStore implements IEventStore {
 			eventBus,
 			eventDispatchPipeline,
 			eventDispatchPipelines,
+			eventFeedPipelines,
 			tracerFactory
 		});
 		this.eventBus = eventBus ?? this.#eventDispatcher.eventBus;
+		this.#eventFeeds = eventFeeds;
 		this.#logger = logger && 'child' in logger ?
 			logger.child({ service: new.target.name }) :
 			logger;
@@ -89,8 +116,23 @@ export class EventStore implements IEventStore {
 		return this.#identifierProvider.getNewId();
 	}
 
+	/**
+	 * Starts registered event feeds concurrently, once.
+	 * Called before events are read by types, so events committed by other nodes after the read are delivered by feeds.
+	 */
+	#startFeeds(): Promise<unknown> {
+		this.#eventFeedsStarted ??= Promise.all(this.#eventFeeds.map(feed => feed.startEventFeed()));
+		return this.#eventFeedsStarted;
+	}
+
+	/**
+	 * Retrieve events of the given types, used to restore projections.
+	 * Starts event feeds first, so events committed by other nodes after the read are delivered by the feeds.
+	 */
 	async* getEventsByTypes(eventTypes: Readonly<string[]>, options?: EventQueryAfter): IEventStream {
 		assertStringArray(eventTypes, 'eventTypes');
+
+		await this.#startFeeds();
 
 		this.#logger?.debug(`retrieving ${eventTypes.join(', ')} events...`);
 
@@ -149,11 +191,11 @@ export class EventStore implements IEventStore {
 	 * @param events - a set of events to commit
 	 * @returns Signed and committed events
 	 */
-	async dispatch(events: IEventSet, meta?: Record<string, any>): Promise<IEventSet> {
+	async dispatch(events: IEventSet, meta?: IEventMeta): Promise<IEventSet> {
 		assertArray(events, 'events');
 
 		return this.#eventDispatcher.dispatch(events, {
-			origin: 'internal',
+			origin: EventStore.DEFAULT_ORIGIN,
 			...meta
 		});
 	}

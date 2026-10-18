@@ -16,7 +16,7 @@ import {
 import { parseSagaId } from '../utils/index.ts';
 import { ConcurrencyError } from '../errors/index.ts';
 import { assertFunction, assertIdentifier, assertString } from '../utils/assert.ts';
-import { registerExitCleanup } from './registerExitCleanup.ts';
+import { registerExitCleanup } from '../shared/registerExitCleanup.ts';
 
 type EventDocument = Document & {
 	_id: ObjectId;

@@ -8,6 +8,8 @@ export * from './IDispatchPipelineProcessor.ts';
 export * from './IEvent.ts';
 export * from './IEventBus.ts';
 export * from './IEventDispatcher.ts';
+export * from './IEventFeed.ts';
+export * from './IEventMeta.ts';
 export * from './IEventLocker.ts';
 export * from './IEventReceptor.ts';
 export * from './IEventSet.ts';

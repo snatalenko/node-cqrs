@@ -1,6 +1,7 @@
 import type { Tracer } from '@opentelemetry/api';
 import { describe } from './Event.ts';
 import { InMemoryView } from './in-memory/InMemoryView.ts';
+import { InMemoryEventTracker } from './in-memory/InMemoryEventTracker.ts';
 import { recordSpanError, spanAttributes, spanContext } from './telemetry/index.ts';
 import {
 	type IViewLocker,
@@ -10,6 +11,7 @@ import {
 	type ILogger,
 	type IExtendableLogger,
 	type IEvent,
+	type IEventMeta,
 	type IObservable,
 	type IEventStorageReader,
 	type ILockerLease,
@@ -117,10 +119,18 @@ export abstract class AbstractProjection<
 		return getMessageHandlerNames(this);
 	}
 
+	/**
+	 * Number of recently projected event IDs remembered to skip repeated events,
+	 * when the view does not track projected events itself. `0` disables it.
+	 * Can be overridden in the projection implementation, or assigned here to change the default.
+	 */
+	static DEDUPLICATION_WINDOW = 10_000;
+
 	#view?: TView;
 	#viewLocker?: IViewLocker | null;
 	#eventLocker?: IEventLocker | null;
 	#eventTracker?: IEventTracker | null;
+	#defaultEventTracker?: IEventTracker | null;
 	readonly #projectLock = new Lock();
 	protected _logger?: ILogger;
 
@@ -186,17 +196,30 @@ export abstract class AbstractProjection<
 	 *
 	 * Unless assigned explicitly, defaults to the event locker, when it implements IEventTracker,
 	 * since waits are resolved once events are marked as projected through the same instance.
+	 * Without an event locker, defaults to an in-process tracker skipping recently projected events,
+	 * sized by `DEDUPLICATION_WINDOW`.
 	 * `null` when the projection has no event tracker.
 	 *
 	 * The type reflects the default wiring: assigning another view, a deprecated `eventLocker`,
-	 * or an object not implementing IEventTracker can result in `null` regardless of the type.
+	 * an object not implementing IEventTracker, or a zero `DEDUPLICATION_WINDOW`
+	 * can result in `null` regardless of the type.
 	 */
 	public get eventTracker(): TEventTracker {
 		if (this.#eventTracker !== undefined)
 			return this.#eventTracker as TEventTracker;
 
 		const eventLocker = this._eventLocker;
-		return (isEventTracker(eventLocker) ? eventLocker : null) as TEventTracker;
+		if (eventLocker)
+			return (isEventTracker(eventLocker) ? eventLocker : null) as TEventTracker;
+
+		if (this.#defaultEventTracker === undefined) {
+			const { DEDUPLICATION_WINDOW } = this.constructor as typeof AbstractProjection;
+			this.#defaultEventTracker = DEDUPLICATION_WINDOW ?
+				new InMemoryEventTracker({ historySize: DEDUPLICATION_WINDOW }) :
+				null;
+		}
+
+		return this.#defaultEventTracker as TEventTracker;
 	}
 
 	/**
@@ -251,7 +274,7 @@ export abstract class AbstractProjection<
 	 * Pass event to projection event handler.
 	 * Runs within the view transaction, when the view implements ITransactionalView.
 	 */
-	async project(event: IEvent, meta?: Record<string, any>): Promise<void> {
+	async project(event: IEvent, meta?: IEventMeta): Promise<void> {
 		// The queue is entered before awaiting the view readiness,
 		// so that events received meanwhile do not get ahead once the view becomes ready
 		const lease = await this.#enterProjectionQueue(event);
@@ -309,12 +332,12 @@ export abstract class AbstractProjection<
 	 * with a single projection instance, to shorten the restoration.
 	 */
 	// eslint-disable-next-line class-methods-use-this
-	protected shouldRecordLastEvent(_event: IEvent, _meta?: Record<string, any>): boolean {
+	protected shouldRecordLastEvent(_event: IEvent, _meta?: IEventMeta): boolean {
 		return false;
 	}
 
 	/** Pass event to projection event handler, without awaiting for restore operation to complete */
-	protected async _project(event: IEvent, meta?: Record<string, any>): Promise<void> {
+	protected async _project(event: IEvent, meta?: IEventMeta): Promise<void> {
 		const handler = getHandler(this, event.type);
 
 		const tracker = this.#eventProcessingTracker;

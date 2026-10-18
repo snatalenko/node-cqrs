@@ -170,6 +170,17 @@ describe('EventProgressTracker', () => {
 		});
 	});
 
+	describe('forgetCompleted', () => {
+
+		it('removes the event from the completed history', () => {
+			tracker.markAsCompleted({ id: 'e1', type: 'a' });
+
+			tracker.forgetCompleted('e1');
+
+			expect(tracker.isCompleted('e1')).toBe(false);
+		});
+	});
+
 	describe('projectedEventIdsProvider', () => {
 
 		let projected: Set<string>;

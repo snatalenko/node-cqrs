@@ -14,6 +14,7 @@ import {
 	assertNumber,
 	assertClass,
 	assertNonNegativeInteger,
+	assertPositiveInteger,
 	assertBoolean,
 	assertNotDefined
 } from '../../../src/utils/assert.ts';
@@ -243,6 +244,21 @@ describe('assertNonNegativeInteger', () => {
 	it('does not throw for non-negative integers', () => {
 		expect(() => assertNonNegativeInteger(0, 'x')).not.toThrow();
 		expect(() => assertNonNegativeInteger(42, 'x')).not.toThrow();
+	});
+});
+
+describe('assertPositiveInteger', () => {
+	it('throws TypeError for non-number', () => {
+		expect(() => assertPositiveInteger('1', 'x')).toThrow(new TypeError('x must be a positive integer'));
+	});
+	it('throws TypeError for zero', () => {
+		expect(() => assertPositiveInteger(0, 'x')).toThrow(TypeError);
+	});
+	it('throws TypeError for non-integer number', () => {
+		expect(() => assertPositiveInteger(1.5, 'x')).toThrow(TypeError);
+	});
+	it('does not throw for positive integers', () => {
+		expect(() => assertPositiveInteger(1, 'x')).not.toThrow();
 	});
 });
 

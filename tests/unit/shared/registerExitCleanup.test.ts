@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { registerExitCleanup } from '../../../src/mongodb/registerExitCleanup.ts';
+import { registerExitCleanup } from '../../../src/shared/registerExitCleanup.ts';
 
 describe('registerExitCleanup', () => {
 

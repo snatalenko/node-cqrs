@@ -1,6 +1,7 @@
 import type { Tracer } from '@opentelemetry/api';
 import { recordSpanError, spanAttributes, spanContext } from './telemetry/index.ts';
 import * as Event from './Event.ts';
+import { EventStore } from './EventStore.ts';
 import type {
 	ICommandBus,
 	IContainer,
@@ -10,7 +11,7 @@ import type {
 	IEventStore,
 	ILocker,
 	ILogger,
-	IMessageMeta,
+	IEventMeta,
 	IObservable,
 	ISaga,
 	ISagaConstructor,
@@ -101,11 +102,18 @@ export class SagaEventHandler implements IEventReceptor {
 		});
 	}
 
-	/** Handle saga event */
-	async handle(event: IEvent, meta?: IMessageMeta): Promise<void> {
+	/**
+	 * Handle saga event.
+	 * Events with an origin other than `EventStore.DEFAULT_ORIGIN`, such as events delivered by event feeds,
+	 * are ignored: the saga reacts on the node that committed the event.
+	 */
+	async handle(event: IEvent, meta?: IEventMeta): Promise<void> {
 		assertDefined(event, 'event');
 		assertDefined(event.type, 'event.type');
 		assertIdentifier(event.id, 'event.id');
+
+		if (meta?.origin !== undefined && meta.origin !== EventStore.DEFAULT_ORIGIN)
+			return;
 
 		const otelSpan = this.#tracer?.startSpan(`${this.#sagaDescriptor}.handle ${event.type}`,
 			spanAttributes('saga', event, ['type', 'aggregateId']),

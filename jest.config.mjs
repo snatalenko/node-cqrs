@@ -23,6 +23,7 @@ export default {
 		'/dist/',
 		'/examples/',
 		'/node_modules/',
+		'/src/mongodb/',
 		'/src/rabbitmq/',
 		'/src/workers/',
 		'/tests/'

@@ -7,6 +7,11 @@ import {
 	AbstractProjection,
 	ConcurrencyError,
 	EventIdAugmentor,
+	EventDispatcher,
+	InMemoryMessageBus,
+	type EventFeedParams,
+	type IContainer,
+	type IEventFeed,
 	type IDispatchPipelineProcessor,
 	type IAggregateSnapshotStorage,
 	type ILocker,
@@ -336,7 +341,11 @@ describe('CqrsContainerBuilder', function () {
 			});
 
 			it('resolves event tracker to null, when the projection does not provide it', () => {
-				builder.registerProjection(MyProjection, 'myView')
+				class UntrackedProjection extends MyProjection {
+					static DEDUPLICATION_WINDOW = 0;
+				}
+
+				builder.registerProjection(UntrackedProjection, 'myView')
 					.exposes(p => p.eventTracker as any, 'myViewTracker');
 
 				const container = builder.container() as any;
@@ -375,6 +384,317 @@ describe('CqrsContainerBuilder', function () {
 			(container as any).failView;
 
 			await expect(Promise.all(container.restorePromises!)).rejects.toThrow('restore failed');
+		});
+	});
+
+	describe('registerEventFeed(typeOrFactory, options) extension', () => {
+
+		class TestFeed implements IEventFeed {
+			readonly origin: string;
+			readonly #get: IContainer['get'];
+			readonly startEventFeed = jest.fn();
+			readonly stopEventFeed = jest.fn();
+
+			constructor({ eventFeedOrigin = 'external', get }: Pick<IContainer, 'get'> & EventFeedParams) {
+				this.origin = eventFeedOrigin;
+				this.#get = get;
+			}
+
+			/** Dispatches events as if they were committed by another node */
+			deliver(events: any[], meta?: Record<string, any>) {
+				const eventDispatcher = this.#get('eventDispatcher') as EventDispatcher;
+				return eventDispatcher.dispatch(events, { ...meta, origin: this.origin });
+			}
+		}
+
+		class PublishingFeed extends TestFeed implements IDispatchPipelineProcessor {
+			readonly process = jest.fn(async (batch: any) => batch);
+		}
+
+		class FeedStorage extends InMemoryEventStorage implements IEventFeed {
+			startEventFeed() { }
+			stopEventFeed() { }
+		}
+
+		const recordingProcessor = (name: string, calls: string[]): IDispatchPipelineProcessor => ({
+			process: async batch => {
+				calls.push(name);
+				return batch;
+			}
+		});
+
+		const feedsOf = (container: any): any[] => container.eventFeeds;
+
+		async function readStored(container: any, type: string) {
+			const stored = [];
+			for await (const event of container.eventStore.getEventsByTypes([type]))
+				stored.push(event);
+			return stored;
+		}
+
+		it('dispatches feed events with the default origin through an empty pipeline', async () => {
+			builder.registerEventFeed(TestFeed);
+			const container = builder.container();
+			const [feed] = feedsOf(container) as TestFeed[];
+			const handler = jest.fn();
+			container.eventBus.on('somethingHappened', handler);
+
+			await feed.deliver([{ id: 'e1', type: 'somethingHappened' }]);
+			await container.eventStore.drain();
+
+			expect(handler).toHaveBeenCalledWith({ id: 'e1', type: 'somethingHappened' },
+				expect.objectContaining({ origin: 'external' }));
+			expect(await readStored(container, 'somethingHappened')).toEqual([]);
+		});
+
+		it('dispatches feed events with a custom origin through the given processors', async () => {
+			const calls: string[] = [];
+			builder.registerEventFeed(TestFeed, {
+				origin: 'replica',
+				pipeline: [recordingProcessor('replicate', calls)]
+			});
+			const container = builder.container();
+			const [feed] = feedsOf(container) as TestFeed[];
+			const handler = jest.fn();
+			container.eventBus.on('somethingHappened', handler);
+
+			await feed.deliver([{ id: 'e1', type: 'somethingHappened' }]);
+			await container.eventStore.drain();
+
+			expect(calls).toEqual(['replicate']);
+			expect(handler).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ origin: 'replica' }));
+		});
+
+		it('resolves pipeline processors from the container', async () => {
+			builder.registerEventFeed(TestFeed, { pipeline: c => [c.eventStorage as any] });
+			const container = builder.container();
+			const [feed] = feedsOf(container) as TestFeed[];
+
+			await feed.deliver([{ id: 'e1', type: 'somethingHappened' }]);
+
+			expect(await readStored(container, 'somethingHappened')).toEqual([{ id: 'e1', type: 'somethingHappened' }]);
+		});
+
+		it('combines processors of feeds sharing an origin in registration order, each once', async () => {
+			const calls: string[] = [];
+			const shared = recordingProcessor('shared', calls);
+			builder.registerEventFeed(TestFeed, { pipeline: [recordingProcessor('first', calls), shared] });
+			builder.registerEventFeed(TestFeed, { pipeline: [shared, recordingProcessor('second', calls)] });
+			const container = builder.container();
+			const [, secondFeed] = feedsOf(container) as TestFeed[];
+
+			await secondFeed.deliver([{ id: 'e1', type: 'somethingHappened' }]);
+
+			expect(calls).toEqual(['first', 'shared', 'second']);
+		});
+
+		it('combines registered processors with a pipeline configured under the feed origin', async () => {
+			const calls: string[] = [];
+			builder.registerInstance({
+				default: [],
+				external: [recordingProcessor('configured', calls)]
+			}, 'eventDispatchPipelines');
+			builder.registerEventFeed(TestFeed, { pipeline: [recordingProcessor('registered', calls)] });
+			const container = builder.container();
+			const [feed] = feedsOf(container) as TestFeed[];
+
+			await feed.deliver([{ id: 'e1', type: 'somethingHappened' }]);
+
+			expect(calls).toEqual(['configured', 'registered']);
+		});
+
+		it('does not add feeds that are processors to dispatch pipelines', async () => {
+			builder.registerEventFeed(PublishingFeed);
+			const container = builder.container();
+			const [feed] = feedsOf(container) as PublishingFeed[];
+
+			await container.eventStore.dispatch([{ type: 'somethingHappened' }]);
+
+			expect(container.defaultEventDispatchPipeline)
+				.toEqual([expect.any(EventIdAugmentor), container.eventStorage]);
+			expect(feed.process).not.toHaveBeenCalled();
+		});
+
+		it('validates the feed options', () => {
+			expect(() => builder.registerEventFeed(TestFeed, { origin: '' })).toThrow('options.origin');
+			expect(() => builder.registerEventFeed(TestFeed, { pipeline: {} as any }))
+				.toThrow('options.pipeline must be an Array or a factory function');
+		});
+
+		it('injects the origin into the feed', () => {
+			builder.registerEventFeed(TestFeed, { origin: 'replica' });
+			const [feed] = feedsOf(builder.container()) as TestFeed[];
+
+			expect(feed.origin).toBe('replica');
+		});
+
+		it('exposes the same feed instance under other aliases, such as event storage', async () => {
+			builder = new ContainerBuilder();
+			builder.registerEventFeed(FeedStorage).as('eventStorage').as('identifierProvider');
+			const container = builder.container();
+			const processSpy = jest.spyOn(container.eventStorage as FeedStorage, 'process');
+
+			const [event] = await container.eventStore.dispatch([{ type: 'somethingHappened' }]);
+
+			expect(feedsOf(container)).toEqual([container.eventStorage]);
+			expect(processSpy).toHaveBeenCalledTimes(1);
+			expect(await readStored(container, 'somethingHappened')).toEqual([event]);
+		});
+
+		/** Registers a feed that also publishes local events, added to the local pipeline explicitly */
+		function registerPublishingFeed() {
+			builder.registerEventFeed(PublishingFeed).as('publishingFeed' as any);
+			builder.register(c => [...c.defaultEventDispatchPipeline, (c as any).publishingFeed])
+				.as('eventDispatchPipeline');
+		}
+
+		it('uses the same instance of a feed added to the local pipeline explicitly', async () => {
+			registerPublishingFeed();
+			const container = builder.container();
+			const [feed] = feedsOf(container) as PublishingFeed[];
+			let storedBeforeProcessing: unknown[] | undefined;
+			feed.process.mockImplementation(async batch => {
+				storedBeforeProcessing = await readStored(container, 'somethingHappened');
+				return batch;
+			});
+
+			const [event] = await container.eventStore.dispatch([{ type: 'somethingHappened' }]);
+
+			expect(feed.process).toHaveBeenCalledTimes(1);
+			expect(storedBeforeProcessing).toEqual([event]);
+		});
+
+		it('does not pass feed-delivered events to the local pipeline', async () => {
+			registerPublishingFeed();
+			const container = builder.container();
+			const [feed] = feedsOf(container) as PublishingFeed[];
+
+			await feed.deliver([{ id: 'e1', type: 'somethingHappened' }]);
+
+			expect(feed.process).not.toHaveBeenCalled();
+		});
+
+		it('rejects an object with generic start and stop methods', () => {
+			builder.registerEventFeed(() => ({ start() { }, stop() { } }) as any);
+			const container = builder.container();
+
+			expect(() => container.eventStore).toThrow('is not an event feed');
+		});
+
+		it('rejects a feed that is the event bus', () => {
+			class FeedBus extends InMemoryMessageBus implements IEventFeed {
+				startEventFeed() { }
+				stopEventFeed() { }
+			}
+			builder.registerEventFeed(FeedBus).as('eventBus');
+			const container = builder.container();
+
+			expect(() => container.eventStore).toThrow('cannot be both an event feed and the eventBus');
+		});
+
+		it('starts feeds once, when events are first read by types', async () => {
+			builder.registerEventFeed(TestFeed);
+			const container = builder.container();
+			const [feed] = feedsOf(container) as TestFeed[];
+			expect(feed.startEventFeed).not.toHaveBeenCalled();
+
+			await Promise.all([readStored(container, 'a'), readStored(container, 'b')]);
+
+			expect(feed.startEventFeed).toHaveBeenCalledTimes(1);
+		});
+
+		it('starts feeds before projections read events to restore, keeping views locked meanwhile', async () => {
+			class MyProjection extends AbstractProjection<any> {
+				static get handles() {
+					return ['somethingHappened'];
+				}
+				_somethingHappened() { }
+			}
+
+			let startFeed!: () => void;
+			class SlowFeed extends TestFeed {
+				readonly startEventFeed = jest.fn(() => new Promise<void>(resolve => {
+					startFeed = resolve;
+				}));
+			}
+
+			builder.registerEventFeed(SlowFeed);
+			builder.registerProjection(MyProjection, 'myView');
+			const container = builder.container();
+			const readSpy = jest.spyOn(container.eventStorage!, 'getEventsByTypes');
+
+			const view = (container as any).myView as InMemoryView<any>;
+			await new Promise(setImmediate);
+
+			expect(view.ready).toBe(false);
+			expect(readSpy).not.toHaveBeenCalled();
+
+			startFeed();
+			await Promise.all(container.restorePromises!);
+
+			expect(readSpy).toHaveBeenCalledTimes(1);
+			expect(view.ready).toBe(true);
+		});
+
+		it('runs sagas for locally committed events only', async () => {
+			class Saga extends AbstractSaga {
+				static get startsWith() {
+					return ['somethingHappened'];
+				}
+				somethingHappened() {
+					super.enqueue('doSomething', undefined, {});
+				}
+			}
+
+			builder.registerSaga(Saga);
+			builder.registerEventFeed(TestFeed);
+			const container = builder.container();
+			const [feed] = feedsOf(container) as TestFeed[];
+			const commandHandler = jest.fn();
+			container.commandBus.on('doSomething', commandHandler);
+
+			await feed.deliver([{ id: 'remote-1', type: 'somethingHappened' }]);
+			await container.eventStore.dispatch([{ type: 'somethingHappened' }]);
+			await container.eventStore.drain();
+			await new Promise(setImmediate);
+
+			expect(commandHandler).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps dispatch, projections and sagas unchanged without feeds', async () => {
+			class MyProjection extends AbstractProjection<any> {
+				static get handles() {
+					return ['somethingHappened'];
+				}
+				_somethingHappened(event) {
+					this.view.create(event.aggregateId, event.payload);
+				}
+			}
+
+			class Saga extends AbstractSaga {
+				static get startsWith() {
+					return ['somethingHappened'];
+				}
+				somethingHappened() {
+					super.enqueue('doSomething', undefined, {});
+				}
+			}
+
+			builder.registerProjection(MyProjection, 'myView');
+			builder.registerSaga(Saga);
+			const container = builder.container();
+			const commandHandler = jest.fn();
+			container.commandBus.on('doSomething', commandHandler);
+			const view = (container as any).myView as InMemoryView<any>;
+			await Promise.all(container.restorePromises!);
+
+			await container.eventStore.dispatch([{ type: 'somethingHappened', aggregateId: 1, payload: { a: 1 } }]);
+			await container.eventStore.drain();
+			await new Promise(setImmediate);
+
+			expect(container.eventDispatcher).toBeInstanceOf(EventDispatcher);
+			expect(await view.get(1)).toEqual({ a: 1 });
+			expect(commandHandler).toHaveBeenCalledTimes(1);
 		});
 	});
 });

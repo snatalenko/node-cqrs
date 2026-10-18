@@ -18,6 +18,9 @@ type ObjectRecord = {
 
 type StoredEvent = {
 	position: number;
+
+	/** Id of the transaction that inserted the event */
+	txId: number;
 	id: string;
 	aggregateId: string | null;
 	aggregateVersion: number | null;
@@ -52,7 +55,16 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 	connectCount = 0;
 	releaseCount = 0;
 	forceObjectUpdateConflict = false;
+
+	/** Error thrown by the next event feed read, if set */
+	failNextFeedRead: Error | undefined;
+
+	/** Error thrown by the next event feed start cursor query, if set */
+	failNextFeedStart: Error | undefined;
+
 	#nextEventPosition = 1;
+	#nextTxId = 1;
+	#transactionId: number | undefined;
 	#transactionSnapshot: Snapshot | undefined;
 
 	async connect() {
@@ -87,6 +99,15 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 		if (sql.startsWith('create '))
 			return this.result();
 
+		if (sql.startsWith('select pg_notify('))
+			return this.result(1, [{ pg_notify: '' }]);
+
+		if (sql.startsWith('select pg_snapshot_xmin(pg_current_snapshot())::text as tx_id'))
+			return this.getFeedStartCursor<TRow>();
+
+		if (sql.startsWith('select e.id') && sql.includes('e.tx_id::text as tx_id'))
+			return this.getFeedBatch<TRow>(values);
+
 		if (sql.includes('insert into') && sql.includes('aggregate_version') && sql.includes('meta'))
 			return this.insertEvent(values);
 
@@ -99,7 +120,7 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 		if (sql.startsWith('with tail'))
 			return this.getAggregateEvents(values);
 
-		if (sql.startsWith('select position') && sql.includes('where id = $1'))
+		if (sql.startsWith('select tx_id, position') && sql.includes('where id = $1'))
 			return this.getEventPosition(values);
 
 		if (sql.startsWith('select saga_descriptor') && sql.includes('origin_id') && sql.includes('where event_id = $1'))
@@ -155,6 +176,7 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 
 	private beginTransaction() {
 		this.transactionLog.push('BEGIN');
+		this.#transactionId = this.#nextTxId++;
 		this.#transactionSnapshot = {
 			viewLocks: MockPostgresqlConnection.cloneViewLocks(this.viewLocks),
 			eventLocks: MockPostgresqlConnection.cloneEventLocks(this.eventLocks),
@@ -168,6 +190,7 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 
 	private commitTransaction() {
 		this.transactionLog.push('COMMIT');
+		this.#transactionId = undefined;
 		this.#transactionSnapshot = undefined;
 
 		return this.result();
@@ -185,6 +208,7 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 			this.#nextEventPosition = this.events.reduce((max, event) => Math.max(max, event.position), 0) + 1;
 		}
 
+		this.#transactionId = undefined;
 		this.#transactionSnapshot = undefined;
 
 		return this.result();
@@ -314,6 +338,7 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 
 		this.events.push({
 			position: this.#nextEventPosition++,
+			txId: this.#transactionId ?? this.#nextTxId++,
 			id: String(values[0]),
 			aggregateId: values[1] === null ? null : String(values[1]),
 			aggregateVersion: values[2] === null ? null : Number(values[2]),
@@ -360,7 +385,10 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 
 	private getEventPosition<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
 		const event = this.events.find(item => item.id === values[0]);
-		const rows = event ? [{ position: event.position }] as TRow[] : [];
+		const rows = event ? [{
+			tx_id: String(event.txId),
+			position: event.position
+		}] as TRow[] : [];
 
 		return this.result(rows.length, rows);
 	}
@@ -420,12 +448,42 @@ export class MockPostgresqlConnection implements PostgresqlConnection {
 	}
 
 	private getEventsByTypes<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
-		const afterPosition = Number(values[0]);
-		const eventTypes = values[1] as Readonly<string[]>;
+		const eventTypes = values[0] as Readonly<string[]>;
+		const afterPosition = values[2] === null ? 0 : Number(values[2]);
 		const rows = this.events
 			.filter(event => event.position > afterPosition && eventTypes.includes(event.type))
 			.sort((a, b) => a.position - b.position)
 			.map(event => this.eventRow(event) as TRow);
+
+		return this.result(rows.length, rows);
+	}
+
+	/** Horizon of the next transaction: events of earlier transactions are not delivered by the feed */
+	private getFeedStartCursor<TRow extends Record<string, unknown>>() {
+		const error = this.failNextFeedStart;
+		this.failNextFeedStart = undefined;
+		if (error)
+			throw error;
+
+		return this.result(1, [{ tx_id: String(this.#nextTxId) }] as unknown as TRow[]);
+	}
+
+	/** Events ordered after the cursor by transaction id and position, except those of an open transaction */
+	private getFeedBatch<TRow extends Record<string, unknown>>(values: readonly unknown[]) {
+		const error = this.failNextFeedRead;
+		this.failNextFeedRead = undefined;
+		if (error)
+			throw error;
+
+		const cursorTxId = Number(values[0]);
+		const cursorPosition = Number(values[1]);
+		const limit = Number(values[2]);
+		const rows = this.events
+			.filter(event => event.txId !== this.#transactionId)
+			.filter(event => event.txId > cursorTxId || (event.txId === cursorTxId && event.position > cursorPosition))
+			.sort((a, b) => a.txId - b.txId || a.position - b.position)
+			.slice(0, limit)
+			.map(event => ({ ...this.eventRow(event), tx_id: String(event.txId) }) as unknown as TRow);
 
 		return this.result(rows.length, rows);
 	}

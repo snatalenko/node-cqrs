@@ -22,3 +22,4 @@ Examples
 - [MongoDB event storage](./mongodb-eventstore) - distributed event persistence
 - [MongoDB views](./mongodb-views) - document and custom projection views
 - [PostgreSQL](./postgresql) - transactional event storage and projection views
+- [PostgreSQL with multiple instances](./postgresql-multi-node) - in-memory views kept in sync through an event feed

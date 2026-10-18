@@ -19,6 +19,47 @@ describe('EventDispatcher', () => {
 
 			await expect(localDispatcher.dispatch([event])).resolves.toEqual([event]);
 		});
+
+		describe('eventFeedPipelines', () => {
+
+			const recording = (name: string, calls: string[]): IDispatchPipelineProcessor => ({
+				process: async batch => {
+					calls.push(name);
+					return batch;
+				}
+			});
+
+			it('adds pipelines of feed origins next to the default pipeline', async () => {
+				const calls: string[] = [];
+				const localDispatcher = new EventDispatcher({
+					eventBus,
+					eventDispatchPipeline: [recording('default', calls)],
+					eventFeedPipelines: [{ external: [recording('external', calls)] }]
+				});
+
+				await localDispatcher.dispatch([{ type: 'a' }], { origin: 'external' });
+				await localDispatcher.dispatch([{ type: 'a' }]);
+
+				expect(calls).toEqual(['external', 'default']);
+			});
+
+			it('appends feed processors to configured pipelines of the same name, each once', async () => {
+				const calls: string[] = [];
+				const shared = recording('shared', calls);
+				const localDispatcher = new EventDispatcher({
+					eventBus,
+					eventDispatchPipelines: { default: [], external: [recording('configured', calls), shared] },
+					eventFeedPipelines: [
+						{ external: [shared, recording('first', calls)] },
+						{ external: [recording('second', calls)] }
+					]
+				});
+
+				await localDispatcher.dispatch([{ type: 'a' }], { origin: 'external' });
+
+				expect(calls).toEqual(['configured', 'shared', 'first', 'second']);
+			});
+		});
 	});
 
 	describe('addPipeline(name, processors, options)', () => {

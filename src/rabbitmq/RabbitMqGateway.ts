@@ -5,7 +5,8 @@ import { type ILogger, type IMessage, type IMessageMeta, isIdentifier } from '..
 import * as Event from '../Event.ts';
 import { recordSpanError, spanAttributes, spanContext } from '../telemetry/index.ts';
 import { assertDefined, assertFunction, assertMessage, assertNonNegativeInteger, assertNotDefined, assertString, extractErrorDetails, Lock, serializeEvent } from '../utils/index.ts';
-import { ConfigProvider, registerExitCleanup, resolveProvider } from './utils/index.ts';
+import { registerExitCleanup } from '../shared/registerExitCleanup.ts';
+import { ConfigProvider, resolveProvider } from './utils/index.ts';
 import { EventEmitter } from 'events';
 
 /** Generate a short pseudo-unique identifier using a truncated timestamp and random component */

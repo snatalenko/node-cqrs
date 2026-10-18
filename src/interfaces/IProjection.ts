@@ -2,6 +2,7 @@ import type { IObserver } from './IObserver.ts';
 import type { IObservable } from './IObservable.ts';
 import type { IEventStorageReader } from './IEventStorageReader.ts';
 import type { IEvent } from './IEvent.ts';
+import type { IEventMeta } from './IEventMeta.ts';
 import type { IEventTracker } from './IEventTracker.ts';
 
 export interface IProjection<TView> extends IObserver {
@@ -20,7 +21,7 @@ export interface IProjection<TView> extends IObserver {
 	restore(eventStore: IEventStorageReader): Promise<void> | void;
 
 	/** Project new event */
-	project(event: IEvent, meta?: Record<string, any>): Promise<void> | void;
+	project(event: IEvent, meta?: IEventMeta): Promise<void> | void;
 }
 
 export interface IProjectionConstructor {

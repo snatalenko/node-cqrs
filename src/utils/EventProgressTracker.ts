@@ -147,6 +147,21 @@ export class EventProgressTracker implements Pick<IEventTracker, 'waitFor' | 'ma
 	}
 
 	/**
+	 * Checks whether the event ID is in the history of events completed in the current process
+	 */
+	isCompleted(eventId: Identifier): boolean {
+		return this.#completed.has(String(eventId));
+	}
+
+	/**
+	 * Removes the event ID from the history of completed events,
+	 * so it is not reported as completed until it is completed again
+	 */
+	forgetCompleted(eventId: Identifier) {
+		this.#completed.delete(String(eventId));
+	}
+
+	/**
 	 * Rejects waits for the event. Events without an ID are ignored, since they cannot be awaited
 	 */
 	markAsFailed(event: IEvent, error: unknown) {
