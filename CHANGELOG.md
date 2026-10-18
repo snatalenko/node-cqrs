@@ -1,3 +1,9 @@
+## [1.3.0-alpha.19](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.18...v1.3.0-alpha.19) (2026-10-18)
+
+### Features
+
+* Event feeds for multi-node deployments, with a PostgreSQL event feed, a RabbitMQ event bridge and in-memory projection deduplication ([6fdfa8f](https://github.com/snatalenko/node-cqrs/commit/6fdfa8ffd7c57141a32ac5c4632a1b99d834c5fc))
+
 ## [1.3.0-alpha.18](https://github.com/snatalenko/node-cqrs/compare/v1.3.0-alpha.17...v1.3.0-alpha.18) (2026-10-11)
 
 ### Features
